@@ -40,6 +40,7 @@ dependencies = [
 Homepage = "https://lifelib.io"
 
 [project.optional-dependencies]
+helpers = ["numpy", "pandas", "Cython>=3.2"]
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",

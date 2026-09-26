@@ -1,5 +1,10 @@
 # Implementation Notes
 
+On `development/helpers`, MYGA includes the experimental helper adjustment in
+place. See [HELPERS.md](HELPERS.md) for its typed interfaces, shared input snapshots,
+and required matching compiler branch. The actuarial specification below remains
+the numerical reference.
+
 **Status:** Draft, 2026-08-14. Built from
 [`products/fixed_deferred_annuity/technical-notes.md`](technical-notes.md);
 the product it implements is specified in

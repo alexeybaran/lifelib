@@ -181,6 +181,9 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['modelx>=0.32'],
 
+    # Experimental MYGA helpers run in both live modelx and exported Python.
+    extras_require={'helpers': ['numpy', 'pandas', 'Cython>=3.2']},
+
     # If your project only runs on certain Python versions,
     # setting the python_requires argument to the appropriate PEP 440 version
     #  specifier string will prevent pip from installing the project on

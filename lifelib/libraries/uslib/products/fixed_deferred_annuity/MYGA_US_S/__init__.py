@@ -21,11 +21,12 @@ benefit composition order and the Model #805 floor construction specified here.
 **Spaces.** The model contains two:
 
 :mod:`~.MYGA_US_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
-    parameters, so each file is read **once per model**.
+    Holds the seven input tables as serialized References shared by all policies.
+    Trivial getter Cells expose them to the experimental lookup helpers.
 
 :mod:`~.MYGA_US_S.Projection`
-    The by-contract projection, parameterized by ``point_id``: ``Projection[1]`` is an
+    The by-contract projection, parameterized by ``point_id`` and an optional
+    scenario (default -1 selects the policy's supplied scenario): ``Projection[1]`` is an
     ItemSpace projecting model point 1. It reaches the input tables through its ``data``
     Reference, which resolves to the single :mod:`~.MYGA_US_S.Data` Space.
 
