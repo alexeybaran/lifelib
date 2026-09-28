@@ -79,6 +79,15 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
+def policy_ids():
+    """Array indices of the current model point table."""
+    return range(len(data.age_at_entry()))
+
+
+def collect_outputs():
+    """Portfolio present value retained after each policy is released."""
+    return {"sum": {"pv_net_cf": pv_net_cf()}}
+
 def age(t):
     """The attained age at time t.
 
