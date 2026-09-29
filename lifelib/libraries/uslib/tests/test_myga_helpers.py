@@ -5,12 +5,26 @@ import sys
 import modelx as mx
 import numpy as np
 import pandas as pd
+import pytest
 
+from lifelib.helpers.lookups import power
 from us_registry import LIB
 from lifelib.libraries.uslib.myga_enums import AccountTiming, Claim, Sex
 
 
 MODEL = LIB / 'products/fixed_deferred_annuity/MYGA_US_S'
+
+
+def test_real_power_intrinsic_declaration_preserves_errors():
+    assert power.__modelx_cython_intrinsic__ == 'real_power_v1'
+    assert power(-2.0, 3.0) == -8.0
+    assert power(0.0, 0.0) == 1.0
+    with pytest.raises(ValueError, match='Fractional power'):
+        power(-2.0, 0.5)
+    with pytest.raises(ZeroDivisionError, match='negative power'):
+        power(0.0, -1.0)
+    with pytest.raises(OverflowError):
+        power(1e308, 2.0)
 
 
 def test_shared_inputs_match_product_csvs():

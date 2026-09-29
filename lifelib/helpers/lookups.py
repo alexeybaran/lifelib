@@ -150,6 +150,12 @@ def power(base, exponent):
         raise OverflowError('Non-finite power result')
     return result
 
+
+# The native frame backend may replace this call with its real-valued power
+# intrinsic. This versioned declaration covers the domain and exceptions above;
+# it is independent of the name or module used by a particular model.
+power.__modelx_cython_intrinsic__ = 'real_power_v1'
+
 class CurveTable:
     """All groups of a numeric curve table; group selection happens on each query.
 
