@@ -136,13 +136,16 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
             total += Actual[p].net_cf(t)
         result[t] = total
     return result""")
-        outer.new_cells('liability_pv', """def liability_pv(y, shock):
+        outer.new_cells('base_liability_pv', """def base_liability_pv(y):
     total = 0.0
     for p in Valuation.policy_ids:
-        total += Valuation(y * 12, p, shock).liability_pv()
+        total += Valuation(y * 12, p, -1).liability_pv()
     return total""")
-        outer.new_cells('base_liability_pv', 'lambda y: liability_pv(y, -1)')
-        outer.new_cells('shocked_liability_pv', 'lambda y, key: liability_pv(y, key)')
+        outer.new_cells('shocked_liability_pv', """def shocked_liability_pv(y, key):
+    total = 0.0
+    for p in Valuation.policy_ids:
+        total += Valuation(y * 12, p, key).liability_pv()
+    return total""")
         outer.new_cells('base_cashflows', """def base_cashflows(y):
     result = {}
     for t in range(480):
