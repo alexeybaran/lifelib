@@ -84,7 +84,8 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         'individual': {'state': {t: policy_state(t) for t in snapshot_months}},
         'sum': {'net_cf': {t: net_cf(t) for t in projection_months}}}} if route == 'collect' else {}
     actual = model.new_space('Actual', formula=actual_formula,
-        refs={**common, 'valuation_month': 0, 'HORIZON': OUTER_MONTHS,
+        refs={**common, 'initial_state': np.zeros(9), 'Market': market,
+              'valuation_month': 0, 'HORIZON': OUTER_MONTHS,
               'projection_months': tuple(range(OUTER_MONTHS)), 'snapshot_months': VALUATION_MONTHS},
         **options)
     if route == 'collect':
@@ -92,7 +93,8 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
             'sum': {'liability_pv': liability_pv(),
                     'net_cf': {t: net_cf(t) for t in projection_months}}}}
     valuation = model.new_space('Valuation', formula=valuation_formula,
-        refs={**common, 'StateSource': states, 'HORIZON': HORIZON,
+        refs={**common, 'initial_state': np.zeros(9), 'Market': market,
+              'StateSource': states, 'HORIZON': HORIZON,
               'projection_months': tuple(range(HORIZON))}, **options)
     for space in (actual, valuation):
         for module in (policy, assumptions):
