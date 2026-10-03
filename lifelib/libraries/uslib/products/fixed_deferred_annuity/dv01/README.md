@@ -15,9 +15,9 @@ formulas. Benchmark roots are added by the toolkit, not shipped as product Cells
 - `Data` also holds annual curves/spreads; monthly interpolation is a cached Cell.
 - `Scenarios(valuation_month, forward_project, shock)` owns common curve-derived
   rates and discount factors. Its `rate(t, tenor)` has no policy parameter.
-- Policy Cells read table attributes and calculate duration-dependent assumptions.
+- Data lookup Cells cache assumption values by their true keys (age/sex, schedule/month, remaining term). Policy Cells read these shared values and calculate duration-dependent assumptions.
   They do not allocate arrays of prepared paths for all policies.
-- `Initial[policy_id]` calculates issue state. Actual evolves each policy separately.
+- `Initial[policy_id]` calculates issue state, bound as `initial_state` in each projection. Actual evolves each policy separately.
 - `StateSource` exposes the detached Actual snapshots in collect mode, or ordinary
   cached policy states in direct mode. Valuation consumes those states at months
   0, 12 and 24. Shared market inputs never substitute for independent policy state.

@@ -11,7 +11,7 @@ def idx(t):
 
 
 def state_value(k):
-    return state[k]
+    return initial_state[k]
 
 
 def credit_rate(t):

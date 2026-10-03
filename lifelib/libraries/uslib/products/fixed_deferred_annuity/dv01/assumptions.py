@@ -55,14 +55,14 @@ def anniversary(t):
 def mort(t):
     if month(t) >= 480 or age(t) > 99:
         return 0.0
-    annual = lookup.at(Data.mortality, (age(t), sex()), 'mort_rate')
+    annual = Data.mortality_rate(age(t), sex())
     return 1.0 - (1.0 - annual) ** (1.0 / 12.0)
 
 
 def wd(t):
     if month(t) >= 480:
         return 0.0
-    return lookup.get(Data.withdrawals, (wd_schedule_id(), month(t)), 'wd_amount')
+    return Data.withdrawal_amount(wd_schedule_id(), month(t))
 
 
 def surr_charge(t):
@@ -72,7 +72,7 @@ def surr_charge(t):
         return 0.0
     schedule = 'initial' if gp_index(t) <= 1 else 'renewal'
     year = (month(t) // 12) % 5 + 1
-    rate = lookup.get(Data.surrender, (schedule, year), 'surr_charge_rate')
+    rate = Data.surrender_rate(schedule, year)
     if age(t) >= 94:
         # Keep the demo's arithmetic order, including cap rounding.
         rate = min(rate, max(0.0, 0.04 - 0.01 * (age(t) - 94)))
@@ -117,11 +117,11 @@ def maturity(t):
 
 
 def mva_factor_lo(t):
-    return lookup.linear(Data.mva_factors, mva_term(t), 'factor_lo')
+    return Data.mva_factor_lo(mva_term(t))
 
 
 def mva_factor_hi(t):
-    return lookup.linear(Data.mva_factors, mva_term(t), 'factor_hi')
+    return Data.mva_factor_hi(mva_term(t))
 
 
 def market_rate(t):

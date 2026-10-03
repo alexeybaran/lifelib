@@ -16,23 +16,23 @@ VALUATION_MONTHS = (0, 12, 24)
 
 
 def actual_formula(policy_id):
-    return {'refs': {'state': Initial[policy_id].state(),
+    return {'refs': {'initial_state': Initial[policy_id].state(),
                      'Market': Scenarios(0, False, -1)}}
 
 
 def valuation_formula(valuation_month, policy_id, shock=-1):
-    return {'refs': {'state': StateSource.state(valuation_month, policy_id),
+    return {'refs': {'initial_state': StateSource.state(valuation_month, policy_id),
                      'Market': Scenarios(valuation_month, True, shock)}}
 
 
 def initial_state():
-    premium = lookup.at(Data.policy_table, policy_id, 'premium')
-    rate = max(lookup.at(Data.policy_table, policy_id, 'gmir'),
+    premium = Data.numeric_field(policy_id, 'premium')
+    rate = max(Data.numeric_field(policy_id, 'gmir'),
                Scenarios(0, False, -1).rate(0, 5.0) - Scenarios(0, False, -1).spread(0))
-    free = (lookup.at(Data.policy_table, policy_id, 'free_wd_rate') * premium
-            if lookup.field(Data.policy_table, policy_id, 'free_wd_rule') == 'pct_av' else 0.0)
+    free = (Data.numeric_field(policy_id, 'free_wd_rate') * premium
+            if Data.label_field(policy_id, 'free_wd_rule') == 'pct_av' else 0.0)
     return np.array([premium, 0.875 * premium,
-                     lookup.at(Data.policy_table, policy_id, 'pols_if_init'),
+                     Data.numeric_field(policy_id, 'pols_if_init'),
                      0.0, 0.0, premium, free, rate,
                      Scenarios(0, False, -1).rate(0, 5.0)], dtype=float)
 
@@ -57,7 +57,14 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         'withdrawals': pd.read_csv(folder / 'withdrawal_table.csv', index_col=['wd_schedule_id', 't']),
         'surrender': pd.read_csv(folder / 'surr_charge_table.csv', index_col=['schedule', 'contract_year']),
         'mva_factors': pd.read_csv(folder / 'mva_factor_table.csv', index_col='years_remaining'),
-        'annual_curves': curves, 'annual_spreads': spreads, 'curves': curve_helpers})
+        'annual_curves': curves, 'annual_spreads': spreads, 'curves': curve_helpers, 'lookup': lookup})
+    data.new_cells('numeric_field', "lambda policy_id, column: lookup.at(policy_table, policy_id, column)")
+    data.new_cells('label_field', "lambda policy_id, column: lookup.field(policy_table, policy_id, column)")
+    data.new_cells('mortality_rate', "lambda age, sex: lookup.at(mortality, (age, sex), 'mort_rate')")
+    data.new_cells('withdrawal_amount', "lambda schedule, month: lookup.get(withdrawals, (schedule, month), 'wd_amount')")
+    data.new_cells('surrender_rate', "lambda schedule, year: lookup.get(surrender, (schedule, year), 'surr_charge_rate')")
+    data.new_cells('mva_factor_lo', "lambda term: lookup.linear(mva_factors, term, 'factor_lo')")
+    data.new_cells('mva_factor_hi', "lambda term: lookup.linear(mva_factors, term, 'factor_hi')")
     data.new_cells('monthly_inputs', """def monthly_inputs():
     return curves.monthly_outer_scenario(annual_curves, annual_spreads, months=36)""")
     data.new_cells('monthly_curves', 'lambda: monthly_inputs()[0]')
@@ -98,17 +105,17 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
                   'mgsv_charge': 'mgsv_annual_charge', 'free_rate': 'free_wd_rate',
                   'premium_tax': 'premium_tax_rate', 'age_at_entry': 'age_at_entry'}
         for name, column in fields.items():
-            space.new_cells(name, f"def {name}():\n    return lookup.at(Data.policy_table, policy_id, {column!r})")
+            space.new_cells(name, f"def {name}():\n    return Data.numeric_field(policy_id, {column!r})")
         for name in ('sex', 'wd_schedule_id', 'renewal_architecture'):
-            space.new_cells(name, f"def {name}():\n    return lookup.field(Data.policy_table, policy_id, {name!r})")
-        space.new_cells('free_exempt', "lambda: lookup.at(Data.policy_table, policy_id, 'free_wd_mva_exempt')")
-        space.new_cells('mgsv_net_wd', "lambda: 1.0 if lookup.field(Data.policy_table, policy_id, 'mgsv_wd_convention') == 'net_of_charges' else 0.0")
-        space.new_cells('free_rule', "lambda: 0.0 if lookup.field(Data.policy_table, policy_id, 'free_wd_rule') == 'pct_av' else 1.0")
+            space.new_cells(name, f"def {name}():\n    return Data.label_field(policy_id, {name!r})")
+        space.new_cells('free_exempt', "lambda: Data.numeric_field(policy_id, 'free_wd_mva_exempt')")
+        space.new_cells('mgsv_net_wd', "lambda: 1.0 if Data.label_field(policy_id, 'mgsv_wd_convention') == 'net_of_charges' else 0.0")
+        space.new_cells('free_rule', "lambda: 0.0 if Data.label_field(policy_id, 'free_wd_rule') == 'pct_av' else 1.0")
         space.new_cells('mva_family', """def mva_family():
-    name = lookup.field(Data.policy_table, policy_id, 'mva_family')
+    name = Data.label_field(policy_id, 'mva_family')
     return {'linear_duration': 0.0, 'geometric': 1.0, 'declared_differential': 2.0}[name]""")
         space.new_cells('mva_cap', """def mva_cap():
-    name = lookup.field(Data.policy_table, policy_id, 'mva_cap_rule')
+    name = Data.label_field(policy_id, 'mva_cap_rule')
     return {'sym_sc': 0.0, 'min_sc_interest': 1.0, 'asym_sc_snfl': 2.0, 'gmir_floor': 3.0, 'none': 4.0}[name]""")
     states.Actual = actual
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,

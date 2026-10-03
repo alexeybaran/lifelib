@@ -40,7 +40,7 @@ def test_scenario_result_shared_across_policies(model):
     entries = len(first.Market.rate)
     assert second.Market.rate(1,5.0) == value
     assert len(first.Market.rate) == entries
-    assert first.state is not second.state
+    assert first.initial_state is not second.initial_state
 
 
 def test_different_policy_rules_still_apply(model):
@@ -82,7 +82,7 @@ def test_policy_population_not_fixed_at_seven():
         assert m.Actual.policy_ids == tuple(range(1,106))
         # Structural/one-step check only; never execute a 105-policy live projection.
         assert m.Actual[105].premium_pp() == m.Actual[7].premium_pp()
-        assert m.Actual[105].state is not m.Actual[7].state
+        assert m.Actual[105].initial_state is not m.Actual[7].initial_state
     finally:
         m.close()
 
@@ -91,3 +91,15 @@ def test_bad_policy_ids_rejected():
     table=pd.DataFrame({'premium':[1.,2.]},index=[1,1])
     with pytest.raises(ValueError,match='unique'):
         build_model(policy_table=table)
+
+
+def test_table_lookups_shared_by_economic_key(model):
+    first, second = model.Actual[1], model.Actual[2]
+    first.mort(1)
+    entries = len(model.Data.mortality_rate)
+    second.mort(1)
+    assert len(model.Data.mortality_rate) == entries == 1
+    first.mva_factor_lo(1)
+    entries = len(model.Data.mva_factor_lo)
+    second.mva_factor_lo(1)
+    assert len(model.Data.mva_factor_lo) == entries == 1
