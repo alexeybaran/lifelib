@@ -1,0 +1,12 @@
+{
+  "source": "retained DV01 demo",
+  "sources": {
+    "model.py": "bc95a22fc02554e87ce7aee8c3337ca5213d08f477b4b2ab8023384c7f99638f",
+    "myga_krd.py": "147b72ac5f15c5eb389ce75e996246363409aeee7948dfbde35b22751a1fa25b",
+    "myga_policy.py": "c3c557d215b5421b58e8c203b91d72e01adf62ae1b2acf598b561c1c3fa9bc34",
+    "myga_portfolio.py": "053e692b535462ac51e9e707236b80daa114cf22b2d53e642d3e1fa7581be897",
+    "test_model.py": "c63356db7eb0f8ebf4f81c7a8f0a85b355c754fe36a45c29e9ffac180aeb05ec",
+    "__init__.py": "e5a729b31d58cf4efe36adf6ff437eac0e5f8bc7fde6ca69fef125a6fa4383f4"
+  },
+  "formula_change": "Replace prepared paths/model-point mappings with model Cell dependencies; retain recurrence, cash-flow arithmetic and valuation conventions."
+}
