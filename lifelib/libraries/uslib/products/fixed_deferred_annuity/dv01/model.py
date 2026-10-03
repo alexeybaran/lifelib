@@ -131,12 +131,11 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     else:
         states.new_cells('state', 'lambda valuation_month, policy_id: Actual[policy_id].policy_state(valuation_month)')
         outer.new_cells('actual_cashflows', """def actual_cashflows():
-    result = {}
-    for t in range(36):
-        total = 0.0
-        for p in Actual.policy_ids:
-            total += Actual[p].net_cf(t)
-        result[t] = total
+    result = {t: 0.0 for t in range(36)}
+    for p in Actual.policy_ids:
+        projection = Actual[p]
+        for t in range(36):
+            result[t] += projection.net_cf(t)
     return result""")
         outer.new_cells('base_liability_pv', """def base_liability_pv(y):
     total = 0.0
@@ -149,12 +148,11 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         total += Valuation(y * 12, p, key).liability_pv()
     return total""")
         outer.new_cells('base_cashflows', """def base_cashflows(y):
-    result = {}
-    for t in range(480):
-        total = 0.0
-        for p in Valuation.policy_ids:
-            total += Valuation(y * 12, p, -1).net_cf(t)
-        result[t] = total
+    result = {t: 0.0 for t in range(480)}
+    for p in Valuation.policy_ids:
+        projection = Valuation(y * 12, p, -1)
+        for t in range(480):
+            result[t] += projection.net_cf(t)
     return result""")
     outer.new_cells('policy_state', 'lambda valuation_month, policy_id: Actual[policy_id].policy_state(valuation_month)' if route == 'direct' else 'lambda valuation_month, policy_id: Actual.collect().individual[policy_id].state[valuation_month]')
     outer.new_cells('dv01', 'lambda y, key: base_liability_pv(y) - shocked_liability_pv(y, key)')

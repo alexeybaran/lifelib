@@ -5,7 +5,7 @@ with a normal model graph. It is not a new economic model or a compiler backend.
 
 `build_model(route="collect")` uses the existing `collect().sum`/`individual`
 contract. `build_model(route="direct")` uses ordinary dynamic policy Spaces and
-explicit model-defined portfolio loops. Both use the same policy and assumption
+explicit model-defined portfolio loops that select a policy once before its period loop. Both use the same policy and assumption
 formulas. Benchmark roots are added by the toolkit, not shipped as product Cells.
 
 ## Inputs and ownership
@@ -53,3 +53,16 @@ outputs scale by 15, while individual state snapshots repeat unchanged.
 
 All files in this package are experimental on `experiment/dv01-shared-data`.
 Preserved original demo sources, archived outputs and compiler branches are controls.
+
+## Compiled input context
+
+The toolkit declares the nine-value `initial_state` array and connected Space
+references using the existing compiler specification interface. This is reference
+context, not a replacement formula or per-policy prepared projection. The template
+zero array declares shape; each dynamic Space formula supplies the actual state.
+The template `Market` reference names the scenario family; construction selects the
+appropriate shared scenario item.
+
+Direct table edits are not an automatic compiled-cache invalidation API. Supply
+replacement data before a fresh calculation, and use the established reset/rebuild
+contract for later runs. Live modelx dependency invalidation is qualified separately.
