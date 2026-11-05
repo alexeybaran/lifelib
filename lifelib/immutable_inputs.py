@@ -42,7 +42,7 @@ class Record(Mapping):
 
 
 class Table(Mapping):
-    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered')
+    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered', '_native_cache')
 
     def __init__(self, keys, values, columns):
         keys, columns = tuple(keys), tuple(columns)
@@ -65,6 +65,7 @@ class Table(Mapping):
         except TypeError:
             ordered = None
         object.__setattr__(self, '_ordered', ordered)
+        object.__setattr__(self, '_native_cache', {})
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')
