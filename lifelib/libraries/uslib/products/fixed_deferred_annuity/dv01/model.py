@@ -8,7 +8,7 @@ import inspect
 import numpy as np
 import pandas as pd
 from . import lookup
-from . import policy, assumptions, scenario, curve_helpers
+from . import policy, assumptions, scenario, curve_helpers, curves as curve_formulas
 
 OUTER_MONTHS = 36
 HORIZON = 480
@@ -65,13 +65,19 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     data.new_cells('surrender_rate', "lambda schedule, year: lookup.get(surrender, (schedule, year), 'surr_charge_rate')")
     data.new_cells('mva_factor_lo', "lambda term: lookup.linear(mva_factors, term, 'factor_lo')")
     data.new_cells('mva_factor_hi', "lambda term: lookup.linear(mva_factors, term, 'factor_hi')")
-    data.new_cells('monthly_inputs', """def monthly_inputs():
-    return curves.monthly_outer_scenario(annual_curves, annual_spreads, months=36)""")
-    data.new_cells('monthly_curves', 'lambda: monthly_inputs()[0]')
-    data.new_cells('monthly_spreads', 'lambda: monthly_inputs()[1]')
+    curve_space = model.new_space('Curves', refs={
+        'Data': data, 'helpers': curve_helpers, 'np': np,
+        'tenors': curve_helpers.KRD_TENORS, 'shock_bp': curve_helpers.KRD_BP,
+        'outer_months': OUTER_MONTHS, 'valuation_horizon': HORIZON})
+    for name, formula in inspect.getmembers(curve_formulas, inspect.isfunction):
+        curve_space.new_cells(name, formula)
+    data.Curves = curve_space
+    data.new_cells('monthly_inputs', 'lambda: Curves.monthly_inputs()')
+    data.new_cells('monthly_curves', 'lambda: Curves.monthly_curves()')
+    data.new_cells('monthly_spreads', 'lambda: Curves.monthly_spreads()')
     market = model.new_space('Scenarios',
         formula=lambda valuation_month=0, forward_project=False, shock=-1: None,
-        refs={'Data': data, 'curves': curve_helpers})
+        refs={'Data': data, 'curves': curve_helpers, 'Curves': curve_space})
     for name, formula in inspect.getmembers(scenario, inspect.isfunction):
         market.new_cells(name, formula)
     initial = model.new_space('Initial', formula=lambda policy_id: None,
@@ -121,7 +127,8 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     return {'sym_sc': 0.0, 'min_sc_interest': 1.0, 'asym_sc_snfl': 2.0, 'gmir_floor': 3.0, 'none': 4.0}[name]""")
     states.Actual = actual
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,
-        'Data': data, 'Scenarios': market, 'curves': curve_helpers})
+        'Data': data, 'Scenarios': market, 'curves': curve_helpers,
+        'Curves': curve_space, 'np': np})
     if route == 'collect':
         states.new_cells('state', 'lambda valuation_month, policy_id: Actual.collect().individual[policy_id].state[valuation_month]')
         outer.new_cells('actual_cashflows', 'lambda: Actual.collect().sum.net_cf')
@@ -157,8 +164,9 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     outer.new_cells('policy_state', 'lambda valuation_month, policy_id: Actual[policy_id].policy_state(valuation_month)' if route == 'direct' else 'lambda valuation_month, policy_id: Actual.collect().individual[policy_id].state[valuation_month]')
     outer.new_cells('dv01', 'lambda y, key: base_liability_pv(y) - shocked_liability_pv(y, key)')
     outer.new_cells('cs01', """def cs01(y, key):
-    return base_liability_pv(y) - curves.rediscount_liability(
-        base_cashflows(y).values(), Data.annual_curves[y], key_index=key)""")
+    cashflows = np.asarray(tuple(base_cashflows(y).values()), dtype=np.float64)
+    liability = float(-np.dot(cashflows, Curves.discount_factors(y, key)))
+    return base_liability_pv(y) - liability""")
     return model
 
 
