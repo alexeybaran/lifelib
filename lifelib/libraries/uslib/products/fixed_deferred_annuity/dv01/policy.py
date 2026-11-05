@@ -303,7 +303,7 @@ def net_cf(t):
 def pv(t):
     if t >= HORIZON:
         return 0.0
-    return net_cf(t) * discount_factor(t) + pv(t + 1)
+    return net_cf(t) * Market.discount_factor(t) + pv(t + 1)
 
 
 def liability_pv():
