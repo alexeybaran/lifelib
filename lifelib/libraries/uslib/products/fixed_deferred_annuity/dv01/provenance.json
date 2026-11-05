@@ -1,0 +1,6 @@
+{
+  "lifelib_reference_commit": "7ea490c2b64795aa25efb9e97740f857d6a0794e",
+  "benchmark_toolkit_reference_commit": "15482c29a4e03c48d8fa57e8b7b76cceb64da51b",
+  "source": "DV01 shared-data model used by the pinned 105-policy oracle",
+  "baseline_adaptation": "The model-local lookup module contains the table functions used by DV01."
+}
