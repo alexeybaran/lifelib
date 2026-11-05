@@ -5,6 +5,7 @@ from enum import IntEnum
 import modelx
 
 from . import typed_inputs
+from .immutable_inputs import freeze
 
 
 def policy_cashflows():
@@ -38,14 +39,14 @@ def prepare(model_path, directory, overrides, payload):
             model.Data.input_dir.formula = input_dir
         projection = model.Projection
         for name, value in payload["references"].items():
-            setattr(projection, name, value)
+            setattr(projection, name, freeze(value) if type(value) is dict else value)
         for name, value in vars(overrides).items():
             if isinstance(value, type) and issubclass(value, IntEnum) and value is not IntEnum:
                 setattr(projection, name, value)
         for name in ("lookup", "previous", "contains", "first_key", "last_key",
                      "subtable", "has_group", "key_count", "key_at", "sum_f64"):
             setattr(projection, name, getattr(typed_inputs, name))
-        projection.policy_rows = rows
+        projection.policy_rows = freeze(rows)
         projection.policy_keys = keys
         model.policy_keys = keys
         for name in overrides.CELLS:
