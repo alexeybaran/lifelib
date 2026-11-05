@@ -7,6 +7,20 @@ from .immutable_inputs import Table
 _MISSING = object()
 
 
+class EnumDefinitions(tuple):
+    """Names of model-code enum bindings; compiled definitions require rebuilding."""
+    __modelx_cython_enum_definitions__ = True
+
+    def __new__(cls, names):
+        if isinstance(names, str):
+            raise TypeError('enum definitions require a sequence of Reference names')
+        names = tuple(names)
+        if (any(type(name) is not str or not name.isidentifier() or name.startswith('_')
+                for name in names) or len(set(names)) != len(names)):
+            raise ValueError('enum definition names must be unique Reference identifiers')
+        return tuple.__new__(cls, names)
+
+
 def _column(table, column):
     return table['columns'].index(column) if isinstance(column, str) else column
 

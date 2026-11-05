@@ -40,9 +40,12 @@ def prepare(model_path, directory, overrides, payload):
         projection = model.Projection
         for name, value in payload["references"].items():
             setattr(projection, name, freeze(value) if type(value) is dict else value)
+        enum_names = []
         for name, value in vars(overrides).items():
             if isinstance(value, type) and issubclass(value, IntEnum) and value is not IntEnum:
                 setattr(projection, name, value)
+                enum_names.append(name)
+        projection.enum_definitions = typed_inputs.EnumDefinitions(enum_names)
         for name in ("lookup", "previous", "contains", "first_key", "last_key",
                      "subtable", "has_group", "key_count", "key_at", "sum_f64", "sum_helper"):
             setattr(projection, name, getattr(typed_inputs, name))
