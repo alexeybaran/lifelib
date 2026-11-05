@@ -44,7 +44,7 @@ def prepare(model_path, directory, overrides, payload):
             if isinstance(value, type) and issubclass(value, IntEnum) and value is not IntEnum:
                 setattr(projection, name, value)
         for name in ("lookup", "previous", "contains", "first_key", "last_key",
-                     "subtable", "has_group", "key_count", "key_at", "sum_f64"):
+                     "subtable", "has_group", "key_count", "key_at", "sum_f64", "sum_helper"):
             setattr(projection, name, getattr(typed_inputs, name))
         projection.policy_rows = freeze(rows)
         projection.policy_keys = keys

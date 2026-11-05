@@ -79,11 +79,19 @@ def sum_f64(values):
     return sum(values, 0.0)
 
 
+def sum_helper(values):
+    return sum(values, 0.0)
+
+
 for _operation in (lookup, previous, contains, key_count, key_at, first_key,
-                   last_key, subtable, has_group, sum_f64):
+                   last_key, subtable, has_group, sum_f64, sum_helper):
     _operation.__modelx_native_operation__ = _operation.__name__
     _operation.__modelx_cython_helper__ = ('lifelib._native_inputs', _operation.__name__)
 
 _native_operations = {function.__name__: function for function in
                       (lookup, previous, contains, key_count, key_at, first_key,
-                       last_key, subtable, has_group, sum_f64)}
+                       last_key, subtable, has_group, sum_f64, sum_helper)}
+
+sum_f64.__modelx_cython_reduction__ = 'f64_sum'
+lookup.__modelx_cython_numeric__ = 'lookup_f64'
+previous.__modelx_cython_numeric__ = 'previous_f64'
