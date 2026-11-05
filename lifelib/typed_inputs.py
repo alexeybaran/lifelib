@@ -1,6 +1,7 @@
 """Python reference operations for named numeric tables in scalar models."""
 
 from bisect import bisect_right
+from .immutable_inputs import Table
 
 
 _MISSING = object()
@@ -11,6 +12,13 @@ def _column(table, column):
 
 
 def lookup(table, key, column, default=_MISSING):
+    if isinstance(table, Table):
+        try:
+            return table.lookup(key, column)
+        except KeyError:
+            if default is _MISSING:
+                raise
+            return default
     try:
         index = table['keys'].index(key)
     except ValueError:
@@ -21,6 +29,12 @@ def lookup(table, key, column, default=_MISSING):
 
 
 def previous(table, key, column, default=_MISSING):
+    if isinstance(table, Table):
+        if not table['keys'] or key < first_key(table):
+            if default is _MISSING:
+                raise ValueError(f'No key at or before {key!r}')
+            return default
+        return table.previous(key, column)
     index = bisect_right(table['keys'], key) - 1
     if index < 0:
         if default is _MISSING:
@@ -30,6 +44,8 @@ def previous(table, key, column, default=_MISSING):
 
 
 def contains(table, key):
+    if isinstance(table, Table):
+        return table.contains(key)
     return key in table['keys']
 
 
