@@ -213,6 +213,10 @@ cdef double lookup_f64(object function, LookupContext context, object table,
         data = context.get(table)
         if data is not None and data.numeric:
             index = data.right(key) - 1
+            if index < 0 or data.integers[index] != key:
+                if default is _missing:
+                    raise KeyError(key)
+                return default
             if index >= 0 and data.integers[index] == key:
                 col = numeric_column(data, column)
                 if col >= 0:
@@ -228,6 +232,10 @@ cdef double previous_f64(object function, LookupContext context, object table,
         data = context.get(table)
         if data is not None and data.numeric:
             index = data.right(key) - 1
+            if index < 0:
+                if default is _missing:
+                    raise ValueError(f'No key at or before {key!r}')
+                return default
             if index >= 0:
                 col = numeric_column(data, column)
                 if col >= 0:
