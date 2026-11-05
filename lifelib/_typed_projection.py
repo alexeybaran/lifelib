@@ -43,13 +43,20 @@ def direct_total():
     return sum(Projection[point_id].policy_cashflows() for point_id in policy_keys)
 
 
-def prepare(model_path, contract, overrides, payload):
+def input_dir():
+    return input_directory
+
+
+def prepare(model_path, directory, contract, overrides, payload):
     rows = {row["point_id"]: _plain(row) for row in payload["policies"]}
     if len(rows) != len(payload["policies"]):
         raise ValueError("duplicate point_id")
     keys = tuple(rows)
     model = modelx.read_model(model_path, name=model_path.name + "_Adjusted")
     try:
+        if directory.resolve() != model_path.parent:
+            model.Data.input_directory = directory.resolve()
+            model.Data.input_dir.formula = input_dir
         projection = model.Projection
         for name, declaration in contract["references"].items():
             if declaration.get("source") == "policy":
