@@ -1,31 +1,10 @@
 """Shared model-side binding for typed policy projections."""
 
-import json
 from enum import IntEnum
 
 import modelx
 
 from . import typed_inputs
-
-
-def read_contract(path):
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _plain(value):
-    if isinstance(value, IntEnum):
-        return int(value)
-    if isinstance(value, dict):
-        return {_plain(key): _plain(item) for key, item in value.items()}
-    return value
-
-
-def _table(tables, name, value):
-    layout = tables[name]
-    if "group_key" in layout:
-        child = layout["value"].split(":")[1]
-        return {_plain(key): _table(tables, child, item) for key, item in value.items()}
-    return dict(value, columns=tuple(layout["columns"]))
 
 
 def policy_cashflows():
@@ -47,8 +26,8 @@ def input_dir():
     return input_directory
 
 
-def prepare(model_path, directory, contract, overrides, payload):
-    rows = {row["point_id"]: _plain(row) for row in payload["policies"]}
+def prepare(model_path, directory, overrides, payload):
+    rows = {row["point_id"]: row for row in payload["policies"]}
     if len(rows) != len(payload["policies"]):
         raise ValueError("duplicate point_id")
     keys = tuple(rows)
@@ -58,18 +37,11 @@ def prepare(model_path, directory, contract, overrides, payload):
             model.Data.input_directory = directory.resolve()
             model.Data.input_dir.formula = input_dir
         projection = model.Projection
-        for name, declaration in contract["references"].items():
-            if declaration.get("source") == "policy":
-                continue
-            kind = declaration["type"]
-            if kind.startswith("table:"):
-                value = _table(contract["tables"], kind.split(":")[1],
-                               payload["references"][name])
+        for name, value in payload["references"].items():
+            setattr(projection, name, value)
+        for name, value in vars(overrides).items():
+            if isinstance(value, type) and issubclass(value, IntEnum) and value is not IntEnum:
                 setattr(projection, name, value)
-            elif name in payload["references"]:
-                setattr(projection, name, _plain(payload["references"][name]))
-        for name in contract["enums"]:
-            setattr(projection, name, getattr(overrides, name))
         for name in ("lookup", "previous", "contains", "first_key", "last_key",
                      "subtable", "has_group", "key_count", "key_at", "sum_f64"):
             setattr(projection, name, getattr(typed_inputs, name))
@@ -95,14 +67,3 @@ def prepare(model_path, directory, contract, overrides, payload):
     except BaseException:
         model.close()
         raise
-
-
-def compiler_spec(contract):
-    references = [name for name, item in contract["references"].items()
-                  if item.get("source") != "policy"]
-    return {"typed_spaces": {"Projection": {
-        "contract": contract, "coordinate": "point_id", "domain": "policy_keys",
-        "rows": "policy_rows", "references": references,
-        "sum": {"name": "cashflows", "value": "net_cf", "length": "proj_len",
-                "policy_total": "policy_cashflows"},
-    }}}

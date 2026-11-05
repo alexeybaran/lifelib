@@ -61,3 +61,8 @@ def has_group(table, key):
 
 def sum_f64(values):
     return sum(values, 0.0)
+
+
+for _operation in (lookup, previous, contains, key_count, key_at, first_key,
+                   last_key, subtable, has_group, sum_f64):
+    _operation.__modelx_native_operation__ = _operation.__name__

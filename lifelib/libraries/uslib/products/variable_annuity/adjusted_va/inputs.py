@@ -74,8 +74,9 @@ def _pack_rows(frame, table):
                 for key, group in frame.groupby(level=0, sort=False)}
     if table != "FundRows":
         frame = frame.sort_index()
+    columns = _LEAVES[table]
     return {"keys": frame.index.tolist(),
-            "values": frame[list(_LEAVES[table])].to_numpy(dtype=float).tolist()}
+            "values": frame[list(columns)].to_numpy(dtype=float).tolist(), "columns": columns}
 
 
 def _pack_rate_columns(frame):
@@ -99,11 +100,13 @@ def load_inputs(directory):
     points = tables["model_point_table"]
     if not points.index.is_unique:
         raise ValueError("model_point_table.csv: duplicate point_id")
-    for field, enum in _POLICY_ENUMS.items():
-        try:
-            points[field] = [int(enum[label]) for label in points[field]]
-        except KeyError as error:
-            raise ValueError(f"model_point_table.csv: invalid {field} {error.args[0]!r}") from error
+    policies = points.reset_index()[list(_POLICY)].to_dict("records")
+    for row in policies:
+        for field, enum in _POLICY_ENUMS.items():
+            try:
+                row[field] = enum[row[field]]
+            except KeyError as error:
+                raise ValueError(f"model_point_table.csv: invalid {field} {error.args[0]!r}") from error
     mortality = tables["mort_table"]
     if mortality.empty:
         raise ValueError("mort_table.csv: expected at least one mortality row")
@@ -116,4 +119,4 @@ def load_inputs(directory):
             if table == "MortalityGroups":
                 frame = frame.reorder_levels(["sex", "age"])
             references[reference] = _pack_rows(frame, table)
-    return {"policies": points.reset_index()[list(_POLICY)].to_dict("records"), "references": references}
+    return {"policies": policies, "references": references}

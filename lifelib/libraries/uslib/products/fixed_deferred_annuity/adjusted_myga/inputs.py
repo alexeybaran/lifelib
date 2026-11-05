@@ -10,7 +10,7 @@ from . import formulas
 
 
 def load_declarations():
-    return json.loads(Path(__file__).with_name("contract.json").read_text(encoding="utf-8"))
+    return json.loads(Path(__file__).with_name("inputs.json").read_text(encoding="utf-8"))
 
 
 def _text(text: str) -> str:
@@ -90,7 +90,7 @@ def _leaf(rows: list[dict[str, str]], key: str, columns: tuple[str, ...], filena
             raise ValueError(f"{filename}: duplicate table key {index}")
         parsed[index] = [_value(row[name], "f64", f"{filename}:{line}:{name}") for name in columns]
     keys = sorted(parsed)
-    return {"keys": keys, "values": [parsed[index] for index in keys]}
+    return {"keys": keys, "values": [parsed[index] for index in keys], "columns": columns}
 
 
 def _table(directory: Path, filename: str, key: str, columns: tuple[str, ...], *,
@@ -109,7 +109,7 @@ def _table(directory: Path, filename: str, key: str, columns: tuple[str, ...], *
 def load_inputs(directory: str | Path) -> dict[str, Any]:
     directory = Path(directory)
     schema = load_declarations()
-    fields = schema["records"]["Policy"]
+    fields = schema["model_points"]
     converters = [(name, typ, _converter(typ)) for name, typ in fields.items()]
     policies = []
     point_ids = set()
@@ -129,8 +129,7 @@ def load_inputs(directory: str | Path) -> dict[str, Any]:
         point_ids.add(policy["point_id"])
         policies.append(policy)
 
-    references = {name: spec["default"] for name, spec in schema["references"].items()
-                  if "default" in spec}
+    references = {name: spec["default"] for name, spec in schema["assumptions"].items()}
     assumptions = directory / "assumptions.csv"
     if assumptions.exists():
         seen = set()
@@ -141,7 +140,7 @@ def load_inputs(directory: str | Path) -> dict[str, Any]:
             if name in seen:
                 raise ValueError(f"assumptions.csv:{line}: duplicate assumption {name!r}")
             seen.add(name)
-            references[name] = _value(row["value"], schema["references"][name]["type"], f"assumptions.csv:{line}:{name}")
+            references[name] = _value(row["value"], schema["assumptions"][name]["type"], f"assumptions.csv:{line}:{name}")
 
     references.update({
         "mort_table": _table(directory, "mort_table.csv", "age", ("mort_rate",),
