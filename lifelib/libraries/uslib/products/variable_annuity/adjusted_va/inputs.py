@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from lifelib.typed_inputs import max_value
+
 from .formulas import FeeResetRule, GmdbOption, RollupRule, StepupBasis
 
 
@@ -110,7 +112,7 @@ def load_inputs(directory):
     mortality = tables["mort_table"]
     if mortality.empty:
         raise ValueError("mort_table.csv: expected at least one mortality row")
-    references = {"mortality_max_age": int(mortality.index.get_level_values("age").max())}
+    references = {"mortality_max_age": int(max_value(mortality.index.get_level_values("age")))}
     for reference, (name, table) in _TABLES.items():
         frame = tables[name]
         if table == "RateScenarios":

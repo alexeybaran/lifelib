@@ -27,7 +27,7 @@ def input_dir():
     return input_directory
 
 
-def prepare(model_path, directory, overrides, payload):
+def prepare(model_path, directory, overrides, payload, *, extra_helpers=()):
     rows = {row["point_id"]: row for row in payload["policies"]}
     if len(rows) != len(payload["policies"]):
         raise ValueError("duplicate point_id")
@@ -47,7 +47,8 @@ def prepare(model_path, directory, overrides, payload):
                 enum_names.append(name)
         projection.enum_definitions = typed_inputs.EnumDefinitions(enum_names)
         for name in ("lookup", "previous", "contains", "first_key", "last_key",
-                     "subtable", "has_group", "key_count", "key_at", "sum_f64", "sum_helper"):
+                     "subtable", "has_group", "key_count", "key_at", "sum_f64", "sum_helper", "all_true",
+                     *extra_helpers):
             setattr(projection, name, getattr(typed_inputs, name))
         projection.policy_rows = freeze(rows)
         projection.policy_keys = keys

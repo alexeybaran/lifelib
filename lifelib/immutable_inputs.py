@@ -9,12 +9,13 @@ from types import MappingProxyType
 
 
 class Record(Mapping):
-    __slots__ = ('_items', '_index')
+    __slots__ = ('_items', '_index', '_native_groups')
 
     def __init__(self, values):
         items = tuple((key, freeze(value)) for key, value in values.items())
         object.__setattr__(self, '_items', items)
         object.__setattr__(self, '_index', MappingProxyType(dict(items)))
+        object.__setattr__(self, '_native_groups', {})
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')

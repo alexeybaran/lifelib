@@ -231,6 +231,9 @@ def mva_term(t):
 def mva_duration_factor(t):
     column = FactorColumn.factor_lo if credit_rate(t) < mva_factor_rate_split else FactorColumn.factor_hi
     years = mva_term(t)
+    prepared = prepared_interpolation(mva_factor_table, column, years, lookup, last_key, math)
+    if prepared is not None:
+        return prepared
     last = last_key(mva_factor_table)
     lower = int(math.floor(years))
     if lower >= last:
@@ -443,6 +446,14 @@ def av_change(t):
     return av_at(t, AvTiming.EOM) - opening
 
 
+def check_pols_roll_fwd():
+    return all_true(abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols for t in range(proj_len()))
+
+
+def check_av_roll_fwd():
+    return all_true(abs(check_av_roll_fwd_resid(t)) <= check_tol_av for t in range(proj_len()))
+
+
 def check_av_roll_fwd_resid(t):
     expected = prem_to_av(t) - wd_from_av(t) + inv_income(t) - claims_from_av(t, Kind.ANNUITIZATION) - claims_from_av(t, Kind.DEATH) - claims_from_av(t, Kind.LAPSE) - claims_from_av(t, Kind.MATURITY)
     return av_change(t) - expected
@@ -555,6 +566,8 @@ CELLS = (
     'av_at',
     'inv_income',
     'av_change',
+    'check_av_roll_fwd',
+    'check_pols_roll_fwd',
     'check_av_roll_fwd_resid',
     'result_cf',
     'result_pols',

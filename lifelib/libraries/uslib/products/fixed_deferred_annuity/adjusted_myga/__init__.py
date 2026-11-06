@@ -14,4 +14,5 @@ _HERE = Path(__file__).resolve().parent
 def prepare(directory=_HERE.parent):
     """Return a live adjusted model. Close it after use."""
     return _typed_projection.prepare(_HERE.parent / "MYGA_US_S", Path(directory),
-                                     formulas, load_inputs(directory))
+                                     formulas, load_inputs(directory),
+                                     extra_helpers=("prepared_interpolation",))

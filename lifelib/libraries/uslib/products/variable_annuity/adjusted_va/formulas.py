@@ -135,6 +135,11 @@ def inv_income_pp(t):
     return av_pp_at(t, AvTiming.BEF_FEE) - av_pp_at(t, AvTiming.BEF_INV)
 
 
+def is_wd_year(t):
+    first = t_of_month(12 * (policy_year(t) - 1))
+    return any_true(is_wd_taken(u) for u in range(max(0, first), min(first + 12, proj_len())))
+
+
 def prem_scheduled_pp(t):
     if t < 0 or not has_transactions():
         return 0.0
@@ -272,12 +277,7 @@ def stepup_base_pp(t):
         return av_pp(t)
     if basis != StepupBasis.highest_quarterly_CV or t < 0:
         raise ValueError('invalid step-up basis or month')
-    best = av_pp(t)
-    for quarter in range(1, 4):
-        month = t - 3 * quarter
-        if month >= 0:
-            best = max(best, av_pp(month))
-    return best
+    return max_value(av_pp(month) for month in range(t, max(-1, t - 12), -3))
 
 
 def gawa_pp_at(t, timing):
@@ -486,6 +486,18 @@ def av_change(t):
     return av_at(t, AvTiming.EOM) - opening
 
 
+def check_charge_split():
+    return all_true(abs(check_charge_split_resid(t)) < 1e-8 for t in range(proj_len()))
+
+
+def check_pols_roll_fwd():
+    return all_true(abs(check_pols_roll_fwd_resid(t)) < 1e-12 for t in range(proj_len()))
+
+
+def check_av_roll_fwd():
+    return all_true(abs(check_av_roll_fwd_resid(t)) < 1e-6 for t in range(proj_len()))
+
+
 def check_av_roll_fwd_resid(t):
     if t < 0:
         return 0.0
@@ -639,6 +651,9 @@ CELLS = (
     'claims_over_av',
     'av_at',
     'av_change',
+    'check_av_roll_fwd',
+    'check_pols_roll_fwd',
+    'check_charge_split',
     'check_av_roll_fwd_resid',
     'fund_rows',
     'fund_count',
@@ -649,6 +664,7 @@ CELLS = (
     'charge_rows',
     'mortality_rows',
     'sub_ids',
+    'is_wd_year',
     'result_cf',
     'result_pols',
     'result_av',
