@@ -222,6 +222,11 @@ cdef bint max_value_accepts(object function):
 
 
 cdef class LookupContext:
+    def __reduce__(self):
+        # Prepared resources are disposable and may contain memoryviews. Cell
+        # results remain in their Space caches; rebuild resources on demand.
+        return (LookupContext, ())
+
     cdef object get(self, object table, object column, Py_ssize_t* index):
         cdef TableView data
         cdef object retired_table, retired_data
