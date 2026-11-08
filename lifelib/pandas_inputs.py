@@ -103,7 +103,7 @@ def records(frame):
                    for key, row in zip(frame.index, frame.itertuples(index=False, name=None))})
 
 
-def record(row):
+def record(row, *, preserve_scalar_types=False):
     """Prepare a Record from an explicitly selected public pandas Series.
 
     A model can keep its public model_point Cell unchanged and make a separate
@@ -114,6 +114,10 @@ def record(row):
         raise TypeError('record requires a pandas Series')
     if not row.index.is_unique:
         raise ValueError('record fields must be unique')
+    if preserve_scalar_types:
+        # Series.items() can yield Python scalars while Series[key] returns a
+        # numpy scalar. Preserve the actual public scalar-selection contract.
+        return Record({key: freeze(row[key]) for key in row.index})
     return Record({key: _scalar(value) for key, value in row.items()})
 
 

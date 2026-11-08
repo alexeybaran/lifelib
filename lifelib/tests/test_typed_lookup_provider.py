@@ -148,6 +148,18 @@ def test_object_lookup_keeps_missing_identity(native):
     assert native.raw(h.lookup_object,Record({}),'absent',None) is None
 
 
+@pytest.mark.parametrize('dtype,value', [('int64', 42), ('float64', 0.25), ('bool', True)])
+def test_explicit_native_record_keeps_public_numpy_scalar_types(native,dtype,value):
+    import pandas as pd
+    from lifelib import pandas_inputs
+    public = pd.Series([value], index=['value'], dtype=dtype)
+    record = pandas_inputs.record(public, preserve_scalar_types=True)
+    raw = native.raw(h.lookup_object, record, 'value')
+    assert type(raw) is type(public['value']) and raw == public['value']
+    assert native.integer(h.lookup_int, record, 'value') == int(public['value'])
+    assert native.floating(h.lookup_float, record, 'value') == float(public['value'])
+
+
 @pytest.mark.parametrize('indexing', ['loc', 'at'])
 @pytest.mark.parametrize('keys,queries', [
     ([True, False], [True, False, 1, 0, 1.0]),

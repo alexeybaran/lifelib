@@ -142,6 +142,10 @@ def freeze(value):
         return tuple(freeze(item) for item in value)
     if value is None or isinstance(value, (bool, int, float, str, bytes)):
         return value
+    if type(value).__module__.startswith('numpy'):
+        import numpy as np
+        if isinstance(value, (np.integer, np.floating, np.bool_)):
+            return value
     # These pandas missing scalars are immutable, pickleable singletons. Keep
     # their identity: replacing NA/NaT with NaN changes conversion exceptions.
     if type(value).__module__.startswith('pandas.'):

@@ -89,3 +89,18 @@ def test_public_row_can_remain_series_with_separate_owned_record():
     row['rate'] = 0.9
     assert prepared['rate'] == 0.1
     assert inputs.record(row)['rate'] == 0.9
+
+
+@pytest.mark.parametrize('dtype,values', [('int64', [42, 43]), ('float64', [0.1, 0.2]),
+                                        ('bool', [True, False]), ('Int64', [42, pd.NA])])
+def test_explicit_record_preserves_public_scalar_selection_types(dtype, values):
+    row = pd.Series(values, index=['a', 'b'], dtype=dtype)
+    prepared = inputs.record(row, preserve_scalar_types=True)
+    for restored in [prepared, pickle.loads(pickle.dumps(prepared))]:
+        for key in row.index:
+            actual, expected = restored[key], row[key]
+            assert type(actual) is type(expected)
+            if expected is pd.NA:
+                assert actual is expected
+            else:
+                assert actual == expected
