@@ -12,3 +12,5 @@ def keys(table):
 
 keys.__modelx_native_operation__ = 'keys'
 keys.__modelx_cython_helper__ = ('lifelib._native_indices', 'keys')
+keys.__modelx_cython_iteration__ = (
+    'keys_span', 'KeySpan', 'key_span_count', 'key_span_at')

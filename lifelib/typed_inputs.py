@@ -167,3 +167,7 @@ previous.__modelx_cython_bound_numeric__ = ('numeric_resource_ready', 'bound_pre
 
 lookup.__modelx_cython_bound_bounded__ = 'bound_bounded_f64'
 lookup.__modelx_cython_bound_grouped__ = ('bound_group_probe', 'bound_group_value', 'group_context_value')
+
+# The ordered-key producer is one function, shared with generator consumers.
+from .table_keys import keys
+lookup.__modelx_cython_float_numeric__ = 'lookup_float_f64'
