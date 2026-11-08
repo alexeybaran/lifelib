@@ -601,7 +601,7 @@ def mort_rate_base(t):
     A **[std]** construction in the shape of 第三分野標準生命表2018 — quoted anchors joined by
     a log-linear graduation — rather than a copy of it; see :mod:`~.LTC_JP_S.Data`.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate(t):
@@ -713,7 +713,7 @@ def prev_param(name):
     parameters; the file also carries the two sourced 認定率 anchors they were pinned to,
     4.3% at ages 65-74 and 31.1% at 75 and over [R4] [R5] [REG-R30].
     """
-    return float(data.prevalence_table().loc[name, "value"])         # noqa: F821
+    return tables.lookup_float(data.prepared_prevalence_table_loc(), name, 'value')         # noqa: F821
 
 
 def grade_share(grade):
@@ -726,7 +726,7 @@ def grade_share(grade):
     at young ones.  The published composition is a single all-ages figure, so no
     observed range exists **[std]**.
     """
-    return float(data.grade_share_table().loc[grade, "share_ge"])    # noqa: F821
+    return tables.lookup_float(data.prepared_grade_share_table_loc(), grade, 'share_ge')    # noqa: F821
 
 
 def prev_rate(t):
@@ -1487,3 +1487,5 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

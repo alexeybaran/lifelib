@@ -653,7 +653,7 @@ def mort_rate_at_age(x):
     [REG-R20].  It is read directly by the premium scale and only through
     :func:`mort_rate_base` by the decrement.
     """
-    return float(data.mort_table().loc[(sex(), int(x)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'mort_rate')  # noqa: F821
 
 
 def mort_table_mean(x, m):
@@ -821,7 +821,7 @@ def policy_fee_m():
     ``is_anchor`` row of the matching sex, which is where the decomposition of the
     published rate card is recorded.
     """
-    return float(data.prem_anchor_table().loc[sex(), "policy_fee_m"])  # noqa: F821
+    return tables.lookup_float(data.prepared_prem_anchor_table_loc(), sex(), 'policy_fee_m')  # noqa: F821
 
 
 def prem_rate_m(t):
@@ -1676,3 +1676,5 @@ roll_fwd_tol = 1e-12
 cash_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

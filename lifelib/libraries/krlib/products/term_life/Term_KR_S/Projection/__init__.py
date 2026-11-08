@@ -752,8 +752,7 @@ def class_mort_ratio():
     ages **[std]**: the disclosures are at ages 20, 40 and 60 and the ratios move little
     between them.
     """
-    return float(data.rate_class_table().loc[                        # noqa: F821
-        (rate_class(), sex()), "mort_ratio"])
+    return tables.lookup_float(data.prepared_rate_class_table_loc(), (rate_class(), sex()), 'mort_ratio')
 
 
 def class_prem_ratio():
@@ -767,8 +766,7 @@ def class_prem_ratio():
     explains the reversal, so the two ratios are carried as separate columns and neither
     is derived from the other.
     """
-    return float(data.rate_class_table().loc[                        # noqa: F821
-        (rate_class(), sex()), "prem_ratio"])
+    return tables.lookup_float(data.prepared_rate_class_table_loc(), (rate_class(), sex()), 'prem_ratio')
 
 
 def mort_rate_at_age(x):
@@ -781,7 +779,7 @@ def mort_rate_at_age(x):
     still in it, and it is read directly by the premium scale and only through
     :func:`mort_rate_base` by the decrement.
     """
-    return float(data.mort_table().loc[(sex(), int(x)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'mort_rate')  # noqa: F821
 
 
 def acc_mort_rate_at_age(x):
@@ -793,8 +791,7 @@ def acc_mort_rate_at_age(x):
     differ by a factor of 1.77 at male 40.  Used only to split the death decrement for
     the 재해사망 uplift variant, never as a decrement of its own.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(x)), "acc_mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'acc_mort_rate')
 
 
 def mort_table_mean(x, m):
@@ -1936,3 +1933,5 @@ roll_fwd_tol = 1e-12
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

@@ -615,7 +615,7 @@ def mort_be_factor():
     of the real construction runs in two dimensions, level and trend; only the level is
     reproduced here.
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'mort_be_factor', 'value')   # noqa: F821
 
 
 def roll_fwd_tol():
@@ -624,7 +624,7 @@ def roll_fwd_tol():
     1e-9, scaled by the magnitude of the quantities being compared.  A float comparison
     tolerance, not an actuarial assumption.
     """
-    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'roll_fwd_tol', 'value')     # noqa: F821
 
 
 # ----------------------------------------
@@ -648,8 +648,7 @@ def freq_load():
     makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
     else, which is what justifies the instalment stream.
     """
-    return float(data.freq_load_table().at[                          # noqa: F821
-        model_point()["prem_freq"], "freq_load"])
+    return tables.lookup_float(data.prepared_freq_load_table_at(), model_point()['prem_freq'], 'freq_load')
 
 
 def prem_pp_sched(k):
@@ -704,8 +703,7 @@ def alpha_total_pp():
     model uses the cap itself **[std]**, which is what makes the year-one *Sparbeitrag* small
     and the § 169 Abs. 3 floor bite.  1 275,00 € on the anchor cell.
     """
-    return (float(data.charge_table().at[                            # noqa: F821
-        (model_point()["charge_id"], "alpha_rate"), "value"])
+    return (tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'alpha_rate'), 'value')
         * beitragssumme_pp())
 
 
@@ -790,8 +788,7 @@ def charge_prem_pp(k):
     4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the
     *Sparbeitrag* and produces no cash flow.
     """
-    return float(data.charge_table().at[                             # noqa: F821
-        (model_point()["charge_id"], "beta_rate"), "value"]) * prem_pp(k)
+    return tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'beta_rate'), 'value') * prem_pp(k)
 
 
 def charge_admin_pp(k):
@@ -804,8 +801,7 @@ def charge_admin_pp(k):
     balance so the recursion stays acyclic.
     """
     item = "gamma_pup_rate" if paid_up(k) else "gamma_rate"
-    return float(data.charge_table().at[                             # noqa: F821
-        (model_point()["charge_id"], item), "value"]) * av_pp(k)
+    return tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], item), 'value') * av_pp(k)
 
 
 def nar_pp(k):
@@ -1145,8 +1141,7 @@ def mort_rate_at_age(x):
     ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "q_base"])
+    return tables.lookup_float(data.prepared_mort_table_at(), (model_point()['sex'], int(x)), 'q_base')
 
 
 def improve_rate(x):
@@ -1156,8 +1151,7 @@ def improve_rate(x):
     deliberate simplification of the *Starttrend* / *Zieltrend* structure the German
     construction uses, documented as one rather than presented as a replication.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "improve"])
+    return tables.lookup_float(data.prepared_mort_table_at(), (model_point()['sex'], int(x)), 'improve')
 
 
 def mort_rate_guar(t):
@@ -1367,8 +1361,7 @@ def surr_charge_pp(k):
     years would be exactly the void kind.  2,0 % on ``zillmer_25`` and nil on ``zillmer_40``
     **[std]**; whatever it is set to, :func:`cv_pp` cannot fall below :func:`cv_floor_pp`.
     """
-    return (float(data.charge_table().at[                            # noqa: F821
-        (model_point()["charge_id"], "stornoabzug_rate"), "value"])
+    return (tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'stornoabzug_rate'), 'value')
         * (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")))
 
 
@@ -1446,8 +1439,7 @@ def pup_cashout():
     pup = int(model_point()["pup_year"])
     if pup <= 0:
         return False
-    threshold = float(data.charge_table().at[                        # noqa: F821
-        (model_point()["charge_id"], "min_annuity_mth"), "value"])
+    threshold = tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'min_annuity_mth'), 'value')
     return bool(pup_value_pp() / 10000.0 * annuity_rate_guar() < threshold)
 
 
@@ -1638,7 +1630,7 @@ def val_reserve_pp():
     without dominating.  Policyholders also participate during the payout phase; that
     continuing participation is not modelled.
     """
-    return (float(data.param_table().at["val_reserve_rate", "value"])  # noqa: F821
+    return (tables.lookup_float(data.prepared_param_table_at(), 'val_reserve_rate', 'value')  # noqa: F821
             * capital_gross_pp())
 
 
@@ -1679,9 +1671,7 @@ def annuity_rate_curr():
     here is **[std]**: no market factor was established for any carrier in any year.
     """
     mp = model_point()
-    return float(data.rentenfaktor_table().at[                       # noqa: F821
-        (mp["rf_scenario_id"], int(mp["issue_age"]) + int(mp["aufschub_y"])),
-        "annuity_rate_curr"])
+    return tables.lookup_float(data.prepared_rentenfaktor_table_at(), (mp['rf_scenario_id'], int(mp['issue_age']) + int(mp['aufschub_y'])), 'annuity_rate_curr')
 
 
 def annuity_rate_appl():
@@ -1860,27 +1850,27 @@ def claims(t, kind=None):
 
 def expense_acq_pp():
     """The acquisition expense per policy at issue, from *param_table.csv*: 400,00 € **[std]**."""
-    return float(data.param_table().at["expense_acq_pp", "value"])   # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'expense_acq_pp', 'value')   # noqa: F821
 
 
 def expense_maint_pp():
     """The maintenance expense per policy per year in the accumulation phase: 45,00 € **[std]**."""
-    return float(data.param_table().at["expense_maint_pp", "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'expense_maint_pp', 'value')  # noqa: F821
 
 
 def expense_annuity_pp():
     """The administration expense per policy per year in the payout phase: 30,00 € **[std]**."""
-    return float(data.param_table().at["expense_annuity_pp", "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'expense_annuity_pp', 'value')  # noqa: F821
 
 
 def expense_claim_pp():
     """The settlement expense per death, surrender or commutation event: 120,00 € **[std]**."""
-    return float(data.param_table().at["expense_claim_pp", "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'expense_claim_pp', 'value')  # noqa: F821
 
 
 def expense_infl():
     """The annual expense inflation rate: 2,0 % p.a. **[std]**."""
-    return float(data.param_table().at["expense_infl", "value"])     # noqa: F821
+    return tables.lookup_float(data.prepared_param_table_at(), 'expense_infl', 'value')     # noqa: F821
 
 
 def expenses_pp(t):
@@ -2313,3 +2303,5 @@ data = ("Interface", ("..", "Data"), "auto")
 point_id = 1
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

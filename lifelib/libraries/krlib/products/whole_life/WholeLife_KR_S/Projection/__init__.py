@@ -744,7 +744,7 @@ def mort_rate_at_age(y):
     account construction uses, unadjusted: ``mort_be_factor`` is a best-estimate lever on
     the *decrement*, not a change to the 산출방법서 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -2064,3 +2064,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-07
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

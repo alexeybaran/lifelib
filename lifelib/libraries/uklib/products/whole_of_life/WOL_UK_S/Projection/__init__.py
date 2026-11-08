@@ -443,8 +443,7 @@ def mort_rate(t):
     improvement factor, capped at 1.  Both shipped bases are **[std]** proxies shaped
     like the tables the notes name and are not published tables.
     """
-    q = float(data.mort_table().loc[                                 # noqa: F821
-        (mort_basis(), sex(), smoker(), age(t)), "mort_rate"])
+    q = tables.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), age(t)), 'mort_rate')
     return min(1.0, q * mort_loading() * mort_improve_factor(t))
 
 
@@ -1043,3 +1042,5 @@ inflation_rate = 0.03
 comm_init_rate = 0.25
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

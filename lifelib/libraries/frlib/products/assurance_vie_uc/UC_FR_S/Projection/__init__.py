@@ -1225,8 +1225,7 @@ def mort_rate(t):
     test the two independently, never as a single "plancher basis".
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, float(data.mort_table().loc[                     # noqa: F821
-        (sex(), x), "mort_rate"]) * mort_be_factor)                  # noqa: F821
+    return min(1.0, tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1752,3 +1751,5 @@ roll_fwd_tol = 1e-9
 pols_tol = 1e-12
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

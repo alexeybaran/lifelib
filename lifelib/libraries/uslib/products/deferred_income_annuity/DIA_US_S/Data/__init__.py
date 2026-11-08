@@ -139,6 +139,21 @@ def rop_factor_table():
         index_col=["issue_age", "sex", "deferral_years"])
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_improvement_scale_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(improvement_scale(),
+                        columns=('improvement_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -155,3 +170,5 @@ payout_factor_file = "payout_factor_table.csv"
 rop_factor_file = "rop_factor_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

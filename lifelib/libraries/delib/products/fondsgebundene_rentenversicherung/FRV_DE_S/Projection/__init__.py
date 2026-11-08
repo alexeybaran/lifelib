@@ -997,8 +997,7 @@ def fund_ter_ann(t):
     explicitly double-counts the fund's costs; ignoring it overstates the policyholder's
     return.  0.45 % p.a. on the active composite fund, 0.15 % on the ETF.
     """
-    return float(data.fund_scenario_table().loc[                     # noqa: F821
-        (scenario_id(), policy_year(t)), "ter_ann"])
+    return tables.lookup_float(data.prepared_fund_scenario_table_loc(), (scenario_id(), policy_year(t)), 'ter_ann')
 
 
 def fund_return_net_ann(t):
@@ -1270,7 +1269,7 @@ def mort_rate_tariff_at_age(x):
     prices its death charge on a death table and its conversion guarantee on an annuity
     table, and using one for both misprices one of them.
     """
-    return float(data.mort_table().loc[x, "qx_tariff"])              # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), x, 'qx_tariff')              # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -1333,7 +1332,7 @@ def lapse_rate_base(t):
     value is furthest below the premiums paid, and § 168 VVG makes the exit
     near-frictionless.
     """
-    return float(data.lapse_table().loc[policy_year(t), "lapse_rate"])   # noqa: F821
+    return tables.lookup_float(data.prepared_lapse_table_loc(), policy_year(t), 'lapse_rate')   # noqa: F821
 
 
 def lapse_tax_step(t):
@@ -1739,8 +1738,7 @@ def rentenfaktor_guar():
     § 163 VVG with an independent *Treuhänder*'s confirmation is recorded as a model risk
     and not implemented.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_guar"])
+    return tables.lookup_float(data.prepared_rentenfaktor_table_loc(), (rentenfaktor_id(), annuity_age()), 'rentenfaktor_guar')
 
 
 def rentenfaktor_curr():
@@ -1750,8 +1748,7 @@ def rentenfaktor_curr():
     injecting an unsourced uplift, and 12 % higher on ``rich_current``, where it visibly
     bites.  Both are **[std]**.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_curr"])
+    return tables.lookup_float(data.prepared_rentenfaktor_table_loc(), (rentenfaktor_id(), annuity_age()), 'rentenfaktor_curr')
 
 
 def rentenfaktor_applied():
@@ -2154,3 +2151,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

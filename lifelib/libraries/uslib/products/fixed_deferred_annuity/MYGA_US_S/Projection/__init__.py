@@ -1096,7 +1096,7 @@ def mort_rate(t):
     swap it in by repointing ``Data.mort_table_file``. Mortality is second-order on this
     product: death pays the full account value with no charge and no MVA.
     """
-    return float(data.mort_table().loc[(age(t), sex()), "mort_rate"])   # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')   # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1735,3 +1735,5 @@ check_tol_pols = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

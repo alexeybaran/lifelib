@@ -382,12 +382,12 @@ def plt_mort_factor(d):
 
 def class_factor():
     """Underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])      # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')      # noqa: F821
 
 
 def mort_rate_base(t):
     """Base-table **annual** mortality rate at the attained age in month t, ``age(t)``."""
-    return float(data.mort_table().loc[age(t), "mort_rate"])                 # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')                 # noqa: F821
 
 
 def mort_rate(t):
@@ -682,3 +682,5 @@ conv_rate_base = 0.0
 conv_rate_final = 0.0
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

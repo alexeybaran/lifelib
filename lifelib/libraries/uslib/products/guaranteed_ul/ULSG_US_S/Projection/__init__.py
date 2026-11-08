@@ -1451,7 +1451,7 @@ def rop_ratio(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return float(data.rop_table().loc[a, "refund_ratio"])             # noqa: F821
+    return tables.lookup_float(data.prepared_rop_table_loc(), a, 'refund_ratio')             # noqa: F821
 
 
 def rop_rate(t):
@@ -1465,12 +1465,12 @@ def rop_rate(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return float(data.rop_table().loc[a, "exercise_rate"])            # noqa: F821
+    return tables.lookup_float(data.prepared_rop_table_loc(), a, 'exercise_rate')            # noqa: F821
 
 
 def class_factor():
     """The underwriting-class multiplier on the best-estimate mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')  # noqa: F821
 
 
 def mort_improve_rate(t):
@@ -2275,3 +2275,5 @@ solve_max_doublings = 40
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+tables = ("Module", "lifelib.typed_inputs")

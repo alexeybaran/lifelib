@@ -622,7 +622,7 @@ def mort_rate(t):
     policy year and stepping on each 계약해당일; :func:`mort_rate_mth` is what the monthly
     grid applies.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1515,3 +1515,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-12
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

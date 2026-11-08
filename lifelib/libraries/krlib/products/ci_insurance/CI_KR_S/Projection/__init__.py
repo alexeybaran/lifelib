@@ -787,7 +787,7 @@ def mort_rate_at_age(y):
     :mod:`~.CI_KR_S.Data`.  This is the rate the pricing recursions use unadjusted:
     ``mort_be_factor`` is a lever on the *decrement*, not a change to the 산출방법서 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -906,8 +906,7 @@ def ci_rate_at_age(y, cause):
     """
     if y > ci_cover_end_age:                                         # noqa: F821
         return 0.0
-    return float(data.ci_incidence_table().loc[                      # noqa: F821
-        (sex(), y, cause), "ci_rate"])
+    return tables.lookup_float(data.prepared_ci_incidence_table_loc(), (sex(), y, cause), 'ci_rate')
 
 
 def ci_wait_factor():
@@ -2539,3 +2538,5 @@ val_tol = 1e-08
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

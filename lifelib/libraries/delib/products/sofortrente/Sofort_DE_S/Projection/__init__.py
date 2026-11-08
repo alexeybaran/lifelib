@@ -909,8 +909,7 @@ def surplus_init_pct():
     Read from *surplus_scale_table.csv* at ``surplus_form()``.  **[std]** — no
     *Überschussanteilsatz* was established at any carrier for any year.
     """
-    return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_init_pct"])   # noqa: F821
+    return tables.lookup_float(data.prepared_surplus_scale_table_loc(), surplus_form(), 'surplus_init_pct')   # noqa: F821
 
 
 def surplus_growth():
@@ -919,8 +918,7 @@ def surplus_growth():
     Read from *surplus_scale_table.csv* at ``surplus_form()``.  **[std]** — the shape is
     established and no level is.
     """
-    return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_growth"])   # noqa: F821
+    return tables.lookup_float(data.prepared_surplus_scale_table_loc(), surplus_form(), 'surplus_growth')   # noqa: F821
 
 
 def annuity_guar_pp(t):
@@ -1571,3 +1569,5 @@ solve_tol = 1e-10
 solve_max_iter = 200
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

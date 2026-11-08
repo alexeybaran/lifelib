@@ -580,8 +580,7 @@ def freq_load():
     convention, no carrier tariff having been established.  It multiplies the premium
     **collected** and nothing else; see :func:`prem_sum`.
     """
-    return float(data.freq_load_table().loc[                         # noqa: F821
-        prem_freq(), "freq_load"])
+    return tables.lookup_float(data.prepared_freq_load_table_loc(), prem_freq(), 'freq_load')
 
 
 def prem_base_pp(k):
@@ -739,7 +738,7 @@ def surplus_rate(k):
     rate moves with the investment result, and the feedback from the *Garantieniveau*
     through the asset mix to the declared rate is not modelled at all.
     """
-    return float(data.surplus_rate_table().loc[k, "surplus_rate"])   # noqa: F821
+    return tables.lookup_float(data.prepared_surplus_rate_table_loc(), k, 'surplus_rate')   # noqa: F821
 
 
 def elect_index(k):
@@ -752,8 +751,7 @@ def elect_index(k):
     established, and ``always_index`` is a modelling choice made so that the base run
     demonstrates the index mechanic rather than a claim about behaviour.
     """
-    return float(data.election_table().loc[                          # noqa: F821
-        (elect_id(), k), "w"])
+    return tables.lookup_float(data.prepared_election_table_loc(), (elect_id(), k), 'w')
 
 
 def index_base_pp(k):
@@ -882,8 +880,7 @@ def index_cap(k):
     is why the Cap and :func:`surplus_rate` may not be chosen independently — see
     :func:`index_budget_ratio`.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "cap"])
+    return tables.lookup_float(data.prepared_index_param_table_loc(), (index_id(), k), 'cap')
 
 
 def index_quote(k):
@@ -894,8 +891,7 @@ def index_quote(k):
     same budget buys when the underlying is engineered to be cheap, and it moves the
     give-up from somewhere the purchaser can see to somewhere they cannot.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "quote"])
+    return tables.lookup_float(data.prepared_index_param_table_loc(), (index_id(), k), 'quote')
 
 
 def index_return_capped(k, m):
@@ -1253,7 +1249,7 @@ def mort_rate(t):
     The **annual** rate, flat across a policy year because the attained age steps on the
     anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "qx"])       # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'qx')       # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1283,7 +1279,7 @@ def lapse_rate_base(t):
     a rate flat in duration is a numbered pitfall.  The mean over the anchor's 27 years is
     about 2.6 %, inside the market-wide GDV band; no index-specific rate exists at all.
     """
-    return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_lapse_table_loc(), duration(t), 'lapse_rate')  # noqa: F821
 
 
 def lapse_rate(t):
@@ -1936,3 +1932,5 @@ rentenfaktor_curr = 25.0
 roll_fwd_tol = 1e-08
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

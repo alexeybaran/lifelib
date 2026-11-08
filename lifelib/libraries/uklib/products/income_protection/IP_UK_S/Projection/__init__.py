@@ -540,8 +540,7 @@ def mort_rate(t):
     national life tables scaled by ``mort_active_factor``.  Claimant mortality is a
     different rate on a different clock - see :func:`mort_rate_sick`.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), age(t)), "mort_rate"]) * mort_active_factor          # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate') * mort_active_factor          # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1207,3 +1206,5 @@ inflation_rate = 0.03
 disc_rate = 0.03
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

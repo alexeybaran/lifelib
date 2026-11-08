@@ -160,6 +160,29 @@ def benefit_schedule():
         index_col=["schedule_id", "policy_year"])
 
 
+def prepared_premium_rate_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(premium_rate_table(),
+                        columns=('prem_rate',),
+                        indexing='loc')
+
+
+
+def prepared_freq_loading_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(freq_loading_table(),
+                        columns=('prem_freq_load', 'prem_freq_fee'),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -176,3 +199,5 @@ freq_loading_file = "freq_loading_table.csv"
 benefit_schedule_file = "benefit_schedule.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

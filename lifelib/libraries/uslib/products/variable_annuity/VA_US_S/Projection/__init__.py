@@ -488,12 +488,12 @@ def sub_ids():
 
 def alloc(i):
     """alloc[i]: the share of net premium allocated to subaccount i, no rebalancing."""
-    return float(data.fund_table().loc[(fund_set(), i), "alloc"])     # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_loc(), (fund_set(), i), 'alloc')     # noqa: F821
 
 
 def fund_expense_rate(i):
     """e_i: the annual fund expense ratio of subaccount i, paid to the fund [S2]."""
-    return float(data.fund_table().loc[(fund_set(), i), "fund_expense"])  # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_loc(), (fund_set(), i), 'fund_expense')  # noqa: F821
 
 
 def glwb_option():
@@ -2590,3 +2590,5 @@ comm_rate_acq = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

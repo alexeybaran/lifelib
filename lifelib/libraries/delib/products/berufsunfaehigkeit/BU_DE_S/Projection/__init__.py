@@ -364,8 +364,7 @@ def occ_factor():
     model point three times the anchor's inception rate carries a premium slightly
     **below** three times the anchor's.
     """
-    return float(data.occupation_table().loc[                        # noqa: F821
-        berufsgruppe(), "occ_factor"])
+    return tables.lookup_float(data.prepared_occupation_table_loc(), berufsgruppe(), 'occ_factor')
 
 
 def bu_rente_mth():
@@ -483,8 +482,7 @@ def freq_load():
     :func:`beitragsverrechnung` stays exactly the ratio the tariff quotes and the loading
     is invisible in the *Brutto* / *Zahl* split.
     """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_mode(), "freq_load"])
+    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_mode(), 'freq_load')
 
 
 def gross_prem_ann():
@@ -2167,3 +2165,5 @@ runoff_months = 3
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

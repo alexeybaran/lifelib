@@ -2138,7 +2138,7 @@ def mort_rate(t):
     [REG-R61]; the spelling is the library's shared one, so the A/E factor reads the same
     in every model that has one.
     """
-    base = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])  # noqa: F821
+    base = tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')  # noqa: F821
     return min(1.0, mort_ae_factor * base)                           # noqa: F821
 
 
@@ -2925,3 +2925,5 @@ premium_tax_rate = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

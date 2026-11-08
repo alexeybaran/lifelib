@@ -208,6 +208,37 @@ def av_table():
         input_dir() / av_table_file, index_col="runoff_fraction")    # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_lapse_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(lapse_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_prevalence_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(prevalence_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_dementia_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(dementia_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -228,3 +259,5 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

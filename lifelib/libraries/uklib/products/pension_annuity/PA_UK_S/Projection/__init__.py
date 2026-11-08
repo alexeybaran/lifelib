@@ -671,8 +671,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(life), x), "mort_rate"]) * annuitant_adj                # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate') * annuitant_adj                # noqa: F821
 
 
 def improve_rate(t, life):
@@ -1144,3 +1143,5 @@ expense_maint = 30.0
 inflation_rate = 0.03
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

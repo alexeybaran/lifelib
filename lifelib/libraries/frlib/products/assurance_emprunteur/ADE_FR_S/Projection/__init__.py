@@ -454,8 +454,7 @@ def franchise_factor():
     1.60 / 1.25 / 1.00 / 0.85 / 0.65 for 30 / 60 / 90 / 120 / 180 days **[std]**; the
     inception table itself is written on the 90-day column, where the factor is 1.00.
     """
-    return float(data.franchise_table().loc[                         # noqa: F821
-        franchise_days(), "franchise_factor"])
+    return tables.lookup_float(data.prepared_franchise_table_loc(), franchise_days(), 'franchise_factor')
 
 
 def itt_max_days():
@@ -822,8 +821,7 @@ def itt_recovery_rate(z):
     claims mostly consolidate; the declining gradient is why the in-claim population needs
     a duration dimension at all.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_recovery_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_recovery_rate')
 
 
 def itt_recovery_rate_mth(z):
@@ -838,8 +836,7 @@ def itt_to_ipt_rate(z):
     claim runs the likelier the medical assessment clears the 66 % *bareme croise*
     threshold.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_to_ipt_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_to_ipt_rate')
 
 
 def itt_to_ipt_rate_mth(z):
@@ -853,8 +850,7 @@ def itt_mort_rate(z):
     0.02 / 0.03 / 0.04 by duration year **[std]**.  Claimant mortality above healthy-life
     mortality is universal in disability experience; these values have no French anchor.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_mort_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_mort_rate')
 
 
 def itt_mort_rate_mth(z):
@@ -1812,3 +1808,5 @@ inflation_rate = 0.018
 disc_rate = 0.025
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

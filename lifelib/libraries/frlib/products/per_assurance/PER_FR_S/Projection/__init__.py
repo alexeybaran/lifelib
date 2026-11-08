@@ -1307,8 +1307,7 @@ def mort_rate(t):
     if mort_basis() == "flat":
         return mort_rate_flat()
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, float(data.mort_table().loc[                     # noqa: F821
-        (sex(), x), "mort_rate"]) * mort_be_factor)                  # noqa: F821
+    return min(1.0, tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1548,8 +1547,7 @@ def annuity_factor():
     No sampled insurer publishes an annuity rate card and TGH05 / TGF05 are not shipped,
     so the ladder is a placeholder to be replaced before any quantitative use.
     """
-    return float(data.annuity_factor_table().loc[                    # noqa: F821
-        (sex(), retirement_age()), "annuity_factor"])
+    return tables.lookup_float(data.prepared_annuity_factor_table_loc(), (sex(), retirement_age()), 'annuity_factor')
 
 
 def capital_leg_pp():
@@ -2211,3 +2209,5 @@ inflation_rate = 0.018
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

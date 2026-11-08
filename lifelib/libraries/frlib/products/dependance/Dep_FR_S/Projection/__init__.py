@@ -890,7 +890,7 @@ def mort_rate(t):
     :func:`mort_rate_partial` and :func:`mort_rate_total` — and reading a dependent's
     mortality out of this cells is the largest single error available on this product.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1073,7 +1073,7 @@ def prev_param(name):
     to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,
     and it governs the tail — where 65% of this product's lifetime claims fall.
     """
-    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_prevalence_table_loc(), (sex(), name), 'value')  # noqa: F821
 
 
 def prev_rate(t):
@@ -2107,3 +2107,5 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

@@ -512,7 +512,7 @@ def prem_freq_load():
     enlarges :func:`premiums` and leaves :func:`prem_to_av_pp`, :func:`guar_pp` and every
     benefit untouched.
     """
-    return float(data.freq_loading().at[prem_freq(), "load"])        # noqa: F821
+    return tables.lookup_float(data.prepared_freq_loading_at(), prem_freq(), 'load')        # noqa: F821
 
 
 def bfs_year():
@@ -799,7 +799,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table_accum().at[x, "qx"])                # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_accum_at(), x, 'qx')                # noqa: F821
 
 
 def annuity_mort_rate(x, tau):
@@ -875,8 +875,7 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[contract_year(t),              # noqa: F821
-                                       "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'lapse_rate')
 
 
 def lapse_rate_mth(t):
@@ -904,8 +903,7 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[contract_year(t),              # noqa: F821
-                                       "transfer_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'transfer_rate')
 
 
 def transfer_rate_mth(t):
@@ -1054,7 +1052,7 @@ def income_ref(k):
         return 0.0
     if k == 0:
         return income_init()
-    return float(data.income_schedule().at[(income_id(), k - 1), "income"])  # noqa: F821
+    return tables.lookup_float(data.prepared_income_schedule_at(), (income_id(), k - 1), 'income')  # noqa: F821
 
 
 def zulage_entitlement_pp(k):
@@ -1254,8 +1252,7 @@ def decl_rate(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return float(data.surplus_scenario().at[(scenario_id(), k),      # noqa: F821
-                                            "decl_rate"])
+    return tables.lookup_float(data.prepared_surplus_scenario_at(), (scenario_id(), k), 'decl_rate')
 
 
 def int_guar_pp(k):
@@ -2353,3 +2350,5 @@ comm_rate_renew = 0.015
 roll_fwd_tol = 1e-09
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

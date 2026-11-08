@@ -464,7 +464,7 @@ def fund_alloc(j):
     allocation and the drift is itself a modelled quantity — which is what the automatic
     de-risking rules exist to control.
     """
-    return float(data.fund_table().at[(fund_set(), j), "alloc"])     # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'alloc')     # noqa: F821
 
 
 def fund_mgmt_fee(j):
@@ -474,7 +474,7 @@ def fund_mgmt_fee(j):
     [S7 제43조제2호] — so it lives inside the unit price and not in the 월공제액. The
     model takes it monthly at rate/12 **[std]**, the monthly grid having no daily step.
     """
-    return float(data.fund_table().at[(fund_set(), j), "mgmt_fee"])  # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'mgmt_fee')  # noqa: F821
 
 
 def fund_is_bond(j):
@@ -507,8 +507,7 @@ def gross_return(j):
     panel at 904.24원 against the statutory 1,000.00 opening price after fourteen years
     [S11], and no volatility, correlation or time series was retrieved at all.
     """
-    return float(data.return_scenario().at[                          # noqa: F821
-        (scenario_id(), j), "gross_return"])
+    return tables.lookup_float(data.prepared_return_scenario_at(), (scenario_id(), j), 'gross_return')
 
 
 def fund_growth(j):
@@ -530,7 +529,7 @@ def charge_rate(line):
     연금수령기간 중 비용 — plus the commission scale and the insurer's own unit expenses
     [R2].
     """
-    return float(data.charge_table().at[line, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_charge_table_at(), line, 'value')              # noqa: F821
 
 
 def loading_rate():
@@ -1172,7 +1171,7 @@ def ann_mort_rate_at_age(x):
     basis at annuitisation but **only in the policyholder's favour** [S1] [S2] [S5];
     that one-way ratchet is not modelled.
     """
-    return float(data.mort_table().at[(sex(), x), "ann_mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'ann_mort_rate')  # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -1182,7 +1181,7 @@ def mort_rate_at_age(x):
     annuities on a separate and lighter 연금생명표, and neither table is public
     [REG-R34]. This is the basis of the death decrement and therefore of the GMDB cost.
     """
-    return float(data.mort_table().at[(sex(), x), "mort_rate"])      # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'mort_rate')      # noqa: F821
 
 
 def mort_rate(t):
@@ -1956,3 +1955,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

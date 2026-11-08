@@ -783,7 +783,7 @@ def nsp(y):
     docstring, which shows that the worked example's own anchors rule out any single
     mortality basis at 4%.
     """
-    return float(data.nsp_table().loc[(sex(), y), "nsp"])            # noqa: F821
+    return tables.lookup_float(data.prepared_nsp_table_loc(), (sex(), y), 'nsp')            # noqa: F821
 
 
 def nsp_mth(t):
@@ -823,7 +823,7 @@ def mort_rate_guar_at(y):
     The shipped table is **[std]** illustrative and is *not* the 2017 CSO the notes
     name; that table is licensed and cannot be shipped here.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_guar(t):
@@ -1628,3 +1628,5 @@ prem_offset_on = False
 prem_offset_share = 0.5
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

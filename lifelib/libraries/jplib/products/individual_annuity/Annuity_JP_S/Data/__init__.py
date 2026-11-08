@@ -197,6 +197,29 @@ def commute_factor_table():
         index_col="remaining_years")
 
 
+def prepared_pricing_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(pricing_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_expense_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(expense_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -215,3 +238,5 @@ expense_table_file = "expense_table.csv"
 commute_factor_file = "commute_factor_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

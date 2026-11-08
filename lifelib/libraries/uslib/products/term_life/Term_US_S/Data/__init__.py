@@ -97,6 +97,21 @@ def shock_lapse_table():
     return pd.read_csv(input_dir() / shock_lapse_file)               # noqa: F821
 
 
+def prepared_class_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(class_factor_table(),
+                        columns=('factor',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -111,3 +126,5 @@ class_factor_file = "class_factor_table.csv"
 shock_lapse_file = "shock_lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -220,6 +220,29 @@ def deckrv_table():
         input_dir() / deckrv_file, index_col="issue_year")           # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate_1st',),
+                        indexing='loc')
+
+
+
+def prepared_freq_loading_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(freq_loading_table(),
+                        columns=('prem_freq_load',),
+                        indexing='loc')
+
+
+
+def prepared_cost_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(cost_table(),
+                        columns=('alpha_rate', 'beta_rate', 'gamma_rate', 'expense_infl', 'claim_expense'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -238,3 +261,5 @@ freq_loading_file = "freq_loading_table.csv"
 deckrv_file = "deckrv_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

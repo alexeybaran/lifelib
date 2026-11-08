@@ -691,7 +691,7 @@ def surv_5y():
     background; it converts instead into an excess hazard, which is what :func:`mu_ex`
     does.
     """
-    return float(data.survival_table().loc[sex(), "surv_5y"])        # noqa: F821
+    return tables.lookup_float(data.prepared_survival_table_loc(), sex(), 'surv_5y')        # noqa: F821
 
 
 def mu_ex():
@@ -1824,3 +1824,5 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

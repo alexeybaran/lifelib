@@ -834,8 +834,7 @@ def mort_rate_base(t):
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
     ``prem_gross_pp()`` is identical for two model points differing only in it.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(age(t))), "mort_rate_1st"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(age(t))), 'mort_rate_1st')
 
 
 def mort_rate(t):
@@ -941,8 +940,7 @@ def prem_freq_load():
     """
     if unterjaehrig_form() == "echt":
         return 1.0
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "prem_freq_load"])
+    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_load')
 
 
 def alpha_rate():
@@ -953,7 +951,7 @@ def alpha_rate():
     public.  It is charged in the premium whether or not the contract is zillmered; only
     :func:`alpha_cost` carries ``zillmer_on``.
     """
-    return float(data.cost_table().loc[cost_id(), "alpha_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_cost_table_loc(), cost_id(), 'alpha_rate')     # noqa: F821
 
 
 def beta_rate():
@@ -962,7 +960,7 @@ def beta_rate():
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.cost_table().loc[cost_id(), "beta_rate"])      # noqa: F821
+    return tables.lookup_float(data.prepared_cost_table_loc(), cost_id(), 'beta_rate')      # noqa: F821
 
 
 def gamma_rate():
@@ -974,7 +972,7 @@ def gamma_rate():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.cost_table().loc[cost_id(), "gamma_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_cost_table_loc(), cost_id(), 'gamma_rate')     # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -2064,7 +2062,7 @@ def inflation_factor(k):
     year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
     1,8 % p.a. is a placeholder.
     """
-    infl = float(data.cost_table().loc[cost_id(), "expense_infl"])   # noqa: F821
+    infl = tables.lookup_float(data.prepared_cost_table_loc(), cost_id(), 'expense_infl')   # noqa: F821
     return (1.0 + infl) ** k
 
 
@@ -2075,7 +2073,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.cost_table().loc[cost_id(), "claim_expense"])    # noqa: F821
+    ce = tables.lookup_float(data.prepared_cost_table_loc(), cost_id(), 'claim_expense')    # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -2595,3 +2593,5 @@ unisex_share = 0.5
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

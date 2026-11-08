@@ -155,6 +155,21 @@ def rate_class_table():
         input_dir() / rate_class_file, index_col="rate_class")       # noqa: F821
 
 
+def prepared_rate_class_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rate_class_table(),
+                        columns=('class_factor',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -167,3 +182,5 @@ lapse_table_file = "lapse_table.csv"
 rate_class_file = "rate_class_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -137,6 +137,13 @@ def crediting_table():
         input_dir() / crediting_table_file)                          # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -149,3 +156,5 @@ charge_table_file = "charge_table.csv"
 crediting_table_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

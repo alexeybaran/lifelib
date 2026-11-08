@@ -677,7 +677,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[(x, sex(life)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (x, sex(life)), 'mort_rate')  # noqa: F821
 
 
 def improvement_rate(t, life):
@@ -690,8 +690,7 @@ def improvement_rate(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 0.0
-    return float(                                                    # noqa: F821
-        data.improvement_scale().loc[(x, sex(life)), "improvement_rate"])
+    return tables.lookup_float(data.prepared_improvement_scale_loc(), (x, sex(life)), 'improvement_rate')
 
 
 def mort_rate(t, life):
@@ -1280,3 +1279,5 @@ commute_min_amount = 5000.0
 commute_min_payment = 100.0
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

@@ -648,7 +648,7 @@ def runoff(t):
 
 def basis_param(name):
     """One scalar [std] parameter of the benefit basis, from *basis_table.csv*."""
-    return float(data.basis_table().loc[name, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_basis_table_loc(), name, 'value')              # noqa: F821
 
 
 # --- mortality, on two lives ---
@@ -2267,3 +2267,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-07
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

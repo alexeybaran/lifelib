@@ -706,7 +706,7 @@ def mort_rate_at_age(sx, z):
     contractual quantity on the pricing basis; :func:`mort_rate` and :func:`mort_rate_ph`
     apply the projection's own multipliers on top.
     """
-    return float(data.mort_table().loc[(sx, z), "mort_rate"])        # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sx, z), 'mort_rate')        # noqa: F821
 
 
 def mort_rate(t):
@@ -1918,3 +1918,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-9
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

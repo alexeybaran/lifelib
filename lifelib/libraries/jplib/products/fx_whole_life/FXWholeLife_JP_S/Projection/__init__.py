@@ -676,7 +676,7 @@ def coi_rate(t):
     margin.  It is a pricing element the insurer sets in its 算出方法書, so ``mort_be_factor``
     does not touch it.  Includes 高度障害, which the published death rate already carries.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def coi_rate_mth(t):
@@ -774,7 +774,7 @@ def charge_param(item):
     低解約返戻金割合 ramp, the three constants of the 市場価格調整 reconstruction and the two
     特別積立金 rates.
     """
-    return float(data.charge_table().loc[(shape(), item), "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_charge_table_loc(), (shape(), item), 'value')  # noqa: F821
 
 
 def prem_charge_rate(t):
@@ -1803,3 +1803,5 @@ comm_trail_rate = 0.0075
 comm_trail_years = 7
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

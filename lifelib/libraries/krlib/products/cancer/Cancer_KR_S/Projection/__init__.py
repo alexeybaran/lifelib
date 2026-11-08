@@ -674,8 +674,7 @@ def excess_hazard(tier, k):
     thyroid, 남 65.9% / 여 74.0% [R1], for the general tier, and an [R1]-derived 87.1% / 88.8%
     for the 특정소액암 tier; the front-loading and the ultimate level are **[std]**.
     """
-    return float(data.survival_table().loc[                          # noqa: F821
-        (sex(), tier, k), "excess_hazard"])
+    return tables.lookup_float(data.prepared_survival_table_loc(), (sex(), tier, k), 'excess_hazard')
 
 
 def mort_rate_waived_mth(t, k):
@@ -1317,7 +1316,7 @@ def treat_cum_pp(t):
     if t <= 0:
         return 0.0
     k = min(6, (t - 1) // 12 + 1)
-    rate = float(data.care_table().loc[k, "treat_hazard_yr"]) / 12.0  # noqa: F821
+    rate = tables.lookup_float(data.prepared_care_table_loc(), k, 'treat_hazard_yr') / 12.0  # noqa: F821
     return treat_cum_pp(t - 1) + rate * treat_avail(k)
 
 
@@ -1337,7 +1336,7 @@ def benefit_ratio(tier):
     """
     if tier == "similar":
         return similar_ratio()
-    return float(data.tier_table().loc[tier, "benefit_ratio"])       # noqa: F821
+    return tables.lookup_float(data.prepared_tier_table_loc(), tier, 'benefit_ratio')       # noqa: F821
 
 
 def hosp_daily():
@@ -2195,3 +2194,5 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

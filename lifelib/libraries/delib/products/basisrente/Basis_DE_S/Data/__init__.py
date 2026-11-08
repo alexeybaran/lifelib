@@ -224,6 +224,29 @@ def option_table():
         index_col=["option_id", "option_key"])
 
 
+def prepared_option_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(option_table(),
+                        columns=('factor',),
+                        indexing='loc')
+
+
+
+def prepared_charge_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(charge_table(),
+                        columns=('zill_rate', 'alpha_zuz_rate', 'unit_cost_pp', 'expense_infl', 'beta_prem', 'gamma_av', 'terminal_bonus_rate'),
+                        indexing='loc')
+
+
+
+def prepared_rentenfaktor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rentenfaktor_table(),
+                        columns=('rf_curr',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -242,3 +265,5 @@ behaviour_file = "behaviour_table.csv"
 option_file = "option_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -645,7 +645,7 @@ def mort_rate(t):
     """
     x = min(age(t), int(data.mort_table().index.get_level_values(   # noqa: F821
         "age").max()))
-    return float(data.mort_table().loc[(sex(), x), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1019,8 +1019,7 @@ def oop_ceiling():
     """
     if not nhi_covered():
         return float("inf")
-    return float(data.oop_ceiling_table().loc[oop_decile(),          # noqa: F821
-                                             "ceiling"])
+    return tables.lookup_float(data.prepared_oop_ceiling_table_loc(), oop_decile(), 'ceiling')
 
 
 def oop_trunc(y):
@@ -1404,7 +1403,7 @@ def shape_share(bucket):
     Bucket 0 is the no-claim mass, 72.9% of contracts assessed at commencement [R12],
     and it is what becomes 1단계.
     """
-    return float(data.claim_shape_table().loc[bucket, "share"])      # noqa: F821
+    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'share')      # noqa: F821
 
 
 def shape_mean():
@@ -1428,8 +1427,7 @@ def shape_rel(bucket):
     m = shape_mean()
     if m <= 0.0:
         return 0.0
-    return float(data.claim_shape_table().loc[bucket,                # noqa: F821
-                                              "claim_amount"]) / m
+    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'claim_amount') / m
 
 
 def band_of(amount):
@@ -2189,3 +2187,5 @@ cash_tol = 1e-06
 shape_tol = 1e-09
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

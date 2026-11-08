@@ -641,12 +641,12 @@ def pricing_basis(item):
     carries a ``provenance`` tag in the CSV rather than sitting as an untagged constant in a
     formula.
     """
-    return float(data.pricing_table().loc[item, "value"])            # noqa: F821
+    return tables.lookup_float(data.prepared_pricing_table_loc(), item, 'value')            # noqa: F821
 
 
 def expense_basis(item):
     """One row of the best-estimate cash expense and commission table, as a float."""
-    return float(data.expense_table().loc[item, "value"])            # noqa: F821
+    return tables.lookup_float(data.prepared_expense_table_loc(), item, 'value')            # noqa: F821
 
 
 def tax_basis(item):
@@ -655,7 +655,7 @@ def tax_basis(item):
     Nothing read through here is an insurer cash flow.  The tax layer drives the behavioural
     assumptions on this product; it does not appear in :func:`net_cf`.
     """
-    return float(data.tax_table().loc[item, "value"])                # noqa: F821
+    return tables.lookup_float(data.prepared_tax_table_loc(), item, 'value')                # noqa: F821
 
 
 def prem_freq():
@@ -823,8 +823,7 @@ def mort_anchor(table, item):
     setback, ``improve_factor`` the scaling that makes the revised vintage, and the
     ``pub_q_*`` rows the published anchor rates the law was fitted to.
     """
-    return float(data.mort_anchor_table().loc[                       # noqa: F821
-        (table, sex(), item), "value"])
+    return tables.lookup_float(data.prepared_mort_anchor_table_loc(), (table, sex(), item), 'value')
 
 
 def mort_rate_law(table, x):
@@ -851,7 +850,7 @@ def mort_rate_at_age(table, x):
     """
     if x >= omega_age(table):
         return 1.0
-    return float(data.mort_table().loc[(table, sex(), x), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (table, sex(), x), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_base(t):
@@ -2099,3 +2098,5 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

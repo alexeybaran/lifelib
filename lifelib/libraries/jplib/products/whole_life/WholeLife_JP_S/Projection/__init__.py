@@ -670,7 +670,7 @@ def mort_rate_at_age(y):
     construction uses, unadjusted: ``mort_be_factor`` is a best-estimate lever on the
     *decrement*, not a change to the 算出方法書 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -2036,3 +2036,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

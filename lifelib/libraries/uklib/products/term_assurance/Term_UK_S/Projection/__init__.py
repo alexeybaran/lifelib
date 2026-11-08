@@ -575,7 +575,7 @@ def select_factor(t):
     drops in by replacing the CSV.
     """
     d = min(duration(t), select_period)                              # noqa: F821
-    return float(data.select_factor_table().loc[d, "factor"])        # noqa: F821
+    return tables.lookup_float(data.prepared_select_factor_table_loc(), d, 'factor')        # noqa: F821
 
 
 def mort_rate_base(t, life=1):
@@ -585,8 +585,7 @@ def mort_rate_base(t, life=1):
     than a separate cover [S1][S6][S8]; the 16-Series tables the shipped table proxies
     are graduated on that basis [R10].
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(life), smoker(life), age(t, life)), "mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), age(t, life)), 'mort_rate')
 
 
 def mort_rate_life(t, life=1):
@@ -1264,3 +1263,5 @@ wop_defer_mths = 6
 wop_prem_loading = 0.05
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

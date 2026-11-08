@@ -256,6 +256,21 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="segment")         # noqa: F821
 
 
+def prepared_rate_class_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rate_class_table(),
+                        columns=('mort_ratio', 'prem_ratio'),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate', 'acc_mort_rate'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -270,3 +285,5 @@ prem_rate_file = "prem_rate_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -622,7 +622,7 @@ def mort_rate_at_age(table_sex, gen, x):
                 * mort_rate_at_age("F", gen, x))
     if table_sex not in ("M", "F"):
         raise ValueError("invalid table_sex")
-    return float(data.mort_table().loc[(table_sex, gen, x), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (table_sex, gen, x), 'mort_rate')  # noqa: F821
 
 
 def mort_rate(t, life):
@@ -1442,3 +1442,5 @@ expense_maint = 30.0
 inflation_rate = 0.015
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

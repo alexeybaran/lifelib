@@ -549,7 +549,7 @@ def mort_rate_base(x):
     walk-through basis exactly.  TH 00-02 and TF 00-02 are the homologated regulatory
     tables for this product; they are cited by name and never redistributed here.
     """
-    return float(data.mort_table().loc[(sex(), x), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
 def select_uplift(t):
@@ -1363,3 +1363,5 @@ inflation_rate = 0.018
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

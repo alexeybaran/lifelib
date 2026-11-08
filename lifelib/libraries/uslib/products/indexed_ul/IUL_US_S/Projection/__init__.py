@@ -1712,7 +1712,7 @@ def is_mec(t):
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')  # noqa: F821
 
 
 def mort_rate(t):
@@ -2374,3 +2374,5 @@ premium_tax_rate = 0.02
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+tables = ("Module", "lifelib.typed_inputs")

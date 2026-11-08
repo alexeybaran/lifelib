@@ -386,8 +386,7 @@ def class_factor():
     premium quoted for the cheapest of them.  The four are given an internal structure
     rather than four free numbers — see :func:`check_class_factor_norm`.
     """
-    return float(data.rate_class_table().loc[                        # noqa: F821
-        rate_class(), "class_factor"])
+    return tables.lookup_float(data.prepared_rate_class_table_loc(), rate_class(), 'class_factor')
 
 
 def premium_mth_pp():
@@ -527,8 +526,7 @@ def mort_rate_base(t):
     separate 高度障害 incidence on top of the table double-counts the benefit, and the two
     annuities are contractually mutually exclusive in any case.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), age(t)), "mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')
 
 
 def sel_lapse_factor(t):
@@ -1367,3 +1365,5 @@ roll_fwd_tol = 1e-10
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

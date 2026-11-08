@@ -180,6 +180,21 @@ def crd_rate_table():
         input_dir() / crd_rate_file, index_col="age")                # noqa: F821
 
 
+def prepared_franchise_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(franchise_table(),
+                        columns=('franchise_factor',),
+                        indexing='loc')
+
+
+
+def prepared_itt_termination_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(itt_termination_table(),
+                        columns=('itt_recovery_rate', 'itt_to_ipt_rate', 'itt_mort_rate'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -198,3 +213,5 @@ lapse_table_file = "lapse_table.csv"
 crd_rate_file = "crd_rate_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

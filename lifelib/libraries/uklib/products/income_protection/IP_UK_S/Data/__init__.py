@@ -121,6 +121,13 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -135,3 +142,5 @@ mort_table_file = "mort_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -581,7 +581,7 @@ def mort_rate_at_age(x):
     terminal age take the terminal rate.
     """
     a = min(int(x), omega_age())
-    return float(data.mort_table().loc[(sex(), a), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), a), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1702,3 +1702,5 @@ roll_fwd_tol = 1e-10
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

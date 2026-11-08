@@ -722,8 +722,7 @@ def mort_rate_at_age(sex_code, smoker_code, x):
     unsourced mortality level to a single number.  A **[std]** proxy for DAV 2008 T; see
     the ``Data`` docstring for the anchors a replacement must preserve.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (mort_table_id(), sex_code, smoker_code, int(x)), "mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_at(), (mort_table_id(), sex_code, smoker_code, int(x)), 'mort_rate')
 
 
 def mort_rate_base(t):
@@ -861,8 +860,7 @@ def benefit_factor(t):
     contractual schedule parameter fixed at issue; it does not follow the borrower's loan
     if that is refinanced, repaid early or rolled onto a new fixed rate.
     """
-    return float(data.benefit_schedule().at[                         # noqa: F821
-        (benefit_schedule_id(), policy_year(t)), "benefit_factor"])
+    return tables.lookup_float(data.prepared_benefit_schedule_at(), (benefit_schedule_id(), policy_year(t)), 'benefit_factor')
 
 
 def sum_uplift_y(y):
@@ -884,8 +882,7 @@ def sum_uplift_y(y):
     decision.  What the model does *with* an increase is not exogenous — see
     :func:`benefit_paid_pp`.
     """
-    return float(data.nvg_schedule().at[                             # noqa: F821
-        (nvg_schedule_id(), int(y) + 1), "sum_uplift"])
+    return tables.lookup_float(data.prepared_nvg_schedule_at(), (nvg_schedule_id(), int(y) + 1), 'sum_uplift')
 
 
 def sum_uplift(t):
@@ -985,8 +982,7 @@ def lapse_rate_base(t):
     :func:`lapse_rate` is where the zero goes and :func:`lapse_rate_mth` is where the
     spreading happens.
     """
-    return float(data.lapse_table().at[                              # noqa: F821
-        policy_year(t), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_at(), policy_year(t), 'lapse_rate')
 
 
 def shock_lapse_factor(t):
@@ -1260,8 +1256,7 @@ def prem_freq_load():
     rebate and the paid premium, so the split identity holds at every frequency.  Applying
     it to each stream separately, or twice, is a listed pitfall.
     """
-    return float(data.freq_loading_table().at[                       # noqa: F821
-        prem_freq(), "prem_freq_load"])
+    return tables.lookup_float(data.prepared_freq_loading_table_at(), prem_freq(), 'prem_freq_load')
 
 
 def instalments():
@@ -2141,3 +2136,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-09
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

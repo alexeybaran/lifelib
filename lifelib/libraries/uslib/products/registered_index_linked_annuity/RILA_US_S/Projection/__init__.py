@@ -1686,7 +1686,7 @@ def mort_rate(t):
     [REG-R65] and the payout chassis's 108.4% is annuitant-select and deliberately not
     imported.
     """
-    rate = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])   # noqa: F821
+    rate = tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')   # noqa: F821
     return rate * mort_ae_factor                                     # noqa: F821
 
 
@@ -2317,3 +2317,5 @@ premium_tax_rate = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

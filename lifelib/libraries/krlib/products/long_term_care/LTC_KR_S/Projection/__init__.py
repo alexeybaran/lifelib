@@ -475,8 +475,7 @@ def mort_rate_at_age(x):
     age rather than by ``t`` because the morbidity construction has to evaluate the whole
     basis at 만나이 65 when the life is younger than that.
     """
-    return float(data.mort_table().loc[(sex(), min(x, 120)),         # noqa: F821
-                                       "mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), min(x, 120)), 'mort_rate')
 
 
 def mort_rate(t):
@@ -547,7 +546,7 @@ def mort_rate_dem_mth(t):
 
 def lapse_param(name):
     """One parameter of the lapse vector, from *lapse_table.csv*."""
-    return float(data.lapse_table().loc[name, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_lapse_table_loc(), name, 'value')              # noqa: F821
 
 
 def lapse_rate(t):
@@ -598,7 +597,7 @@ def prev_param(name):
     three-parameter logistic fitted to the five sourced 연령별 인정률 of the 2024
     노인장기요양보험 통계연보; the file also carries the five anchors themselves.
     """
-    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_prevalence_table_loc(), (sex(), name), 'value')  # noqa: F821
 
 
 def prev_rate_at(x):
@@ -946,7 +945,7 @@ def prog_rate_mth(t):
 
 def dem_param(name):
     """One parameter of the dementia-prevalence logistic, from *dementia_table.csv*."""
-    return float(data.dementia_table().loc[name, "value"])           # noqa: F821
+    return tables.lookup_float(data.prepared_dementia_table_loc(), name, 'value')           # noqa: F821
 
 
 def dem_prev_at(x):
@@ -2023,3 +2022,5 @@ val_tol = 1e-06
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

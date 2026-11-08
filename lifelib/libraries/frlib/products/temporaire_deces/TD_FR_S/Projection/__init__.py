@@ -742,8 +742,7 @@ def prem_rate(t):
     flat across the twelve months of a policy year, like everything else contractual
     here.  The grid itself is a 2019-2021 edition — use it for shape, not for level.
     """
-    base = float(data.premium_rate_table().loc[                      # noqa: F821
-        (premium_rate_id(), age(t)), "prem_rate"])
+    base = tables.lookup_float(data.prepared_premium_rate_table_loc(), (premium_rate_id(), age(t)), 'prem_rate')
     return base * (1.0 + tariff_drift) ** duration(t)                # noqa: F821
 
 
@@ -754,8 +753,7 @@ def prem_freq_load():
     embedded in the cotisation TTC, and one of only three disclosed charge figures in the
     whole source corpus.
     """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "prem_freq_load"])
+    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_load')
 
 
 def prem_freq_fee():
@@ -766,8 +764,7 @@ def prem_freq_fee():
     applying the fractionation loading and then billing the fee on top of it as a
     percentage, overstates premium income.  See :func:`prem_pp`.
     """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "prem_freq_fee"])
+    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_fee')
 
 
 def prem_instalments():
@@ -946,7 +943,7 @@ def mort_rate_base(t):
     décès is not, and a shift applied to a table that was never homologated would be
     theatre in any case.
     """
-    return float(data.mort_table().loc[age(t), "mort_rate"])    # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')    # noqa: F821
 
 
 def sel_lapse_factor(t):
@@ -1791,3 +1788,5 @@ comm_rate_renew = 0.05
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

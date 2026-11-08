@@ -658,8 +658,7 @@ def prem_freq_load():
     """
     if model_point()["prem_form"] == "single":
         return 1.0
-    return float(data.option_table().loc[                            # noqa: F821
-        ("prem_mode", model_point()["prem_mode"]), "factor"])
+    return tables.lookup_float(data.prepared_option_table_loc(), ('prem_mode', model_point()['prem_mode']), 'factor')
 
 
 def prem_base_pp(k):
@@ -773,8 +772,7 @@ def alpha_total_pp():
     plus the initial commission, and the German design is precisely that what the insurer
     pays out is sized to what it may write into the reserve.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "zill_rate"]) * beitragssumme_pp())
+    return (tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'zill_rate') * beitragssumme_pp())
 
 
 def alpha_amort_pp(k):
@@ -813,8 +811,7 @@ def alpha_zuz_pp(k):
     *Zillmerung*; it carries its own single charge instead, which is the normal German
     treatment of a top-up.  Zero where no *Zuzahlung* is paid.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "alpha_zuz_rate"]) * zuz_pp(k))
+    return (tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'alpha_zuz_rate') * zuz_pp(k))
 
 
 def unit_cost_pp(k):
@@ -828,10 +825,8 @@ def unit_cost_pp(k):
     An account deduction, not an expense.  The insurer's own maintenance outgo is
     ``maint_expense_pp`` and is a separate line of :func:`expenses`.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "unit_cost_pp"])
-        * (1.0 + float(data.charge_table().loc[                      # noqa: F821
-            model_point()["tariff_id"], "expense_infl"])) ** k)
+    return (tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'unit_cost_pp')
+        * (1.0 + tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'expense_infl')) ** k)
 
 
 def prem_to_av_pp(k):
@@ -850,8 +845,7 @@ def prem_to_av_pp(k):
     """
     if k < 0 or k >= ret_y() or k >= proj_len_y():
         return 0.0
-    beta = float(data.charge_table().loc[                            # noqa: F821
-        model_point()["tariff_id"], "beta_prem"])
+    beta = tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'beta_prem')
     return ((prem_pp(k) + zuz_pp(k)) * (1.0 - beta)
             - alpha_amort_pp(k) - alpha_zuz_pp(k) - unit_cost_pp(k))
 
@@ -1277,8 +1271,7 @@ def av_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_pp_at(k, "BEF_PREM") + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table().loc[                       # noqa: F821
-            model_point()["tariff_id"], "gamma_av"])
+        gamma = tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'gamma_av')
         return av_pp_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1324,8 +1317,7 @@ def av_pu_at(k, timing):
     if timing == "AFT_PREM":
         return av_pu_at(k, "BEF_PREM") - unit_cost_pp(k) * pols_paidup(12 * k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table().loc[                       # noqa: F821
-            model_point()["tariff_id"], "gamma_av"])
+        gamma = tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'gamma_av')
         return av_pu_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1380,8 +1372,7 @@ def rentenfaktor_curr():
     """
     if ret_t() < 0:
         return 0.0
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (model_point()["rf_scenario_id"], int(model_point()["ret_age"])), "rf_curr"])
+    return tables.lookup_float(data.prepared_rentenfaktor_table_loc(), (model_point()['rf_scenario_id'], int(model_point()['ret_age'])), 'rf_curr')
 
 
 def rf_option_factor():
@@ -1441,8 +1432,7 @@ def fund_at_conv():
     """
     if ret_y() < 0:
         return 0.0
-    sigma = float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "terminal_bonus_rate"])
+    sigma = tables.lookup_float(data.prepared_charge_table_loc(), model_point()['tariff_id'], 'terminal_bonus_rate')
     return av_at(ret_y(), "BEF_PREM") * (1.0 + sigma)
 
 
@@ -2082,3 +2072,5 @@ ann_freq = 12
 roll_fwd_tol = 1e-9
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")

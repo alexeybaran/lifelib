@@ -480,8 +480,7 @@ def mort_rate(t):
     to this product unless the guaranteed minimum death benefit rider is enabled.
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, float(data.mort_table().loc[                     # noqa: F821
-        (sex(), x), "mort_rate"]) * mort_be_factor)                  # noqa: F821
+    return min(1.0, tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1098,3 +1097,5 @@ expense_maint = 60.0
 inflation_rate = 0.025
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
