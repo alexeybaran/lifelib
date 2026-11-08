@@ -146,3 +146,29 @@ def test_object_lookup_keeps_missing_identity(native):
         assert native.raw(h.lookup_object,record,'value') is value
         assert h.lookup_object(record,'value') is value
     assert native.raw(h.lookup_object,Record({}),'absent',None) is None
+
+
+@pytest.mark.parametrize('indexing', ['loc', 'at'])
+@pytest.mark.parametrize('keys,queries', [
+    ([True, False], [True, False, 1, 0, 1.0]),
+    ([1, 0], [True, False, 1, 0, 1.0]),
+    ([('M', True), ('F', False)], [('M', True), ('M', 1), ('M', False)]),
+    ([('M', 42), ('F', 43)], [('M', 42), ('M', 43), ('M', True)]),
+])
+def test_indexer_metadata_preserves_boolean_keys_and_sparse_errors(native,indexing,keys,queries):
+    import pandas as pd
+    from lifelib import pandas_inputs
+    index = pd.MultiIndex.from_tuples(keys) if isinstance(keys[0], tuple) else pd.Index(keys)
+    frame = pd.DataFrame({'rate': [1.5, 2.5]}, index=index)
+    for source in [frame, frame.iloc[:0]]:
+        prepared = pandas_inputs.table(source, indexing=indexing)
+        for table in [prepared, pickle.loads(pickle.dumps(prepared))]:
+            for query in queries:
+                try: expected = float(getattr(source, indexing)[query, 'rate'])
+                except Exception as error:
+                    for call in [h.lookup_float, lambda *a: native.floating(h.lookup_float, *a)]:
+                        with pytest.raises(type(error)) as actual: call(table, query, 'rate')
+                        assert actual.value.args == error.args
+                else:
+                    assert h.lookup_float(table, query, 'rate') == expected
+                    assert native.floating(h.lookup_float, table, query, 'rate') == expected

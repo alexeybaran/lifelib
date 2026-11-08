@@ -48,7 +48,7 @@ def table(frame, *, columns=None, groups=(), indexing='loc'):
         raise ValueError('indexing must be loc or at')
     if indexing == 'at' and groups:
         raise ValueError('at preparation requires complete keys')
-    index_error = _at_index_spec(frame.index) if indexing == 'at' else None
+    index_error = _at_index_spec(frame.index, encoded_errors=indexing == 'at') if not groups else None
     selected = list(frame.columns) if columns is None else list(columns)
     if not selected or any(type(name) is not str for name in selected):
         raise ValueError('table columns must be nonempty strings')
@@ -118,7 +118,7 @@ def record(row):
 
 
 
-def _at_index_spec(index):
+def _at_index_spec(index, *, encoded_errors=True):
     """Own only the metadata required for full-scalar pandas .at semantics."""
     multi = isinstance(index, pd.MultiIndex)
     levels = index.levels if multi else (index,)
@@ -140,7 +140,7 @@ def _at_index_spec(index):
     level_tables = tuple(Table(level, [(0.0,)] * len(level), ('position',))
                          for level in owned_levels)
     return Record({
-        'multi': multi,
+        'multi': multi, 'encoded_errors': encoded_errors,
         'levels': owned_levels, 'level_tables': level_tables,
         'offsets': tuple(map(int, index._engine.offsets)) if multi else (0,),
         'boolean_modes': tuple(modes), 'bias': bias})

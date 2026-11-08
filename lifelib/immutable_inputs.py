@@ -188,6 +188,8 @@ def _valid_index_key(key, spec):
 
 
 def _index_error_key(key, spec):
+    if not spec.get('encoded_errors', True):
+        return key
     if not spec['multi'] or type(key) is not tuple or len(key) != len(spec['levels']):
         return key
     if not _valid_index_key(key, spec):

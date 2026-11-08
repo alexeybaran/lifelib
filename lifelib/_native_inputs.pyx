@@ -825,7 +825,7 @@ cdef class KeyedView:
     cdef tuple at_levels, at_offsets
     cdef signed char[::1] boolean_modes
     cdef long long at_bias
-    cdef bint at_multi
+    cdef bint at_multi, encoded_errors
     cdef object owner
     cdef tuple text, columns, raw_values
     cdef long long[::1] numbers, kinds, slots
@@ -842,6 +842,7 @@ cdef class KeyedView:
         self.at_levels = ()
         self.at_offsets = ()
         self.at_multi = False
+        self.encoded_errors = True
         self.at_bias = 0
         spec = table._index_error
         if spec is not None:
@@ -849,6 +850,7 @@ cdef class KeyedView:
         self.boolean_modes = array('b', () if spec is None else spec['boolean_modes'])
         if spec is not None:
             self.at_multi = spec['multi']
+            self.encoded_errors = spec.get('encoded_errors', True)
             self.at_bias = spec['bias']
             self.at_offsets = spec['offsets']
             self.at_levels = tuple(KeyedView(level) for level in spec['level_tables'])
@@ -978,7 +980,7 @@ cdef class KeyedView:
     cdef object error_key(self, const KeyPart* parts, Py_ssize_t count, bint tuple_key):
         cdef Py_ssize_t i, position
         cdef KeyedView level
-        if not self.at_multi or not tuple_key or count != len(self.at_levels):
+        if not self.encoded_errors or not self.at_multi or not tuple_key or count != len(self.at_levels):
             return _original_key(parts, count, tuple_key)
         encoded = 0
         for i in range(count):
