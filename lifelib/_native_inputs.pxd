@@ -49,6 +49,11 @@ cdef inline double f64_result(F64Sum* state) noexcept:
 
 
 cdef class LookupContext:
+    cdef bint _private_owner
+    cdef object group_data, bounded_data
+    cdef Py_ssize_t bounded_column
+    cdef object numeric_source, numeric_column_source, numeric_data
+    cdef Py_ssize_t numeric_index
     cdef object first, second
     cdef object data_first, data_second
     cdef object column_first, column_second
@@ -74,3 +79,22 @@ cdef object group_context_probe(LookupContext context, object has_fn, object rec
                                 long long group, str column, Py_ssize_t* slot)
 cdef int group_value(object sub_fn, object contains_fn, object lookup_fn, object prepared,
                      Py_ssize_t slot, long long key, double* value) except -1
+
+cdef bint numeric_resource_ready(LookupContext context, const void* source, const void* column) noexcept
+cdef double bound_lookup_f64(LookupContext context, long long key, long long column,
+                             bint named, bint has_default, double default) except? -1
+cdef double bound_previous_f64(LookupContext context, long long key, long long column,
+                               bint named, bint has_default, double default) except? -1
+
+cdef double prepare_lookup_f64(object function, LookupContext context, object table,
+                               long long key, object column, object default=*) except? -1
+cdef double prepare_previous_f64(object function, LookupContext context, object table,
+                                 long long key, object column, object default=*) except? -1
+
+cdef bint bound_bounded_f64(LookupContext context, long long key,
+                            double below, double* value) except? -1
+
+cdef bint bound_group_probe(LookupContext context, long long group, Py_ssize_t* slot) except? -1
+cdef int bound_group_value(LookupContext context, Py_ssize_t slot, long long key, double* value) except -1
+cdef int group_context_value(LookupContext context, object sub_fn, object contains_fn,
+    object lookup_fn, object prepared, Py_ssize_t slot, long long key, double* value) except -1

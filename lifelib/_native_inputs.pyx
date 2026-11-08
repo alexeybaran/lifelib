@@ -13,6 +13,7 @@ from libc.limits cimport LONG_MIN, LONG_MAX
 from cpython.float cimport PyFloat_AS_DOUBLE, PyFloat_CheckExact
 from cpython.long cimport PyLong_AsLong, PyLong_AsLongLongAndOverflow, PyLong_Check
 from cpython.version cimport PY_VERSION_HEX
+from cpython.ref cimport PyObject
 cimport cython
 from lifelib.immutable_inputs import Table, Record
 from lifelib.typed_inputs import _FLOOR, _native_operations
@@ -227,9 +228,20 @@ cdef class LookupContext:
         # results remain in their Space caches; rebuild resources on demand.
         return (LookupContext, ())
 
+    def _mx_enable_private_lookup(self):
+        # Called before the worker-exclusive collect receiver starts evaluating.
+        self._private_owner = True
+
     cdef object get(self, object table, object column, Py_ssize_t* index):
         cdef TableView data
         cdef object retired_table, retired_data
+        if self._private_owner:
+            if table is self.first and column is self.column_first:
+                index[0] = self.index_first
+                return self.data_first
+            if table is self.second and column is self.column_second:
+                index[0] = self.index_second
+                return self.data_second
         with cython.critical_section(self):
             if table is self.first and column is self.column_first:
                 index[0] = self.index_first
@@ -392,6 +404,9 @@ cdef bint bounded_lookup_f64(object function, object first_fn, object last_fn,
     count = data.integers.shape[0]
     if not count:
         return False
+    if context._private_owner and context.bounded_data is None:
+        context.bounded_data = data
+        context.bounded_column = col
     if key < data.integers[0]:
         value[0] = below
         return True
@@ -468,19 +483,20 @@ cdef object group_view(object record, str column):
     return prepared
 
 
-cdef inline object probe_group(object prepared, long long group, Py_ssize_t* slot):
-    cdef GroupedView data
+cdef Py_ssize_t group_slot(GroupedView data, long long group) except? -2:
     cdef Py_ssize_t i
+    for i in range(data.groups.shape[0]):
+        if data.groups[i] == group:
+            return i
+    return -1
+
+
+cdef inline object probe_group(object prepared, long long group, Py_ssize_t* slot):
     slot[0] = -2
     if prepared is None:
         return None
-    data = <GroupedView>prepared
-    for i in range(data.groups.shape[0]):
-        if data.groups[i] == group:
-            slot[0] = i
-            return data
-    slot[0] = -1
-    return data
+    slot[0] = group_slot(<GroupedView>prepared, group)
+    return prepared
 
 
 cdef object group_probe(object has_fn, object record, long long group, str column,
@@ -511,13 +527,9 @@ cdef object group_context_probe(LookupContext context, object has_fn, object rec
     return probe_group(prepared, group, slot)
 
 
-cdef int group_value(object sub_fn, object contains_fn, object lookup_fn, object prepared,
-                     Py_ssize_t slot, long long key, double* value) except -1:
-    cdef GroupedView data
+cdef int group_data_value(GroupedView data, Py_ssize_t slot,
+                           long long key, double* value) except -1:
     cdef Py_ssize_t lo, hi, mid
-    if sub_fn is not _subtable or contains_fn is not _contains or lookup_fn is not _lookup:
-        return 2
-    data = <GroupedView>prepared
     lo, hi = data.offsets[slot], data.offsets[slot + 1]
     while lo < hi:
         mid = lo + (hi - lo) // 2
@@ -529,6 +541,38 @@ cdef int group_value(object sub_fn, object contains_fn, object lookup_fn, object
         else:
             lo = mid + 1
     return 0
+
+
+cdef int group_value(object sub_fn, object contains_fn, object lookup_fn, object prepared,
+                     Py_ssize_t slot, long long key, double* value) except -1:
+    if sub_fn is not _subtable or contains_fn is not _contains or lookup_fn is not _lookup:
+        return 2
+    return group_data_value(<GroupedView>prepared, slot, key, value)
+
+
+cdef int group_context_value(LookupContext context, object sub_fn, object contains_fn,
+    object lookup_fn, object prepared, Py_ssize_t slot, long long key, double* value) except -1:
+    if sub_fn is not _subtable or contains_fn is not _contains or lookup_fn is not _lookup:
+        return 2
+    if (context._private_owner and context.group_data is None
+            and context.grouped is not None and context.grouped[2] is prepared):
+        context.group_data = prepared
+    return group_data_value(<GroupedView>prepared, slot, key, value)
+
+
+cdef bint bound_group_probe(LookupContext context, long long group, Py_ssize_t* slot) except? -1:
+    cdef PyObject* data = <PyObject*>context.group_data
+    if data == <PyObject*>None:
+        return False
+    slot[0] = group_slot(<GroupedView>data, group)
+    return True
+
+
+cdef int bound_group_value(LookupContext context, Py_ssize_t slot,
+                           long long key, double* value) except -1:
+    # Caller obtained this slot from the same admitted context before key evaluation.
+    cdef PyObject* data = <PyObject*>context.group_data
+    return group_data_value(<GroupedView>data, slot, key, value)
 
 
 cdef bint f64_accepts(object function):
@@ -565,3 +609,100 @@ cdef object sum_helper(object function, object values):
     if correction != 0.0 and isfinite(correction):
         total += correction
     return total
+
+
+cdef inline void remember_numeric_resource(LookupContext context, object source,
+    object column, TableView data, Py_ssize_t index):
+    if context._private_owner and data is not None and data.numeric and index >= 0:
+        context.numeric_source = source
+        context.numeric_column_source = column
+        context.numeric_index = index
+        context.numeric_data = data
+
+
+cdef bint numeric_resource_ready(LookupContext context, const void* source, const void* column) noexcept:
+    return (context._private_owner and context.numeric_data is not None
+            and source == <const void*>context.numeric_source
+            and (column == NULL or column == <const void*>context.numeric_column_source))
+
+
+cdef inline double numeric_resource_value(LookupContext context, long long key, long long column,
+    bint named, bint preceding, bint has_default, double default) except? -1:
+    # The ready predicate proves lifetime/admission. Context retains the source
+    # and immutable view; this borrowed pointer does not own another shared ref.
+    cdef PyObject* data = <PyObject*>context.numeric_data
+    cdef Py_ssize_t row = (<TableView>data).right(key) - 1
+    cdef long long col
+    if row < 0 or (not preceding and (<TableView>data).integers[row] != key):
+        if has_default:
+            return default
+        if preceding:
+            raise ValueError(f'No key at or before {key!r}')
+        raise KeyError(key)
+    col = context.numeric_index if named else column
+    if not named and col < 0:
+        col += (<TableView>data).width
+    if col < 0 or col >= (<TableView>data).width:
+        raise IndexError('tuple index out of range')
+    return (<TableView>data).numbers[(<TableView>data).sorted_positions[row] * (<TableView>data).width + col]
+
+
+cdef double bound_lookup_f64(LookupContext context, long long key, long long column,
+                             bint named, bint has_default, double default) except? -1:
+    return numeric_resource_value(context,key,column,named,False,has_default,default)
+
+
+cdef double bound_previous_f64(LookupContext context, long long key, long long column,
+                               bint named, bint has_default, double default) except? -1:
+    return numeric_resource_value(context,key,column,named,True,has_default,default)
+
+cdef bint bound_bounded_f64(LookupContext context, long long key,
+                            double below, double* value) except? -1:
+    # Context owns this immutable snapshot. No owning local view is needed.
+    cdef PyObject* data = <PyObject*>context.bounded_data
+    cdef Py_ssize_t row, count
+    if data == <PyObject*>None:
+        return False
+    count = (<TableView>data).integers.shape[0]
+    if key < (<TableView>data).integers[0]:
+        value[0] = below
+        return True
+    if key >= (<TableView>data).integers[count - 1]:
+        row = count - 1
+    else:
+        row = (<TableView>data).right(key) - 1
+        if row < 0 or (<TableView>data).integers[row] != key:
+            return False
+    value[0] = (<TableView>data).numbers[
+        (<TableView>data).sorted_positions[row] * (<TableView>data).width + context.bounded_column]
+    return True
+
+
+
+cdef double prepare_lookup_f64(object function, LookupContext context, object table,
+    long long key, object column, object default=_missing) except? -1:
+    cdef double value
+    cdef TableView data
+    cdef Py_ssize_t col = -1
+    if context._private_owner:
+        context.numeric_data = None
+    value = lookup_f64(function,context,table,key,column,default)
+    if context._private_owner and function is _lookup and type(table) is Table:
+        data = context.get(table,column,&col)
+        remember_numeric_resource(context,table,column,data,col)
+    return value
+
+
+
+cdef double prepare_previous_f64(object function, LookupContext context, object table,
+    long long key, object column, object default=_missing) except? -1:
+    cdef double value
+    cdef TableView data
+    cdef Py_ssize_t col = -1
+    if context._private_owner:
+        context.numeric_data = None
+    value = previous_f64(function,context,table,key,column,default)
+    if context._private_owner and function is _previous and type(table) is Table:
+        data = context.get(table,column,&col)
+        remember_numeric_resource(context,table,column,data,col)
+    return value
