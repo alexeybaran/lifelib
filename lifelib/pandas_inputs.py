@@ -26,7 +26,7 @@ def _key(value):
     return _scalar(value)
 
 
-def table(frame, *, columns=None, groups=()):
+def table(frame, *, columns=None, groups=(), indexing='loc'):
     """Build an existing Table, optionally nested in explicit group Records.
 
     ``groups`` names index levels to group, in the authored nesting order. The
@@ -35,12 +35,20 @@ def table(frame, *, columns=None, groups=()):
     duplicates or coerce every numeric column to float. Those are separate
     operations, never implicit preparation policies.
 
+    ``indexing='at'`` retains the full-scalar .at error-key encoding and boolean
+    label rules as owned metadata. It requires complete, ungrouped keys.
+
     The normal Table contract requires unique leaf keys and nonempty unique
     string columns. Unsupported scalar values raise rather than silently lose
     their dtype/missing semantics. Public DataFrames are not modified.
     """
     if not isinstance(frame, pd.DataFrame):
         raise TypeError('table requires a pandas DataFrame')
+    if indexing not in ('loc', 'at'):
+        raise ValueError('indexing must be loc or at')
+    if indexing == 'at' and groups:
+        raise ValueError('at preparation requires complete keys')
+    index_error = _at_index_spec(frame.index, encoded_errors=indexing == 'at') if not groups else None
     selected = list(frame.columns) if columns is None else list(columns)
     if not selected or any(type(name) is not str for name in selected):
         raise ValueError('table columns must be nonempty strings')
@@ -76,7 +84,7 @@ def table(frame, *, columns=None, groups=()):
     def build(branch, depth):
         if depth == len(groups):
             return Table([key for key, _ in branch],
-                         [values for _, values in branch], selected)
+                         [values for _, values in branch], selected, index_error)
         return Record({key: build(value, depth + 1) for key, value in branch.items()})
     return build(root, 0)
 
@@ -95,7 +103,7 @@ def records(frame):
                    for key, row in zip(frame.index, frame.itertuples(index=False, name=None))})
 
 
-def record(row):
+def record(row, *, preserve_scalar_types=False):
     """Prepare a Record from an explicitly selected public pandas Series.
 
     A model can keep its public model_point Cell unchanged and make a separate
@@ -106,4 +114,53 @@ def record(row):
         raise TypeError('record requires a pandas Series')
     if not row.index.is_unique:
         raise ValueError('record fields must be unique')
+    if preserve_scalar_types:
+        # Series.items() can yield Python scalars while Series[key] returns a
+        # numpy scalar. Preserve the actual public scalar-selection contract.
+        return Record({key: freeze(row[key]) for key in row.index})
     return Record({key: _scalar(value) for key, value in row.items()})
+
+
+def index(labels):
+    """Own a unique public Index for internal ordered-key operations.
+
+    The public Index Cell remains unchanged. Position is ordinary Table data;
+    key order and scalar types are retained, including empty input. Duplicate
+    labels are rejected explicitly rather than silently deduplicated.
+    """
+    if not isinstance(labels, pd.Index):
+        raise TypeError('index requires a pandas Index')
+    if not labels.is_unique:
+        raise ValueError('index labels must be unique')
+    return Table(tuple(_key(label) for label in labels),
+                 tuple((position,) for position in range(len(labels))),
+                 ('position',), _at_index_spec(labels, encoded_errors=False))
+
+
+
+def _at_index_spec(index, *, encoded_errors=True):
+    """Own only the metadata required for full-scalar pandas .at semantics."""
+    multi = isinstance(index, pd.MultiIndex)
+    levels = index.levels if multi else (index,)
+    modes = []
+    for level in levels:
+        values = tuple(_key(value) for value in level)
+        if values and all(type(value) is bool for value in values):
+            modes.append(1)
+        elif any(type(value) is bool for value in values):
+            modes.append(0)
+        else:
+            modes.append(2)
+    # Calibrate the installed pandas encoding at preparation, not in lookup.
+    probe = pd.MultiIndex.from_tuples([('a', 0)])
+    bias = int(probe._engine.values[0]) >> int(probe._engine.offsets[0])
+    owned_levels = tuple(tuple(_key(value) for value in level) for level in levels)
+    # Build level ownership at this explicit preparation boundary. Native
+    # resource initialization must not call the Python Table constructor.
+    level_tables = tuple(Table(level, [(0.0,)] * len(level), ('position',))
+                         for level in owned_levels)
+    return Record({
+        'multi': multi, 'encoded_errors': encoded_errors,
+        'levels': owned_levels, 'level_tables': level_tables,
+        'offsets': tuple(map(int, index._engine.offsets)) if multi else (0,),
+        'boolean_modes': tuple(modes), 'bias': bias})
