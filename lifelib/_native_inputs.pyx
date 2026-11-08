@@ -10,8 +10,10 @@ from enum import IntEnum
 import math
 from libc.math cimport fabs, isfinite, floor
 from libc.limits cimport LONG_MIN, LONG_MAX
-from cpython.float cimport PyFloat_AS_DOUBLE, PyFloat_CheckExact
+from cpython.float cimport PyFloat_AS_DOUBLE, PyFloat_AsDouble, PyFloat_CheckExact
 from cpython.long cimport PyLong_AsLong, PyLong_AsLongLongAndOverflow, PyLong_Check
+from cpython.number cimport PyNumber_Index
+from cpython.object cimport PyObject_IsTrue
 from cpython.version cimport PY_VERSION_HEX
 from cpython.ref cimport PyObject
 cimport cython
@@ -756,29 +758,42 @@ cdef union FloatKeyBits:
     unsigned long long bits
 
 
+import numpy as _key_numpy
+cdef tuple _numpy_integer_keys = tuple(set((
+    _key_numpy.int8, _key_numpy.int16, _key_numpy.int32, _key_numpy.int64,
+    _key_numpy.uint8, _key_numpy.uint16, _key_numpy.uint32, _key_numpy.uint64,
+    _key_numpy.intp, _key_numpy.uintp, _key_numpy.longlong, _key_numpy.ulonglong)))
+cdef tuple _numpy_float_keys = (_key_numpy.float16, _key_numpy.float32, _key_numpy.float64)
+cdef object _numpy_bool_key = _key_numpy.bool_
+
+
+cdef void _key_real(KeyPart* part, double number, object original) noexcept:
+    cdef FloatKeyBits storage
+    part.number = 0
+    part.text = <PyObject*>original
+    if not isfinite(number):
+        part.kind = _KEY_OBJECT
+    elif -9223372036854775808.0 <= number < 9223372036854775808.0 and floor(number) == number:
+        part.kind = _KEY_FLOAT_INT
+        part.number = <long long>number
+    else:
+        part.kind = _KEY_FLOAT
+        storage.value = number
+        part.number = <long long>storage.bits
+
+
 cdef void key_int(KeyPart* part, long long value, bint boolean) noexcept:
     part.kind = _KEY_BOOL if boolean else _KEY_INT
     part.number = value
     part.text = NULL
 
 cdef void key_text(KeyPart* part, object value) noexcept:
-    cdef double number
-    cdef FloatKeyBits storage
     part.number = 0
     part.text = <PyObject*>value
     if type(value) is str:
         part.kind = _KEY_TEXT
     elif type(value) is float:
-        number = PyFloat_AS_DOUBLE(value)
-        if not isfinite(number):
-            part.kind = _KEY_OBJECT
-        elif -9223372036854775808.0 <= number < 9223372036854775808.0 and floor(number) == number:
-            part.kind = _KEY_FLOAT_INT
-            part.number = <long long>number
-        else:
-            part.kind = _KEY_FLOAT
-            storage.value = number
-            part.number = <long long>storage.bits
+        _key_real(part, PyFloat_AS_DOUBLE(value), value)
     else:
         part.kind = _KEY_OBJECT
 
@@ -811,7 +826,9 @@ cdef object _original_key(const KeyPart* parts, Py_ssize_t count, bint tuple_key
     values = []
     cdef Py_ssize_t i
     for i in range(count):
-        if parts[i].kind == _KEY_INT:
+        if parts[i].text != NULL:
+            values.append(<object>parts[i].text)
+        elif parts[i].kind == _KEY_INT:
             values.append(parts[i].number)
         elif parts[i].kind == _KEY_BOOL:
             values.append(bool(parts[i].number))
@@ -1163,8 +1180,22 @@ cdef LookupContext _indexed_context(object table):
 
 
 cdef void _pack_part(object value, KeyPart* part) except *:
+    cdef int overflow = 0
+    cdef long long number
     if type(value) in (int, bool) and -(1 << 63) <= value < (1 << 63):
         key_int(part, value, type(value) is bool)
+    elif type(value) is _numpy_bool_key:
+        key_int(part, PyObject_IsTrue(value), True)
+        part.text = <PyObject*>value
+    elif type(value) in _numpy_integer_keys:
+        number = PyLong_AsLongLongAndOverflow(PyNumber_Index(value), &overflow)
+        if overflow:
+            key_text(part, value)
+        else:
+            key_int(part, number, False)
+            part.text = <PyObject*>value
+    elif type(value) in _numpy_float_keys:
+        _key_real(part, PyFloat_AsDouble(value), value)
     else:
         key_text(part, value)
 

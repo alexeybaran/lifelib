@@ -158,7 +158,7 @@ def freeze(value):
 _INDEX_NAN = object()
 
 def _missing_index_part(value):
-    if value is None or type(value) is float and value != value:
+    if value is None or isinstance(value, float) and value != value:
         return True
     if type(value).__module__.startswith('pandas.'):
         from pandas import NA, NaT
@@ -184,9 +184,13 @@ def _valid_index_key(key, spec):
     for part, mode in zip(parts, spec['boolean_modes']):
         if _missing_index_part(part):
             continue
-        if mode == 1 and type(part) is not bool:
+        boolean = type(part) is bool
+        if not boolean and type(part).__module__.startswith('numpy'):
+            import numpy as np
+            boolean = type(part) is np.bool_
+        if mode == 1 and not boolean:
             return False
-        if mode == 2 and type(part) is bool:
+        if mode == 2 and boolean:
             return False
     return True
 
