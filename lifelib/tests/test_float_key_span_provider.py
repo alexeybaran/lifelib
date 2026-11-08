@@ -30,6 +30,16 @@ def at(function, table, Py_ssize_t position):
     if span is None:
         raise TypeError('not admitted')
     return indices.float_key_span_at(span, position)
+def read_str(function, table):
+    cdef indices.StrKeySpan span = indices.keys_str_span(function, table)
+    if span is None:
+        return None
+    return [indices.str_key_span_at(span, i) for i in range(indices.str_key_span_count(span))]
+def at_str(function, table, Py_ssize_t position):
+    cdef indices.StrKeySpan span = indices.keys_str_span(function, table)
+    if span is None:
+        raise TypeError('not admitted')
+    return indices.str_key_span_at(span, position)
 ''')
     (root / 'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['indices.pyx','span_probe.pyx'],compiler_directives={'language_level':3}))\n")
     run = subprocess.run([sys.executable, 'setup.py', 'build_ext', '--inplace'], cwd=root,
@@ -84,3 +94,37 @@ def test_public_index_ownership_and_errors():
         pandas_inputs.index(pd.Index(['fund', 'fund']))
     with pytest.raises(TypeError, match='pandas Index'):
         pandas_inputs.index(['fund'])
+
+
+@pytest.mark.parametrize('labels', [(), ('equity', 'bond'), ('死亡', '基金', '')])
+def test_text_span_order_identity_empty_pickle_and_bounds(native, labels):
+    table = pandas_inputs.index(pd.Index(labels, dtype=object))
+    for source in [table, pickle.loads(pickle.dumps(table))]:
+        assert native.read_str(keys, source) == list(labels)
+        if labels:
+            assert native.at_str(keys, source, -1) is keys(source)[-1]
+        for position in [len(labels), -len(labels)-1]:
+            with pytest.raises(IndexError, match='tuple index out of range'):
+                native.at_str(keys, source, position)
+
+
+def test_spans_have_no_python_helper_calls_on_cold_and_hot_reads(native):
+    from lifelib.immutable_inputs import Record, freeze
+    text = pandas_inputs.index(pd.Index(['equity', 'bond']))
+    floating = pandas_inputs.index(pd.Index([35.5, -0.0]))
+    codes = {keys.__code__, Table.__init__.__code__, Table.__getitem__.__code__,
+             Record.__getitem__.__code__, freeze.__code__}
+    events = []
+    def profile(frame, event, arg):
+        if event == 'call' and frame.f_code in codes:
+            events.append(frame.f_code.co_name)
+    sys.setprofile(profile)
+    try:
+        for _ in range(2):
+            assert native.read(keys, floating) == [35.5, -0.0]
+            assert native.read_str(keys, text) == ['equity', 'bond']
+            assert native.read_str(keys, floating) is None
+            assert native.read(keys, text) is None
+    finally:
+        sys.setprofile(None)
+    assert events == []

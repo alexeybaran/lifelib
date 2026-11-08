@@ -84,3 +84,40 @@ cdef double float_key_span_at(FloatKeySpan span, Py_ssize_t position) except? -1
     if position < 0 or position >= size:
         raise IndexError('tuple index out of range')
     return span.values[position]
+
+
+cdef class StrKeySpan:
+    pass
+
+
+cdef StrKeySpan keys_str_span(object function, object table):
+    cdef StrKeySpan span
+    if function is not _keys or type(table) is not Table:
+        return None
+    span = table._native_cache.get(StrKeySpan)
+    if span is not None:
+        return span
+    values = table._keys
+    for key in values:
+        if type(key) is not str:
+            return None
+    span = StrKeySpan()
+    span.owner = table
+    span.values = values
+    table._native_cache[StrKeySpan] = span
+    return span
+
+
+cdef Py_ssize_t str_key_span_count(StrKeySpan span) noexcept:
+    return len(span.values)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef str str_key_span_at(StrKeySpan span, Py_ssize_t position):
+    cdef Py_ssize_t size = len(span.values)
+    if position < 0:
+        position += size
+    if position < 0 or position >= size:
+        raise IndexError('tuple index out of range')
+    return span.values[position]
