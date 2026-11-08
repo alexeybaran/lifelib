@@ -117,6 +117,22 @@ def record(row):
     return Record({key: _scalar(value) for key, value in row.items()})
 
 
+def index(labels):
+    """Own a unique public Index for internal ordered-key operations.
+
+    The public Index Cell remains unchanged. Position is ordinary Table data;
+    key order and scalar types are retained, including empty input. Duplicate
+    labels are rejected explicitly rather than silently deduplicated.
+    """
+    if not isinstance(labels, pd.Index):
+        raise TypeError('index requires a pandas Index')
+    if not labels.is_unique:
+        raise ValueError('index labels must be unique')
+    return Table(tuple(_key(label) for label in labels),
+                 tuple((position,) for position in range(len(labels))),
+                 ('position',), _at_index_spec(labels, encoded_errors=False))
+
+
 
 def _at_index_spec(index, *, encoded_errors=True):
     """Own only the metadata required for full-scalar pandas .at semantics."""
