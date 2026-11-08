@@ -715,6 +715,7 @@ cdef double lookup_float_f64(object conversion, object function, LookupContext c
                              object default=_missing) except? -1:
     cdef TableView data
     cdef Py_ssize_t index, col = -1
+    cdef KeyPart part
     if conversion is _float_type and function is _lookup:
         data = context.get(table, column, &col)
         if data is not None and data.numeric:
@@ -726,6 +727,340 @@ cdef double lookup_float_f64(object conversion, object function, LookupContext c
                 return conversion(default)
             if col >= 0:
                 return data.numbers[data.sorted_positions[index] * data.width + col]
-    if default is _missing:
-        return conversion(function(table, key, column))
-    return conversion(function(table, key, column, default))
+    key_int(&part, key, False)
+    return lookup_keyed_float_f64(conversion, function, context, table, &part,
+                                  1, False, column, default)
+
+# Primitive full-key lookup over the existing owned Table.
+from cpython.object cimport PyObject_Hash
+from cpython.unicode cimport PyUnicode_Compare
+from builtins import float as _key_float
+import sys as _key_sys
+
+cdef enum:
+    _KEY_INT = 1
+    _KEY_BOOL = 2
+    _KEY_TEXT = 3
+    _KEY_OBJECT = 4
+
+cdef void key_int(KeyPart* part, long long value, bint boolean) noexcept:
+    part.kind = _KEY_BOOL if boolean else _KEY_INT
+    part.number = value
+    part.text = NULL
+
+cdef void key_text(KeyPart* part, object value) noexcept:
+    part.kind = _KEY_TEXT if type(value) is str else _KEY_OBJECT
+    part.number = 0
+    part.text = <PyObject*>value
+
+cdef bint _native_parts(const KeyPart* parts, Py_ssize_t count) noexcept:
+    cdef Py_ssize_t i
+    for i in range(count):
+        if parts[i].kind not in (_KEY_INT, _KEY_BOOL, _KEY_TEXT):
+            return False
+    return True
+
+cdef unsigned long long _parts_hash(const KeyPart* parts, Py_ssize_t count, bint tuple_key) except? 0:
+    cdef unsigned long long value = 1469598103934665603
+    cdef Py_ssize_t i
+    value = (value ^ <unsigned long long>tuple_key) * <unsigned long long>1099511628211
+    value = (value ^ <unsigned long long>count) * <unsigned long long>1099511628211
+    for i in range(count):
+        if parts[i].kind == _KEY_TEXT:
+            value = (value ^ 3) * <unsigned long long>1099511628211
+            value = (value ^ <unsigned long long>PyObject_Hash(<object>parts[i].text)) * <unsigned long long>1099511628211
+        else:
+            # bool and int have equal-key semantics in the existing Table.
+            value = (value ^ 1) * <unsigned long long>1099511628211
+            value = (value ^ <unsigned long long>parts[i].number) * <unsigned long long>1099511628211
+    return value
+
+cdef object _original_key(const KeyPart* parts, Py_ssize_t count, bint tuple_key):
+    values = []
+    cdef Py_ssize_t i
+    for i in range(count):
+        if parts[i].kind == _KEY_INT:
+            values.append(parts[i].number)
+        elif parts[i].kind == _KEY_BOOL:
+            values.append(bool(parts[i].number))
+        else:
+            if parts[i].text == NULL:
+                raise SystemError('uninitialized native key component')
+            values.append(<object>parts[i].text)
+    return tuple(values) if tuple_key else values[0]
+
+cdef class KeyedView:
+    cdef object owner
+    cdef tuple text, columns, raw_values
+    cdef long long[::1] numbers, kinds, slots
+    cdef unsigned long long[::1] hashes
+    cdef double[::1] values
+    cdef unsigned char[::1] numeric
+    cdef Py_ssize_t width, value_width, rows, mask
+    cdef bint tuple_keys, admitted
+
+    def __init__(self, table):
+        self.admitted = False
+        self.owner = table
+        keys = table['keys']
+        self.rows = len(keys)
+        self.columns = table['columns']
+        self.raw_values = table['values']
+        self.value_width = len(self.columns)
+        self.width = 0
+        self.tuple_keys = False
+        if not keys:
+            self.admitted = True
+            return
+        self.tuple_keys = type(keys[0]) is tuple
+        self.width = len(keys[0]) if self.tuple_keys else 1
+        kinds, numbers, texts, row_hashes = [], [], [], []
+        for key in keys:
+            if (type(key) is tuple) != self.tuple_keys:
+                return
+            parts = key if self.tuple_keys else (key,)
+            if len(parts) != self.width:
+                return
+            for part in parts:
+                if type(part) is str:
+                    kinds.append(_KEY_TEXT); numbers.append(0); texts.append(part)
+                elif type(part) in (int, bool) and -(1 << 63) <= part < (1 << 63):
+                    kinds.append(_KEY_BOOL if type(part) is bool else _KEY_INT)
+                    numbers.append(part); texts.append(None)
+                else:
+                    return
+        self.kinds = array('q', kinds)
+        self.numbers = array('q', numbers)
+        self.text = tuple(texts)
+        # Conversion belongs to this explicit float-context resource. Exact
+        # immutable builtins have no user conversion effects. Defer errors and
+        # other objects until the selected value is actually requested.
+        numbers, valid = [], []
+        for input_row in self.raw_values:
+            for value in input_row:
+                if type(value) in (float, int, bool, str):
+                    try:
+                        converted = _key_float(value)
+                    except (ValueError, OverflowError):
+                        pass
+                    else:
+                        numbers.append(converted); valid.append(1)
+                        continue
+                numbers.append(0.0); valid.append(0)
+        self.values = array('d', numbers)
+        self.numeric = array('B', valid)
+        capacity = 8
+        while capacity < self.rows * 2:
+            capacity *= 2
+        if capacity > _key_sys.maxsize // 8:
+            return
+        self.slots = array('q', [-1] * capacity)
+        self.hashes = array('Q', [0] * capacity)
+        self.mask = capacity - 1
+        cdef Py_ssize_t row, slot
+        cdef unsigned long long code
+        for row in range(self.rows):
+            code = self.row_hash(row)
+            slot = <Py_ssize_t>(code & <unsigned long long>self.mask)
+            while self.slots[slot] >= 0:
+                slot = (slot + 1) & self.mask
+            self.slots[slot] = row
+            self.hashes[slot] = code
+        self.admitted = True
+
+    cdef unsigned long long row_hash(self, Py_ssize_t row) except? 0:
+        cdef unsigned long long value = 1469598103934665603
+        cdef Py_ssize_t i, position
+        value = (value ^ <unsigned long long>self.tuple_keys) * <unsigned long long>1099511628211
+        value = (value ^ <unsigned long long>self.width) * <unsigned long long>1099511628211
+        for i in range(self.width):
+            position = row * self.width + i
+            if self.kinds[position] == _KEY_TEXT:
+                value = (value ^ 3) * <unsigned long long>1099511628211
+                value = (value ^ <unsigned long long>PyObject_Hash(self.text[position])) * <unsigned long long>1099511628211
+            else:
+                value = (value ^ 1) * <unsigned long long>1099511628211
+                value = (value ^ <unsigned long long>self.numbers[position]) * <unsigned long long>1099511628211
+        return value
+
+    cdef bint equal(self, Py_ssize_t row, const KeyPart* parts) except -1:
+        cdef Py_ssize_t i, position
+        for i in range(self.width):
+            position = row * self.width + i
+            if parts[i].kind == _KEY_TEXT:
+                if self.kinds[position] != _KEY_TEXT:
+                    return False
+                if PyUnicode_Compare(<object>parts[i].text, self.text[position]) != 0:
+                    return False
+            else:
+                if self.kinds[position] == _KEY_TEXT or parts[i].number != self.numbers[position]:
+                    return False
+        return True
+
+    cdef Py_ssize_t find(self, const KeyPart* parts, Py_ssize_t count, bint tuple_key) except? -2:
+        cdef unsigned long long code
+        cdef Py_ssize_t slot, row
+        if not self.rows or count != self.width or tuple_key != self.tuple_keys:
+            return -1
+        code = _parts_hash(parts, count, tuple_key)
+        slot = <Py_ssize_t>(code & <unsigned long long>self.mask)
+        while self.slots[slot] >= 0:
+            row = self.slots[slot]
+            if code == self.hashes[slot] and self.equal(row, parts):
+                return row
+            slot = (slot + 1) & self.mask
+        return -1
+
+cdef class KeyedCache:
+    cdef object source, column
+    cdef KeyedView data
+    cdef Py_ssize_t index
+    cdef int column_kind
+
+cdef KeyedCache _keyed_cache(LookupContext context, object table, object column):
+    cdef KeyedCache cache
+    cdef KeyedView data
+    cdef object retired
+    if context._private_owner:
+        cache = context.keyed_cache
+        if cache is not None and cache.source is table and cache.column is column:
+            return cache
+    with cython.critical_section(context):
+        cache = context.keyed_cache
+        if cache is not None and cache.source is table and cache.column is column:
+            return cache
+        cache = KeyedCache()
+        cache.source = table
+        cache.column = column
+        cache.index = -1
+        cache.column_kind = 0
+        if type(table) is Table:
+            data = table._native_cache.get(KeyedView)
+            if data is None:
+                data = KeyedView(table)
+                table._native_cache[KeyedView] = data
+            if data.admitted:
+                cache.data = data
+                if type(column) is str:
+                    cache.column_kind = 1
+                    try: cache.index = data.columns.index(column)
+                    except ValueError: pass
+                elif type(column) is int or type(column) is bool:
+                    cache.column_kind = 2 if -_key_sys.maxsize - 1 <= column <= _key_sys.maxsize else 3
+                    if -data.value_width <= column < data.value_width:
+                        cache.index = column if column >= 0 else column + data.value_width
+        retired = context.keyed_cache
+        context.keyed_cache = cache
+    return cache
+
+cdef double lookup_keyed_float_f64(object conversion, object function, LookupContext context,
+                                   object table, const KeyPart* parts, Py_ssize_t count,
+                                   bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyedCache cache
+    cdef KeyedView data
+    cdef Py_ssize_t row, position
+    if conversion is _key_float and function is _lookup and _native_parts(parts, count):
+        cache = _keyed_cache(context, table, column)
+        data = cache.data
+        if data is not None and cache.column_kind:
+            row = data.find(parts, count, tuple_key)
+            if row < 0:
+                if default is _missing:
+                    raise KeyError(_original_key(parts, count, tuple_key))
+                return conversion(default)
+            if cache.index < 0:
+                if cache.column_kind == 1:
+                    raise ValueError('tuple.index(x): x not in tuple')
+                if cache.column_kind == 3:
+                    raise IndexError("cannot fit 'int' into an index-sized integer")
+                raise IndexError('tuple index out of range')
+            position = row * data.value_width + cache.index
+            if data.numeric[position]:
+                return data.values[position]
+            # The row/column interaction is already native. Invoke conversion
+            # on precisely the selected original scalar, preserving its error
+            # or user-defined conversion without calling Python lookup.
+            return conversion(data.raw_values[row][cache.index])
+    key = _original_key(parts, count, tuple_key)
+    return conversion(function(table, key, column)) if default is _missing else conversion(function(table, key, column, default))
+
+cdef double lookup_key0_float_f64(object conversion, object function, LookupContext context, object table, bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyPart[1] parts
+    return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 0, tuple_key, column, default)
+
+cdef double lookup_key1_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyPart[1] parts
+    if KeyArg0 is KeyInteger:
+        key_int(&parts[0], key0, False)
+    elif KeyArg0 is bint:
+        key_int(&parts[0], key0, True)
+    else:
+        key_text(&parts[0], key0)
+    return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 1, tuple_key, column, default)
+
+cdef double lookup_key2_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyPart[2] parts
+    if KeyArg0 is KeyInteger:
+        key_int(&parts[0], key0, False)
+    elif KeyArg0 is bint:
+        key_int(&parts[0], key0, True)
+    else:
+        key_text(&parts[0], key0)
+    if KeyArg1 is KeyInteger:
+        key_int(&parts[1], key1, False)
+    elif KeyArg1 is bint:
+        key_int(&parts[1], key1, True)
+    else:
+        key_text(&parts[1], key1)
+    return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 2, tuple_key, column, default)
+
+cdef double lookup_key3_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyPart[3] parts
+    if KeyArg0 is KeyInteger:
+        key_int(&parts[0], key0, False)
+    elif KeyArg0 is bint:
+        key_int(&parts[0], key0, True)
+    else:
+        key_text(&parts[0], key0)
+    if KeyArg1 is KeyInteger:
+        key_int(&parts[1], key1, False)
+    elif KeyArg1 is bint:
+        key_int(&parts[1], key1, True)
+    else:
+        key_text(&parts[1], key1)
+    if KeyArg2 is KeyInteger:
+        key_int(&parts[2], key2, False)
+    elif KeyArg2 is bint:
+        key_int(&parts[2], key2, True)
+    else:
+        key_text(&parts[2], key2)
+    return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 3, tuple_key, column, default)
+
+cdef double lookup_key4_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, KeyArg3 key3, bint tuple_key, object column, object default=_missing) except? -1:
+    cdef KeyPart[4] parts
+    if KeyArg0 is KeyInteger:
+        key_int(&parts[0], key0, False)
+    elif KeyArg0 is bint:
+        key_int(&parts[0], key0, True)
+    else:
+        key_text(&parts[0], key0)
+    if KeyArg1 is KeyInteger:
+        key_int(&parts[1], key1, False)
+    elif KeyArg1 is bint:
+        key_int(&parts[1], key1, True)
+    else:
+        key_text(&parts[1], key1)
+    if KeyArg2 is KeyInteger:
+        key_int(&parts[2], key2, False)
+    elif KeyArg2 is bint:
+        key_int(&parts[2], key2, True)
+    else:
+        key_text(&parts[2], key2)
+    if KeyArg3 is KeyInteger:
+        key_int(&parts[3], key3, False)
+    elif KeyArg3 is bint:
+        key_int(&parts[3], key3, True)
+    else:
+        key_text(&parts[3], key3)
+    return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 4, tuple_key, column, default)
+

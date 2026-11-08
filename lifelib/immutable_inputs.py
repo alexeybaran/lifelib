@@ -126,4 +126,10 @@ def freeze(value):
         return tuple(freeze(item) for item in value)
     if value is None or isinstance(value, (bool, int, float, str, bytes)):
         return value
+    # These pandas missing scalars are immutable, pickleable singletons. Keep
+    # their identity: replacing NA/NaT with NaN changes conversion exceptions.
+    if type(value).__module__.startswith('pandas.'):
+        from pandas import NA, NaT
+        if value is NA or value is NaT:
+            return value
     raise TypeError(f'unsupported immutable input value: {type(value).__name__}')
