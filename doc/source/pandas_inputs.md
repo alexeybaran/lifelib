@@ -1,38 +1,50 @@
-# Explicit numeric inputs from pandas
+# Explicit pandas input preparation
 
-The experimental `lifelib.pandas_inputs` API prepares owned numeric lookup
-resources while public model tables and reports remain pandas objects.
+Use the existing owned `Table` and `Record` structures for calculation inputs.
+Public pandas Data Cells and reports retain their original types and contracts.
 
 ```python
-from lifelib.pandas_inputs import numeric_table, lookup
+from lifelib import pandas_inputs as inputs, typed_inputs as tables
 
-# In an explicitly cached preparation Cell:
-rates = numeric_table(mort_table())
+# A preparation Cell depends on the unchanged public mortality-table Cell.
+def prepared_mortality():
+    return inputs.table(mort_table(), columns=('mort_rate',), groups=('sex',))
 
-# In a scalar actuarial expression:
-q = lookup(rates, (sex(), age(t)), 'mort_rate')
+# An actuarial formula uses the same table helpers as adjusted MYGA/VA.
+q = tables.lookup(tables.subtable(prepared_mortality(), sex()), age(t), 'mort_rate')
 ```
 
-`lookup` specifies `float(snapshot.loc[key, column])`, including its pandas
-selection and error behavior. `numeric_table` copies at the preparation boundary;
-a source edit affects a new snapshot. A model must explicitly connect preparation
-invalidation to its source rather than assume mutable pandas objects stay stable.
-This API does not silently change existing model input/cache contracts.
+`inputs.table` explicitly copies scalar input values into the existing `Table`,
+optionally nested in group `Record`s. It preserves row order and selected-column
+order. It does not implicitly sort, fill missing values, aggregate duplicate keys
+or convert every column to float. Numeric scalar widths become owned Python
+scalars during preparation; native provider resources are prepared from these
+normal inputs using the existing MYGA/VA mechanisms.
 
-The Cython provider admits unique ordinary index/column axes and primitive
-numeric columns up to 64 bits; it loads prepared float64 values directly.
-Unsupported dtypes, duplicate labels, partial keys, unusual labels, unknown
-columns and replaced helper callables retain the Python/pandas path. Numeric
-conversion follows the explicit float-result contract. Fallback is compatibility,
-not evidence of completed native coverage. `.at`, positional indexing, grouping,
-mask alignment and output construction are separate operations.
+`inputs.record(series)` prepares the fields of an already-selected public row.
+A model may retain a public `model_point()` Series and give a separate preparation
+Cell a normal dependency on it. `inputs.records(frame)` prepares row Records
+without the cross-column numeric coercion that pandas `iterrows` can perform.
+These are construction operations, not a second table framework.
 
-The normal provider registration and numeric-return ABI support live modelx,
-exported Python and generated Cython without model-specific compiler branches.
-Both provider entries preserve current helper binding; numeric keys remain
-objects at the ABI so boolean labels are not coerced to integers. Disposable
-context state reconstructs after pickle. Public pandas report construction and
-CSV I/O remain visible boundaries requiring their own validation and accounting.
+The existing Table contract requires unique keys and nonempty unique string
+columns. Unsupported scalar types, duplicate keys and ambiguous group declarations
+raise explicitly; they are not silently normalized. Public pandas inputs remain
+unchanged. Adjustments requiring other pandas semantics need their own qualified
+conversion, selection or compatibility path. Native coverage is tracked per
+operation rather than inferred from a constructor succeeding.
 
-This initial kernel is an experiment, not a claim of native execution of every
-regional pandas operation. No core promotion is implied.
+Live modelx invalidates dependent preparation through normal whole-value
+replacement and cleanup rules. Mutation inside a pandas object is not automatically
+tracked. Exported Python and compiled packages retain the existing requirement
+for explicit cleanup/re-preparation. Native resources remain disposable; public
+inputs and published Cell caches round-trip normally.
+
+The calculation target is the same native level as qualified adjusted MYGA/VA:
+typed numeric buffers and Cython provider operations, with separately accounted
+preparation/public-output boundaries and preserved compatibility behavior.
+Module-namespace helper calls require generic native metadata/lowering support;
+Python/live/export parity alone does not qualify their native calculation path.
+
+The earlier separate NumericTable provider is retained in experimental Git/evidence
+history as a donor. It is not a second canonical API.

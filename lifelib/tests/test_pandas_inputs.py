@@ -1,143 +1,91 @@
-"""Differential contracts for the explicitly prepared scalar lookup boundary."""
-import importlib
+"""Preparation contracts for the canonical existing Table/Record representation."""
+from copy import deepcopy
 import math
-from pathlib import Path
 import pickle
-import subprocess
-import sys
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from lifelib import pandas_inputs as h
+from lifelib import pandas_inputs as inputs, typed_inputs as h
+from lifelib.immutable_inputs import Table, Record
 
 
-@pytest.fixture(scope='module')
-def compiled_provider(tmp_path_factory):
-    root = tmp_path_factory.mktemp('native-pandas')
-    provider = Path(h.__file__).with_name('_native_pandas.pyx')
-    (root / 'probe.pyx').write_text(provider.read_text() + '''
-
-def invoke(function, table, key, column):
-    return lookup(function, table, key, column)
-
-def invoke_double(function, table, key, column):
-    return lookup_f64(function, None, table, key, column)
-''')
-    (root / 'setup.py').write_text('''from setuptools import setup
-from Cython.Build import cythonize
-setup(ext_modules=cythonize('probe.pyx', compiler_directives={'language_level': 3}))
-''')
-    run = subprocess.run([sys.executable, 'setup.py', 'build_ext', '--inplace'],
-                         cwd=root, capture_output=True, text=True)
-    (root / 'build.log').write_text(run.stdout + run.stderr)
-    assert run.returncode == 0, run.stdout + run.stderr
-    sys.path.insert(0, str(root))
-    try:
-        yield importlib.import_module('probe')
-    finally:
-        sys.path.remove(str(root))
-        sys.modules.pop('probe', None)
-
-
-@pytest.fixture(params=['invoke', 'invoke_double'])
-def native(compiled_provider, request):
-    return getattr(compiled_provider, request.param)
-
-
-def outcome(function):
-    try:
-        value = function()
-        return ('value', 'nan' if math.isnan(value) else value)
-    except Exception as error:
-        return ('exception', type(error), error.args)
-
-
-@pytest.mark.parametrize('frame,key,column', [
-    (pd.DataFrame({'rate': [0.1, 0.2]}, index=[8, 2]), 2, 'rate'),
-    (pd.DataFrame({'rate': [0.1]}, index=['M']), 'M', 'rate'),
-    (pd.DataFrame({'rate': [0.1]}, index=pd.MultiIndex.from_tuples([('M', 42)])), ('M', 42), 'rate'),
-    (pd.DataFrame({'rate': [float('nan'), -0.0]}, index=[0, 1]), 0, 'rate'),
-    (pd.DataFrame({'rate': [float('inf')]}, index=[0]), 0, 'rate'),
-    (pd.DataFrame({'rate': []}), 0, 'rate'),
-    (pd.DataFrame({'rate': [1.0]}, index=[1]), 0, 'rate'),
-    (pd.DataFrame({'rate': [1.0]}, index=[1]), 1, 'absent'),
-    (pd.DataFrame({'rate': [1.0, 2.0]}, index=[1, 1]), 1, 'rate'),
-    (pd.DataFrame([[1.0, 2.0]], columns=['rate', 'rate']), 0, 'rate'),
-    (pd.DataFrame({'rate': pd.Series([pd.NA], dtype='Float64')}), 0, 'rate'),
-    (pd.DataFrame({'rate': pd.Series([3], dtype='int64')}), 0, 'rate'),
-    (pd.DataFrame({'rate': ['0.3']}), 0, 'rate'),
-    (pd.DataFrame({'rate': [None]}), 0, 'rate'),
-    (pd.DataFrame({'rate': [2.0]}, index=[True]), 1, 'rate'),
-    (pd.DataFrame({'rate': [2.0]}, index=[1.0]), 1, 'rate'),
-    (pd.DataFrame({'rate': [2.0]}, index=[1]), np.int64(1), 'rate'),
-    (pd.DataFrame({'rate': [1.0, 2.0]}, index=pd.MultiIndex.from_tuples([('M', 41), ('M', 42)])), 'M', 'rate'),
-])
-def test_native_matches_pandas(native, frame, key, column):
-    table = h.numeric_table(frame)
-    expected = outcome(lambda: float(frame.loc[key, column]))
-    assert outcome(lambda: h.lookup(table, key, column)) == expected
-    assert outcome(lambda: native(h.lookup, table, key, column)) == expected
+def test_mixed_values_owned_and_no_iterrows_numeric_coercion():
+    source = pd.DataFrame({'age': np.array([2**53 + 1, 42], dtype='int64'),
+                           'rate': [0.1, float('nan')],
+                           'label': ['M', 'F'], 'flag': [True, False]}, index=[8, 2])
+    before = source.copy(deep=True)
+    table = inputs.table(source)
+    assert type(table) is Table
+    assert table['keys'] == (8, 2)
+    assert type(h.lookup(table, 8, 'age')) is int
+    assert h.lookup(table, 8, 'age') == 2**53 + 1
+    assert type(h.lookup(table, 8, 'flag')) is bool
+    assert h.lookup(table, 2, 'label') == 'F'
+    assert math.isnan(h.lookup(table, 2, 'rate'))
+    source.loc[8, 'rate'] = 9.0
+    assert h.lookup(table, 8, 'rate') == 0.1
+    assert h.lookup(inputs.table(source), 8, 'rate') == 9.0
+    pd.testing.assert_frame_equal(before, source.assign(rate=[0.1, float('nan')]))
+    assert deepcopy(table) is table
     restored = pickle.loads(pickle.dumps(table))
-    assert outcome(lambda: native(h.lookup, restored, key, column)) == expected
+    assert h.lookup(restored, 8, 'age') == 2**53 + 1
 
 
-def test_explicit_snapshot_lifetime_and_signed_zero(native):
-    frame = pd.DataFrame({'rate': [-0.0]}, index=[2])
-    table = h.numeric_table(frame)
-    frame.loc[2, 'rate'] = 5.0
-    assert math.copysign(1.0, native(h.lookup, table, 2, 'rate')) == -1.0
-    assert native(h.lookup, h.numeric_table(frame), 2, 'rate') == 5.0
+def test_explicit_group_order_and_remaining_tuple_keys():
+    index = pd.MultiIndex.from_tuples([('M', 'N', 42), ('F', 'Y', 41), ('M', 'N', 40)],
+                                     names=['sex', 'smoker', 'age'])
+    frame = pd.DataFrame({'rate': [0.2, 0.3, 0.1]}, index=index)
+    groups = inputs.table(frame, groups=('sex', 'smoker'))
+    assert type(groups) is Record and tuple(groups) == ('M', 'F')
+    assert groups['M']['N']['keys'] == (42, 40)
+    assert h.lookup(groups['M']['N'], 40, 'rate') == 0.1
+    assert h.previous(groups['M']['N'], 41, 'rate') == 0.1
+    partly = inputs.table(frame, groups=('sex',))
+    assert partly['M']['keys'] == (('N', 42), ('N', 40))
+    assert h.lookup(partly['M'], ('N', 42), 'rate') == 0.2
+    restored = pickle.loads(pickle.dumps(groups))
+    assert h.lookup(restored['F']['Y'], 41, 'rate') == 0.3
 
 
-def test_callable_override_identity_and_exception(native):
-    table = h.numeric_table(pd.DataFrame({'rate': [1.0]}))
-    calls = []
-    failure = LookupError('sentinel')
-    def replacement(*args):
-        calls.append(args)
-        raise failure
-    with pytest.raises(LookupError) as caught:
-        native(replacement, table, 0, 'rate')
-    assert caught.value is failure
-    assert calls == [(table, 0, 'rate')]
+def test_empty_frames_and_declared_column_order():
+    source = pd.DataFrame({'a': [], 'b': []})
+    table = inputs.table(source, columns=('b', 'a'))
+    assert table['keys'] == () and table['columns'] == ('b', 'a')
+    assert h.lookup(table, 0, 'a', 7.0) == 7.0
+    with pytest.raises(KeyError): h.lookup(table, 0, 'a')
+    assert len(inputs.records(source)) == 0
 
 
-def test_native_load_does_not_call_pandas_indexer(native, monkeypatch):
-    frame = pd.DataFrame({'rate': [1.5]}, index=[4])
-    table = h.numeric_table(frame)
-    def forbidden(_):
-        raise AssertionError('pandas indexing reached')
-    monkeypatch.setattr(pd.DataFrame, 'loc', property(forbidden))
-    assert native(h.lookup, table, 4, 'rate') == 1.5
-    with pytest.raises(AssertionError, match='pandas indexing'):
-        h.lookup(table, 4, 'rate')
+def test_records_preserve_scalar_types_and_nulls():
+    source = pd.DataFrame({'integer': [2**53 + 1], 'rate': [0.1], 'name': ['M'],
+                           'optional': [None], 'flag': [True]}, index=['p'])
+    rows = inputs.records(source)
+    row = rows['p']
+    assert type(rows) is Record and type(row) is Record
+    assert type(row['integer']) is int and row['integer'] == 2**53 + 1
+    assert row['optional'] is None and row['flag'] is True
+    assert pickle.loads(pickle.dumps(rows))['p']['name'] == 'M'
 
 
-def test_mixed_columns_and_numeric_conversion_boundaries(native):
-    frame = pd.DataFrame({'label': ['M', 'F'],
-                          'rate': [0.1, 0.2],
-                          'integer': np.array([2**63 - 1, -(2**63)], dtype=np.int64),
-                          'unsigned': np.array([2**64 - 1, 2**53 + 1], dtype=np.uint64),
-                          'boolean': [True, False],
-                          'single': np.array([0.1, -0.0], dtype=np.float32)})
-    table = h.numeric_table(frame)
-    for column in frame.columns:
-        for key in frame.index:
-            assert outcome(lambda: native(h.lookup, table, key, column)) == outcome(
-                lambda: float(frame.loc[key, column]))
+@pytest.mark.parametrize('frame,kwargs,error', [
+    (pd.DataFrame({'a': [1, 2]}, index=[1, 1]), {}, 'duplicate table key'),
+    (pd.DataFrame([[1, 2]], columns=['a', 'a']), {}, 'unique'),
+    (pd.DataFrame({'a': [1]}), {'groups': ('absent',)}, 'unique index levels'),
+    (pd.DataFrame({'a': [1]}, index=pd.Index([1], name='age')), {'groups': ('age',)}, 'leave at least'),
+    (pd.DataFrame({'a': [1]}), {'columns': ()}, 'nonempty'),
+])
+def test_constructor_errors_are_explicit_not_silent_coercions(frame, kwargs, error):
+    with pytest.raises(ValueError, match=error): inputs.table(frame, **kwargs)
 
 
-def test_float_callable_replacement_is_observed(native, monkeypatch):
-    import builtins
-    table = h.numeric_table(pd.DataFrame({'rate': [1.0]}))
-    calls = []
-    def replacement(value):
-        calls.append(value)
-        return 7.0
-    with monkeypatch.context() as patch:
-        patch.setattr(builtins, 'float', replacement)
-        result = native(h.lookup, table, 0, 'rate')
-    assert result == 7.0
-    assert calls == [1.0]
+def test_public_row_can_remain_series_with_separate_owned_record():
+    frame = pd.DataFrame({'age': [42], 'rate': [0.1]})
+    row = frame.loc[0]
+    assert row.dtype == np.dtype('float64')
+    prepared = inputs.record(row)
+    assert type(prepared['age']) is float and prepared['age'] == row['age']
+    row['rate'] = 0.9
+    assert prepared['rate'] == 0.1
+    assert inputs.record(row)['rate'] == 0.9
