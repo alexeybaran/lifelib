@@ -9,9 +9,11 @@ import builtins
 import hashlib
 
 from .typed_inputs import all_true, any_true
+from . import typed_inputs as _operations
 
 
 _HELPERS = {'all': ('all_true', all_true), 'any': ('any_true', any_true)}
+_NAMESPACE = 'generators'
 
 
 def _digest(source):
@@ -37,6 +39,8 @@ def _rewrite(source, available):
         elif isinstance(node, ast.ExceptHandler) and node.name:
             bound.add(node.name)
     available = set(available) - bound
+    if _NAMESPACE in bound:
+        return source, ()
     # A nested function may receive a different global environment on export.
     functions = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Lambda))]
     if len(functions) != 1:
@@ -50,7 +54,8 @@ def _rewrite(source, available):
                     and len(node.args) == 1 and not node.keywords
                     and not isinstance(node.args[0], ast.Starred)):
                 used.add(node.func.id)
-                node.func.id = _HELPERS[node.func.id][0]
+                node.func = ast.Attribute(ast.Name(_NAMESPACE, ast.Load()),
+                                          _HELPERS[node.func.id][0], ast.Load())
             return node
 
     Rewrite().visit(tree)
@@ -62,19 +67,23 @@ def apply_generators(model):
 
     Return per-Cell before/after sources and hashes for review and provenance.
     Existing Cells/References named all/any prevent that adaptation; a conflicting
-    all_true/any_true binding also prevents it. Do not infer immutability of other
+    generators namespace also prevents it. The module Reference serializes as an
+    import, preserving formulas-only folders without embedded function pickles.
+    Do not infer immutability of other
     model References or report native coverage from this authoring adjustment.
     """
     receipt = []
 
     def visit(space):
         available = []
+        namespace = getattr(space, _NAMESPACE, _operations)
+        if namespace is not _operations:
+            return
         for name, (helper, function) in _HELPERS.items():
             if name in space.cells:
                 continue
             current = getattr(space, name, getattr(builtins, name))
-            existing = getattr(space, helper, function)
-            if current is getattr(builtins, name) and existing is function:
+            if current is getattr(builtins, name) and getattr(_operations, helper) is function:
                 available.append(name)
         for cell in list(space.cells.values()):
             if cell.formula is None:
@@ -83,16 +92,14 @@ def apply_generators(model):
             after, used = _rewrite(before, available)
             if not used:
                 continue
-            for name in used:
-                helper, function = _HELPERS[name]
-                setattr(space, helper, function)
+            setattr(space, _NAMESPACE, _operations)
             doc = cell.doc
             cell.formula = after
             if doc:
                 cell.doc = doc
             receipt.append({'cell': cell.fullname, 'before': before, 'after': after,
                             'before_sha256': _digest(before), 'after_sha256': _digest(after),
-                            'helpers': [_HELPERS[name][0] for name in used],
+                            'helpers': [_NAMESPACE + '.' + _HELPERS[name][0] for name in used],
                             'native_coverage': 'UNQUALIFIED'})
         for child in list(space.spaces.values()):
             visit(child)
