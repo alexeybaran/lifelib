@@ -59,6 +59,7 @@ cdef class LookupContext:
     cdef object column_first, column_second
     cdef Py_ssize_t index_first, index_second
     cdef tuple grouped
+    cdef object keyed_cache
     cdef object get(self, object table, object column, Py_ssize_t* index)
 cdef double lookup_f64(object function, LookupContext context, object table,
                        long long key, object column, object default=*) except? -1
@@ -103,3 +104,45 @@ cdef int group_context_value(LookupContext context, object sub_fn, object contai
 cdef double lookup_float_f64(object conversion, object function, LookupContext context,
                              object table, long long key, object column,
                              object default=*) except? -1
+
+# Compound lookup keys are packed on the native stack. Object arguments stay
+# strongly referenced for the entire fused wrapper call; exact Unicode admits.
+from cpython.ref cimport PyObject
+cdef struct KeyPart:
+    int kind
+    long long number
+    PyObject* text
+cdef void key_int(KeyPart*, long long, bint) noexcept
+cdef void key_text(KeyPart*, object) noexcept
+cdef double lookup_keyed_float_f64(object, object, LookupContext, object,
+    const KeyPart*, Py_ssize_t, bint, object, object default=*) except? -1
+ctypedef long long KeyInteger
+ctypedef fused KeyArg0:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg1:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg2:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg3:
+    KeyInteger
+    bint
+    object
+
+cdef double lookup_key0_float_f64(object conversion, object function, LookupContext context, object table, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key1_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key2_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key3_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key4_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, KeyArg3 key3, bint tuple_key, object column, object default=*) except? -1

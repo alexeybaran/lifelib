@@ -46,5 +46,34 @@ preparation/public-output boundaries and preserved compatibility behavior.
 Module-namespace helper calls require generic native metadata/lowering support;
 Python/live/export parity alone does not qualify their native calculation path.
 
+Complete keys can stay together in an expression:
+
+```python
+def prepared_mortality():
+    return inputs.table(mort_table(), columns=('mort_rate',))
+
+q = float(tables.lookup(prepared_mortality(), (sex(), age(t)), 'mort_rate'))
+```
+
+This avoids selecting an earlier group before later key components have been
+evaluated. Native contextual providers pack admitted components on the C stack;
+they retain string/object references and preserve boolean keys. The native view
+reuses the same Table, includes empty inputs, prepares exact builtin numeric
+conversions, and defers conversion errors until the selected scalar is read.
+Pandas NA/NaT remain their original immutable singletons rather than being
+changed to NaN. Other callable/type/layout cases keep the compatibility path.
+
+`tables.keys(table)` returns the same owned key tuple in input order. Its
+registered native iteration producer exposes an owner-retaining int64 span;
+unsupported bool/float/text/wide-integer key spans decline admission without
+calling a replacement function. Generator consumers belong to the separate
+generator lowering implementation and need combined evidence.
+
+The Table lookup contract is not an arbitrary pandas index interpreter. Every
+source adjustment needs a checked key/column-domain equivalence. In particular,
+some pandas MultiIndex `.at` missing-key errors expose an encoded integer;
+plain Table lookup has a different error argument. That source operation is
+still unqualified until its compatibility metadata/native error path is added.
+
 The earlier separate NumericTable provider is retained in experimental Git/evidence
 history as a donor. It is not a second canonical API.
