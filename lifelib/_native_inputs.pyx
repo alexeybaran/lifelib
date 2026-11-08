@@ -706,3 +706,26 @@ cdef double prepare_previous_f64(object function, LookupContext context, object 
         data = context.get(table,column,&col)
         remember_numeric_resource(context,table,column,data,col)
     return value
+
+# Preserve explicit conversion semantics, including replaced callables.
+from builtins import float as _float_type
+
+cdef double lookup_float_f64(object conversion, object function, LookupContext context,
+                             object table, long long key, object column,
+                             object default=_missing) except? -1:
+    cdef TableView data
+    cdef Py_ssize_t index, col = -1
+    if conversion is _float_type and function is _lookup:
+        data = context.get(table, column, &col)
+        if data is not None and data.numeric:
+            index = data.right(key) - 1
+            if index < 0 or data.integers[index] != key:
+                if default is _missing:
+                    raise KeyError(key)
+                # float(default) must parse strings, unlike implicit C conversion.
+                return conversion(default)
+            if col >= 0:
+                return data.numbers[data.sorted_positions[index] * data.width + col]
+    if default is _missing:
+        return conversion(function(table, key, column))
+    return conversion(function(table, key, column, default))

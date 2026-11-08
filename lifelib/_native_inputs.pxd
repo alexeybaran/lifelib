@@ -98,3 +98,8 @@ cdef bint bound_group_probe(LookupContext context, long long group, Py_ssize_t* 
 cdef int bound_group_value(LookupContext context, Py_ssize_t slot, long long key, double* value) except -1
 cdef int group_context_value(LookupContext context, object sub_fn, object contains_fn,
     object lookup_fn, object prepared, Py_ssize_t slot, long long key, double* value) except -1
+
+# Explicit float conversion, distinct from implicit C double conversion.
+cdef double lookup_float_f64(object conversion, object function, LookupContext context,
+                             object table, long long key, object column,
+                             object default=*) except? -1
