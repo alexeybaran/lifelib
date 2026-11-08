@@ -146,3 +146,6 @@ cdef double lookup_key2_float_f64(object conversion, object function, LookupCont
 cdef double lookup_key3_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, bint tuple_key, object column, object default=*) except? -1
 
 cdef double lookup_key4_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, KeyArg3 key3, bint tuple_key, object column, object default=*) except? -1
+
+cdef object indexed_lookup(object,object,object,object default=*)
+cdef object indexed_contains(object,object)

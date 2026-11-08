@@ -71,9 +71,12 @@ generator lowering implementation and need combined evidence.
 
 The Table lookup contract is not an arbitrary pandas index interpreter. Every
 source adjustment needs a checked key/column-domain equivalence. In particular,
-some pandas MultiIndex `.at` missing-key errors expose an encoded integer;
-plain Table lookup has a different error argument. That source operation is
-still unqualified until its compatibility metadata/native error path is added.
+some pandas MultiIndex `.at` missing-key errors expose an encoded integer.
+Use `inputs.table(frame, columns=..., indexing='at')` to retain the necessary
+owned levels/offsets/boolean-label metadata. Its native error path preserves
+that behavior for admitted full scalar keys, including retained empty levels.
+It stores no live pandas Index in the Table. This does not qualify unrelated
+index shapes or all models by itself.
 
 The earlier separate NumericTable provider is retained in experimental Git/evidence
 history as a donor. It is not a second canonical API.

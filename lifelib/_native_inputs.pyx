@@ -37,6 +37,7 @@ cdef object _prepared_interpolation = _native_operations['prepared_interpolation
 
 
 cdef class TableView:
+    cdef bint pandas_at
     cdef tuple keys, values, columns, ordered
     cdef dict positions, column_positions
     cdef long long[::1] integers
@@ -50,9 +51,10 @@ cdef class TableView:
     cdef double[::1] numbers
 
     def __init__(self, table):
-        self.keys = table['keys']
-        self.values = table['values']
-        self.columns = table['columns']
+        self.pandas_at = table._index_error is not None
+        self.keys = table._keys
+        self.values = table._values
+        self.columns = table._columns
         self.positions = dict(zip(self.keys, range(len(self.keys))))
         self.column_positions = dict(zip(self.columns, range(len(self.columns))))
         self.ordered = table._ordered
@@ -115,6 +117,8 @@ cdef TableView view(object table):
 
 cdef object lookup(object function, object table, object key, object column, object default=_missing):
     cdef TableView data
+    if function is _lookup and type(table) is Table and table._index_error is not None:
+        return indexed_lookup(table,key,column,default)
     if (function is _lookup and type(table) is Table
             and (type(column) in (str, int) or isinstance(column, IntEnum))):
         data = view(table)
@@ -143,6 +147,8 @@ cdef object previous(object function, object table, object key, object column, o
 
 
 cdef object contains(object function, object table, object key):
+    if function is _contains and type(table) is Table and table._index_error is not None:
+        return indexed_contains(table,key)
     if function is _contains and type(table) is Table:
         return key in view(table).positions
     return function(table, key)
@@ -718,7 +724,7 @@ cdef double lookup_float_f64(object conversion, object function, LookupContext c
     cdef KeyPart part
     if conversion is _float_type and function is _lookup:
         data = context.get(table, column, &col)
-        if data is not None and data.numeric:
+        if data is not None and data.numeric and not data.pandas_at:
             index = data.right(key) - 1
             if index < 0 or data.integers[index] != key:
                 if default is _missing:
@@ -790,6 +796,10 @@ cdef object _original_key(const KeyPart* parts, Py_ssize_t count, bint tuple_key
     return tuple(values) if tuple_key else values[0]
 
 cdef class KeyedView:
+    cdef tuple at_levels, at_offsets
+    cdef signed char[::1] boolean_modes
+    cdef long long at_bias
+    cdef bint at_multi
     cdef object owner
     cdef tuple text, columns, raw_values
     cdef long long[::1] numbers, kinds, slots
@@ -802,10 +812,23 @@ cdef class KeyedView:
     def __init__(self, table):
         self.admitted = False
         self.owner = table
-        keys = table['keys']
+        self.at_levels = ()
+        self.at_offsets = ()
+        self.at_multi = False
+        self.at_bias = 0
+        spec = table._index_error
+        if spec is not None:
+            spec = spec._index
+        self.boolean_modes = array('b', () if spec is None else spec['boolean_modes'])
+        if spec is not None:
+            self.at_multi = spec['multi']
+            self.at_bias = spec['bias']
+            self.at_offsets = spec['offsets']
+            self.at_levels = tuple(KeyedView(level) for level in spec['level_tables'])
+        keys = table._keys
         self.rows = len(keys)
-        self.columns = table['columns']
-        self.raw_values = table['values']
+        self.columns = table._columns
+        self.raw_values = table._values
         self.value_width = len(self.columns)
         self.width = 0
         self.tuple_keys = False
@@ -887,6 +910,9 @@ cdef class KeyedView:
         cdef Py_ssize_t i, position
         for i in range(self.width):
             position = row * self.width + i
+            if self.at_levels and self.boolean_modes[i] and (
+                    (parts[i].kind == _KEY_BOOL) != (self.kinds[position] == _KEY_BOOL)):
+                return False
             if parts[i].kind == _KEY_TEXT:
                 if self.kinds[position] != _KEY_TEXT:
                     return False
@@ -910,6 +936,23 @@ cdef class KeyedView:
                 return row
             slot = (slot + 1) & self.mask
         return -1
+
+    cdef object error_key(self, const KeyPart* parts, Py_ssize_t count, bint tuple_key):
+        cdef Py_ssize_t i, position
+        cdef KeyedView level
+        if not self.at_multi or not tuple_key or count != len(self.at_levels):
+            return _original_key(parts, count, tuple_key)
+        encoded = 0
+        for i in range(count):
+            if (self.boolean_modes[i] == 1 and parts[i].kind != _KEY_BOOL or
+                    self.boolean_modes[i] == 2 and parts[i].kind == _KEY_BOOL):
+                return _original_key(parts, count, tuple_key)
+            level = self.at_levels[i]
+            position = level.find(&parts[i], 1, False)
+            if position < 0:
+                return _original_key(parts, count, tuple_key)
+            encoded |= (position + self.at_bias) << self.at_offsets[i]
+        return encoded
 
 cdef class KeyedCache:
     cdef object source, column
@@ -966,7 +1009,7 @@ cdef double lookup_keyed_float_f64(object conversion, object function, LookupCon
             row = data.find(parts, count, tuple_key)
             if row < 0:
                 if default is _missing:
-                    raise KeyError(_original_key(parts, count, tuple_key))
+                    raise KeyError(data.error_key(parts, count, tuple_key))
                 return conversion(default)
             if cache.index < 0:
                 if cache.column_kind == 1:
@@ -986,6 +1029,7 @@ cdef double lookup_keyed_float_f64(object conversion, object function, LookupCon
 
 cdef double lookup_key0_float_f64(object conversion, object function, LookupContext context, object table, bint tuple_key, object column, object default=_missing) except? -1:
     cdef KeyPart[1] parts
+    key_int(&parts[0], 0, False)
     return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 0, tuple_key, column, default)
 
 cdef double lookup_key1_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, bint tuple_key, object column, object default=_missing) except? -1:
@@ -1064,3 +1108,68 @@ cdef double lookup_key4_float_f64(object conversion, object function, LookupCont
         key_text(&parts[3], key3)
     return lookup_keyed_float_f64(conversion, function, context, table, &parts[0], 4, tuple_key, column, default)
 
+
+cdef class IndexedContext:
+    pass
+
+
+cdef LookupContext _indexed_context(object table):
+    cdef LookupContext context
+    context = table._native_cache.get(IndexedContext)
+    if context is None:
+        context = LookupContext()
+        table._native_cache[IndexedContext] = context
+    return context
+
+
+cdef void _pack_part(object value, KeyPart* part) except *:
+    if type(value) in (int, bool) and -(1 << 63) <= value < (1 << 63):
+        key_int(part, value, type(value) is bool)
+    else:
+        key_text(part, value)
+
+
+cdef bint _pack_key(object key, KeyPart* parts, Py_ssize_t* count, bint* tuple_key) except -1:
+    cdef Py_ssize_t i
+    tuple_key[0] = type(key) is tuple
+    if not tuple_key[0]:
+        count[0] = 1
+        _pack_part(key, &parts[0])
+        return _native_parts(parts, 1)
+    count[0] = len(key)
+    if count[0] > 4:
+        return False
+    for i in range(count[0]):
+        _pack_part(key[i], &parts[i])
+    return _native_parts(parts, count[0])
+
+cdef object indexed_lookup(object table, object key, object column, object default=_missing):
+    cdef KeyPart[4] parts
+    cdef Py_ssize_t count, row
+    cdef bint tuple_key
+    cdef KeyedCache cache
+    cdef KeyedView data
+    if _pack_key(key, &parts[0], &count, &tuple_key):
+        cache = _keyed_cache(_indexed_context(table), table, column)
+        data = cache.data
+        if data is not None and cache.index >= 0:
+            row = data.find(&parts[0], count, tuple_key)
+            if row < 0:
+                if default is _missing:
+                    raise KeyError(data.error_key(&parts[0], count, tuple_key))
+                return default
+            return data.raw_values[row][cache.index]
+    return _lookup(table, key, column) if default is _missing else _lookup(table, key, column, default)
+
+cdef object indexed_contains(object table, object key):
+    cdef KeyPart[4] parts
+    cdef Py_ssize_t count
+    cdef bint tuple_key
+    cdef KeyedCache cache
+    cdef KeyedView data
+    if _pack_key(key, &parts[0], &count, &tuple_key):
+        cache = _keyed_cache(_indexed_context(table), table, 0)
+        data = cache.data
+        if data is not None:
+            return data.find(&parts[0], count, tuple_key) >= 0
+    return _contains(table, key)
