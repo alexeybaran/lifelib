@@ -747,7 +747,14 @@ cdef enum:
     _KEY_INT = 1
     _KEY_BOOL = 2
     _KEY_TEXT = 3
-    _KEY_OBJECT = 4
+    _KEY_FLOAT_INT = 4
+    _KEY_FLOAT = 5
+    _KEY_OBJECT = 6
+
+cdef union FloatKeyBits:
+    double value
+    unsigned long long bits
+
 
 cdef void key_int(KeyPart* part, long long value, bint boolean) noexcept:
     part.kind = _KEY_BOOL if boolean else _KEY_INT
@@ -755,14 +762,30 @@ cdef void key_int(KeyPart* part, long long value, bint boolean) noexcept:
     part.text = NULL
 
 cdef void key_text(KeyPart* part, object value) noexcept:
-    part.kind = _KEY_TEXT if type(value) is str else _KEY_OBJECT
+    cdef double number
+    cdef FloatKeyBits storage
     part.number = 0
     part.text = <PyObject*>value
+    if type(value) is str:
+        part.kind = _KEY_TEXT
+    elif type(value) is float:
+        number = PyFloat_AS_DOUBLE(value)
+        if not isfinite(number):
+            part.kind = _KEY_OBJECT
+        elif -9223372036854775808.0 <= number < 9223372036854775808.0 and floor(number) == number:
+            part.kind = _KEY_FLOAT_INT
+            part.number = <long long>number
+        else:
+            part.kind = _KEY_FLOAT
+            storage.value = number
+            part.number = <long long>storage.bits
+    else:
+        part.kind = _KEY_OBJECT
 
 cdef bint _native_parts(const KeyPart* parts, Py_ssize_t count) noexcept:
     cdef Py_ssize_t i
     for i in range(count):
-        if parts[i].kind not in (_KEY_INT, _KEY_BOOL, _KEY_TEXT):
+        if parts[i].kind not in (_KEY_INT, _KEY_BOOL, _KEY_TEXT, _KEY_FLOAT_INT, _KEY_FLOAT):
             return False
     return True
 
@@ -775,6 +798,9 @@ cdef unsigned long long _parts_hash(const KeyPart* parts, Py_ssize_t count, bint
         if parts[i].kind == _KEY_TEXT:
             value = (value ^ 3) * <unsigned long long>1099511628211
             value = (value ^ <unsigned long long>PyObject_Hash(<object>parts[i].text)) * <unsigned long long>1099511628211
+        elif parts[i].kind == _KEY_FLOAT:
+            value = (value ^ 4) * <unsigned long long>1099511628211
+            value = (value ^ <unsigned long long>parts[i].number) * <unsigned long long>1099511628211
         else:
             # bool and int have equal-key semantics in the existing Table.
             value = (value ^ 1) * <unsigned long long>1099511628211
@@ -810,6 +836,7 @@ cdef class KeyedView:
     cdef bint tuple_keys, admitted
 
     def __init__(self, table):
+        cdef KeyPart packed
         self.admitted = False
         self.owner = table
         self.at_levels = ()
@@ -850,6 +877,11 @@ cdef class KeyedView:
                 elif type(part) in (int, bool) and -(1 << 63) <= part < (1 << 63):
                     kinds.append(_KEY_BOOL if type(part) is bool else _KEY_INT)
                     numbers.append(part); texts.append(None)
+                elif type(part) is float:
+                    key_text(&packed, part)
+                    if packed.kind == _KEY_OBJECT:
+                        return
+                    kinds.append(packed.kind); numbers.append(packed.number); texts.append(part)
                 else:
                     return
         self.kinds = array('q', kinds)
@@ -901,6 +933,9 @@ cdef class KeyedView:
             if self.kinds[position] == _KEY_TEXT:
                 value = (value ^ 3) * <unsigned long long>1099511628211
                 value = (value ^ <unsigned long long>PyObject_Hash(self.text[position])) * <unsigned long long>1099511628211
+            elif self.kinds[position] == _KEY_FLOAT:
+                value = (value ^ 4) * <unsigned long long>1099511628211
+                value = (value ^ <unsigned long long>self.numbers[position]) * <unsigned long long>1099511628211
             else:
                 value = (value ^ 1) * <unsigned long long>1099511628211
                 value = (value ^ <unsigned long long>self.numbers[position]) * <unsigned long long>1099511628211
@@ -918,8 +953,11 @@ cdef class KeyedView:
                     return False
                 if PyUnicode_Compare(<object>parts[i].text, self.text[position]) != 0:
                     return False
+            elif parts[i].kind == _KEY_FLOAT:
+                if self.kinds[position] != _KEY_FLOAT or parts[i].number != self.numbers[position]:
+                    return False
             else:
-                if self.kinds[position] == _KEY_TEXT or parts[i].number != self.numbers[position]:
+                if self.kinds[position] not in (_KEY_INT, _KEY_BOOL, _KEY_FLOAT_INT) or parts[i].number != self.numbers[position]:
                     return False
         return True
 
@@ -1173,3 +1211,79 @@ cdef object indexed_contains(object table, object key):
         if data is not None:
             return data.find(&parts[0], count, tuple_key) >= 0
     return _contains(table, key)
+
+
+from builtins import int as _typed_int, bool as _typed_bool, str as _typed_str
+from lifelib.typed_inputs import _typed_value as _typed_python_value
+cdef object _lookup_float_fn = _native_operations['lookup_float']
+cdef object _lookup_int_fn = _native_operations['lookup_int']
+cdef object _lookup_bool_fn = _native_operations['lookup_bool']
+cdef object _lookup_str_fn = _native_operations['lookup_str']
+
+
+cdef object _explicit_value(object source, object key, object column, object default):
+    if type(source) is Record:
+        if column is not _missing:
+            if default is not _missing:
+                raise TypeError('Record lookup accepts one optional default')
+            default = column
+        value = source._index.get(key, _missing)
+        if value is _missing:
+            if default is _missing:
+                raise KeyError(key)
+            return default
+        return value
+    if column is _missing:
+        raise TypeError('Table lookup requires a column')
+    if type(source) is Table:
+        return indexed_lookup(source, key, column, default)
+    if default is _missing:
+        return _typed_python_value(source, key, column)
+    return _typed_python_value(source, key, column, default)
+
+
+cdef object _explicit_fallback(object function, object source, object key, object column, object default):
+    if column is _missing:
+        return function(source, key) if default is _missing else function(source, key, default=default)
+    return function(source,key,column) if default is _missing else function(source,key,column,default)
+
+
+cdef double lookup_float(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+    cdef KeyPart[4] parts
+    cdef Py_ssize_t count
+    cdef bint tuple_key
+    if function is not _lookup_float_fn:
+        return _explicit_fallback(function,source,key,column,default)
+    if type(source) is Table and column is not _missing and _pack_key(key,&parts[0],&count,&tuple_key):
+        return lookup_keyed_float_f64(_float_type,_lookup,_indexed_context(source),source,
+                                      &parts[0],count,tuple_key,column,default)
+    return _float_type(_explicit_value(source,key,column,default))
+
+
+cdef long long lookup_int(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+    if function is not _lookup_int_fn:
+        return _explicit_fallback(function,source,key,column,default)
+    result = _typed_int(_explicit_value(source,key,column,default))
+    if not -(1 << 63) <= result < (1 << 63):
+        raise OverflowError('lookup_int result outside signed 64-bit range')
+    return result
+
+
+cdef bint lookup_bool(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+    if function is not _lookup_bool_fn:
+        return _explicit_fallback(function,source,key,column,default)
+    return _typed_bool(_explicit_value(source,key,column,default))
+
+
+cdef str lookup_str(object function, object source, object key, object column=_missing, object default=_missing):
+    if function is not _lookup_str_fn:
+        return _explicit_fallback(function,source,key,column,default)
+    return _typed_str(_explicit_value(source,key,column,default))
+
+
+cdef object _lookup_object_fn = _native_operations['lookup_object']
+
+cdef object lookup_object(object function, object source, object key, object column=_missing, object default=_missing):
+    if function is not _lookup_object_fn:
+        return _explicit_fallback(function,source,key,column,default)
+    return _explicit_value(source,key,column,default)

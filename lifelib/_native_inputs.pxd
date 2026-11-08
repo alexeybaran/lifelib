@@ -149,3 +149,10 @@ cdef double lookup_key4_float_f64(object conversion, object function, LookupCont
 
 cdef object indexed_lookup(object,object,object,object default=*)
 cdef object indexed_contains(object,object)
+
+cdef double lookup_float(object function, object source, object key, object column=*, object default=*) except? -1
+cdef long long lookup_int(object function, object source, object key, object column=*, object default=*) except? -1
+cdef bint lookup_bool(object function, object source, object key, object column=*, object default=*) except? -1
+cdef str lookup_str(object function, object source, object key, object column=*, object default=*)
+
+cdef object lookup_object(object function, object source, object key, object column=*, object default=*)

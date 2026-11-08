@@ -174,3 +174,63 @@ lookup.__modelx_cython_float_numeric__ = 'lookup_float_f64'
 lookup.__modelx_cython_keyed_float_numeric__ = (
     'lookup_key0_float_f64', 'lookup_key1_float_f64', 'lookup_key2_float_f64',
     'lookup_key3_float_f64', 'lookup_key4_float_f64')
+
+
+# Explicit operations: their .pxd return declarations drive native typing.
+_TYPED_LOOKUP = lookup
+_LOOKUP_INT, _LOOKUP_FLOAT, _LOOKUP_BOOL, _LOOKUP_STR = int, float, bool, str
+def _typed_value(source, key, column=_MISSING, default=_MISSING):
+    from .immutable_inputs import Record
+    if isinstance(source, Record):
+        if column is not _MISSING:
+            if default is not _MISSING:
+                raise TypeError('Record lookup accepts one optional default')
+            default = column
+        try:
+            return source[key]
+        except KeyError:
+            if default is _MISSING:
+                raise
+            return default
+    if column is _MISSING:
+        raise TypeError('Table lookup requires a column')
+    return _TYPED_LOOKUP(source, key, column, default)
+
+
+def lookup_float(source, key, column=_MISSING, default=_MISSING) -> float:
+    """Read and convert a Table value or Record field to a float64 number."""
+    return _LOOKUP_FLOAT(_typed_value(source, key, column, default))
+
+
+def lookup_int(source, key, column=_MISSING, default=_MISSING) -> int:
+    """Read a signed-int64 value; preserve int conversion and check its range."""
+    result = _LOOKUP_INT(_typed_value(source, key, column, default))
+    if not -(1 << 63) <= result < (1 << 63):
+        raise OverflowError('lookup_int result outside signed 64-bit range')
+    return result
+
+
+def lookup_bool(source, key, column=_MISSING, default=_MISSING) -> bool:
+    """Read a value using Python bool conversion, including NA errors."""
+    return _LOOKUP_BOOL(_typed_value(source, key, column, default))
+
+
+def lookup_str(source, key, column=_MISSING, default=_MISSING) -> str:
+    """Read a value using Python str conversion."""
+    return _LOOKUP_STR(_typed_value(source, key, column, default))
+
+
+for _operation in (lookup_int, lookup_float, lookup_bool, lookup_str):
+    _operation.__modelx_native_operation__ = _operation.__name__
+    _operation.__modelx_cython_helper__ = ('lifelib._native_inputs', _operation.__name__)
+    _native_operations[_operation.__name__] = _operation
+
+
+
+def lookup_object(source, key, column=_MISSING, default=_MISSING) -> object:
+    """Read the original scalar, including missing sentinels, without conversion."""
+    return _typed_value(source, key, column, default)
+
+lookup_object.__modelx_native_operation__ = 'lookup_object'
+lookup_object.__modelx_cython_helper__ = ('lifelib._native_inputs', 'lookup_object')
+_native_operations['lookup_object'] = lookup_object
