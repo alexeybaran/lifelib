@@ -203,7 +203,8 @@ setup(
     package_data={
         'lifelib': get_package_data([
             path.join(here, 'lifelib', 'libraries'),
-        ]) + ['_native_inputs.pyx', '_native_inputs.pxd'],
+        ]) + ['_native_inputs.pyx', '_native_inputs.pxd',
+              '_native_pandas.pyx', '_native_pandas.pxd'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
