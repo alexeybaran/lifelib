@@ -41,7 +41,7 @@ def at_str(function, table, Py_ssize_t position):
         raise TypeError('not admitted')
     return indices.str_key_span_at(span, position)
 ''')
-    (root / 'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['indices.pyx','span_probe.pyx'],compiler_directives={'language_level':3}))\n")
+    (root / 'setup.py').write_text("from pathlib import Path\nfrom setuptools import setup\nfrom Cython.Build import cythonize\nimport modelx_cython\nsetup(ext_modules=cythonize(['indices.pyx','span_probe.pyx'],include_path=[str(Path(modelx_cython.__file__).resolve().parent.parent)],compiler_directives={'language_level':3}))\n")
     run = subprocess.run([sys.executable, 'setup.py', 'build_ext', '--inplace'], cwd=root,
                          capture_output=True, text=True)
     (root / 'build.log').write_text(run.stdout + run.stderr)

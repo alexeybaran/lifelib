@@ -21,7 +21,10 @@ def native(tmp_path_factory):
     (root/'probe.pyx').write_text('''cimport indices
 
 def raw(function, table):
-    return indices.keys(function, table)
+    return indices.keys(function, (), table)
+
+def keyword_raw(function, table):
+    return indices.keys(function, ('table',), table=table)
 
 def collect(function, table):
     cdef indices.KeySpan span = indices.keys_span(function, table)
@@ -41,7 +44,7 @@ def total(function, table):
         value += indices.key_span_at(span, i)
     return value
 ''')
-    (root/'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['indices.pyx','probe.pyx'],compiler_directives={'language_level':3,'freethreading_compatible':True}))\n")
+    (root/'setup.py').write_text("from pathlib import Path\nfrom setuptools import setup\nfrom Cython.Build import cythonize\nimport modelx_cython\nsetup(ext_modules=cythonize(['indices.pyx','probe.pyx'],include_path=[str(Path(modelx_cython.__file__).resolve().parent.parent)],compiler_directives={'language_level':3,'freethreading_compatible':True}))\n")
     run=subprocess.run([sys.executable,'setup.py','build_ext','--inplace'],cwd=root,capture_output=True,text=True)
     (root/'build.log').write_text(run.stdout+run.stderr)
     assert run.returncode==0,run.stdout+run.stderr
@@ -136,3 +139,16 @@ def test_record_subclass_keeps_keys_override_and_declines_span(native):
     source = Changed({'keys': (3, 1, 3)})
     assert native.collect(keys, source) is None
     assert native.raw(keys, source) == keys(source) == ('changed',)
+
+
+def test_keyword_keys_preserve_current_function_call_shape(native):
+    source = Record({'keys': (3, 1, 3)})
+    assert native.keyword_raw(keys, source) is source['keys']
+    calls = []
+    def keyword_only(*, table):
+        calls.append(table)
+        return ('current',)
+    assert native.keyword_raw(keyword_only, source) == ('current',)
+    assert calls == [source]
+    with pytest.raises(TypeError):
+        native.raw(keyword_only, source)

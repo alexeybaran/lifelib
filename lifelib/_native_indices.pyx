@@ -5,6 +5,9 @@ import cython
 from libc.math cimport isfinite
 from lifelib.immutable_inputs import Record, Table
 from lifelib.table_keys import keys as _keys
+from modelx_cython._call_layout cimport forward_call
+
+cdef object omitted_argument = object()
 
 
 cdef class KeySpan:
@@ -25,13 +28,13 @@ cdef dict _owned_cache(object source):
     return source._native_cache if type(source) is Table else source._native_groups
 
 
-cdef object keys(object function, object table):
+cdef object keys(object function, tuple keywords, object table):
     if function is _keys:
         if type(table) is Table:
             return table._keys
         if type(table) is Record:
             return table._index['keys']
-    return function(table)
+    return forward_call(function, keywords, ('table',), (table,), omitted_argument)
 
 
 cdef KeySpan keys_span(object function, object table):
