@@ -1320,3 +1320,26 @@ cdef object lookup_object(object function, object source, object key, object col
     if function is not _lookup_object_fn:
         return _explicit_fallback(function,source,key,column,default)
     return _explicit_value(source,key,column,default)
+
+
+from pandas.core.dtypes.missing import isna as _pandas_isna
+from pandas._libs.missing import NA as _pandas_NA
+from pandas._libs.tslibs.nattype import NaT as _pandas_NaT
+cdef object _is_missing_fn = _native_operations['is_missing']
+
+
+cdef bint is_missing(object function, object predicate, object value) except? -1:
+    cdef double number
+    if function is not _is_missing_fn:
+        return function(predicate, value)
+    if predicate is _pandas_isna:
+        if value is None or value is _pandas_NA or value is _pandas_NaT:
+            return True
+        if type(value) in (int, bool) or type(value) in _numpy_integer_keys or type(value) is _numpy_bool_key:
+            return False
+        if isinstance(value, (str, bytes)):
+            return False
+        if type(value) is float or type(value) in _numpy_float_keys:
+            number = PyFloat_AsDouble(value)
+            return number != number
+    return _typed_bool(predicate(value))

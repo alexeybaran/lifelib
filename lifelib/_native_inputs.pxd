@@ -156,3 +156,4 @@ cdef bint lookup_bool(object function, object source, object key, object column=
 cdef str lookup_str(object function, object source, object key, object column=*, object default=*)
 
 cdef object lookup_object(object function, object source, object key, object column=*, object default=*)
+cdef bint is_missing(object function, object predicate, object value) except? -1

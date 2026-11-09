@@ -43,6 +43,20 @@ preserved, including `float(None)`, invalid numeric strings, and ambiguous
 `bool(pd.NA)`. `lookup_object` preserves `None`, `pd.NA` and `pd.NaT` identity.
 It is an explicit object-valued operation, not evidence of primitive arithmetic.
 
+For an optional actuarial override, use the scalar predicate explicitly:
+
+```python
+override = tables.lookup_object(policy_record(), 'annuity_rate_override', None)
+return default_rate() if tables.is_missing(pd.isna, override) else float(override)
+```
+
+`is_missing(predicate, value)` returns a boolean. Passing the current predicate
+first preserves its resolution before the value is evaluated, and keeps ordinary
+predicate Reference replacements working. The canonical pandas scalar predicate
+uses native checks for the inventoried builtin/NumPy numeric and boolean values,
+strings, `None`, `NA` and `NaT`. Noncanonical predicates and unsupported values use
+the original predicate and remain compatibility paths, not native coverage.
+
 The provider's `.pxd` declares these result types directly. The compiler's
 existing registered-symbol linker connects a named function Reference or one
 registered module member to that declaration. There is no pandas/formula

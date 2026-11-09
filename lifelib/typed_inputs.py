@@ -234,3 +234,17 @@ def lookup_object(source, key, column=_MISSING, default=_MISSING) -> object:
 lookup_object.__modelx_native_operation__ = 'lookup_object'
 lookup_object.__modelx_cython_helper__ = ('lifelib._native_inputs', 'lookup_object')
 _native_operations['lookup_object'] = lookup_object
+
+
+def is_missing(predicate, value) -> bool:
+    """Test a scalar, preserving the current pandas isna callable explicitly.
+
+    Pass the predicate first so it is resolved before evaluating the value,
+    just as in predicate(value). Noncanonical predicates retain their behavior.
+    """
+    return _LOOKUP_BOOL(predicate(value))
+
+
+is_missing.__modelx_native_operation__ = 'is_missing'
+is_missing.__modelx_cython_helper__ = ('lifelib._native_inputs', 'is_missing')
+_native_operations['is_missing'] = is_missing
