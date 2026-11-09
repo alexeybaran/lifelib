@@ -914,7 +914,7 @@ def annuity_due(z, k, i):
     In years of premium, so ``S x A / a-due`` is yen per year.  ``k = 0`` returns 0.
     """
     v = 1.0 / (1.0 + i)
-    return sum((v ** j) * surv_prob(z, j) for j in range(k))
+    return sum((pow(v, j)) * surv_prob(z, j) for j in range(k))
 
 
 def edu_epv(k, i):
@@ -933,7 +933,7 @@ def edu_epv(k, i):
     v = 1.0 / (1.0 + i)
     z = issue_age() + k
     n = policy_term()
-    total = sum(g * (v ** (s - k)) * surv_prob(z, s - k)
+    total = sum(g * (pow(v, (s - k))) * surv_prob(z, s - k)
                 for s, g in benefit_schedule().items() if s > k)
     return sum_assured() * (total + (v ** (n - k)) * surv_prob(z, n - k))
 

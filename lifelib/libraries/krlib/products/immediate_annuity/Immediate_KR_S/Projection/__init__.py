@@ -735,7 +735,7 @@ def annuity_factor():
         raise ValueError("only 종신연금형 converts the fund through an annuity factor")
     j = crediting_rate_mth(0)
     v = 1.0 / (1.0 + j)
-    return sum(v ** (t + 1) * pricing_factor(t)
+    return sum(pow(v, (t + 1)) * pricing_factor(t)
                for t in range(proj_len()))
 
 

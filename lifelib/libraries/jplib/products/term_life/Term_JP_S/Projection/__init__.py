@@ -1072,7 +1072,7 @@ def pols_lapse_pool(t):
     41, and no blanket balance indexed by projection year can say that.
     """
     rho = reinstate_rate_mth()
-    return sum(pols_lapse(s) * (1.0 - rho) ** (t - 1 - s)
+    return sum(pols_lapse(s) * pow((1.0 - rho), (t - 1 - s))
                for s in range(max(0, t - reinstate_window_m()), t))
 
 

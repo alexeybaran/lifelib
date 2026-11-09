@@ -25,6 +25,22 @@ sum(flatten(over(periods(1, 6), lambda g:
     over(periods(1, karenz_months() + 1), lambda z: pols_karenz(t, g, z)))))
 ```
 
+
+Use `from lifelib import expressions as e` for one shared expression namespace.
+The facade re-exports the exact registered function objects; it adds no wrappers,
+registry or runtime. Preparation remains explicit in `lifelib.pandas_inputs`.
+
+```python
+e.sum_float(net_cf(t) * disc(t) for t in range(proj_len()))
+e.sum_float(e.periods(proj_len()),
+            lambda t: claims(t) * e.lookup_float(rates, age(t), "discount"))
+all(check_state(label) for label in e.keys(prepared_states()))
+```
+
+Typed lookup variants describe one lookup operation with distinct public result
+contracts. `is_missing(predicate, value)` preserves the current predicate binding.
+Standard Python consumers keep their ordinary semantics.
+
 ## Small vocabulary
 
 | Helper | Contract |
@@ -130,6 +146,20 @@ integration, transitive typed payload/domain coverage, financial differentials,
 operation matrix reconciliation and matched timing remain required.
 The surrounding compiler Cell return/cache ABI also remains a gate: a traced
 double Cell can still coerce an object returned by a replaced helper after the
-provider has preserved it. Empty ordinary sums can similarly expose integer
-versus float report dtypes. The local architecture owner must resolve that
-generic boundary; provider tests alone do not qualify it.
+provider has preserved it. Mixed observed scalar int/float results now retain
+the existing object ABI, preserving ordinary sums' empty integer zero and strict
+report dtypes. That fix does not establish arbitrary object replacement support
+for every traced numeric Cell; provider tests alone do not qualify that boundary.
+
+Regional adjustments retain all original generator/comprehension and consumer
+syntax. Seventeen generation-scope power operators use standard builtin
+`pow(base, exponent)` to retain Python numeric/error behavior; the source/hash
+receipt is `GENERATOR_SOURCE_ADJUSTMENTS.json`. No multiline formatting
+workaround is needed with compiler c8b0371's CST pipeline.
+
+These limited adjusted-source power spellings require the standard builtin
+`pow` binding. No adjusted namespace currently defines a Cell/Reference named
+`pow`. Replacing or introducing that name can change a function call, while the
+original `**` operator ignores it; this is an explicit new authoring binding,
+not a universally equivalent rewrite under arbitrary global replacement. The
+original model checkout retains its original operators and is separate.

@@ -938,7 +938,7 @@ def inv_income_pp(t):
     if t >= t_ann():
         return 0.0
     return sum(fund_pp_at(t, j, "AFT_DERISK")
-               * ((1.0 + gross_return(j)) ** (1.0 / 12.0) - 1.0)
+               * (pow((1.0 + gross_return(j)), (1.0 / 12.0)) - 1.0)
                for j in fund_ids())
 
 
@@ -956,7 +956,7 @@ def mgmt_fee_pp(t):
     if t >= t_ann():
         return 0.0
     return sum(fund_pp_at(t, j, "AFT_DERISK")
-               * (1.0 + gross_return(j)) ** (1.0 / 12.0)
+               * pow((1.0 + gross_return(j)), (1.0 / 12.0))
                * fund_mgmt_fee(j) / 12.0
                for j in fund_ids())
 
