@@ -215,7 +215,7 @@ def _at_index_spec(index, *, encoded_errors=True):
     level_tables = tuple(Table(level, [(0.0,)] * len(level), ('position',))
                          for level in owned_levels)
     return Record({
-        'multi': multi, 'encoded_errors': encoded_errors,
+        'multi': multi, 'encoded_errors': encoded_errors, 'pandas_columns': True,
         'levels': owned_levels, 'level_tables': level_tables,
         'offsets': tuple(map(int, index._engine.offsets)) if multi else (0,),
         'boolean_modes': tuple(modes), 'bias': bias})

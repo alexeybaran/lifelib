@@ -29,6 +29,16 @@ def _column(table, column):
 
 def lookup(table, key, column, default=_MISSING):
     if isinstance(table, Table):
+        # A pandas scalar selection validates its column before its row. Keep
+        # this error outside missing-key/default handling. Bare Tables retain
+        # their original row-first contract and ValueError for absent columns.
+        if (isinstance(column, str) and table._index_error is not None
+                and table._index_error._index.get('pandas_columns', False)):
+            name = column
+            try:
+                column = table._columns.index(name)
+            except ValueError:
+                raise KeyError(name) from None
         try:
             return table.lookup(key, column)
         except KeyError:

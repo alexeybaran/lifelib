@@ -852,7 +852,7 @@ cdef class KeyedView:
     cdef double[::1] values
     cdef unsigned char[::1] numeric
     cdef Py_ssize_t width, value_width, rows, mask
-    cdef bint tuple_keys, admitted
+    cdef bint tuple_keys, admitted, pandas_columns
 
     def __init__(self, table):
         cdef KeyPart packed
@@ -866,6 +866,7 @@ cdef class KeyedView:
         spec = table._index_error
         if spec is not None:
             spec = spec._index
+        self.pandas_columns = False if spec is None else spec.get('pandas_columns', False)
         self.boolean_modes = array('b', () if spec is None else spec['boolean_modes'])
         if spec is not None:
             self.at_multi = spec['multi']
@@ -1046,7 +1047,9 @@ cdef KeyedCache _keyed_cache(LookupContext context, object table, object column)
                 if type(column) is str:
                     cache.column_kind = 1
                     try: cache.index = data.columns.index(column)
-                    except ValueError: pass
+                    except ValueError:
+                        if data.pandas_columns:
+                            raise KeyError(column) from None
                 elif type(column) is int or type(column) is bool:
                     cache.column_kind = 2 if -_key_sys.maxsize - 1 <= column <= _key_sys.maxsize else 3
                     if -data.value_width <= column < data.value_width:
@@ -1674,7 +1677,7 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
     values = tuple(copied)
     row_values = tuple(copied_rows) if with_rows else None
     # Scalar integer axes need no MultiIndex engine encoding or level tables.
-    items = (('multi', False), ('encoded_errors', encoded_errors), ('levels', (keys,)),
+    items = (('multi', False), ('encoded_errors', encoded_errors), ('pandas_columns', True), ('levels', (keys,)),
              ('level_tables', ()), ('offsets', (0,)), ('boolean_modes', (2,)), ('bias', 0))
     spec = _record_alloc(<PyTypeObject*>Record, 0)
     PyObject_GenericSetAttr(spec, '_items', items)

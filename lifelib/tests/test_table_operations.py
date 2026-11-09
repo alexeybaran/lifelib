@@ -51,6 +51,13 @@ def raw_value(function, source, key, column):
 def float_value(function, source, key, column):
     return p.lookup_float(function, (), source, key, column)
 
+def float_default(function, source, key, column, default):
+    return p.lookup_float(function, ('default',), source, key, column, default=default)
+
+def legacy_float_default(function, source, long long key, column, default):
+    cdef p.LookupContext context = p.LookupContext()
+    return p.lookup_key1_float_f64(float, function, context, source, key, False, column, default)
+
 def grouped(function, source, labels, first=(), last=()):
     return p.group_sum(function, ('first', 'last'), source, labels, first=first, last=last)
 

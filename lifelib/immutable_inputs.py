@@ -104,6 +104,13 @@ class Table(Mapping):
         return 3
 
     def lookup(self, key, column):
+        if (isinstance(column, str) and self._index_error is not None
+                and self._index_error._index.get('pandas_columns', False)):
+            name = column
+            try:
+                column = self._columns.index(name)
+            except ValueError:
+                raise KeyError(name) from None
         if self._index_error is None:
             position = self._positions[key]
         else:
