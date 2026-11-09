@@ -21,6 +21,7 @@ from lifelib.immutable_inputs import Table, Record
 from lifelib.typed_inputs import _FLOOR, _native_operations
 
 cdef object _missing = object()
+cdef object omitted_argument = _missing
 cdef object _lookup = _native_operations['lookup']
 cdef object _previous = _native_operations['previous']
 cdef object _contains = _native_operations['contains']
@@ -1247,7 +1248,7 @@ cdef object indexed_contains(object table, object key):
 
 
 from builtins import int as _typed_int, bool as _typed_bool, str as _typed_str
-from lifelib.typed_inputs import _typed_value as _typed_python_value
+from lifelib.typed_inputs import _typed_value as _typed_python_value, _MISSING as _typed_missing
 cdef object _lookup_float_fn = _native_operations['lookup_float']
 cdef object _lookup_int_fn = _native_operations['lookup_int']
 cdef object _lookup_bool_fn = _native_operations['lookup_bool']
@@ -1255,6 +1256,12 @@ cdef object _lookup_str_fn = _native_operations['lookup_str']
 
 
 cdef object _explicit_value(object source, object key, object column, object default):
+    # The public Python sentinel is meaningful when explicitly supplied. The
+    # provider token denotes an omitted native slot; neither means None.
+    if column is _typed_missing:
+        column = _missing
+    if default is _typed_missing:
+        default = _missing
     if type(source) is Record:
         if column is not _missing:
             if default is not _missing:
@@ -1266,59 +1273,79 @@ cdef object _explicit_value(object source, object key, object column, object def
                 raise KeyError(key)
             return default
         return value
-    if column is _missing:
-        raise TypeError('Table lookup requires a column')
     if type(source) is Table:
+        if column is _missing:
+            raise TypeError('Table lookup requires a column')
         return indexed_lookup(source, key, column, default)
+    if column is _missing:
+        if default is _missing:
+            return _typed_python_value(source, key)
+        return _typed_python_value(source, key, default=default)
     if default is _missing:
         return _typed_python_value(source, key, column)
     return _typed_python_value(source, key, column, default)
 
 
-cdef object _explicit_fallback(object function, object source, object key, object column, object default):
-    if column is _missing:
-        return function(source, key) if default is _missing else function(source, key, default=default)
-    return function(source,key,column) if default is _missing else function(source,key,column,default)
+cdef object _explicit_replacement(object function, tuple keywords, tuple names, tuple values):
+    # Compatibility only. Canonical reads never allocate dispatch containers.
+    # Reconstruct BEFORE interpreting Record's optional third argument.
+    cdef list positional = []
+    cdef dict named = {}
+    for name in keywords:
+        named[name] = values[names.index(name)]
+    for name, value in zip(names, values):
+        if value is not omitted_argument and name not in named:
+            positional.append(value)
+    return function(*positional, **named)
 
 
-cdef double lookup_float(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+cdef double lookup_float(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     cdef KeyPart[4] parts
     cdef Py_ssize_t count
     cdef bint tuple_key
     if function is not _lookup_float_fn:
-        return _explicit_fallback(function,source,key,column,default)
+        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
+                                     (source, key, column, default))
+    if column is _typed_missing:
+        column = _missing
+    if default is _typed_missing:
+        default = _missing
     if type(source) is Table and column is not _missing and _pack_key(key,&parts[0],&count,&tuple_key):
         return lookup_keyed_float_f64(_float_type,_lookup,_indexed_context(source),source,
                                       &parts[0],count,tuple_key,column,default)
     return _float_type(_explicit_value(source,key,column,default))
 
 
-cdef long long lookup_int(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+cdef long long lookup_int(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     if function is not _lookup_int_fn:
-        return _explicit_fallback(function,source,key,column,default)
+        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
+                                     (source, key, column, default))
     result = _typed_int(_explicit_value(source,key,column,default))
     if not -(1 << 63) <= result < (1 << 63):
         raise OverflowError('lookup_int result outside signed 64-bit range')
     return result
 
 
-cdef bint lookup_bool(object function, object source, object key, object column=_missing, object default=_missing) except? -1:
+cdef bint lookup_bool(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     if function is not _lookup_bool_fn:
-        return _explicit_fallback(function,source,key,column,default)
+        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
+                                     (source, key, column, default))
     return _typed_bool(_explicit_value(source,key,column,default))
 
 
-cdef str lookup_str(object function, object source, object key, object column=_missing, object default=_missing):
+cdef str lookup_str(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing):
     if function is not _lookup_str_fn:
-        return _explicit_fallback(function,source,key,column,default)
+        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
+                                     (source, key, column, default))
     return _typed_str(_explicit_value(source,key,column,default))
 
 
 cdef object _lookup_object_fn = _native_operations['lookup_object']
 
-cdef object lookup_object(object function, object source, object key, object column=_missing, object default=_missing):
+cdef object lookup_object(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing):
     if function is not _lookup_object_fn:
-        return _explicit_fallback(function,source,key,column,default)
+        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
+                                     (source, key, column, default))
     return _explicit_value(source,key,column,default)
 
 
@@ -1328,10 +1355,10 @@ from pandas._libs.tslibs.nattype import NaT as _pandas_NaT
 cdef object _is_missing_fn = _native_operations['is_missing']
 
 
-cdef bint is_missing(object function, object predicate, object value) except? -1:
+cdef bint is_missing(object function, tuple keywords, object predicate, object value) except? -1:
     cdef double number
     if function is not _is_missing_fn:
-        return function(predicate, value)
+        return _explicit_replacement(function, keywords, ('predicate', 'value'), (predicate, value))
     if predicate is _pandas_isna:
         if value is None or value is _pandas_NA or value is _pandas_NaT:
             return True

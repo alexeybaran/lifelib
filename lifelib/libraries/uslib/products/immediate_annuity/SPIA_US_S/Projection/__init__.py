@@ -449,7 +449,7 @@ def death_mth(life):
     notes' "dies during month 14" is ``death_mth = 13``.
     """
     v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def duration_mth(t):

@@ -30,8 +30,13 @@ Ordinary function References can be used instead of module References.
 | `lookup_str` | `str` | `str` | `str(value)` |
 | `lookup_object` | original scalar | `object` | none |
 
-For a Table use `lookup_float(table, complete_key, column[, default])`.
-For a Record use `lookup_float(record, field[, default])`.
+For a Table use `lookup_float(table, complete_key, column, default=...)`.
+For a Record use `lookup_float(record, field, default=...)`.
+Omit `default` when a missing key should raise. Use the keyword consistently;
+the existing third positional Record argument remains a compatibility spelling
+for its default. In that existing overload even `column=` on a Record denotes
+a default, not a column selection. Do not use that ambiguous spelling in new
+expressions. Table column selection keeps its ordinary declared `column` slot.
 The optional default is converted by the same rule as a found value; it is used
 only for a missing key, not to mask conversion or column errors. Argument
 expressions evaluate once, from left to right, before lookup. A complete tuple
@@ -46,7 +51,7 @@ It is an explicit object-valued operation, not evidence of primitive arithmetic.
 For an optional actuarial override, use the scalar predicate explicitly:
 
 ```python
-override = tables.lookup_object(policy_record(), 'annuity_rate_override', None)
+override = tables.lookup_object(policy_record(), 'annuity_rate_override', default=None)
 return default_rate() if tables.is_missing(pd.isna, override) else float(override)
 ```
 
@@ -62,6 +67,32 @@ existing registered-symbol linker connects a named function Reference or one
 registered module member to that declaration. There is no pandas/formula
 interpreter and no AST parser or `float(lookup(...))` expression recognizer in
 this mechanism. Cython checks and compiles the declared call normally.
+
+The shared registered-call ABI also preserves authored keyword order, omitted
+arguments and explicit `None`. Its provider-owned omission token is internal;
+actuarial expressions do not name it. A replacement receives the same positional
+and keyword arguments, before interpretation of Record defaults. The compiler
+reads declared signatures and registered metadata, never callback bodies.
+The six helpers require the shared keyword/scalar ABI introduced by compiler
+`931faba`; that development bundle retains qualified architecture `299d8c1` as
+its base and still requires regional qualification.
+
+Table reads compose with the generator lane's existing functions:
+
+```python
+return streams.sum_float(
+    streams.periods(proj_len()),
+    lambda t: tables.lookup_float(data.mortality_table(), (sex(), age_at(t)), 'rate',
+                                  default=0.0) * exposure(t),
+    where=lambda t: exposure(t) > 0.0,
+)
+```
+
+Here `streams` is `lifelib.expression_streams`. The filter executes before the
+read. Arguments and defaults are eager when that callback executes, not when
+the stream is first authored. `sum_float` is the float-converting consumer;
+ordinary mixed-type sums retain their separate contract. Physical ABI metadata
+does not itself prove native callback or complete model coverage.
 
 Native full-key lookup admits exact string, bool, signed-int64 and finite float
 components, and complete tuples of up to four components. Integral floats and

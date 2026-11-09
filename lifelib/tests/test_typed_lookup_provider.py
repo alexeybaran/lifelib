@@ -17,39 +17,51 @@ def native(tmp_path_factory):
 
 def integer(function,source,key,*args):
     cdef long long value
-    if not args:value=native.lookup_int(function,source,key)
-    elif len(args)==1:value=native.lookup_int(function,source,key,args[0])
-    else:value=native.lookup_int(function,source,key,args[0],args[1])
+    if not args:value=native.lookup_int(function,(),source,key)
+    elif len(args)==1:value=native.lookup_int(function,(),source,key,args[0])
+    else:value=native.lookup_int(function,(),source,key,args[0],args[1])
     return value
 
 def floating(function,source,key,*args):
     cdef double value
-    if not args:value=native.lookup_float(function,source,key)
-    elif len(args)==1:value=native.lookup_float(function,source,key,args[0])
-    else:value=native.lookup_float(function,source,key,args[0],args[1])
+    if not args:value=native.lookup_float(function,(),source,key)
+    elif len(args)==1:value=native.lookup_float(function,(),source,key,args[0])
+    else:value=native.lookup_float(function,(),source,key,args[0],args[1])
     return value
 
 def boolean(function,source,key,*args):
     cdef bint value
-    if not args:value=native.lookup_bool(function,source,key)
-    elif len(args)==1:value=native.lookup_bool(function,source,key,args[0])
-    else:value=native.lookup_bool(function,source,key,args[0],args[1])
+    if not args:value=native.lookup_bool(function,(),source,key)
+    elif len(args)==1:value=native.lookup_bool(function,(),source,key,args[0])
+    else:value=native.lookup_bool(function,(),source,key,args[0],args[1])
     return value
 
 def text(function,source,key,*args):
     cdef str value
-    if not args:value=native.lookup_str(function,source,key)
-    elif len(args)==1:value=native.lookup_str(function,source,key,args[0])
-    else:value=native.lookup_str(function,source,key,args[0],args[1])
+    if not args:value=native.lookup_str(function,(),source,key)
+    elif len(args)==1:value=native.lookup_str(function,(),source,key,args[0])
+    else:value=native.lookup_str(function,(),source,key,args[0],args[1])
     return value
 
 def raw(function,source,key,*args):
-    if not args:return native.lookup_object(function,source,key)
-    elif len(args)==1:return native.lookup_object(function,source,key,args[0])
-    return native.lookup_object(function,source,key,args[0],args[1])
+    if not args:return native.lookup_object(function,(),source,key)
+    elif len(args)==1:return native.lookup_object(function,(),source,key,args[0])
+    return native.lookup_object(function,(),source,key,args[0],args[1])
 
 def missing(function,predicate,value):
-    return native.is_missing(function,predicate,value)
+    return native.is_missing(function,(),predicate,value)
+
+def keyword_read(function,source,key,default):
+    return native.lookup_float(function,('default',),source,key,
+                               column=native.omitted_argument,default=default)
+
+def reordered_read(function,source,key,default):
+    return native.lookup_float(function,('default','key','source'),
+                               default=default,key=key,source=source,
+                               column=native.omitted_argument)
+
+def keyword_missing(function,predicate,value):
+    return native.is_missing(function,('value','predicate'),value=value,predicate=predicate)
 ''')
     (root/'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['native.pyx','probe.pyx'],compiler_directives={'language_level':3}))\n")
     r=subprocess.run([sys.executable,'setup.py','build_ext','--inplace'],cwd=root,capture_output=True,text=True)
@@ -111,6 +123,49 @@ def test_defaults_replacement_pickle_and_at_error(native):
     assert native.floating(h.lookup_float,pickle.loads(pickle.dumps(owned)),('M',42),'rate')==1.5
     with pytest.raises(KeyError) as error:native.floating(h.lookup_float,owned,('M',43),'rate')
     assert error.value.args==(15,)
+
+
+def test_keyword_default_and_replacement_preserve_original_call_layout(native):
+    record = Record({'value': 1.5})
+    assert native.keyword_read(h.lookup_float, record, 'absent', 2.5) == 2.5
+    assert native.reordered_read(h.lookup_float, record, 'absent', 3.5) == 3.5
+    seen = []
+    def replacement(*args, **kwargs):
+        seen.append((args, tuple(kwargs.items())))
+        return 4.5
+    assert native.keyword_read(replacement, record, 'absent', None) == 4.5
+    assert seen.pop() == ((record, 'absent'), (('default', None),))
+    assert native.reordered_read(replacement, record, 'absent', 7.5) == 4.5
+    assert seen.pop() == ((), (('default', 7.5), ('key', 'absent'), ('source', record)))
+    assert native.floating(replacement, record, 'absent', 8.5) == 4.5
+    assert seen.pop() == ((record, 'absent', 8.5), ())
+    def keyword_only(source, key, *, default):
+        return default
+    assert native.keyword_read(keyword_only, record, 'absent', 9.5) == 9.5
+    error = RuntimeError('same replacement exception')
+    def fail(*args, **kwargs):
+        raise error
+    with pytest.raises(RuntimeError) as actual:
+        native.keyword_read(fail, record, 'absent', 0.0)
+    assert actual.value is error
+
+
+def test_keyword_missing_replacement_keeps_insertion_order(native):
+    import pandas as pd
+    assert native.keyword_missing(h.is_missing, pd.isna, None) is True
+    seen = []
+    def replacement(**kwargs):
+        seen.append(tuple(kwargs.items()))
+        return False
+    assert native.keyword_missing(replacement, pd.isna, None) is False
+    assert seen == [(('value', None), ('predicate', pd.isna))]
+
+
+def test_explicit_public_default_sentinel_retains_omission_semantics(native):
+    record = Record({'value': 1.5})
+    assert native.keyword_read(h.lookup_float, record, 'value', h._MISSING) == 1.5
+    with pytest.raises(KeyError):
+        native.keyword_read(h.lookup_float, record, 'absent', h._MISSING)
 
 
 @pytest.mark.parametrize('keys,query',[
@@ -244,6 +299,23 @@ assert probe.missing(h.is_missing, pd.isna, None) is False
     run = subprocess.run([sys.executable, '-c', source], cwd=Path(native.__file__).parent,
                          capture_output=True, text=True)
     assert run.returncode == 0, run.stdout + run.stderr
+
+
+@pytest.mark.parametrize('suffix,entry', [('int','integer'), ('float','floating'),
+                                       ('bool','boolean'), ('str','text'), ('object','raw')])
+def test_record_subclasses_keep_the_python_compatibility_contract(native,suffix,entry):
+    calls = []
+    class DerivedRecord(Record):
+        def __getitem__(self,key):
+            calls.append(key)
+            return super().__getitem__(key)
+    source = DerivedRecord({'value': 2})
+    function = getattr(h, 'lookup_' + suffix)
+    expected = function(source, 'value')
+    calls.clear()
+    actual = getattr(native, entry)(function, source, 'value')
+    assert type(actual) is type(expected) and actual == expected
+    assert calls == ['value']  # compatibility is preserved, not native admission
 
 
 @pytest.mark.parametrize('indexing', ['loc', 'at'])

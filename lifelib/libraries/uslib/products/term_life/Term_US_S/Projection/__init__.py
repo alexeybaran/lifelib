@@ -367,7 +367,7 @@ def plt_mort_factor_init_formula():
 def plt_mort_factor_init():
     """M(1) actually used: the model point's override if given, else the formula."""
     o = tables.lookup_object(prepared_model_point(), "plt_mort_factor_override")
-    return plt_mort_factor_init_formula() if pd.isna(o) else float(o)  # noqa: F821
+    return plt_mort_factor_init_formula() if tables.is_missing(pd.isna, o) else float(o)  # noqa: F821
 
 
 def plt_mort_factor(d):

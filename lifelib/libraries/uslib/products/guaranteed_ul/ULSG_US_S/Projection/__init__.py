@@ -469,7 +469,7 @@ def coi_rate_dp():
     way for an admin system to carry a rate table and reproduces the notes' table.
     """
     o = tables.lookup_object(prepared_model_point(), "coi_rate_dp")
-    return -1 if pd.isna(o) else int(o)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, o) else int(o)                              # noqa: F821
 
 
 def duration_mth(t):
@@ -671,7 +671,7 @@ def prem_persistency(t):
     account, the cumulative premium and the premium income all move together.
     """
     o = tables.lookup_object(prepared_model_point(), "prem_persistency_override")
-    if not pd.isna(o):                                               # noqa: F821
+    if not tables.is_missing(pd.isna, o):                                               # noqa: F821
         return float(o)
     return prem_persistency_ann if premium_type() == "LEVEL" else 1.0  # noqa: F821
 

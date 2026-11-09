@@ -1022,7 +1022,7 @@ def corridor_factor(t):
     if qual_test() != "GPT":
         raise ValueError("invalid qual_test")
     o = tables.lookup_object(prepared_model_point(), "corridor_override_m1")
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    if t == 0 and not tables.is_missing(pd.isna, o):                                    # noqa: F821
         return float(o)
     return corridor_factor_at(age(t))
 
@@ -1143,7 +1143,7 @@ def coi_rate(t):
     directions.
     """
     o = tables.lookup_object(prepared_model_point(), "coi_rate_override_m1")
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    if t == 0 and not tables.is_missing(pd.isna, o):                                    # noqa: F821
         return min(float(o), coi_rate_guar(t), coi_rate_cap)         # noqa: F821
     return coi_rate_at(policy_year(t))
 

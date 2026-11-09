@@ -150,10 +150,11 @@ cdef double lookup_key4_float_f64(object conversion, object function, LookupCont
 cdef object indexed_lookup(object,object,object,object default=*)
 cdef object indexed_contains(object,object)
 
-cdef double lookup_float(object function, object source, object key, object column=*, object default=*) except? -1
-cdef long long lookup_int(object function, object source, object key, object column=*, object default=*) except? -1
-cdef bint lookup_bool(object function, object source, object key, object column=*, object default=*) except? -1
-cdef str lookup_str(object function, object source, object key, object column=*, object default=*)
+cdef object omitted_argument
+cdef double lookup_float(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef long long lookup_int(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef bint lookup_bool(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef str lookup_str(object function, tuple keywords, object source, object key, object column=*, object default=*)
 
-cdef object lookup_object(object function, object source, object key, object column=*, object default=*)
-cdef bint is_missing(object function, object predicate, object value) except? -1
+cdef object lookup_object(object function, tuple keywords, object source, object key, object column=*, object default=*)
+cdef bint is_missing(object function, tuple keywords, object predicate, object value) except? -1
