@@ -32,6 +32,12 @@ def select_keyword(function, source, key):
 
 def values(function, source, name):
     return p.column(function, (), source, name)
+
+def grouped(function, source, labels, first=(), last=()):
+    return p.group_sum(function, ('first', 'last'), source, labels, first=first, last=last)
+
+def grouped_keywords(function, source, labels, first=(), last=()):
+    return p.group_sum(function, ('labels', 'table', 'last', 'first'), labels=labels, table=source, last=last, first=first)
 ''')
     (root / 'setup.py').write_text('''from pathlib import Path
 from setuptools import setup

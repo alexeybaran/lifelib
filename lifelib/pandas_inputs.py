@@ -111,7 +111,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
             'frame', selected_frame.index.copy(deep=True),
             selected_frame.columns.copy(deep=True), tuple(selected_frame.dtypes),
             tuple(row_values) if rows else None, tuple(row_dtypes), deepcopy(selected_frame.attrs),
-            selected_frame.flags.allows_duplicate_labels, tuple(row_names)))
+            selected_frame.flags.allows_duplicate_labels, tuple(row_names),
+            (selected_frame.columns.dtype, selected_frame.columns.name)))
     return result
 
 
