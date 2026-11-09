@@ -124,9 +124,21 @@ def rewrite_native_generators(source, namespace='expressions'):
     scopes = wrapper.resolve(ScopeProvider)
     contexts = wrapper.resolve(ExpressionContextProvider)
     positions = wrapper.resolve(PositionProvider)
-    if any(assignment.name == namespace for scope in set(scopes.values())
-           for assignment in scope.assignments):
-        return source, []
+    allowed_namespace_nodes = set()
+    for statement in wrapper.module.body:
+        if not isinstance(statement, cst.SimpleStatementLine):
+            continue
+        for assignment in statement.body:
+            if (isinstance(assignment, cst.Assign) and len(assignment.targets) == 1
+                    and isinstance(assignment.targets[0].target, cst.Name)
+                    and assignment.targets[0].target.value == namespace
+                    and isinstance(assignment.value, cst.Tuple)
+                    and len(assignment.value.elements) == 2
+                    and all(isinstance(item, cst.Element) and isinstance(item.value, cst.SimpleString)
+                            for item in assignment.value.elements)
+                    and [item.value.raw_value for item in assignment.value.elements]
+                        == ['Module', 'lifelib.expressions']):
+                allowed_namespace_nodes.update((assignment, assignment.targets[0], assignment.targets[0].target))
     changes = []
 
     def names_read(expression):
@@ -166,6 +178,9 @@ def rewrite_native_generators(source, namespace='expressions'):
                 def visit_Lambda(self, node): self.unsafe = True
                 visit_NamedExpr = visit_Await = visit_Yield = visit_Lambda
                 def visit_CompFor(self, node): self.unsafe |= node.asynchronous is not None
+            if any(getattr(binding, 'node', None) not in allowed_namespace_nodes
+                   for binding in scopes[before][namespace]):
+                return decline()
             safety = Safety()
             before.visit(safety)
             if safety.unsafe or safety.generators != 1:
@@ -216,6 +231,7 @@ def rewrite_native_generators(source, namespace='expressions'):
                             'before': wrapper.module.code_for_node(before),
                             'after': wrapper.module.code_for_node(result),
                             'clauses': len(parts), 'targets': targets,
+                            'namespace_preexisting': bool(allowed_namespace_nodes),
                             'helpers': ['over', 'flatten'] if len(parts) > 1 else ['over']})
             return result
 
