@@ -130,6 +130,13 @@ integration, transitive typed payload/domain coverage, financial differentials,
 operation matrix reconciliation and matched timing remain required.
 The surrounding compiler Cell return/cache ABI also remains a gate: a traced
 double Cell can still coerce an object returned by a replaced helper after the
-provider has preserved it. Empty ordinary sums can similarly expose integer
-versus float report dtypes. The local architecture owner must resolve that
-generic boundary; provider tests alone do not qualify it.
+provider has preserved it. Mixed observed scalar int/float results now retain
+the existing object ABI, preserving ordinary sums' empty integer zero and strict
+report dtypes. That fix does not establish arbitrary object replacement support
+for every traced numeric Cell; provider tests alone do not qualify that boundary.
+
+Regional adjustments retain all original generator/comprehension and consumer
+syntax. Seventeen generation-scope power operators use standard builtin
+`pow(base, exponent)` to retain Python numeric/error behavior; the source/hash
+receipt is `GENERATOR_SOURCE_ADJUSTMENTS.json`. No multiline formatting
+workaround is needed with compiler c8b0371's CST pipeline.

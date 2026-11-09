@@ -643,7 +643,7 @@ def beitragssumme_pp():
     if tables.lookup_object(prepared_model_point(), "prem_form") == "single":
         return base
     m = tables.lookup_int(prepared_model_point(), "ret_age") - tables.lookup_int(prepared_model_point(), "entry_age")
-    return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
+    return sum(base * pow((1.0 + dyn), u) for u in range(max(m, 0)))
 
 
 def prem_freq_load():

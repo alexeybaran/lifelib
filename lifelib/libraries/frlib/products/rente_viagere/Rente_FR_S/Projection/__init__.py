@@ -713,7 +713,7 @@ def annuity_factor(table_sex):
     not over the projection frame's month indices, so it does not move with the frame.
     """
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum(tariff_lives(t, table_sex) * v ** t
+    return sum(tariff_lives(t, table_sex) * pow(v, t)
                for t in range(1, tariff_horizon_mths() + 1)) / 12.0
 
 
@@ -765,7 +765,7 @@ def certain_excess_years():
     if n <= 0:
         return 0.0
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t    # noqa: F821
+    return sum((1.0 - tariff_lives(t, tariff_table_sex)) * pow(v, t)    # noqa: F821
                for t in range(1, n + 1)) / 12.0
 
 

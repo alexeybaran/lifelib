@@ -53,8 +53,11 @@ def argument_order(function, read):
 ''')
     (root / 'setup.py').write_text('''from setuptools import setup, Extension
 from Cython.Build import cythonize
+from pathlib import Path
+import modelx_cython
 setup(ext_modules=cythonize([Extension(name,[name+'.pyx'],language='c++')
- for name in ['stream_native','stream_probe']],compiler_directives={'language_level':3}))
+ for name in ['stream_native','stream_probe']],
+ include_path=[str(Path(modelx_cython.__file__).resolve().parent.parent)],compiler_directives={'language_level':3}))
 ''')
     run = subprocess.run([sys.executable, 'setup.py', 'build_ext', '--inplace'], cwd=root,
                          capture_output=True, text=True)
