@@ -8,6 +8,7 @@ from cpython.object cimport Py_TYPE
 from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _FLOAT, _NO_CALLBACK, _DOMAIN_MISSING
 from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
 from modelx_cython._range_state cimport I64Range, range_init, range_next
+from modelx_cython._call_layout cimport forward_call
 
 cdef object omitted_argument = object()
 cdef object _missing = omitted_argument
@@ -22,14 +23,7 @@ cdef extern from *:
 
 
 cdef object _replacement(object function, tuple keywords, tuple names, tuple values):
-    cdef list positional = []
-    cdef dict named = {}
-    for name in keywords:
-        named[name] = values[names.index(name)]
-    for name, value in zip(names, values):
-        if value is not _missing and name not in named:
-            positional.append(value)
-    return function(*positional, **named)
+    return forward_call(function, keywords, names, values, _missing)
 
 cdef object _unpack(object value, object count):
     cdef object first, second, third, iterator
