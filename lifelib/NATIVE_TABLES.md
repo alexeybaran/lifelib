@@ -325,3 +325,23 @@ returning an object-declared scalar helper as double from its observed NumPy
 value, losing the NumPy scalar class at that Cell boundary. The failing normal
 CLI test is retained and reported to the compiler owner. These helper/kernel
 checks do not qualify such Cell compositions, all57 models or performance.
+
+### Selected column errors and output construction
+
+Pandas-prepared Tables privately retain pandas' scalar column-error contract:
+unknown named columns raise KeyError(column) before row lookup, including when
+both row and column are absent. A missing-key default never hides a missing
+column. Ordinary bare Table instances and old untagged metadata retain their
+row-first/ValueError behavior. The Python reference and native keyed/typed paths
+share this distinction. Focused differential/error-order checks and combined
+output/typed/report regressions pass44 and157 tests respectively; native exception
+checks confirm no Python helper or pandas calls in admitted missing-column paths.
+
+All-float64 public DataFrames use one owned NumPy matrix and one pandas constructor
+instead of temporary Series per column. Column-major storage retains subsequent
+reduction behavior. Other dtype paths remain explicit per-column construction.
+Exact values, metadata, attrs/flags, ownership, empty shapes and reduction results
+are checked, including cancellation/missing/infinite fixtures. A seven-pair
+same-VM prototype control over127 original annual frames measured median0.151x
+baseline materialization time (range0.141–0.224). This is output-only prototype
+evidence; product timing and full report/model/lifecycle gates remain separate.

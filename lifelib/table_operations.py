@@ -98,10 +98,19 @@ def to_pandas(value, *, index_name=_MISSING):
         if meta is None or meta[0] != 'frame':
             raise ValueError('to_pandas requires table(..., report=True) metadata')
         index, columns, dtypes = axis(meta[1]), axis(meta[2]), meta[3]
-        result = pd.DataFrame({name: pd.Series([row[i] for row in value._values],
-                               index=index, dtype=dtypes[i])
-                               for i, name in enumerate(value._columns)}, index=index)
-        result.columns = columns
+        import numpy as np
+        if all(dtype == np.dtype('float64') for dtype in dtypes):
+            # One matrix/constructor avoids a temporary Series per column. Keep
+            # column-major storage, as in the dict-of-Series construction, so
+            # later pandas/NumPy reductions retain their numerical dispatch.
+            numbers = np.array(value._values, dtype='float64', order='F').reshape(
+                (len(index), len(columns)), order='F')
+            result = pd.DataFrame(numbers, index=index, columns=columns, copy=False)
+        else:
+            result = pd.DataFrame({name: pd.Series([row[i] for row in value._values],
+                                   index=index, dtype=dtypes[i])
+                                   for i, name in enumerate(value._columns)}, index=index)
+            result.columns = columns
         result.attrs = deepcopy(meta[6])
         result.flags.allows_duplicate_labels = meta[7]
     elif type(value) is Record and value._metadata is not None and value._metadata[0] in ('row', 'series'):
