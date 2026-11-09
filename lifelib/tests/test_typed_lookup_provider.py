@@ -55,6 +55,14 @@ def keyword_read(function,source,key,default):
     return native.lookup_float(function,('default',),source,key,
                                column=native.omitted_argument,default=default)
 
+def keyword_integer(function,source,key,default):
+    return native.lookup_int(function,('default',),source,key,
+                             column=native.omitted_argument,default=default)
+
+def keyword_object(function,source,key,default):
+    return native.lookup_object(function,('default',),source,key,
+                                column=native.omitted_argument,default=default)
+
 def reordered_read(function,source,key,default):
     return native.lookup_float(function,('default','key','source'),
                                default=default,key=key,source=source,
@@ -111,7 +119,7 @@ def test_defaults_replacement_pickle_and_at_error(native):
     import pandas as pd
     from lifelib.pandas_inputs import table
     record=Record({'age':3})
-    assert native.integer(h.lookup_int,record,'absent',7)==7
+    assert native.keyword_integer(h.lookup_int,record,'absent',7)==7
     source=Table((),(),('rate',))
     assert native.floating(h.lookup_float,source,0,'rate','2.5')==2.5
     seen=[]
@@ -161,6 +169,21 @@ def test_keyword_missing_replacement_keeps_insertion_order(native):
     assert seen == [(('value', None), ('predicate', pd.isna))]
 
 
+@pytest.mark.parametrize('suffix,entry', [('int','integer'), ('float','floating'),
+                                         ('bool','boolean'), ('str','text'), ('object','raw')])
+def test_record_column_is_not_a_default(native,suffix,entry):
+    record = Record({'value': 1.5})
+    function = getattr(h, 'lookup_' + suffix)
+    message = 'Record lookup does not accept a column; use default='
+    for key in ['value', 'absent']:
+        with pytest.raises(TypeError) as python_error:
+            function(record, key, column=7)
+        assert python_error.value.args == (message,)
+        with pytest.raises(TypeError) as native_error:
+            getattr(native, entry)(function, record, key, 7)
+        assert native_error.value.args == python_error.value.args
+
+
 def test_explicit_public_default_sentinel_retains_omission_semantics(native):
     record = Record({'value': 1.5})
     assert native.keyword_read(h.lookup_float, record, 'value', h._MISSING) == 1.5
@@ -203,7 +226,7 @@ def test_object_lookup_keeps_missing_identity(native):
         record=Record({'value':value})
         assert native.raw(h.lookup_object,record,'value') is value
         assert h.lookup_object(record,'value') is value
-    assert native.raw(h.lookup_object,Record({}),'absent',None) is None
+    assert native.keyword_object(h.lookup_object,Record({}),'absent',None) is None
 
 
 @pytest.mark.parametrize('dtype,value', [('int64', 42), ('float64', 0.25), ('bool', True)])

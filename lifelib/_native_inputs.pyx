@@ -1264,9 +1264,7 @@ cdef object _explicit_value(object source, object key, object column, object def
         default = _missing
     if type(source) is Record:
         if column is not _missing:
-            if default is not _missing:
-                raise TypeError('Record lookup accepts one optional default')
-            default = column
+            raise TypeError('Record lookup does not accept a column; use default=')
         value = source._index.get(key, _missing)
         if value is _missing:
             if default is _missing:
@@ -1288,7 +1286,7 @@ cdef object _explicit_value(object source, object key, object column, object def
 
 cdef object _explicit_replacement(object function, tuple keywords, tuple names, tuple values):
     # Compatibility only. Canonical reads never allocate dispatch containers.
-    # Reconstruct BEFORE interpreting Record's optional third argument.
+    # Reconstruct BEFORE validating canonical Record columns/defaults.
     cdef list positional = []
     cdef dict named = {}
     for name in keywords:
