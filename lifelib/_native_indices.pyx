@@ -3,34 +3,57 @@
 from array import array
 import cython
 from libc.math cimport isfinite
-from lifelib.immutable_inputs import Table
+from lifelib.immutable_inputs import Record, Table
 from lifelib.table_keys import keys as _keys
+from modelx_cython._call_layout cimport forward_call
+
+cdef object omitted_argument = object()
 
 
 cdef class KeySpan:
     pass
 
 
-cdef object keys(object function, object table):
-    if function is _keys and type(table) is Table:
-        return table._keys
-    return function(table)
+cdef tuple _owned_keys(object source):
+    if type(source) is Table:
+        return source._keys
+    if type(source) is Record:
+        if source._metadata == ('index',):
+            return source._index['keys']
+        return tuple(source._index)
+    return None
+
+
+cdef dict _owned_cache(object source):
+    return source._native_cache if type(source) is Table else source._native_groups
+
+
+cdef object keys(object function, tuple keywords, object table):
+    if function is _keys:
+        if type(table) is Table:
+            return table._keys
+        if type(table) is Record:
+            return _owned_keys(table)
+    return forward_call(function, keywords, ('table',), (table,), omitted_argument)
 
 
 cdef KeySpan keys_span(object function, object table):
     cdef KeySpan span
-    if function is not _keys or type(table) is not Table:
+    if function is not _keys:
         return None
-    span = table._native_cache.get(KeySpan)
+    values = _owned_keys(table)
+    if values is None:
+        return None
+    cache = _owned_cache(table)
+    span = cache.get(KeySpan)
     if span is not None:
         return span
-    values = table._keys
     if not all(type(key) is int and -(1 << 63) <= key < (1 << 63) for key in values):
         return None
     span = KeySpan()
     span.owner = table
     span.values = array('q', values)
-    table._native_cache[KeySpan] = span
+    cache[KeySpan] = span
     return span
 
 
@@ -55,19 +78,22 @@ cdef class FloatKeySpan:
 
 cdef FloatKeySpan keys_float_span(object function, object table):
     cdef FloatKeySpan span
-    if function is not _keys or type(table) is not Table:
+    if function is not _keys:
         return None
-    span = table._native_cache.get(FloatKeySpan)
+    values = _owned_keys(table)
+    if values is None:
+        return None
+    cache = _owned_cache(table)
+    span = cache.get(FloatKeySpan)
     if span is not None:
         return span
-    values = table._keys
     for key in values:
         if type(key) is not float or not isfinite(key):
             return None
     span = FloatKeySpan()
     span.owner = table
     span.values = array('d', values)
-    table._native_cache[FloatKeySpan] = span
+    cache[FloatKeySpan] = span
     return span
 
 
@@ -92,19 +118,22 @@ cdef class StrKeySpan:
 
 cdef StrKeySpan keys_str_span(object function, object table):
     cdef StrKeySpan span
-    if function is not _keys or type(table) is not Table:
+    if function is not _keys:
         return None
-    span = table._native_cache.get(StrKeySpan)
+    values = _owned_keys(table)
+    if values is None:
+        return None
+    cache = _owned_cache(table)
+    span = cache.get(StrKeySpan)
     if span is not None:
         return span
-    values = table._keys
     for key in values:
         if type(key) is not str:
             return None
     span = StrKeySpan()
     span.owner = table
     span.values = values
-    table._native_cache[StrKeySpan] = span
+    cache[StrKeySpan] = span
     return span
 
 

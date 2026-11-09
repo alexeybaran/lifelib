@@ -5,6 +5,7 @@ existing Table/Record structures in every execution mode. Public pandas inputs
 remain separate. Preparation follows normal modelx dependency/cache rules.
 """
 from collections import OrderedDict
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -86,7 +87,23 @@ def table(frame, *, columns=None, groups=(), indexing='loc'):
             return Table([key for key, _ in branch],
                          [values for _, values in branch], selected, index_error)
         return Record({key: build(value, depth + 1) for key, value in branch.items()})
-    return build(root, 0)
+    result = build(root, 0)
+    if not groups:
+        # Row selection has a different scalar-coercion contract from column
+        # lookup. Own it at preparation, rather than guessing a common dtype in
+        # the financial kernel. Public axes and attrs are independent copies.
+        row_values, row_dtypes, row_names = [], [], []
+        for position in range(len(selected_frame)):
+            public_row = selected_frame.iloc[position]
+            row_values.append(tuple(freeze(public_row[name]) for name in selected))
+            row_dtypes.append(public_row.dtype)
+            row_names.append(public_row.name)
+        object.__setattr__(result, '_metadata', (
+            'frame', selected_frame.index.copy(deep=True),
+            selected_frame.columns.copy(deep=True), tuple(selected_frame.dtypes),
+            tuple(row_values), tuple(row_dtypes), deepcopy(selected_frame.attrs),
+            selected_frame.flags.allows_duplicate_labels, tuple(row_names)))
+    return result
 
 
 def records(frame):
@@ -122,17 +139,22 @@ def record(row, *, preserve_scalar_types=False):
 
 
 def index(labels):
-    """Own a unique public Index for internal ordered-key operations.
+    """Own public Index labels for internal ordered traversal.
 
-    The public Index Cell remains unchanged. Position is ordinary Table data;
-    key order and scalar types are retained, including empty input. Duplicate
-    labels are rejected explicitly rather than silently deduplicated.
+    The public Index Cell remains unchanged. Unique labels retain the existing
+    Table representation with position data. Duplicate labels use an existing
+    Record containing the owned key tuple, preserving order and multiplicity
+    without weakening Table's unique-lookup-key invariant. This is a traversal
+    input, not an implicit conversion of ambiguous labels into unique lookups.
     """
     if not isinstance(labels, pd.Index):
         raise TypeError('index requires a pandas Index')
+    keys = tuple(_key(label) for label in labels)
     if not labels.is_unique:
-        raise ValueError('index labels must be unique')
-    return Table(tuple(_key(label) for label in labels),
+        result = Record({'keys': keys})
+        object.__setattr__(result, '_metadata', ('index',))
+        return result
+    return Table(keys,
                  tuple((position,) for position in range(len(labels))),
                  ('position',), _at_index_spec(labels, encoded_errors=False))
 
