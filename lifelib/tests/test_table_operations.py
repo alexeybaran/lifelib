@@ -137,7 +137,7 @@ def test_replacement_layout_and_errors(native):
 
 
 def test_output_mutation_does_not_change_owned_snapshot():
-    source = inputs.table(pd.DataFrame({'x': [1.0]}, index=pd.Index([3], name='t')))
+    source = inputs.table(pd.DataFrame({'x': [1.0]}, index=pd.Index([3], name='t')), report=True)
     public = to_pandas(source)
     public.iloc[0, 0] = 9.0
     public.index.name = 'changed'
@@ -149,8 +149,11 @@ def test_output_mutation_does_not_change_owned_snapshot():
 def test_row_snapshots_are_explicit_and_follow_selected_columns(native):
     frame = pd.DataFrame({'age': [42], 'rate': [0.1]})
     lookup_only = inputs.table(frame)
-    assert lookup_only._metadata[4] is None
-    pd.testing.assert_frame_equal(to_pandas(lookup_only), frame, check_exact=True)
+    assert lookup_only._metadata is None
+    with pytest.raises(ValueError, match='report=True'): to_pandas(lookup_only)
+    report_only = inputs.table(frame, report=True)
+    assert report_only._metadata[4] is None
+    pd.testing.assert_frame_equal(to_pandas(report_only), frame, check_exact=True)
     for operation in [row, lambda table, key: native.select(row, table, key)]:
         with pytest.raises(ValueError, match='rows=True'): operation(lookup_only, 0)
     selected = inputs.table(frame, columns=('age',), rows=True)

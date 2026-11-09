@@ -27,7 +27,7 @@ def _key(value):
     return _scalar(value)
 
 
-def table(frame, *, columns=None, groups=(), indexing='loc', rows=False):
+def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=False):
     """Build an existing Table, optionally nested in explicit group Records.
 
     ``groups`` names index levels to group, in the authored nesting order. The
@@ -46,6 +46,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False):
     ``rows=True`` additionally owns pandas-style row scalar coercion for row()
     selection. Lookup-only tables omit this second matrix. Row coercion follows
     the selected columns, and row snapshots currently require ungrouped tables.
+    ``report=True`` owns axes/dtypes/attrs for to_pandas() without row snapshots;
+    rows=True includes report metadata. Plain lookup preparation owns neither.
     """
     if not isinstance(frame, pd.DataFrame):
         raise TypeError('table requires a pandas DataFrame')
@@ -53,8 +55,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False):
         raise ValueError('indexing must be loc or at')
     if indexing == 'at' and groups:
         raise ValueError('at preparation requires complete keys')
-    if rows and groups:
-        raise ValueError('row snapshots require ungrouped tables')
+    if (rows or report) and groups:
+        raise ValueError('row/report preparation requires ungrouped tables')
     index_error = _at_index_spec(frame.index, encoded_errors=indexing == 'at') if not groups else None
     selected = list(frame.columns) if columns is None else list(columns)
     if not selected or any(type(name) is not str for name in selected):
@@ -94,7 +96,7 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False):
                          [values for _, values in branch], selected, index_error)
         return Record({key: build(value, depth + 1) for key, value in branch.items()})
     result = build(root, 0)
-    if not groups:
+    if not groups and (rows or report):
         # Row selection has a different scalar-coercion contract from column
         # lookup. Own it at preparation, rather than guessing a common dtype in
         # the financial kernel. Public axes and attrs are independent copies.

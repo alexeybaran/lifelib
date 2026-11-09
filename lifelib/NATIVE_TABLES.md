@@ -192,7 +192,9 @@ providers, not a claim that values or allocation are entirely unboxed. Replaced
 callables, subclasses and unsupported key domains retain compatibility behavior;
 those fallback executions do not establish native coverage.
 
-`operations.to_pandas(table)` constructs the public DataFrame from preserved
+`inputs.table(frame, report=True)` prepares exact public report metadata without
+row snapshots; `rows=True` includes that metadata. Plain lookup preparation
+omits both costs. `operations.to_pandas(table)` constructs the public DataFrame from preserved
 metadata. `to_pandas(selected_row)` constructs its Series. The boundary restores
 axis classes/names, column order, dtypes, missing entries, attrs and duplicate-label
 flags and returns independent public objects. `index_name=` explicitly renames the

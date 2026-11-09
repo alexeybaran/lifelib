@@ -21,7 +21,7 @@ def row(table, key):
         raise TypeError('row requires an owned Table')
     metadata = table._metadata
     if metadata is None or metadata[0] != 'frame':
-        raise ValueError('row requires a table prepared with pandas row metadata')
+        raise ValueError('row requires table(..., rows=True) with pandas row metadata')
     if metadata[4] is None:
         raise ValueError('row requires table(..., rows=True)')
     try:
@@ -68,7 +68,7 @@ def to_pandas(value, *, index_name=_MISSING):
     if type(value) is Table:
         meta = value._metadata
         if meta is None or meta[0] != 'frame':
-            raise ValueError('to_pandas requires preserved report metadata')
+            raise ValueError('to_pandas requires table(..., report=True) metadata')
         index, columns, dtypes = meta[1].copy(deep=True), meta[2].copy(deep=True), meta[3]
         result = pd.DataFrame({name: pd.Series([row[i] for row in value._values],
                                index=index, dtype=dtypes[i])
