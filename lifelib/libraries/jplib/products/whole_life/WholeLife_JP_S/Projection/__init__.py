@@ -1343,8 +1343,7 @@ def apl_advances(s):
     **thirteen** on the ordinary one, from the same default at the same duration on the
     same underlying policy value.
     """
-    return sum(1 for d in range(s, min(apl_fail_year(s), prem_end()))
-               if apl_fires(d, s))
+    return sum(expressions.over(range(s, min(apl_fail_year(s), prem_end())), lambda d: 1, where = lambda d: True if apl_fires(d, s) else False))
 
 
 def pols_default(t):
@@ -1449,18 +1448,17 @@ def pols_apl_carried(t):
     """
     if not apl_active() or t <= 0:
         return 0.0
-    return sum(pols_apl_in(t, s)
-               for s in range(min((t - 1) // 12, prem_end() - 1) + 1))
+    return sum(expressions.over(range(min((t - 1) // 12, prem_end() - 1) + 1), lambda s: pols_apl_in(t, s)))
 
 
 def pols_apl(t):
     """The APL cohorts exposed to the month-t decrements, summed over entry anniversaries."""
-    return sum(pols_if_apl(t, s) for s in apl_entry_years(t))
+    return sum(expressions.over(apl_entry_years(t), lambda s: pols_if_apl(t, s)))
 
 
 def pols_apl_exit(t):
     """Policies terminating at the start of month t because the APL exhausted."""
-    return sum(pols_apl_exit_at(t, s) for s in apl_entry_years(t))
+    return sum(expressions.over(apl_entry_years(t), lambda s: pols_apl_exit_at(t, s)))
 
 
 def pols_loan_exit(t):
@@ -1600,27 +1598,23 @@ def claims(t, kind=None):
     payment.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
     d = duration(t)
     if kind == "DEATH":
         pay = max(0.0, sum_assured_at(t) - loan_pp(d)) * (
             pols_pay_bef_decr(t) * mort_rate_mth(t))
-        apl = sum(max(0.0, sum_assured_at(t) - loan_apl_pp(d, s))
-                  * pols_if_apl(t, s) * mort_rate_mth(t)
-                  for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0)
+        apl = sum(expressions.over(apl_entry_years(t), lambda s: max(0.0, sum_assured_at(t) - loan_apl_pp(d, s))
+                  * pols_if_apl(t, s) * mort_rate_mth(t), where = lambda s: True if pols_if_apl(t, s) != 0.0 else False))
         return pay + apl
     if kind == "LAPSE":
         surv = 1.0 - mort_rate_mth(t)
         exit_rate = 1.0 - (1.0 - lapse_rate_mth(t)) * (1.0 - lapse_spike_rate(t))
         pay = max(0.0, cv_at_m(t + 1) - loan_pp(d)) * (
             pols_pay_bef_decr(t) * surv * exit_rate)
-        apl = sum(max(0.0, apl_test_val_m(t + 1) - loan_apl_pp(d, s))
-                  * pols_if_apl(t, s) * surv * exit_rate
-                  for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0)
-        exhausted = sum(max(0.0, apl_test_val(d) - loan_apl_pp(d, s))
-                        * pols_apl_exit_at(t, s)
-                        for s in apl_entry_years(t)
-                        if pols_apl_exit_at(t, s) != 0.0)
+        apl = sum(expressions.over(apl_entry_years(t), lambda s: max(0.0, apl_test_val_m(t + 1) - loan_apl_pp(d, s))
+                  * pols_if_apl(t, s) * surv * exit_rate, where = lambda s: True if pols_if_apl(t, s) != 0.0 else False))
+        exhausted = sum(expressions.over(apl_entry_years(t), lambda s: max(0.0, apl_test_val(d) - loan_apl_pp(d, s))
+                        * pols_apl_exit_at(t, s), where = lambda s: True if pols_apl_exit_at(t, s) != 0.0 else False))
         excess = max(0.0, cv_pp(d) - loan_pp(d)) * pols_loan_exit(t)
         return pay + apl + exhausted + excess
     raise ValueError("invalid kind")
@@ -1751,8 +1745,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def pols_exit_cum(t):
@@ -1783,8 +1776,7 @@ def check_decrement_sum_resid(t):
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every month."""
-    return all(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_decrement_sum_resid(t)) <= roll_fwd_tol))
 
 
 def check_pol_val_roll_fwd_resid(d):
@@ -1819,8 +1811,7 @@ def check_pol_val_roll_fwd_resid(d):
 def check_pol_val_roll_fwd():
     """True when the policy value rolls forward on its own basis in every policy year."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_pol_val_roll_fwd_resid(d)) <= tol
-               for d in range(proj_years()))
+    return all(expressions.over(range(proj_years()), lambda d: abs(check_pol_val_roll_fwd_resid(d)) <= tol))
 
 
 def check_reserve_identity_resid(d):
@@ -1847,8 +1838,7 @@ def check_reserve_identity():
     included: this is a statement about a value at a point in time, not about a period.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_reserve_identity_resid(d)) <= tol
-               for d in range(proj_years() + 1))
+    return all(expressions.over(range(proj_years() + 1), lambda d: abs(check_reserve_identity_resid(d)) <= tol))
 
 
 def check_loan_roll_fwd_resid(d):
@@ -1879,8 +1869,7 @@ def check_loan_roll_fwd():
     Stops one year short of the end because the residual reads ``loan_pp(d + 1)``.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_loan_roll_fwd_resid(d)) <= tol
-               for d in range(proj_years() - 1))
+    return all(expressions.over(range(proj_years() - 1), lambda d: abs(check_loan_roll_fwd_resid(d)) <= tol))
 
 
 def check_net_cf_resid(t):
@@ -1898,8 +1887,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 def result_cf():
@@ -2045,3 +2033,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

@@ -1759,8 +1759,7 @@ def check_lives_roll_fwd():
     Mortality is the only decrement here, so a failure means the last-survivor
     construction and the per-life recursion have come apart.
     """
-    return all(abs(check_lives_roll_fwd_resid(t)) < 1e-12
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_lives_roll_fwd_resid(t)) < 1e-12))
 
 
 def check_income_roll_fwd_resid(t):
@@ -1788,8 +1787,7 @@ def check_income_roll_fwd():
     tolerance is absolute rather than relative because ``B`` is a currency amount that
     only ever steps, never accrues.
     """
-    return all(abs(check_income_roll_fwd_resid(t)) < 1e-9
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_income_roll_fwd_resid(t)) < 1e-9))
 
 
 def check_payment_factor_resid(t):
@@ -1810,8 +1808,7 @@ def check_payment_factor():
     rather than tolerant: the identity is arithmetical, so any residual at all is a
     defect and not a rounding artefact.
     """
-    return all(check_payment_factor_resid(t) == 0.0
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_payment_factor_resid(t) == 0.0))
 
 
 def check_commutation_value_resid(t):
@@ -1857,8 +1854,7 @@ def check_commutation_value():
     Trivially ``True`` on a contract that never commutes, which is the base run - the
     residual is identically zero away from the exercise month.
     """
-    return all(abs(check_commutation_value_resid(t)) < 1e-6
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_commutation_value_resid(t)) < 1e-6))
 
 
 def lives_if_ann(y):
@@ -1879,7 +1875,7 @@ def claims_ann(y, kind=None):
     ``(l(y-1) - l(y)) * CP(y)`` on the annual grid - which is exactly how the worked
     example computes it.
     """
-    return sum(claims(t, kind) for t in range(12 * (y - 1), 12 * y))
+    return sum(expressions.over(range(12 * (y - 1), 12 * y), lambda t: claims(t, kind)))
 
 
 def annuity_payments_ann(y):
@@ -1952,7 +1948,7 @@ def result_annual():
     return pd.DataFrame(                                             # noqa: F821
         {
             "age": [age(12 * (y - 1), 1) for y in ys],
-            "premium_pp": [sum(premium_pp(t) for t in range(12 * (y - 1), 12 * y))
+            "premium_pp": [sum(expressions.over(range(12 * (y - 1), 12 * y), lambda t: premium_pp(t)))
                            for y in ys],
             "cum_premium_pp": [cum_premium_pp(12 * y - 1) for y in ys],
             "annual_income": [annual_income(12 * y - 1) for y in ys],
@@ -2012,3 +2008,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

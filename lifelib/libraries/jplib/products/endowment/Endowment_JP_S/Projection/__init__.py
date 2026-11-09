@@ -875,7 +875,7 @@ def benefit_pct(k):
 
 def benefit_pct_cum(k):
     """G(k): the cumulative staged fraction paid to and including anniversary k."""
-    return sum(v for s, v in benefit_schedule().items() if s <= k)
+    return sum(expressions.over(benefit_schedule().items(), lambda s, v: v, where = lambda s, v: True if s <= k else False, unpack = 2))
 
 
 # --- the cash-value construction
@@ -914,7 +914,7 @@ def annuity_due(z, k, i):
     In years of premium, so ``S x A / a-due`` is yen per year.  ``k = 0`` returns 0.
     """
     v = 1.0 / (1.0 + i)
-    return sum((v ** j) * surv_prob(z, j) for j in range(k))
+    return sum(expressions.over(range(k), lambda j: (v ** j) * surv_prob(z, j)))
 
 
 def edu_epv(k, i):
@@ -933,8 +933,7 @@ def edu_epv(k, i):
     v = 1.0 / (1.0 + i)
     z = issue_age() + k
     n = policy_term()
-    total = sum(g * (v ** (s - k)) * surv_prob(z, s - k)
-                for s, g in benefit_schedule().items() if s > k)
+    total = sum(expressions.over(benefit_schedule().items(), lambda s, g: g * (v ** (s - k)) * surv_prob(z, s - k), where = lambda s, g: True if s > k else False, unpack = 2))
     return sum_assured() * (total + (v ** (n - k)) * surv_prob(z, n - k))
 
 
@@ -1482,8 +1481,7 @@ def claims(t, kind=None):
         base run, and published as a column of zeros because the zero is the product fact.
     """
     if kind is None:
-        return sum(claims(t, k) for k in
-                   ("DEATH", "STAGED", "MATURITY", "LAPSE", "PH_DEATH"))
+        return sum(expressions.over(("DEATH", "STAGED", "MATURITY", "LAPSE", "PH_DEATH"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return max(0.0, death_ben_pp(t)) * pols_death(t)
     if kind == "STAGED":
@@ -1641,8 +1639,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_pol_val_roll_fwd_resid(k):
@@ -1679,8 +1676,7 @@ def check_pol_val_roll_fwd():
     since the residual accumulates rounding on an amount of that size.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all(abs(check_pol_val_roll_fwd_resid(k)) <= tol
-               for k in range(proj_years()))
+    return all(expressions.over(range(proj_years()), lambda k: abs(check_pol_val_roll_fwd_resid(k)) <= tol))
 
 
 def check_pol_val_terminal_resid(k):
@@ -1704,8 +1700,7 @@ def check_pol_val_terminal():
     signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all(abs(check_pol_val_terminal_resid(k)) <= tol
-               for k in range(proj_years() + 1))
+    return all(expressions.over(range(proj_years() + 1), lambda k: abs(check_pol_val_terminal_resid(k)) <= tol))
 
 
 def check_surr_charge_resid(k):
@@ -1729,8 +1724,7 @@ def check_surr_charge():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all(abs(check_surr_charge_resid(k)) <= tol
-               for k in range(proj_years() + 1))
+    return all(expressions.over(range(proj_years() + 1), lambda k: abs(check_surr_charge_resid(k)) <= tol))
 
 
 def check_staged_value_resid(k):
@@ -1752,8 +1746,7 @@ def check_staged_value():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all(abs(check_staged_value_resid(k)) <= tol
-               for k in range(proj_years() + 1))
+    return all(expressions.over(range(proj_years() + 1), lambda k: abs(check_staged_value_resid(k)) <= tol))
 
 
 def check_net_cf_resid(t):
@@ -1777,8 +1770,7 @@ def check_net_cf():
     residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 # --- result tables
@@ -1927,3 +1919,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

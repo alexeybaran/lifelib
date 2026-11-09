@@ -965,7 +965,7 @@ def opt_portfolio(t, spot, tau_, mkt):
     reproduce ``IA(1 + g)`` exactly, the strike set or the notional convention is wrong;
     :func:`check_term_end_identity` tests it.
     """
-    return sum(opt_component(t, leg, spot, tau_, mkt) for leg in opt_legs())
+    return sum(expressions.over(opt_legs(), lambda leg: opt_component(t, leg, spot, tau_, mkt)))
 
 
 def opt_portfolio_abs(t, spot, tau_, mkt):
@@ -975,7 +975,7 @@ def opt_portfolio_abs(t, spot, tau_, mkt):
     prospectus quantifies the trading cost provision; the base must be stated whenever the
     factor is recalibrated.
     """
-    return sum(abs(opt_component(t, leg, spot, tau_, mkt)) for leg in opt_legs())
+    return sum(expressions.over(opt_legs(), lambda leg: abs(opt_component(t, leg, spot, tau_, mkt))))
 
 
 def opt_budget(t):
@@ -1618,7 +1618,7 @@ def wd_alloc_pp(t, bucket):
     """
     if wd_pp(t) <= 0.0:
         return 0.0
-    total = sum(wd_bucket_value_pp(t, b) for b in ("OPTION", "FIXED", "HOLDING"))
+    total = sum(expressions.over(("OPTION", "FIXED", "HOLDING"), lambda b: wd_bucket_value_pp(t, b)))
     if total <= 0.0:
         return 0.0
     return wd_pp(t) * wd_bucket_value_pp(t, bucket) / total
@@ -2096,8 +2096,7 @@ def check_av_roll_fwd():
     this library, so one test can call the same check across every model;
     :func:`check_av_roll_fwd_resid` gives the signed residual of a month that fails.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol()
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2118,8 +2117,7 @@ def check_pols_roll_fwd():
     The counts are probabilities of order 1, so the tolerance is absolute rather than the
     currency-scaled :func:`roll_fwd_tol`.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-12
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-12))
 
 
 def check_term_end_identity_resid(t):
@@ -2144,8 +2142,7 @@ def check_term_end_identity():
     :func:`check_term_end_identity_resid` gives the signed residual of a term end that
     fails. This is the check the notes ask for by name.
     """
-    return all(abs(check_term_end_identity_resid(t)) <= roll_fwd_tol()
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_term_end_identity_resid(t)) <= roll_fwd_tol()))
 
 
 def result_cf():
@@ -2326,3 +2323,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

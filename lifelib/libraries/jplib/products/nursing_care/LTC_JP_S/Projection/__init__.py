@@ -552,7 +552,7 @@ def omega_age():
     carries after that.  The table's last row for a sex has ``mort_rate = 1``.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    return int(max(a for (s, a) in tbl.index if s == sex()))
+    return int(max(expressions.over(tbl.index, lambda s, a: a, where = lambda s, a: True if s == sex() else False, unpack = 2)))
 
 
 def proj_len():
@@ -1300,8 +1300,7 @@ def check_pols_roll_fwd():
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that
     failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_nesting_resid(t):
@@ -1331,8 +1330,7 @@ def check_nesting():
     three checks are cash flow and roll-forward identities of a *period* and stop at
     ``proj_len() - 1``.
     """
-    return all(check_nesting_resid(t) >= -roll_fwd_tol               # noqa: F821
-               for t in range(proj_len() + 1))
+    return all(expressions.over(range(proj_len() + 1), lambda t: check_nesting_resid(t) >= -roll_fwd_tol))
 
 
 def check_ann_ledger_resid(t):
@@ -1353,8 +1351,7 @@ def check_ann_ledger_resid(t):
 
 def check_ann_ledger():
     """True when the annuity ledger closes in every projected month."""
-    return all(abs(check_ann_ledger_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_ann_ledger_resid(t)) <= roll_fwd_tol))
 
 
 def check_net_cf_resid(t):
@@ -1374,8 +1371,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the cash flow statement re-adds to :func:`net_cf` in every month."""
-    return all(abs(check_net_cf_resid(t)) <= 1e-6
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= 1e-6))
 
 
 # --- result tables ---
@@ -1496,3 +1492,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

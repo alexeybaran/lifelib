@@ -460,14 +460,14 @@ def pivot_interp(x, sex_, smoker_, column):
     policy issued young or running long leaves the tabulated region.
     """
     sub = data.ci_rate_table().loc[(sex_, smoker_)]                  # noqa: F821
-    ages = sorted(int(a) for a in sub.index)
+    ages = sorted(expressions.over(sub.index, lambda a: int(a)))
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = max(a for a in ages if a <= x)
-        hi = min(a for a in ages if a > x)
+        lo = max(expressions.over(ages, lambda a: a, where = lambda a: True if a <= x else False))
+        hi = min(expressions.over(ages, lambda a: a, where = lambda a: True if a > x else False))
     r_lo = float(sub.loc[lo, column])
     r_hi = float(sub.loc[hi, column])
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
@@ -877,7 +877,7 @@ def claims(t, kind=None):
         the kind exists so that the zero is stated rather than inferred.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE"))
+        return sum(expressions.over(("MAIN", "AP", "CHILD", "LAPSE"), lambda k: claims(t, k)))
     if kind == "MAIN":
         return benefit_pp(t, "MAIN") * claim_rate_paid_mth(t) * pols_if(t)
     if kind == "AP":
@@ -958,8 +958,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
 
 
 def check_claim_split_resid(t):
@@ -988,8 +987,7 @@ def check_claim_split():
     tolerance is a Reference rather than a machine epsilon, and moving that Reference is
     how a user states how much of the artefact they will accept.
     """
-    return all(abs(check_claim_split_resid(t)) <= claim_split_tol    # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_claim_split_resid(t)) <= claim_split_tol))
 
 
 def result_cf():
@@ -1103,3 +1101,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

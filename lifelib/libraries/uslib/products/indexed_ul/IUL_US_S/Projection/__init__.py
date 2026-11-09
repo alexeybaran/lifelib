@@ -1166,7 +1166,7 @@ def seg_bal_active_pp(t):
     before ``t = 0``, so the pool is empty in the first month.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t - 1, m) for m in range(lo, t))
+    return sum(expressions.over(range(lo, t), lambda m: seg_bal_pp(t - 1, m)))
 
 
 def seg_share(t, m):
@@ -1258,7 +1258,7 @@ def seg_bal_tot_pp(t):
     The segments born at ``max(0, t - 11) ... t``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t, m) for m in range(lo, t + 1))
+    return sum(expressions.over(range(lo, t + 1), lambda m: seg_bal_pp(t, m)))
 
 
 def seg_count(t):
@@ -1268,7 +1268,7 @@ def seg_count(t):
     for a model point with ``index_alloc_rate() == 0``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(1 for m in range(lo, t + 1) if seg_bal_pp(t, m) > 0)
+    return sum(expressions.over(range(lo, t + 1), lambda m: 1, where = lambda m: True if seg_bal_pp(t, m) > 0 else False))
 
 
 def seg_return(t):
@@ -1955,7 +1955,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
     else:
         raise ValueError("invalid kind")
 
@@ -2383,3 +2383,5 @@ math = ("Module", "math")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

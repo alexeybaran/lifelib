@@ -716,7 +716,7 @@ def lapse_rate_base(t):
     if d >= premium_term_y():
         return float(tbl.loc[("defer_gap", 0), "lapse_rate"])
     seg = tbl.loc["premium_paying"]
-    return float(seg.loc[max(y for y in seg.index if y <= d), "lapse_rate"])
+    return float(seg.loc[max(expressions.over(seg.index, lambda y: y, where = lambda y: True if y <= d else False)), "lapse_rate"])
 
 
 def lapse_dyn_factor(t):
@@ -1414,7 +1414,7 @@ def claims(t, kind=None):
         the 年金の一括払 lump sums at the 年金支払開始日; zero in the base run.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE", "COMMUTATION"))
+        return sum(expressions.over(("ANNUITY", "DEATH", "LAPSE", "COMMUTATION"), lambda k: claims(t, k)))
     if kind == "ANNUITY":
         return annuity_pp(t) * (pols_if(t) - pols_commute(t))
     if kind == "DEATH":
@@ -1522,8 +1522,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol                # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1538,8 +1537,7 @@ def check_lives_roll_fwd_resid(t):
 
 def check_lives_roll_fwd():
     """True when the survivorship roll-forward closes in every projected month."""
-    return all(abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol               # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_fund_resid(s):
@@ -1569,8 +1567,7 @@ def check_fund():
     here rather than silently misstate the 年金原資.
     """
     scale = max(1.0, annuity_fund_pp())
-    return all(abs(check_fund_resid(s)) <= roll_fwd_tol * scale           # noqa: F821
-               for s in range(0, proj_years()))
+    return all(expressions.over(range(0, proj_years()), lambda s: abs(check_fund_resid(s)) <= roll_fwd_tol * scale))
 
 
 def check_cv_cap_resid(t):
@@ -1598,8 +1595,8 @@ def check_cv_cap():
     that is allowed past the ceiling: clipping :func:`av_pp` instead of :func:`cv_pp` would
     pass this check and destroy the 年金原資.
     """
-    return all(check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
-        1.0, db_pp(annuitisation_y())) for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
+        1.0, db_pp(annuitisation_y()))))
 
 
 def check_annuity_total_resid(t):
@@ -1626,10 +1623,9 @@ def check_annuity_total():
     """
     n = annuitisation_t()
     guaranteed = (payout_term_y() if payout_form() == "certain" else guar_term_y())
-    total = sum(annuity_pp(t) for t in range(n, n + 12 * guaranteed))
+    total = sum(expressions.over(range(n, n + 12 * guaranteed), lambda t: annuity_pp(t)))
     scale = max(1.0, annuity_amount_pp())
-    return (all(abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale  # noqa: F821
-                for t in range(0, proj_len()))
+    return (all(expressions.over(range(0, proj_len()), lambda t: abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale))
             and abs(total - guaranteed * annuity_amount_pp())
             <= roll_fwd_tol * scale)
 
@@ -1649,8 +1645,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow columns add up to :func:`net_cf` in every month."""
     scale = max(1.0, premium_pp())
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale         # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale))
 
 
 def mort_anchor_ages(table):
@@ -1702,8 +1697,8 @@ def mort_rate_graduated(table, x):
     ages = mort_anchor_ages(table)
     if x in ages:
         return mort_rate_at_age(table, x)
-    lo = max(a for a in ages if a < x)
-    hi = min(a for a in ages if a > x)
+    lo = max(expressions.over(ages, lambda a: a, where = lambda a: True if a < x else False))
+    hi = min(expressions.over(ages, lambda a: a, where = lambda a: True if a > x else False))
     q_lo = math.log(mort_rate_at_age(table, lo))                     # noqa: F821
     q_hi = math.log(mort_rate_at_age(table, hi))                     # noqa: F821
     return round(math.exp(q_lo + (x - lo) / (hi - lo) * (q_hi - q_lo)), 5)  # noqa: F821
@@ -1732,8 +1727,7 @@ def check_mort_graduation():
     ``mort_table.csv`` and ``mort_anchor_table.csv`` still agree with each other — the
     死亡保険用 rates log-linear between their anchors, the 年金開始後用 rates on the Makeham law.
     """
-    return all(abs(check_mort_graduation_resid(t)) <= 1e-15
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_mort_graduation_resid(t)) <= 1e-15))
 
 
 # --- Results ---------------------------------------------------------------
@@ -1851,7 +1845,7 @@ def lapse_rate_mean(weighting="count"):
         w = [av_pp(y) for y in ys]
     else:
         raise ValueError("invalid weighting")
-    num = sum(wt * lapse_rate(12 * y) for wt, y in zip(w, ys))
+    num = sum(expressions.over(zip(w, ys), lambda wt, y: wt * lapse_rate(12 * y), unpack = 2))
     den = sum(w)
     return num / den if den else 0.0
 
@@ -1877,3 +1871,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

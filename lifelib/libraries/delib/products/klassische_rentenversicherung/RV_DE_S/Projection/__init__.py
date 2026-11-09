@@ -692,7 +692,7 @@ def beitragssumme_pp():
     """
     mp = model_point()
     last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
-    return sum(prem_pp_sched(u) for u in range(last))
+    return sum(expressions.over(range(last), lambda u: prem_pp_sched(u)))
 
 
 def alpha_total_pp():
@@ -1838,7 +1838,7 @@ def claims(t, kind=None):
     weighting rule and is published as :func:`annuity_payments`.
     """
     if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION"))
+        return sum(expressions.over(("DEATH", "LAPSE", "COMMUTATION"), lambda j: claims(t, j)))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -2023,16 +2023,14 @@ def check_decrement_closure_resid(t):
     ``omega_age() - 1``.  A projection truncated before then would fail here rather than
     silently drop the annuity tail.
     """
-    exits = sum(pols_death(s) + pols_lapse(s) + pols_commutation(s)
-                for s in range(t_start(), t + 1))
+    exits = sum(expressions.over(range(t_start(), t + 1), lambda s: pols_death(s) + pols_lapse(s) + pols_commutation(s)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
 def check_decrement_closure():
     """True when exits and survivors account for the whole cohort at every projected t."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(abs(check_decrement_closure_resid(t)) <= tol
-               for t in result_cf().index)
+    return all(expressions.over(result_cf().index, lambda t: abs(check_decrement_closure_resid(t)) <= tol))
 
 
 def check_av_roll_fwd_resid(k):
@@ -2187,8 +2185,7 @@ def check_annuity_guarantee_resid(t):
 def check_annuity_guarantee():
     """True when the annuity is weighted by the annuitised count inside the guarantee period."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(abs(check_annuity_guarantee_resid(t)) <= tol
-               for t in result_cf().index)
+    return all(expressions.over(result_cf().index, lambda t: abs(check_annuity_guarantee_resid(t)) <= tol))
 
 
 # ----------------------------------------
@@ -2312,3 +2309,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

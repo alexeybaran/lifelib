@@ -707,7 +707,7 @@ def decl_rate(t):
     """
     tbl = data.decl_rate_table().loc[rate_scenario()]                # noqa: F821
     y = t // 12
-    return float(tbl.loc[max(k for k in tbl.index if k <= y), "decl_rate"])
+    return float(tbl.loc[max(expressions.over(tbl.index, lambda k: k, where = lambda k: True if k <= y else False)), "decl_rate"])
 
 
 def min_guar_rate(t):
@@ -721,7 +721,7 @@ def min_guar_rate(t):
     """
     tbl = data.guar_rate_table()                                     # noqa: F821
     y = t // 12
-    return float(tbl.loc[max(k for k in tbl.index if k <= y), "min_guar_rate"])
+    return float(tbl.loc[max(expressions.over(tbl.index, lambda k: k, where = lambda k: True if k <= y else False)), "min_guar_rate"])
 
 
 def credit_rate(t):
@@ -924,7 +924,7 @@ def lapse_rate(t):
         return float(tbl.loc[(lapse_basis(), "paid_up", 0), "lapse_rate"])
     seg = tbl.loc[(lapse_basis(), "premium_paying")]
     y = t // 12
-    return float(seg.loc[max(k for k in seg.index if k <= y), "lapse_rate"])
+    return float(seg.loc[max(expressions.over(seg.index, lambda k: k, where = lambda k: True if k <= y else False)), "lapse_rate"])
 
 
 def lapse_rate_mth(t):
@@ -1099,8 +1099,7 @@ def surr_chg_cap_pp():
     """
     m = premium_term_y()
     lvl_years = min(m, pricing_basis("surr_chg_cap_level_years"))
-    loading = sum(prem_mth_pp() * (acq_charge_rate(s) + maint_charge_rate(s))
-                  for s in range(12 * m))
+    loading = sum(expressions.over(range(12 * m), lambda s: prem_mth_pp() * (acq_charge_rate(s) + maint_charge_rate(s))))
     net_prem = prem_pp() - loading / lvl_years
     coeff = (pricing_basis("surr_chg_cap_rate_par") if par()
              else pricing_basis("surr_chg_cap_rate"))
@@ -1108,7 +1107,7 @@ def surr_chg_cap_pp():
     yrs = int(min(m, pricing_basis("acq_charge_years")))
     i = avg_decl_rate()
     acq = prem_pp() * pricing_basis("acq_charge_rate")
-    deduct = sum(acq / (1.0 + i) ** s for s in range(yrs))
+    deduct = sum(expressions.over(range(yrs), lambda s: acq / (1.0 + i) ** s))
     return max(0.0, gross - deduct)
 
 
@@ -1541,7 +1540,7 @@ def claims(t, kind=None):
         payment**.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE"))
+        return sum(expressions.over(("ANNUITY", "DEATH", "LAPSE"), lambda k: claims(t, k)))
     if kind == "ANNUITY":
         return annuity_pp(t) * pols_if(t)
     if kind == "DEATH":
@@ -1790,8 +1789,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1811,8 +1809,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the 계약자적립액 recursion closes in every deferral month."""
     scale = max(1.0, annuity_fund_pp())
-    return all(abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol * scale  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol * scale))
 
 
 def check_cv_floor_resid(t):
@@ -1835,8 +1832,7 @@ def check_cv_floor():
     value **is** the fund, so death and surrender pay the same amount at every duration.
     """
     scale = max(1.0, annuity_fund_pp())
-    return all(abs(check_cv_floor_resid(t)) <= roll_fwd_tol * scale   # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_cv_floor_resid(t)) <= roll_fwd_tol * scale))
 
 
 def check_surr_chg_cap_resid(t):
@@ -1858,8 +1854,8 @@ def check_surr_chg_cap():
     denied.  The composite sits far inside it, and so does the model point carrying the
     postal insurer's front-end charge.
     """
-    return all(check_surr_chg_cap_resid(t) >= -roll_fwd_tol * max(    # noqa: F821
-        1.0, prem_pp()) for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_surr_chg_cap_resid(t) >= -roll_fwd_tol * max(    # noqa: F821
+        1.0, prem_pp())))
 
 
 def check_min_fund_resid(t):
@@ -1880,9 +1876,8 @@ def check_min_fund():
     **survival** guarantee: a death claim in deferral is not floored at premiums paid on this
     composite, so the floor is payable only to a policy that reaches the 연금개시일 in force.
     """
-    return all(check_min_fund_resid(t) >= -roll_fwd_tol * max(        # noqa: F821
-        1.0, cum_prem_pp(annuitisation_t()))
-        for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_min_fund_resid(t) >= -roll_fwd_tol * max(        # noqa: F821
+        1.0, cum_prem_pp(annuitisation_t()))))
 
 
 def check_annuity_total_resid(t):
@@ -1909,10 +1904,9 @@ def check_annuity_total():
     """
     n = annuitisation_t()
     years = (payout_term_y() if payout_form() == "certain" else guar_term_y())
-    total = sum(annuity_pp(t) for t in range(n, n + 12 * years))
+    total = sum(expressions.over(range(n, n + 12 * years), lambda t: annuity_pp(t)))
     scale = max(1.0, annuity_amount_pp())
-    return (all(abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale  # noqa: F821
-                for t in range(proj_len()))
+    return (all(expressions.over(range(proj_len()), lambda t: abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale))
             and abs(total - years * annuity_amount_pp())
             <= roll_fwd_tol * scale * years * 12)
 
@@ -1930,7 +1924,7 @@ def check_annuity_limit_resid(t):
     """
     if t < annuitisation_t() or t % 12 != annuitisation_t() % 12:
         return 0.0
-    drawn = sum(annuity_pp(u) for u in range(t, min(t + 12, proj_len())))
+    drawn = sum(expressions.over(range(t, min(t + 12, proj_len())), lambda u: annuity_pp(u)))
     return annuity_limit_pp(t) - drawn
 
 
@@ -1944,8 +1938,8 @@ def check_annuity_limit():
     the model, it is a contract that has stopped being 연금수령 and started being 연금외수령
     at 16.5%, which is why it is worth a check rather than a comment.
     """
-    return all(check_annuity_limit_resid(t) >= -roll_fwd_tol * max(   # noqa: F821
-        1.0, annuity_amount_pp()) for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_annuity_limit_resid(t) >= -roll_fwd_tol * max(   # noqa: F821
+        1.0, annuity_amount_pp())))
 
 
 def check_mort_law_resid(t):
@@ -1971,8 +1965,7 @@ def check_mort_law():
     live in ``mort_anchor_table.csv``, and a rate that no longer follows from them is either
     a hand edit or a real table.
     """
-    return all(abs(check_mort_law_resid(t)) <= 1e-15
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_mort_law_resid(t)) <= 1e-15))
 
 
 def check_net_cf_resid(t):
@@ -1990,8 +1983,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow columns add up to :func:`net_cf` in every month."""
     scale = max(1.0, prem_pp())
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale))
 
 
 # --- Results ---------------------------------------------------------------
@@ -2107,3 +2099,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

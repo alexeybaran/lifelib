@@ -1128,8 +1128,7 @@ def tariff_annuity():
     Equal to 1 where ``prem_term = 1``, which is why the ``einmal`` form falls out of the
     same equivalence rather than needing its own.
     """
-    return sum(disc_factor(y) * pols_tariff(y)
-               for y in range(prem_term()))
+    return sum(expressions.over(range(prem_term()), lambda y: disc_factor(y) * pols_tariff(y)))
 
 
 def tariff_claims_pv():
@@ -1147,9 +1146,8 @@ def tariff_claims_pv():
     and moving it to the month would change the guaranteed premium a German contract
     states in its own *Versicherungsschein*.
     """
-    return sum(disc_factor(y + 1) * pols_tariff(y)
-               * mort_rate_tar(12 * y) * benefit_pp(12 * y)
-               for y in range(proj_len_y()))
+    return sum(expressions.over(range(proj_len_y()), lambda y: disc_factor(y + 1) * pols_tariff(y)
+               * mort_rate_tar(12 * y) * benefit_pp(12 * y)))
 
 
 def tariff_sum_pv():
@@ -1161,8 +1159,7 @@ def tariff_sum_pv():
     future administration costs on a contract whose premiums stop before its cover does.
     Annual, like the rest of the equivalence.
     """
-    return sum(disc_factor(y) * pols_tariff(y) * benefit_pp(12 * y)
-               for y in range(proj_len_y()))
+    return sum(expressions.over(range(proj_len_y()), lambda y: disc_factor(y) * pols_tariff(y) * benefit_pp(12 * y)))
 
 
 def prem_gross_level_pp():
@@ -1429,12 +1426,10 @@ def res_pp_at(y, timing):
         return 0.0
     p_y = pols_tariff(y)
     claims_pv = sum(
-        disc_factor(u - y + 1) * (pols_tariff(u) / p_y)
-        * mort_rate_tar(12 * u) * benefit_pp(12 * u)
-        for u in range(y, proj_len_y()))
+        expressions.over(range(y, proj_len_y()), lambda u: disc_factor(u - y + 1) * (pols_tariff(u) / p_y)
+        * mort_rate_tar(12 * u) * benefit_pp(12 * u)))
     prem_pv = prem_net_level_pp() * sum(
-        disc_factor(u - y) * (pols_tariff(u) / p_y)
-        for u in range(y, prem_term()))
+        expressions.over(range(y, prem_term()), lambda u: disc_factor(u - y) * (pols_tariff(u) / p_y)))
     return claims_pv - prem_pv
 
 
@@ -1454,8 +1449,7 @@ def res_zill_pp_at(y, timing):
     model publishes no balance-sheet reserve the question does not reach its cash flows.
     """
     p_y = pols_tariff(y) if y < proj_len_y() else 1.0
-    remaining = sum(disc_factor(u - y) * (pols_tariff(u) / p_y)
-                    for u in range(max(y, 0), prem_term()))
+    remaining = sum(expressions.over(range(max(y, 0), prem_term()), lambda u: disc_factor(u - y) * (pols_tariff(u) / p_y)))
     zill = (zillmer_rate * prem_term() * prem_gross_level_pp()       # noqa: F821
             * remaining / tariff_annuity())
     return res_pp_at(y, timing) - zill
@@ -1640,7 +1634,7 @@ def claims(t, kind=None):
     still look plausible.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY"))
+        return sum(expressions.over(("DEATH", "LAPSE", "MATURITY"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return benefit_paid_pp(t) * pols_death(t)
     if kind == "LAPSE":
@@ -1828,8 +1822,7 @@ def check_net_cf():
     tolerance scales with the sum insured, which is the largest number in the statement.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1856,11 +1849,9 @@ def check_pols_roll_fwd():
     0,03305608 deaths, 0,53554078 lapses and 0,43140314 expiries.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    if not all(abs(check_pols_roll_fwd_resid(t)) <= tol
-               for t in range(proj_start(), proj_len())):
+    if not all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol)):
         return False
-    exits = sum(pols_death(t) + pols_lapse(t) + pols_maturity(t)
-                for t in range(proj_start(), proj_len()))
+    exits = sum(expressions.over(range(proj_start(), proj_len()), lambda t: pols_death(t) + pols_lapse(t) + pols_maturity(t)))
     return abs(exits - pols_if_init()) <= tol
 
 
@@ -1949,8 +1940,7 @@ def check_res_roll_fwd():
         return False
     if abs(res_pp_at(proj_len_y(), "BEF_PREM")) > tol:
         return False
-    return all(abs(check_res_roll_fwd_resid(y)) <= tol
-               for y in range(proj_len_y()))
+    return all(expressions.over(range(proj_len_y()), lambda y: abs(check_res_roll_fwd_resid(y)) <= tol))
 
 
 def check_no_cash_value_resid(t):
@@ -1970,8 +1960,7 @@ def check_no_cash_value_resid(t):
 
 def check_no_cash_value():
     """True when a lapse and an expiry both pay nothing in every projected month."""
-    return all(abs(check_no_cash_value_resid(t)) <= val_tol          # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_no_cash_value_resid(t)) <= val_tol))
 
 
 # ==========================================================================
@@ -2145,3 +2134,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

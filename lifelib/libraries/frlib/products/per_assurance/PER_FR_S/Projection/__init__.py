@@ -1697,8 +1697,7 @@ def claims(t, kind=None):
     it carries its own line in :func:`result_cf`.
     """
     if kind is None:
-        return sum(claims(t, k) for k in
-                   ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY"))
+        return sum(expressions.over(("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return claim_pp(t, kind) * pols_death(t)
     if kind == "EARLY_RELEASE":
@@ -1802,8 +1801,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     return bool(all(
-        abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0)  # noqa: F821
-        for t in range(proj_len())))
+        expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0))))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1832,8 +1830,7 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the account value roll-forward closes in every projected month."""
-    return bool(all(abs(check_av_roll_fwd_resid(t)) <= 1e-8
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= 1e-8)))
 
 
 def check_floor_identity_resid(t):
@@ -1864,8 +1861,7 @@ def check_floor_identity_resid(t):
 
 def check_floor_identity():
     """True when the *garantie plancher* identity closes in every projected month."""
-    return bool(all(abs(check_floor_identity_resid(t)) <= 1e-8
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(check_floor_identity_resid(t)) <= 1e-8)))
 
 
 def check_euro_share_min_resid(t):
@@ -1927,8 +1923,7 @@ def check_euro_share_min():
     and fails here at the first band crossing.
     """
     return bool(all(
-        check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8
-        for t in range(proj_len()) if is_plan_boy(t)))
+        expressions.over(range(proj_len()), lambda t: check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8, where = lambda t: True if is_plan_boy(t) else False)))
 
 
 def check_glide_path_closes():
@@ -1942,8 +1937,7 @@ def check_glide_path_closes():
     distinct row of the grid a projection touches is read exactly once; the other eleven
     months of each plan year return the same row.
     """
-    return bool(all(abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12
-                    for t in range(proj_len()) if is_plan_boy(t)))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12, where = lambda t: True if is_plan_boy(t) else False)))
 
 
 def check_commutation_identity():
@@ -2218,3 +2212,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

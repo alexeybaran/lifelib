@@ -1096,7 +1096,7 @@ def claims(t, kind=None):
     identically zero because there is no maturity.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "DEATH_PAID_UP", "LAPSE"))
+        return sum(expressions.over(("DEATH", "DEATH_PAID_UP", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return pols_death(t) * benefit_pp(t, "DEATH")
     if kind == "DEATH_PAID_UP":
@@ -1176,9 +1176,8 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
-               * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
+               * max(pols_if_init(), 1.0)))
 
 
 def check_surv_annual_resid(t):
@@ -1205,9 +1204,8 @@ def check_surv_annual_resid(t):
 
 def check_surv_annual():
     """True when the monthly decrements compound back to the annual ones in every year."""
-    return all(abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
-               * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
+               * max(pols_if_init(), 1.0)))
 
 
 def check_capital_reval_resid(t):
@@ -1233,9 +1231,8 @@ def check_capital_reval_resid(t):
 
 def check_capital_reval():
     """True when the capital is flat through year 1 and steps once a year after it."""
-    return all(abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
-               * max(capital_0(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
+               * max(capital_0(), 1.0)))
 
 
 def check_lapse_gate_resid(t):
@@ -1251,15 +1248,14 @@ def check_lapse_gate_resid(t):
     y = policy_year(t)
     first = 12 * (y - 1)
     last = min(first + 11, proj_len() - 1)
-    if any(prem_due_pp(s) > 0.0 for s in range(first, last + 1)):
+    if any(expressions.over(range(first, last + 1), lambda s: prem_due_pp(s) > 0.0)):
         return 0.0
     return lapse_rate_mth(t)
 
 
 def check_lapse_gate():
     """True when no premium-stop decrement is applied where no premium is due."""
-    return all(check_lapse_gate_resid(t) == 0.0
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_lapse_gate_resid(t) == 0.0))
 
 
 def check_truncation_resid(t):
@@ -1372,3 +1368,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")
