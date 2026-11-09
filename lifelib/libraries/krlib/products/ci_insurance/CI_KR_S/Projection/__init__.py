@@ -1695,8 +1695,7 @@ def resid_db_total_pp(t):
         return resid_nom_total_pp(t)
     if floor >= resid_nom_max_pp(t):
         return floor * n
-    return sum(pols_if_ci_at(t, s) * resid_db_pp(t + 1, s)
-               for s in ci_cohort_ids(t))
+    return sum(expressions.over(ci_cohort_ids(t), lambda s: pols_if_ci_at(t, s) * resid_db_pp(t + 1, s)))
 
 
 def resid_db_avg_pp(t):
@@ -2056,8 +2055,7 @@ def claims(t, kind=None):
         return (claims(t, "CI") + claims(t, "DEATH") + claims(t, "DEATH_CI")
                 + claims(t, "LAPSE") + claims(t, "LAPSE_CI"))
     if kind == "CI":
-        return sum(pols_ci_in(t, s) * accel_benefit_pp(s)
-                   for s in (t + 1, -(t + 1)))
+        return sum(expressions.over((t + 1, -(t + 1)), lambda s: pols_ci_in(t, s) * accel_benefit_pp(s)))
     if kind == "DEATH":
         return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
     if kind == "DEATH_CI":
@@ -2071,9 +2069,8 @@ def claims(t, kind=None):
             return mort_rate_ci_mth(t) * (resid_db_total_pp(t) - loan * n)
         if loan >= max(resid_nom_max_pp(t), floor):
             return 0.0
-        return sum(pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
-                   * max(0.0, resid_db_pp(t + 1, s) - loan)
-                   for s in ci_cohort_ids(t))
+        return sum(expressions.over(ci_cohort_ids(t), lambda s: pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
+                   * max(0.0, resid_db_pp(t + 1, s) - loan)))
     if kind == "LAPSE":
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_lapse(t)
     if kind == "LAPSE_CI":
@@ -2184,8 +2181,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the total in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_ci_state_roll_fwd_resid(t):
@@ -2206,8 +2202,7 @@ def check_ci_state_roll_fwd_resid(t):
 
 def check_ci_state_roll_fwd():
     """True when both cohorts roll forward and the transition between them balances."""
-    return all(abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_decrement_sum_resid(t):
@@ -2219,15 +2214,14 @@ def check_decrement_sum_resid(t):
     policy leaves by a death or a surrender in one of the two states and there is no
     residual population and no tail state anywhere in this model.
     """
-    exits = sum(pols_death(u) + pols_death_ci(u) + pols_lapse(u)
-                + pols_lapse_ci(u) for u in range(t + 1))
+    exits = sum(expressions.over(range(t + 1), lambda u: pols_death(u) + pols_death_ci(u) + pols_lapse(u)
+                + pols_lapse_ci(u)))
     return pols_if(0) - exits - pols_if(t + 1)
 
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every month."""
-    return all(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_decrement_sum_resid(t)) <= roll_fwd_tol))
 
 
 def check_pol_val_roll_fwd_resid(t):
@@ -2253,8 +2247,7 @@ def check_pol_val_roll_fwd_resid(t):
 def check_pol_val_roll_fwd():
     """True when the 계약자적립액 rolls forward on its own basis in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_pol_val_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pol_val_roll_fwd_resid(t)) <= tol))
 
 
 def check_accel_complement_resid(t):
@@ -2280,8 +2273,7 @@ def check_accel_complement_resid(t):
 def check_accel_complement():
     """True when the acceleration and its residual sum to the 기본보험금, every cohort."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_accel_complement_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_accel_complement_resid(t)) <= tol))
 
 
 def check_resid_floor_resid(t):
@@ -2316,8 +2308,7 @@ def check_resid_floor_resid(t):
 def check_resid_floor():
     """True when the residual death benefit is the maximum of its two limbs, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_resid_floor_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_resid_floor_resid(t)) <= tol))
 
 
 def check_cv_carve_out_resid(t):
@@ -2339,8 +2330,7 @@ def check_cv_carve_out_resid(t):
 def check_cv_carve_out():
     """True when the post-CI surrender value is never below the pre-CI one."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_cv_carve_out_resid(t)) <= tol
-               for t in range(proj_len() + 1))
+    return all(expressions.over(range(proj_len() + 1), lambda t: abs(check_cv_carve_out_resid(t)) <= tol))
 
 
 def check_loan_roll_fwd_resid(t):
@@ -2358,8 +2348,7 @@ def check_loan_roll_fwd_resid(t):
 def check_loan_roll_fwd():
     """True when the loan balance accumulates at ``j_L`` in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_loan_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len() - 1))
+    return all(expressions.over(range(proj_len() - 1), lambda t: abs(check_loan_roll_fwd_resid(t)) <= tol))
 
 
 def check_net_cf_resid(t):
@@ -2379,8 +2368,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 def result_cf():
@@ -2547,3 +2535,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

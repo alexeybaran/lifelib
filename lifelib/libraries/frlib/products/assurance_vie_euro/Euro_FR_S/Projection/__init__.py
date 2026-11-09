@@ -826,9 +826,8 @@ def pm_avg_pp(y):
     undefined.
     """
     return av_pp(12 * y) + sum(
-        prem_wt_mth(k) * (prem_to_av_mth_pp(12 * y + k)
-                          - withdrawals_mth_pp(12 * y + k))
-        for k in range(12))
+        expressions.over(range(12), lambda k: prem_wt_mth(k) * (prem_to_av_mth_pp(12 * y + k)
+                          - withdrawals_mth_pp(12 * y + k))))
 
 
 def fee_pp(y):
@@ -1035,8 +1034,7 @@ def ppb_vintage_release_pp(y, v):
     """
     if v < ppb_vintage_first() or v >= y:
         return 0.0
-    drawn = sum(ppb_vintage_release_pp(y, u)
-                for u in range(ppb_vintage_first(), v))
+    drawn = sum(expressions.over(range(ppb_vintage_first(), v), lambda u: ppb_vintage_release_pp(y, u)))
     return min(max(0.0, ppb_release_pp(y) - drawn), ppb_vintage_pp(y, v))
 
 
@@ -1046,8 +1044,7 @@ def ppb_ledger_pp(y):
     Computed independently of :func:`ppb_pp`, which runs its own aggregate recursion, so
     that :func:`check_ppb_roll_fwd` compares two things rather than restating one.
     """
-    return sum(ppb_vintage_pp(y, v)
-               for v in range(ppb_vintage_first(), max(y, 0)))
+    return sum(expressions.over(range(ppb_vintage_first(), max(y, 0)), lambda v: ppb_vintage_pp(y, v)))
 
 
 def ppb_dotation_pp(y):
@@ -1080,8 +1077,7 @@ def ppb_forced_pp(y):
     **deadline**, and it can exceed what the insurer would have chosen to release - which
     is the whole reason the ledger is per vintage.
     """
-    return sum(ppb_vintage_pp(y, v)
-               for v in range(ppb_vintage_first(), y - 7))
+    return sum(expressions.over(range(ppb_vintage_first(), y - 7), lambda v: ppb_vintage_pp(y, v)))
 
 
 def ppb_release_pp(y):
@@ -1494,7 +1490,7 @@ def claims(t, kind=None):
     :func:`withdrawals`.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "LAPSE":
@@ -1587,8 +1583,7 @@ def check_av_roll_fwd():
     wrong.
     """
     scale = max(av_pp_init() * pols_if_init(), 1.0)
-    return all(abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale))
 
 
 def check_ppb_roll_fwd_resid(y):
@@ -1636,8 +1631,7 @@ def check_ppb_clock_resid(y):
     the index: a vintage with ``v = y - 8`` is due *during* year y and is still standing at
     its start - that is what :func:`ppb_forced_pp` is about to take out.
     """
-    return sum(ppb_vintage_pp(y, v)
-               for v in range(ppb_vintage_first(), y - 8))
+    return sum(expressions.over(range(ppb_vintage_first(), y - 8), lambda v: ppb_vintage_pp(y, v)))
 
 
 def check_ppb_clock():
@@ -1649,8 +1643,7 @@ def check_ppb_clock():
     being spent - a breach that is invisible in the balance and obvious in the ledger.
     The clock counts financial years, so the sweep does too.
     """
-    return all(abs(check_ppb_clock_resid(y)) <= 1e-8
-               for y in range(proj_years))                           # noqa: F821
+    return all(expressions.over(range(proj_years), lambda y: abs(check_ppb_clock_resid(y)) <= 1e-8))                           # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1667,8 +1660,7 @@ def check_pols_roll_fwd():
     understates the exits by ``q_m w_m l(t)`` a month.
     """
     scale = max(pols_if_init(), 1.0)
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale))
 
 
 def check_decrements_compound_resid(t):
@@ -1692,8 +1684,7 @@ def check_decrements_compound():
     checked at each year's first month, because the annual rates are properties of the
     policy year and do not move inside it.
     """
-    return all(abs(check_decrements_compound_resid(t)) <= 1e-12
-               for t in range(0, proj_len(), 12))
+    return all(expressions.over(range(0, proj_len(), 12), lambda t: abs(check_decrements_compound_resid(t)) <= 1e-12))
 
 
 def check_pb_allocation_resid(y):
@@ -1725,8 +1716,7 @@ def check_pb_allocation():
     the balance goes to the PPB and not to the insurer.
     """
     scale = max(av_pp_init(), 1.0)
-    return all(abs(check_pb_allocation_resid(y)) <= 1e-9 * scale
-               for y in range(proj_years))                           # noqa: F821
+    return all(expressions.over(range(proj_years), lambda y: abs(check_pb_allocation_resid(y)) <= 1e-9 * scale))                           # noqa: F821
 
 
 def check_cliquet_resid(y):
@@ -1763,8 +1753,7 @@ def check_cliquet():
     non-decreasing" is a listed pitfall; :func:`check_guar_floor` is the weaker and
     correct statement about the balance.
     """
-    return all(abs(check_cliquet_resid(y)) <= 1e-8
-               for y in range(proj_years))                           # noqa: F821
+    return all(expressions.over(range(proj_years), lambda y: abs(check_cliquet_resid(y)) <= 1e-8))                           # noqa: F821
 
 
 def check_guar_floor_resid(t):
@@ -1789,8 +1778,7 @@ def check_guar_floor():
     looked at.  On the shipped scenarios it never binds, and knowing that it does not bind
     is the reason to check it.
     """
-    return all(check_guar_floor_resid(t) <= 1e-6
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_guar_floor_resid(t) <= 1e-6))
 
 
 def result_cf():
@@ -1919,3 +1907,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

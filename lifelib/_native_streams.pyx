@@ -1,6 +1,7 @@
 # cython: freethreading_compatible=True
 """Direct Cython helper ABI. No source, AST, expression tree or formula parser."""
 import builtins
+from cython cimport critical_section
 from libc.limits cimport LLONG_MIN, LLONG_MAX
 from cpython.long cimport PyLong_AsLongLong
 from cpython.exc cimport PyErr_Format, PyErr_WarnEx
@@ -11,7 +12,7 @@ cdef extern from "Python.h":
     bint PyExceptionInstance_Check(object value) noexcept
     bint PyTraceBack_Check(object value) noexcept
 from cpython.object cimport Py_TYPE
-from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _FLOAT, _NO_CALLBACK, _DOMAIN_MISSING
+from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _FLOAT, _NO_CALLBACK, _DOMAIN_MISSING, _ZIP_VALUES
 from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
 from modelx_cython._range_state cimport I64Range, range_init, range_next
 from modelx_cython._call_layout cimport forward_call
@@ -24,8 +25,31 @@ cdef extern from *:
     static int mx_unpack_noniterable(PyObject *value) {
         return Py_TYPE(value)->tp_iter == NULL && !PySequence_Check(value);
     }
+    static void mx_zip_replace(PyObject *row, Py_ssize_t position, PyObject *value) {
+        PyObject *previous = PyTuple_GET_ITEM(row, position);
+        Py_INCREF(value);
+        PyTuple_SET_ITEM(row, position, value);
+        Py_DECREF(previous);
+    }
+    static void mx_zip_track(PyObject *row) {
+        if (!PyObject_GC_IsTracked(row)) PyObject_GC_Track(row);
+    }
+    static int mx_zip_unique(void *row) {
+        /* Borrowed pointer is deliberate: an object-typed Cython argument
+           adds a temporary INCREF and changes zip's row retention behavior. */
+        #if PY_VERSION_HEX >= 0x030e0000
+        return PyUnstable_Object_IsUniquelyReferenced((PyObject *)row);
+        #elif defined(Py_GIL_DISABLED)
+        #error "Native zip_values on free-threaded Python requires CPython 3.14 or newer"
+        #else
+        return Py_REFCNT((PyObject *)row) == 1;
+        #endif
+    }
     """
     bint mx_unpack_noniterable(object value) noexcept
+    void mx_zip_replace(object row, Py_ssize_t position, object value) noexcept
+    void mx_zip_track(object row) noexcept
+    bint mx_zip_unique(void *row) noexcept
 
 
 cdef object _replacement(object function, tuple keywords, tuple names, tuple values):
@@ -137,18 +161,25 @@ cdef class Stream:
     cdef object next_input(self):
         cdef long long index
         cdef object value
+        if self.closed:
+            raise StopIteration
         if self.bounded:
             if not range_next(&self.counter, &index):
+                self.closed = True
                 raise StopIteration
             return index
         if self.source_kind == 1:
             if self.position >= len(<tuple>self.source):
+                self.closed = True
+                self.source = None
                 raise StopIteration
             value = (<tuple>self.source)[self.position]
             self.position += 1
             return value
         if self.source_kind == 2:
             if self.position >= len(<list>self.source):
+                self.closed = True
+                self.source = None
                 raise StopIteration
             value = (<list>self.source)[self.position]
             self.position += 1
@@ -229,6 +260,93 @@ cdef class Stream:
             except BaseException:
                 self.close()
                 raise
+
+
+
+
+cdef class ZipValues:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with critical_section(self):
+            return self.next_row()
+
+    cdef object next_row(self):
+        cdef Py_ssize_t position, other, count = len(self.cursors)
+        cdef Stream cursor
+        cdef tuple row
+        cdef object value
+        cdef bint exhausted
+        if not count:
+            raise StopIteration
+        # Match zip's retained reusable row. Reuse only when no consumer holds
+        # it; otherwise the new row is independent and the retained row stays.
+        if mx_zip_unique(<void *>self.result):
+            row = self.result
+        else:
+            row = tuple([None] * count)
+        for position in range(count):
+            cursor = <Stream>self.cursors[position]
+            if not self.strict:
+                # A source failure is not a generator body failure. Preserve
+                # its identity and permit the next call to retry the iterator.
+                value = cursor.next_input()
+                mx_zip_replace(row, position, value)
+                value = None
+                continue
+            exhausted = False
+            try:
+                value = cursor.next_input()
+            except StopIteration:
+                exhausted = True
+            if not exhausted:
+                mx_zip_replace(row, position, value)
+                value = None
+                continue
+            if position:
+                if position == 1:
+                    raise ValueError('zip() argument 2 is shorter than argument 1')
+                raise ValueError(f'zip() argument {position + 1} is shorter than arguments 1-{position}')
+            for other in range(1, count):
+                exhausted = False
+                cursor = <Stream>self.cursors[other]
+                try:
+                    value = cursor.next_input()
+                except StopIteration:
+                    exhausted = True
+                if not exhausted:
+                    if other == 1:
+                        raise ValueError('zip() argument 2 is longer than argument 1')
+                    raise ValueError(f'zip() argument {other + 1} is longer than arguments 1-{other}')
+            raise StopIteration
+        mx_zip_track(row)
+        return row
+
+
+cdef object zip_values(object current_callable, tuple keywords, object sources, object strict=_missing):
+    cdef ZipValues result
+    cdef Stream cursor
+    cdef list cursors
+    cdef object source
+    if current_callable is not _ZIP_VALUES:
+        return _replacement(current_callable, keywords, ('sources', 'strict'), (sources, strict))
+    if type(sources) is not tuple:
+        raise TypeError('zip_values requires a tuple of source iterables')
+    result = ZipValues()
+    # zip evaluates strict truth before acquiring the first source iterator.
+    result.strict = False if strict is _missing else bool(strict)
+    cursors = []
+    for source in <tuple>sources:
+        # Always capture the public iterator. Reusing an internal mapped Stream
+        # here would let raw next_input bypass its map/filter/flatten behavior.
+        cursor = Stream()
+        cursor.identity = True
+        _capture(cursor, source)
+        cursors.append(cursor)
+    result.cursors = tuple(cursors)
+    result.result = tuple([None] * len(cursors))
+    return result
 
 
 

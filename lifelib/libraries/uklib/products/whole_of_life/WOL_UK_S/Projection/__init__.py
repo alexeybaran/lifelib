@@ -834,7 +834,7 @@ def claims(t, kind=None):
         cell; the kind exists so the zero is stated rather than inferred.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "DEATH_PU", "LAPSE"))
+        return sum(expressions.over(("DEATH", "DEATH_PU", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return pols_death(t) * benefit_pp(t, "DEATH")
     if kind == "DEATH_PU":
@@ -926,8 +926,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
 
 
 def check_truncation():
@@ -1051,3 +1050,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

@@ -708,7 +708,7 @@ def inc_band(t):
     """The five-year 入院受療率 band containing ``age(t)``, keyed by its lower edge."""
     idx = data.incidence_table().index                               # noqa: F821
     a = age(t)
-    return int(max(b for b in idx if b <= a))
+    return int(max(expressions.over(idx, lambda b: b, where = lambda b: True if b <= a else False)))
 
 
 def inc_rate_base(t):
@@ -773,7 +773,7 @@ def los_band(t):
     """
     idx = data.los_table().index                                     # noqa: F821
     a = age(t)
-    return int(max(b for b, _ in idx if b <= a))
+    return int(max(expressions.over(idx, lambda b, _: b, where = lambda b, _: True if b <= a else False, unpack = 2)))
 
 
 def los_days(band):
@@ -783,7 +783,7 @@ def los_days(band):
     mode and the 160-day band for the psychiatric and neurological tail that drives the
     sourced national mean [REG-R27].
     """
-    return tuple(int(d) for d in data.los_table().loc[band].index)   # noqa: F821
+    return tuple(expressions.over(data.los_table().loc[band].index, lambda d: int(d)))   # noqa: F821
 
 
 def los_probs(band):
@@ -797,7 +797,7 @@ def los_probs(band):
     distribution with the same mean and a fatter tail changes the capped expectation
     without changing the calibration target at all.
     """
-    return tuple(float(p) for p in data.los_table().loc[band]["prob"])  # noqa: F821
+    return tuple(expressions.over(data.los_table().loc[band]["prob"], lambda p: float(p)))  # noqa: F821
 
 
 def min_days_floor():
@@ -816,7 +816,7 @@ def d_raw(t):
     平均在院日数 that :func:`los_probs` is calibrated to [REG-R27].
     """
     b = los_band(t)
-    return sum(p * g for g, p in zip(los_days(b), los_probs(b)))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * g, unpack = 2))
 
 
 def d_pay_capped(t):
@@ -828,8 +828,7 @@ def d_pay_capped(t):
     *mean* instead would give ``min(20.20, 60) = 20.20`` and remove the limit silently.
     """
     b = los_band(t)
-    return sum(p * min(g, limit_per_hosp())
-               for g, p in zip(los_days(b), los_probs(b)))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * min(g, limit_per_hosp()), unpack = 2))
 
 
 def d_ben_capped(t):
@@ -841,8 +840,7 @@ def d_ben_capped(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum(p * max(f, min(g, limit_per_hosp()))
-               for g, p in zip(los_days(b), los_probs(b)))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, min(g, limit_per_hosp())), unpack = 2))
 
 
 def d_ben_raw(t):
@@ -853,7 +851,7 @@ def d_ben_raw(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum(p * max(f, g) for g, p in zip(los_days(b), los_probs(b)))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, g), unpack = 2))
 
 
 def share_free():
@@ -1303,8 +1301,7 @@ def claims(t, kind=None):
         imported from a cash-value model is one of the notes' pitfalls.
     """
     if kind is None:
-        return sum(claims(t, k)
-                   for k in ("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE"))
+        return sum(expressions.over(("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE"), lambda k: claims(t, k)))
     if kind == "HOSP":
         return (pols_if(t) * daily_amount() * inc_rate_mth(t)
                 * (s_dis * d_ben_dis(t) + s_acc * d_ben_acc(t)))     # noqa: F821
@@ -1424,8 +1421,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_agg_days_resid(t):
@@ -1450,8 +1446,7 @@ def check_agg_days_resid(t):
 
 def check_agg_days():
     """True when both 通算 day ledgers roll forward and stay inside their limit."""
-    return all(abs(check_agg_days_resid(t)) <= roll_fwd_tol          # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_agg_days_resid(t)) <= roll_fwd_tol))
 
 
 def check_day_limits_resid(t):
@@ -1477,8 +1472,7 @@ def check_day_limits_resid(t):
 
 def check_day_limits():
     """True when the three day limits act in the notes' order in every projected month."""
-    return all(abs(check_day_limits_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_day_limits_resid(t)) <= roll_fwd_tol))
 
 
 def check_adv_ledger_resid(t):
@@ -1494,8 +1488,7 @@ def check_adv_ledger_resid(t):
 
 def check_adv_ledger():
     """True when the 先進医療 ledger rolls forward and stays inside its cap."""
-    return all(abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap))
 
 
 def check_lump_ledger_resid(t):
@@ -1510,8 +1503,7 @@ def check_lump_ledger_resid(t):
 
 def check_lump_ledger():
     """True when the 入院一時金 count ledger rolls forward and stays inside its limit."""
-    return all(abs(check_lump_ledger_resid(t)) <= roll_fwd_tol       # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_lump_ledger_resid(t)) <= roll_fwd_tol))
 
 
 def check_waiver_roll_fwd_resid(t):
@@ -1528,8 +1520,7 @@ def check_waiver_roll_fwd_resid(t):
 
 def check_waiver_roll_fwd():
     """True when the premium waiver state rolls forward in every projected month."""
-    return all(abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol   # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_net_cf_resid(t):
@@ -1547,8 +1538,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return all(abs(check_net_cf_resid(t)) <= cash_tol                # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= cash_tol))
 
 
 # --- Result tables ----------------------------------------------------------
@@ -1711,3 +1701,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

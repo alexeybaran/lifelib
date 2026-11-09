@@ -997,7 +997,7 @@ def claims(t, kind=None):
         than left to inference.  See the Space docstring.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "FIB", "LAPSE"))
+        return sum(expressions.over(("DEATH", "FIB", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         if shape() == "fib":
             return fib_commute_rate() * benefit_pp(t) * pols_death(t)
@@ -1129,8 +1129,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
 
 
 def check_fib_ledger_resid(t):
@@ -1145,7 +1144,7 @@ def check_fib_ledger_resid(t):
     """
     if shape() != "fib":
         return 0.0
-    built = sum(pols_death(s) for s in range(proj_start(), t + 1))
+    built = sum(expressions.over(range(proj_start(), t + 1), lambda s: pols_death(s)))
     return claims(t, "FIB") - (1.0 - fib_commute_rate()) * fib_income() * built
 
 
@@ -1155,8 +1154,7 @@ def check_fib_ledger():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_fib_ledger_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_fib_ledger_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_fib_ledger_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
 
 
 def result_cf():
@@ -1272,3 +1270,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

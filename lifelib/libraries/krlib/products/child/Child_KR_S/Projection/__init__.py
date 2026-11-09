@@ -1250,9 +1250,8 @@ def benefit_cost_pp(t):
     the quantity :func:`risk_prem_ann_pp` accumulates over the first policy year to form the
     notional 보험가입금액 of 감독규정 [별표 15] 제9호 [REG-R21].
     """
-    return sum(benefit_pp(t, k) for k in
-               ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
-                "LIABILITY", "NEONATAL"))
+    return sum(expressions.over(("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+                "LIABILITY", "NEONATAL"), lambda k: benefit_pp(t, k)))
 
 
 def claim_count_pp(t):
@@ -1420,7 +1419,7 @@ def risk_prem_ann_pp():
     carries the 태아 module, which is most of it: the module's whole cost falls inside the
     first thirteen months of a hundred-year contract.
     """
-    return sum(benefit_cost_pp(t) for t in range(0, min(12, proj_len() - 1)))
+    return sum(expressions.over(range(0, min(12, proj_len() - 1)), lambda t: benefit_cost_pp(t)))
 
 
 def sa_notional_pp():
@@ -1674,10 +1673,9 @@ def claims(t, kind=None):
         adjustment rather than in the lapse column.
     """
     if kind is None:
-        return sum(claims(t, k) for k in
-                   ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+        return sum(expressions.over(("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                     "LIABILITY", "NEONATAL", "DEATH", "LAPSE", "MATURITY",
-                    "VOID"))
+                    "VOID"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return (av_pp(t) + unearned_prem_pp(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1811,9 +1809,8 @@ def epv_outgo_pp():
 
     Benefits, claim handling expense, acquisition and maintenance expense and commission.
     """
-    return sum(pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
-                               + commissions(t))
-               for t in range(0, proj_len()))
+    return sum(expressions.over(range(0, proj_len()), lambda t: pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
+                               + commissions(t))))
 
 
 def epv_prem_unit_pp():
@@ -1824,8 +1821,7 @@ def epv_prem_unit_pp():
     annuity the equivalence premium is divided by, and on a 20년납 hundred-year contract it
     is where the waiver and the lapse assumption do all their work.
     """
-    return sum(pv_factor(t) * prem_discount_factor(t) * pols_pay(t)
-               for t in range(0, prem_period_mths()))
+    return sum(expressions.over(range(0, prem_period_mths()), lambda t: pv_factor(t) * prem_discount_factor(t) * pols_pay(t)))
 
 
 def equiv_premium_mth_pp():
@@ -1870,8 +1866,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_waiver_split_resid(t):
@@ -1886,8 +1881,7 @@ def check_waiver_split_resid(t):
 
 def check_waiver_split():
     """True when the paying and waived compartments sum to the in-force block, every month."""
-    return all(abs(check_waiver_split_resid(t)) <= roll_fwd_tol      # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_waiver_split_resid(t)) <= roll_fwd_tol))
 
 
 def check_exit_total_resid():
@@ -1898,8 +1892,7 @@ def check_exit_total_resid():
     global companion to the per-month roll-forward, and it is what catches a decrement that
     closes locally at every t and still loses mass at the ends.
     """
-    total = sum(pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t)
-                for t in range(0, proj_len()))
+    total = sum(expressions.over(range(0, proj_len()), lambda t: pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t)))
     return total - pols_if_init()
 
 
@@ -1921,9 +1914,8 @@ def check_cover_at_birth_resid(t):
     """
     if born(t):
         return 0.0
-    return sum(claims(t, k) for k in
-               ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
-                "LIABILITY", "DEATH"))
+    return sum(expressions.over(("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+                "LIABILITY", "DEATH"), lambda k: claims(t, k)))
 
 
 def check_cover_at_birth():
@@ -1933,8 +1925,7 @@ def check_cover_at_birth():
     vacuous on a non-foetal model point, where ``birth_month()`` is zero, and that is the
     right behaviour: the same formula covers both.
     """
-    return all(abs(check_cover_at_birth_resid(t)) <= val_tol         # noqa: F821
-               for t in range(0, birth_month() + 1))
+    return all(expressions.over(range(0, birth_month() + 1), lambda t: abs(check_cover_at_birth_resid(t)) <= val_tol))
 
 
 def check_once_only_resid(t):
@@ -1955,8 +1946,7 @@ def check_once_only_resid(t):
 
 def check_once_only():
     """True when every 최초 1회한 ledger is a valid, non-increasing probability."""
-    return all(check_once_only_resid(t) <= roll_fwd_tol              # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: check_once_only_resid(t) <= roll_fwd_tol))
 
 
 def check_neonatal_term_resid(t):
@@ -1973,8 +1963,7 @@ def check_neonatal_term_resid(t):
 
 def check_neonatal_term():
     """True when the 태아 module pays inside its own terms and nowhere else."""
-    return all(abs(check_neonatal_term_resid(t)) <= val_tol          # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_neonatal_term_resid(t)) <= val_tol))
 
 
 def check_cv_floor_resid(t):
@@ -2000,8 +1989,7 @@ def check_cv_floor_resid(t):
 
 def check_cv_floor():
     """True when the surrender value obeys its form's floor in every projected month."""
-    return all(check_cv_floor_resid(t) <= val_tol                    # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: check_cv_floor_resid(t) <= val_tol))
 
 
 def check_av_bounds_resid(t):
@@ -2022,8 +2010,7 @@ def check_av_bounds_resid(t):
 
 def check_av_bounds():
     """True when the 계약자적립액 stays inside the bounds its own derivation allows."""
-    return all(check_av_bounds_resid(t) <= val_tol                   # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: check_av_bounds_resid(t) <= val_tol))
 
 
 def check_surr_chg_cap_resid(t):
@@ -2040,8 +2027,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge stays inside the 표준해약공제액 at every duration."""
-    return all(check_surr_chg_cap_resid(t) <= val_tol                # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: check_surr_chg_cap_resid(t) <= val_tol))
 
 
 def check_acq_cost_cap_resid():
@@ -2080,8 +2066,7 @@ def check_refund_grid_resid(t):
 
 def check_refund_grid():
     """True when the 환급률 progression reproduces every published node it reaches."""
-    return all(abs(check_refund_grid_resid(t)) <= val_tol            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_refund_grid_resid(t)) <= val_tol))
 
 
 def check_equiv_premium_resid():
@@ -2122,8 +2107,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured("disability"), 1.0)              # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 # --- results ---
@@ -2276,3 +2260,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

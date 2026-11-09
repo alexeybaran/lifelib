@@ -50,6 +50,33 @@ def test_mutable_consumer_keeps_send_throw_and_exception_identity():
     assert left(4)==right(4)==17
 
 
+def test_zipped_sources_keep_evaluation_acquisition_and_keyword_order():
+    source='def formula(n):\n    return tuple(x+y for x,y in zip(left(n),right(n),strict=flag()))\n'
+    events=[]
+    class Source:
+        def __init__(self,name,n):self.name,self.n=name,n
+        def __iter__(self):events.append(('iter',self.name));return iter(range(self.n))
+    class Truth:
+        def __bool__(self):events.append('strict truth');return True
+    def left(n):events.append('left');return Source('left',n)
+    def right(n):events.append('right');return Source('right',n)
+    def flag():events.append('flag');return Truth()
+    original,adjusted=compile_pair(source,locals())
+    assert original(3)==(0,2,4);expected=events.copy();events.clear()
+    assert adjusted(3)==(0,2,4) and events==expected
+    rewritten,operations=rewrite_native_generators(source)
+    assert 'expressions.zip_values' in rewritten and 'zip_values' in operations[0]['helpers']
+
+
+def test_shadowed_zip_is_called_at_its_original_position():
+    source='def formula(zip,n):\n    return tuple(x+y for x,y in zip(range(n),range(n)))\n'
+    rewritten,operations=rewrite_native_generators(source)
+    assert operations and 'zip_values' not in rewritten
+    original,adjusted=compile_pair(source,{})
+    def replacement(a,b):return [(4,5)]
+    assert original(replacement,3)==adjusted(replacement,3)==(9,)
+
+
 @pytest.mark.parametrize('source',[
  'def formula(n):\n    return (lambda: x for x in range(n))\n',
  'def formula(n):\n    return ((last := x) for x in range(n))\n',

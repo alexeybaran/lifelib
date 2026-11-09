@@ -854,7 +854,7 @@ def sa_pp(t, i):
 
 def av_pp_at(t, timing):
     """AV at month t read at the point given by ``timing``: the sum over subaccounts."""
-    return sum(sa_pp_at(t, i, timing) for i in sub_ids())
+    return sum(expressions.over(sub_ids(), lambda i: sa_pp_at(t, i, timing)))
 
 
 def av_pp(t):
@@ -876,7 +876,7 @@ def gross_inv_income_pp(t):
     """The gross fund return over month t, before any charge."""
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum(sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i) for i in sub_ids())
+    return sum(expressions.over(sub_ids(), lambda i: sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i)))
 
 
 def fund_expense_pp(t):
@@ -887,8 +887,8 @@ def fund_expense_pp(t):
     """
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum(sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
-               * fund_expense_rate(i) / 12.0 for i in sub_ids())
+    return sum(expressions.over(sub_ids(), lambda i: sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+               * fund_expense_rate(i) / 12.0))
 
 
 def asset_charge_pp(t):
@@ -901,8 +901,8 @@ def asset_charge_pp(t):
     if t < 0 or depleted_flag(t - 1):
         return 0.0
     rate = (asset_charge_me + asset_charge_admin) / 12.0             # noqa: F821
-    return sum(sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
-               * (1.0 - fund_expense_rate(i) / 12.0) * rate for i in sub_ids())
+    return sum(expressions.over(sub_ids(), lambda i: sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+               * (1.0 - fund_expense_rate(i) / 12.0) * rate))
 
 
 def inv_income_pp(t):
@@ -1020,8 +1020,8 @@ def is_wd_year(t):
     *any* withdrawal in a Contract Year kills that year's bonus [S1].
     """
     first = t_of_month(12 * (policy_year(t) - 1))
-    return any(is_wd_taken(u) for u in range(max(0, first),
-                                             min(first + 12, proj_len())))
+    return any(expressions.over(range(max(0, first),
+                                             min(first + 12, proj_len())), lambda u: is_wd_taken(u)))
 
 
 def gawa_pct_at_age(a):
@@ -1485,7 +1485,7 @@ def stepup_base_pp(t):
     if basis == "annual_CV":
         return av_pp(t)
     elif basis == "highest_quarterly_CV":
-        return max(av_pp(t - 3 * j) for j in range(0, 4) if t - 3 * j >= 0)
+        return max(expressions.over(range(0, 4), lambda j: av_pp(t - 3 * j), where = lambda j: True if t - 3 * j >= 0 else False))
     else:
         raise ValueError("invalid stepup_basis")
 
@@ -1913,7 +1913,7 @@ def mort_rate(t):
     annuitant mortality is a different and generally lighter basis [REG-R59].
     """
     table = data.mort_table()                                        # noqa: F821
-    top = max(a for a, s in table.index)
+    top = max(expressions.over(table.index, lambda a, s: a, unpack = 2))
     return float(table.loc[(min(age(t), top), sex()), "mort_rate"])
 
 
@@ -2327,8 +2327,7 @@ def check_av_roll_fwd():
     The per-month signed residual is :func:`check_av_roll_fwd_resid`; the tolerance is
     1e-6 of a currency unit on a contract value of order 1e5.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) < 1e-6
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) < 1e-6))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2350,8 +2349,7 @@ def check_pols_roll_fwd():
     No argument and a ``bool`` return; :func:`check_pols_roll_fwd_resid` is the signed
     per-month residual. In-force is a probability of order 1, so the tolerance is 1e-12.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) < 1e-12
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) < 1e-12))
 
 
 def check_charge_split_resid(t):
@@ -2375,8 +2373,7 @@ def check_charge_split():
     No argument and a ``bool`` return; :func:`check_charge_split_resid` is the signed
     per-month residual, measured per contract, so the tolerance is 1e-8.
     """
-    return all(abs(check_charge_split_resid(t)) < 1e-8
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_charge_split_resid(t)) < 1e-8))
 
 
 def result_cf():
@@ -2599,3 +2596,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

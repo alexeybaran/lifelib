@@ -1376,9 +1376,9 @@ def claims(t, kind=None):
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
     if kind is None:
-        return sum(claims(t, k) for k in (
+        return sum(expressions.over((
             "DIAG", "INSITU", "HOSP", "SURGERY", "TREAT", "OUTPATIENT",
-            "ADVANCED", "DISCHARGE", "LAPSE"))
+            "ADVANCED", "DISCHARGE", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DIAG":
         return diag_benefit() * trig(t)
     if kind == "INSITU":
@@ -1519,8 +1519,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(abs(check_pols_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1538,8 +1537,7 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(abs(check_cancer_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_cancer_roll_fwd_resid(t)) <= tol))
 
 
 def check_cycle_ledger_resid(t):
@@ -1562,8 +1560,7 @@ def check_cycle_ledger_resid(t):
 def check_cycle_ledger():
     """True when the two-year cycle ledger closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(abs(check_cycle_ledger_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_cycle_ledger_resid(t)) <= tol))
 
 
 def check_insitu_ledger_resid(t):
@@ -1587,8 +1584,7 @@ def check_insitu_ledger():
     — keeps running against nobody.  Those months carry no information and are excluded
     rather than papered over.
     """
-    return all(abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()) if pols_healthy(t) > 0.0)
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol, where = lambda t: True if pols_healthy(t) > 0.0 else False))
 
 
 def check_treat_cap_resid(t):
@@ -1606,8 +1602,7 @@ def check_treat_cap_resid(t):
 
 def check_treat_cap():
     """True when the treatment-month ledger stays inside its cap in every month."""
-    return all(abs(check_treat_cap_resid(t)) <= roll_fwd_tol         # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_treat_cap_resid(t)) <= roll_fwd_tol))
 
 
 def check_adv_cap_resid(t):
@@ -1623,8 +1618,7 @@ def check_adv_cap_resid(t):
 
 def check_adv_cap():
     """True when the 先進医療 ledger stays inside its cap in every month."""
-    return all(abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap))
 
 
 def check_net_cf_resid(t):
@@ -1642,7 +1636,7 @@ def check_net_cf_resid(t):
     table and not to :func:`net_cf` is caught by the same sweep.
     """
     row = result_cf().loc[t]
-    outgo = sum(row[c] for c in row.index if str(c).startswith("claims_"))
+    outgo = sum(expressions.over(row.index, lambda c: row[c], where = lambda c: True if str(c).startswith("claims_") else False))
     return (row["premiums"] - outgo - row["expenses"] - row["claim_expenses"]
             - row["commissions"] - row["net_cf"])
 
@@ -1650,8 +1644,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash-flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(premium_mth_pp(), 1.0)                      # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 # ===== Cells: result tables =====
@@ -1833,3 +1826,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

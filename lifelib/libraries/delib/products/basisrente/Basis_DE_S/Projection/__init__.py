@@ -643,7 +643,7 @@ def beitragssumme_pp():
     if tables.lookup_object(prepared_model_point(), "prem_form") == "single":
         return base
     m = tables.lookup_int(prepared_model_point(), "ret_age") - tables.lookup_int(prepared_model_point(), "entry_age")
-    return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
+    return sum(expressions.over(range(max(m, 0)), lambda u: base * (1.0 + dyn) ** u))
 
 
 def prem_freq_load():
@@ -1582,7 +1582,7 @@ def claims(t, kind=None):
     :func:`check_no_capital` asserts that the total is exactly the sum of these three.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "ANNUITY", "SURVIVOR"))
+        return sum(expressions.over(("DEATH", "ANNUITY", "SURVIVOR"), lambda k: claims(t, k)))
     if kind == "DEATH":
         if tables.lookup_float(prepared_model_point(), "surv_annuity_rate") <= 0.0:
             return 0.0
@@ -1737,8 +1737,7 @@ def check_net_cf():
     it means the same thing on a 300 € contribution and on a 30 826 € one.
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1769,8 +1768,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when both policy-ledger identities close in every projected month."""
     scale = max(pols_if_init(), 1.0)
-    return all(check_pols_roll_fwd_resid(t) <= roll_fwd_tol * scale  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_pols_roll_fwd_resid(t) <= roll_fwd_tol * scale))
 
 
 def check_av_roll_fwd_resid(k):
@@ -1806,10 +1804,9 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the *Deckungskapital* rolls forward and is emptied at *Rentenbeginn*."""
-    return all(abs(check_av_roll_fwd_resid(k))
+    return all(expressions.over(range(proj_len_y()), lambda k: abs(check_av_roll_fwd_resid(k))
                <= roll_fwd_tol * max(1.0, abs(av_at(k, "AFT_INT")),   # noqa: F821
-                                     abs(av(k)))
-               for k in range(proj_len_y()))
+                                     abs(av(k)))))
 
 
 def check_conversion_resid(k):
@@ -1845,8 +1842,7 @@ def check_conversion_resid(k):
 def check_conversion():
     """True when the whole fund converts exactly once, at *Rentenbeginn*."""
     scale = max(1.0, abs(fund_at_conv()))
-    return all(abs(check_conversion_resid(k)) <= roll_fwd_tol * scale  # noqa: F821
-               for k in range(proj_len_y()))
+    return all(expressions.over(range(proj_len_y()), lambda k: abs(check_conversion_resid(k)) <= roll_fwd_tol * scale))
 
 
 def check_no_capital_resid(t):
@@ -1883,8 +1879,7 @@ def check_no_capital_resid(t):
 def check_no_capital():
     """True when no payment other than a permitted annuity or survivor benefit is made."""
     scale = max([1.0] + [abs(claims(t)) for t in range(proj_len())])
-    return all(check_no_capital_resid(t) <= roll_fwd_tol * scale      # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_no_capital_resid(t) <= roll_fwd_tol * scale))
 
 
 def check_annuity_roll_fwd_resid(k):
@@ -1922,8 +1917,7 @@ def check_annuity_roll_fwd_resid(k):
 def check_annuity_roll_fwd():
     """True when the annuity compounds and the guarantee window closes on time."""
     scale = max(1.0, abs(ann_pp(max(0, ret_y()))))
-    return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol * scale  # noqa: F821
-               for k in range(proj_len_y()))
+    return all(expressions.over(range(proj_len_y()), lambda k: check_annuity_roll_fwd_resid(k) <= roll_fwd_tol * scale))
 
 
 def result_cf():
@@ -2029,9 +2023,9 @@ def result_pols():
             "age": [age_y(k) for k in ks],
             "pols_if": [pols_if(12 * k) for k in ks],
             "pols_paidup": [pols_paidup(12 * k) for k in ks],
-            "pols_death": [sum(pols_death(t) for t in range(12 * k, 12 * k + 12))
+            "pols_death": [sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_death(t)))
                            for k in ks],
-            "pols_freeze": [sum(pols_freeze(t) for t in range(12 * k, 12 * k + 12))
+            "pols_freeze": [sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_freeze(t)))
                             for k in ks],
             "pols_gtd": [pols_gtd(12 * k) for k in ks],
             "mort_rate": [mort_rate(12 * k) for k in ks],
@@ -2081,3 +2075,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

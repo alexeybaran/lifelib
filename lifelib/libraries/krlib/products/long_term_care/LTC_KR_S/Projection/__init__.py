@@ -645,7 +645,7 @@ def share_ge_at(grade, x):
     by up to a factor of two.
     """
     tbl = data.grade_share_table().loc[grade]                        # noqa: F821
-    ages = sorted(float(a) for a in tbl.index)
+    ages = sorted(expressions.over(tbl.index, lambda a: float(a)))
     if x <= ages[0]:
         return float(tbl.loc[ages[0], "share_ge"])
     if x >= ages[-1]:
@@ -667,7 +667,7 @@ def share_slope_at(grade, x):
     is the U-shape doing its work.
     """
     tbl = data.grade_share_table().loc[grade]                        # noqa: F821
-    ages = sorted(float(a) for a in tbl.index)
+    ages = sorted(expressions.over(tbl.index, lambda a: float(a)))
     if x < ages[0] or x >= ages[-1]:
         return 0.0
     for lo, hi in zip(ages[:-1], ages[1:]):
@@ -832,7 +832,7 @@ def disclosed_inc_at(x):
     model's own rate by :func:`disclosed_inc_ratio_at`.
     """
     tbl = data.incidence_table().loc[sex()]                          # noqa: F821
-    ages = sorted(int(a) for a in tbl.index)
+    ages = sorted(expressions.over(tbl.index, lambda a: int(a)))
     def rate(a):
         return float(tbl.loc[a, "rate_g1"]) + float(tbl.loc[a, "rate_g2"])
     lo, hi = ages[0], ages[-1]
@@ -841,7 +841,7 @@ def disclosed_inc_at(x):
     elif x >= hi:
         a, b = ages[-2], ages[-1]
     else:
-        a, b = next((p, q) for p, q in zip(ages[:-1], ages[1:]) if p <= x <= q)
+        a, b = next(expressions.over(expressions.zip_values((ages[:-1], ages[1:])), lambda p, q: (p, q), where = lambda p, q: True if p <= x <= q else False, unpack = 2))
     g = math.log(rate(b) / rate(a)) / (b - a)                        # noqa: F821
     return rate(a) * math.exp(g * (x - a))                           # noqa: F821
 
@@ -857,7 +857,7 @@ def sub65_gradient():
     finds the crossover.
     """
     tbl = data.incidence_table().loc[sex()]                          # noqa: F821
-    ages = sorted(int(a) for a in tbl.index)
+    ages = sorted(expressions.over(tbl.index, lambda a: int(a)))
     lo, hi = ages[0], ages[-1]
     r_lo = float(tbl.loc[lo, "rate_g1"]) + float(tbl.loc[lo, "rate_g2"])
     r_hi = float(tbl.loc[hi, "rate_g1"]) + float(tbl.loc[hi, "rate_g2"])
@@ -1483,7 +1483,7 @@ def av_ratio_at(fraction):
     one published progression serve every term and every paying period.
     """
     tbl = data.av_table()                                            # noqa: F821
-    xs = sorted(float(v) for v in tbl.index)
+    xs = sorted(expressions.over(tbl.index, lambda v: float(v)))
     if fraction <= xs[0]:
         return float(tbl.loc[xs[0], "av_ratio"])
     if fraction >= xs[-1]:
@@ -1784,8 +1784,7 @@ def check_pols_roll_fwd():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_nesting_resid(t):
@@ -1803,8 +1802,7 @@ def check_nesting_resid(t):
 
 def check_nesting():
     """True when the compartments stay non-negative and add to the in-force count."""
-    return all(check_nesting_resid(t) >= -roll_fwd_tol               # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_nesting_resid(t) >= -roll_fwd_tol))
 
 
 def check_ann_ledger_resid(t):
@@ -1830,8 +1828,7 @@ def check_ann_ledger_resid(t):
 
 def check_ann_ledger():
     """True when the 간병연금 ledger closes in every projected month."""
-    return all(abs(check_ann_ledger_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_ann_ledger_resid(t)) <= roll_fwd_tol))
 
 
 def check_av_continuity_resid(t):
@@ -1852,8 +1849,7 @@ def check_av_continuity_resid(t):
 
 def check_av_continuity():
     """True when the 계약자적립액's two branches meet at 납입완료."""
-    return all(abs(check_av_continuity_resid(t)) <= val_tol          # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_continuity_resid(t)) <= val_tol))
 
 
 def check_cv_form_resid(t):
@@ -1873,8 +1869,7 @@ def check_cv_form_resid(t):
 
 def check_cv_form():
     """True when the surrender-value form behaves in every projected month."""
-    return all(check_cv_form_resid(t) >= -val_tol                    # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_cv_form_resid(t) >= -val_tol))
 
 
 def check_net_cf_resid(t):
@@ -1898,8 +1893,7 @@ def check_net_cf():
 
     The house contract: no model's headline number is reconciled only in prose.
     """
-    return all(abs(check_net_cf_resid(t)) <= val_tol                 # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= val_tol))
 
 
 # --- result tables ---
@@ -2031,3 +2025,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

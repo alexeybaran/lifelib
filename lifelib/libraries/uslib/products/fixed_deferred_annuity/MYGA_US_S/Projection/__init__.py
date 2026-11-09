@@ -1546,8 +1546,7 @@ def check_av_roll_fwd():
     :func:`check_av_roll_fwd_resid` carries the per-month signed residual, and this is
     ``abs(resid) <= check_tol_av`` over ``t = 0 .. proj_len() - 1``.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) <= check_tol_av      # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= check_tol_av))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1570,8 +1569,7 @@ def check_pols_roll_fwd():
     No argument, returns a bool over ``t = 0 .. proj_len() - 1``, matching
     :func:`check_av_roll_fwd` and the library convention.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols  # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols))
 
 
 def result_cf():
@@ -1744,3 +1742,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

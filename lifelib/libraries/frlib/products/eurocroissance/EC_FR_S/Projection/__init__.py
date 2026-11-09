@@ -2219,7 +2219,7 @@ def claims(t, kind=None):
     this column and not a fourth kind.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY"))
+        return sum(expressions.over(("DEATH", "LAPSE", "MATURITY"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "LAPSE":
@@ -2339,8 +2339,7 @@ def check_assets_roll_fwd_resid(t):
 
 def check_assets_roll_fwd():
     """True when the account-asset recursion closes in every projected month."""
-    return all(abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol   # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_parts_roll_fwd_resid(t):
@@ -2363,8 +2362,7 @@ def check_parts_roll_fwd_resid(t):
 
 def check_parts_roll_fwd():
     """True when the parts recursion closes in every projected month."""
-    return all(abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol    # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_guarantee_roll_fwd_resid(t):
@@ -2386,8 +2384,7 @@ def check_guarantee_roll_fwd_resid(t):
 
 def check_guarantee_roll_fwd():
     """True when the guaranteed-amount recursion closes in every projected month."""
-    return all(abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol  # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2404,9 +2401,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_guarantee_funding_resid(t):
@@ -2438,8 +2434,7 @@ def check_guarantee_funding_resid(t):
 
 def check_guarantee_funding():
     """True when the *provision mathématique* funds the guarantee exactly, at every t."""
-    return all(abs(check_guarantee_funding_resid(t)) <= funding_tol  # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_guarantee_funding_resid(t)) <= funding_tol))
 
 
 def check_pgt_covers_guarantee_resid(t):
@@ -2462,8 +2457,7 @@ def check_pgt_covers_guarantee_resid(t):
 
 def check_pgt_covers_guarantee():
     """True when the diversification provision and the own-funds provisions cover the guarantee."""
-    return all(check_pgt_covers_guarantee_resid(t) >= -funding_tol   # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: check_pgt_covers_guarantee_resid(t) >= -funding_tol))
 
 
 def check_part_value_floor_resid(t):
@@ -2482,8 +2476,7 @@ def check_part_value_floor_resid(t):
 
 def check_part_value_floor():
     """True when the part value stays at or above its contractual minimum, every month."""
-    return all(check_part_value_floor_resid(t) >= -floor_tol         # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: check_part_value_floor_resid(t) >= -floor_tol))
 
 
 def check_own_funds_not_paid_resid(t):
@@ -2509,8 +2502,7 @@ def check_own_funds_not_paid_resid(t):
 
 def check_own_funds_not_paid():
     """True when no benefit before the *échéance* exceeds the savers' two provisions."""
-    return all(check_own_funds_not_paid_resid(t) <= funding_tol      # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: check_own_funds_not_paid_resid(t) <= funding_tol))
 
 
 def check_pm_restruck_resid(t):
@@ -2539,8 +2531,7 @@ def check_pm_restruck_resid(t):
 
 def check_pm_restruck():
     """True when a shipped in-force *provision mathématique* agrees with R. 134-2."""
-    return all(abs(check_pm_restruck_resid(t)) <= inforce_tol        # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pm_restruck_resid(t)) <= inforce_tol))
 
 
 def result_cf():
@@ -2712,3 +2703,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

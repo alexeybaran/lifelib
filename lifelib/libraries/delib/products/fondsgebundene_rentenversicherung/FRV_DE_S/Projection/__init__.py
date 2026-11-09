@@ -1827,7 +1827,7 @@ def irr_ann():
     lo, hi = -0.99, 5.0
     for _ in range(200):
         mid = 0.5 * (lo + hi)
-        if sum(a * (1.0 + mid) ** m for a, m in flows) - target > 0.0:
+        if sum(expressions.over(flows, lambda a, m: a * (1.0 + mid) ** m, unpack = 2)) - target > 0.0:
             hi = mid
         else:
             lo = mid
@@ -1883,8 +1883,7 @@ def check_net_cf():
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t)))  # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t)))))
 
 
 def check_prem_split_resid(t):
@@ -1902,9 +1901,8 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
-    return all(abs(check_prem_split_resid(t))
-               <= val_tol * max(1.0, abs(premiums(t)))               # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_prem_split_resid(t))
+               <= val_tol * max(1.0, abs(premiums(t)))))
 
 
 def check_units_roll_fwd_resid(t):
@@ -1923,9 +1921,8 @@ def check_units_roll_fwd_resid(t):
 
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
-    return all(abs(check_units_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(units_pp(t)))               # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_units_roll_fwd_resid(t))
+               <= val_tol * max(1.0, abs(units_pp(t)))))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1947,9 +1944,8 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
-    return all(abs(check_av_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR")))   # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_av_roll_fwd_resid(t))
+               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR")))))
 
 
 def check_benefit_funding_resid(t):
@@ -1972,9 +1968,8 @@ def check_benefit_funding_resid(t):
 
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
-    return all(abs(check_benefit_funding_resid(t))
-               <= val_tol * max(1.0, abs(av_releases(t)))            # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_benefit_funding_resid(t))
+               <= val_tol * max(1.0, abs(av_releases(t)))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1993,9 +1988,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force count rolls forward exactly in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_acq_charge_resid(t):
@@ -2031,9 +2025,8 @@ def check_acq_charge_resid(t):
 
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
-    return all(abs(check_acq_charge_resid(t))
-               <= val_tol * max(1.0, charge_acq_total())             # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_acq_charge_resid(t))
+               <= val_tol * max(1.0, charge_acq_total())))
 
 
 # ----------------------------------------  result tables
@@ -2160,3 +2153,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

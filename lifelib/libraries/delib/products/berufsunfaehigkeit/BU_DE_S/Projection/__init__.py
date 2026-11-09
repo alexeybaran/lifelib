@@ -763,7 +763,7 @@ def recov_rates():
     them.
     """
     tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
-    return tuple(tables.lookup_float(tbl, y, "recov_rate") for y in range(1, 12))
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "recov_rate")))
 
 
 def mort_dis_sel_factors():
@@ -773,7 +773,7 @@ def mort_dis_sel_factors():
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
     tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
-    return tuple(tables.lookup_float(tbl, y, "mort_dis_sel_factor") for y in range(1, 12))
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "mort_dis_sel_factor")))
 
 
 # --- the best-estimate rates as composed ---
@@ -859,8 +859,7 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return tuple(expressions.over(mort_dis_sel_factors(), lambda s: 1.0 - (1.0 - q * s) ** (1.0 / 12.0)))
 
 
 def recov_rate(z):
@@ -892,7 +891,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
+    return tuple(expressions.over(recov_rates(), lambda r: 1.0 - (1.0 - r) ** (1.0 / 12.0)))
 
 
 def lapse_rate(t):
@@ -953,8 +952,7 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates())
+    return tuple(expressions.over(recov_rates(), lambda r: 1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)))
 
 
 def mort_rate_first_mth(s):
@@ -984,8 +982,7 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return tuple(expressions.over(mort_dis_sel_factors(), lambda f: 1.0 - (1.0 - q * f) ** (1.0 / 12.0)))
 
 
 def disc_first(s):
@@ -1069,7 +1066,7 @@ def beitragssumme_unit():
     original term rather than the remaining one: the charge was incurred at inception.
     """
     g = 1.0 + beitragsdyn_rate()
-    return sum(g ** (y - 1) for y in range(1, cover_end_age() - entry_age() + 1))
+    return sum(expressions.over(range(1, cover_end_age() - entry_age() + 1), lambda y: g ** (y - 1)))
 
 
 def prem_gross_level_pp():
@@ -1325,8 +1322,7 @@ def pv_prem_unit_first():
     which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
-    return sum(disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
-               for s in range(0, first_len()))
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0))
 
 
 def pv_rente_first():
@@ -1356,10 +1352,9 @@ def pv_wiedereingl_first():
     """
     if wiedereingliederung_months() == 0:
         return 0.0
-    return sum(disc_first(s) * wiedereingliederung_months()
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * wiedereingliederung_months()
                * runoff_val_first(s, runoff_months)                  # noqa: F821
-               * (1.0 - mort_rate_first_mth(s))
-               for s in range(0, first_len()))
+               * (1.0 - mort_rate_first_mth(s))))
 
 
 def pv_claim_cost_first():
@@ -1389,8 +1384,7 @@ def pv_admin_first():
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return sum(disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
-               for s in range(0, first_len()))
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)))
 
 
 # --- the best-estimate ledgers ---
@@ -1776,7 +1770,7 @@ def claims(t, kind=None):
         published scope statement rather than a missing column.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE"))
+        return sum(expressions.over(("BU_RENTE", "REINTEGRATION", "LAPSE"), lambda k: claims(t, k)))
     if kind == "BU_RENTE":
         if age(t) >= benefit_end_age():
             return 0.0
@@ -1909,9 +1903,8 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, abs(bu_rente_pp(t)))
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+               * max(1.0, abs(bu_rente_pp(t)))))
 
 
 def check_states_resid(t):
@@ -1933,9 +1926,8 @@ def check_states_resid(t):
 
 def check_states():
     """True when the three ledgers account for the whole in-force population at every t."""
-    return all(abs(check_states_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len() + 1))
+    return all(expressions.over(range(0, proj_len() + 1), lambda t: abs(check_states_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1957,9 +1949,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_dis_roll_fwd_resid(t):
@@ -1980,9 +1971,8 @@ def check_dis_roll_fwd_resid(t):
 
 def check_dis_roll_fwd():
     """True when the disabled ledger rolls forward exactly in every projected month."""
-    return all(abs(check_dis_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_dis_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_runoff_roll_fwd_resid(t):
@@ -2000,9 +1990,8 @@ def check_runoff_roll_fwd_resid(t):
 
 def check_runoff_roll_fwd():
     """True when the § 174 run-off ledger rolls forward exactly in every projected month."""
-    return all(abs(check_runoff_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_runoff_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_prem_split_resid(t):
@@ -2020,9 +2009,8 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
-    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
-               * max(1.0, abs(prem_gross_ann_pp(t)))
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
+               * max(1.0, abs(prem_gross_ann_pp(t)))))
 
 
 def check_cover_end_resid(t):
@@ -2050,8 +2038,7 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when benefit and premium both stop exactly at their own contractual ages."""
-    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol         # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_cover_end_resid(t)) <= roll_fwd_tol))
 
 
 # --- the result frames ---
@@ -2174,3 +2161,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

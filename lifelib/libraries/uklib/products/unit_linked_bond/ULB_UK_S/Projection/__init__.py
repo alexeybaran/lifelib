@@ -840,7 +840,7 @@ def claims(t, kind=None):
     them against the fund - all except the death strain.  See the Space docstring.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "SURRENDER"))
+        return sum(expressions.over(("DEATH", "SURRENDER"), lambda k: claims(t, k)))
     uf = av_pp_at(t, "AFT_WD")
     if kind == "DEATH":
         benefit = db_uplift() * uf
@@ -966,8 +966,7 @@ def check_av_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t, so
     one test can call the same check across every account-value model in the library.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) <= 1e-8
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= 1e-8))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -981,8 +980,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
 
 
 def check_unit_funding_resid(t):
@@ -998,8 +996,7 @@ def check_unit_funding_resid(t):
 
 def check_unit_funding():
     """True when every benefit is funded by unit cancellation plus the death strain."""
-    return all(abs(check_unit_funding_resid(t)) <= 1e-8
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_unit_funding_resid(t)) <= 1e-8))
 
 
 def result_cf():
@@ -1106,3 +1103,5 @@ pd = ("Module", "pandas")
 tables = ("Module", "lifelib.typed_inputs")
 
 inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")
