@@ -301,17 +301,17 @@ def model_point():
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def rate_class():
     """The underwriting class of the selected model point (one of six)."""
-    return model_point()["rate_class"]
+    return tables.lookup_object(prepared_model_point(), "rate_class")
 
 
 def sum_assured():
@@ -320,7 +320,7 @@ def sum_assured():
     Both the $0.20 per $1,000 monthly charge and the surrender charge are quoted on
     this, the *initial* face, not on :func:`sum_assured_at`.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def db_option():
@@ -329,7 +329,7 @@ def db_option():
     Option C (return of premium) is observed at one insurer only and is out of scope
     in the product spec.
     """
-    return model_point()["db_option"]
+    return tables.lookup_object(prepared_model_point(), "db_option")
 
 
 def qual_test():
@@ -339,7 +339,7 @@ def qual_test():
     :func:`corridor_factor` raises on anything else rather than silently applying GPT
     corridor factors.
     """
-    return model_point()["qual_test"]
+    return tables.lookup_object(prepared_model_point(), "qual_test")
 
 
 def premium_type():
@@ -349,12 +349,12 @@ def premium_type():
     premiums are assumed within limits -- so there is no cap on either pattern and no
     ``TARGET`` pattern.
     """
-    return model_point()["premium_type"]
+    return tables.lookup_object(prepared_model_point(), "premium_type")
 
 
 def premium_pp_ann():
     """The planned annualized premium per policy; flexible in amount and timing [S1]."""
-    return float(model_point()["premium_pp_ann"])
+    return tables.lookup_float(prepared_model_point(), "premium_pp_ann")
 
 
 def load_prem_rate():
@@ -363,7 +363,7 @@ def load_prem_rate():
     The load is a non-guaranteed element under ASOP 2 [R11], which is why it sits in
     the model point table rather than in a Reference.
     """
-    return float(model_point()["load_prem_rate"])
+    return tables.lookup_float(prepared_model_point(), "load_prem_rate")
 
 
 def subaccount_ids():
@@ -383,7 +383,7 @@ def alloc(i):
 
 def alloc_fixed():
     """alpha_F: the share of each net premium allocated to the fixed option."""
-    return float(model_point()["alloc_fixed"])
+    return tables.lookup_float(prepared_model_point(), "alloc_fixed")
 
 
 def fund_expense_ann(i):
@@ -394,7 +394,7 @@ def fund_expense_ann(i):
     Borne through the unit value, so it reduces the policyholder's return and is *not*
     insurer income.
     """
-    return float(data.subaccount_table().loc[i, "fund_expense_ann"])  # noqa: F821
+    return tables.lookup_float(data.prepared_subaccount_table_loc(), i, 'fund_expense_ann')  # noqa: F821
 
 
 def sa_pp_init(i):
@@ -404,7 +404,7 @@ def sa_pp_init(i):
 
 def fa_pp_init():
     """FA(0): the fixed-option value per policy at the outset, 0 at issue."""
-    return float(model_point()["fa_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "fa_pp_init")
 
 
 def loan_bal_init():
@@ -414,7 +414,7 @@ def loan_bal_init():
     value from the investment options into a general-account loan account [S3], so at
     the outset the two balances coincide and only their accrual rates differ.
     """
-    return float(model_point()["loan_bal_init"])
+    return tables.lookup_float(prepared_model_point(), "loan_bal_init")
 
 
 def av_pp_init():
@@ -423,13 +423,13 @@ def av_pp_init():
     ``sum(SA_i(0)) + FA(0) + LA(0)`` -- the loan account is part of the account value
     [S1][S2][S3][S4], the debt is not.
     """
-    return (sum(sa_pp_init(i) for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pp_init(i)))
             + fa_pp_init() + loan_bal_init())
 
 
 def pols_if_init():
     """l_0: the in-force probability at the outset, 1 for a single-policy point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration_mth_init():
@@ -440,7 +440,7 @@ def duration_mth_init():
     and therefore already 0-based: 24 means that months 0-23 since issue are over and
     ``t = 0`` is the twenty-fifth month of the contract, ``duration_mth(0) = 24``.
     """
-    return int(model_point()["duration_mth"])
+    return tables.lookup_int(prepared_model_point(), "duration_mth")
 
 
 def has_surr_charge():
@@ -448,12 +448,12 @@ def has_surr_charge():
 
     False models the low-load / no-load archetype [S3], a documented variation.
     """
-    return bool(model_point()["has_surr_charge"])
+    return tables.lookup_bool(prepared_model_point(), "has_surr_charge")
 
 
 def surr_charge_id():
     """The surrender charge schedule ID, a row label of *surr_charge_table.csv*."""
-    return model_point()["surr_charge_id"]
+    return tables.lookup_object(prepared_model_point(), "surr_charge_id")
 
 
 def scenario_id():
@@ -463,7 +463,7 @@ def scenario_id():
     it is a model point attribute rather than a Reference: different cells can be run
     on different paths in one model.
     """
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def duration_mth(t):
@@ -729,7 +729,7 @@ def fa_pricing_pp(m):
 
 def av_pricing_pp_at(m, timing):
     """Pricing-path total account value at an intra-month point of policy month m."""
-    return (sum(sa_pricing_pp_at(m, i, timing) for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pricing_pp_at(m, i, timing)))
             + fa_pricing_pp_at(m, timing))
 
 
@@ -743,7 +743,7 @@ def av_pricing_pp(m):
     ``av_pricing_pp_at(0, "BEF_PREM") == 0``.  ``m`` counts policy months from issue,
     0-based, so this is the notes' ``AV*_{m+1}``.
     """
-    return (sum(sa_pricing_pp(m, i) for i in subaccount_ids()) + fa_pricing_pp(m))
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pricing_pp(m, i))) + fa_pricing_pp(m))
 
 
 def db_pricing_pp(m):
@@ -899,7 +899,7 @@ def wd_pp(t):
     """
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return tables.lookup_float(prepared_model_point(), "wd_pp")
 
 
 def wd_fee_pp(t):
@@ -968,7 +968,7 @@ def unloaned_av_pp_at(t, timing):
     **[std]** -- the loan account is collateral for the debt and is not drawn on.
     ``timing`` takes the :func:`sa_pp_at` values.
     """
-    return (sum(sa_pp_at(t, i, timing) for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pp_at(t, i, timing)))
             + fa_pp_at(t, timing))
 
 
@@ -1021,8 +1021,8 @@ def corridor_factor(t):
     """
     if qual_test() != "GPT":
         raise ValueError("invalid qual_test")
-    o = model_point()["corridor_override_m1"]
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    o = tables.lookup_object(prepared_model_point(), "corridor_override_m1")
+    if t == 0 and not tables.is_missing(pd.isna, o):                                    # noqa: F821
         return float(o)
     return corridor_factor_at(age(t))
 
@@ -1142,8 +1142,8 @@ def coi_rate(t):
     the placeholder from the first month, and a test holds the gap open in both
     directions.
     """
-    o = model_point()["coi_rate_override_m1"]
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    o = tables.lookup_object(prepared_model_point(), "coi_rate_override_m1")
+    if t == 0 and not tables.is_missing(pd.isna, o):                                    # noqa: F821
         return min(float(o), coi_rate_guar(t), coi_rate_cap)         # noqa: F821
     return coi_rate_at(policy_year(t))
 
@@ -1424,7 +1424,7 @@ def av_pp(t):
     av_pp_init()`` is ``av_pp_at(0, "BEF_PREM")``, and each component starts at its
     own opening balance.
     """
-    return (sum(sa_pp(t, i) for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pp(t, i)))
             + fa_pp(t) + la_pp(t))
 
 
@@ -1462,7 +1462,7 @@ def me_charge_pp(t, i=None):
     after attained age 121, when the monthly deduction stops [S1][S2][S4].
     """
     if i is None:
-        return sum(me_charge_pp(t, j) for j in subaccount_ids())
+        return sum(expressions.over(subaccount_ids(), lambda j: me_charge_pp(t, j)))
     return sa_pp_at(t, i, "BEF_ME") * me_rate_ann / 12               # noqa: F821
 
 
@@ -1479,8 +1479,7 @@ def inv_income_pp(t):
     insurer's M&E revenue is *not* in it: :func:`me_charge_pp` reports that separately
     and :func:`check_net_view` puts the two back together.
     """
-    return (sum(sa_pp(t, i) - sa_pp_at(t, i, "BEF_INV")
-                for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pp(t, i) - sa_pp_at(t, i, "BEF_INV")))
             + fa_pp(t) - fa_pp_at(t, "BEF_INV")
             + la_pp(t) - la_pp_at(t, "BEF_PREM"))
 
@@ -1650,7 +1649,7 @@ def first_shortfall_month():
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')  # noqa: F821
 
 
 def mort_rate(t):
@@ -1890,7 +1889,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
     else:
         raise ValueError("invalid kind")
 
@@ -1937,7 +1936,7 @@ def sa_transfer(t):
     fixed option and the loan account release internally and are not part of this.  A
     memo column for reconciliation, not a liability cash flow.
     """
-    return (sum(sa_pp(t, i) for i in subaccount_ids())
+    return (sum(expressions.over(subaccount_ids(), lambda i: sa_pp(t, i)))
             * (pols_death(t) + pols_lapse(t)))
 
 
@@ -2235,6 +2234,11 @@ def result_net():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2301,3 +2305,9 @@ premium_tax_rate = 0.02
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

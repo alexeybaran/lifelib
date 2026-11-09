@@ -131,6 +131,13 @@ def mva_factor_table():
         input_dir() / mva_factor_file, index_col="years_remaining")  # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -149,3 +156,5 @@ withdrawal_file = "withdrawal_table.csv"
 mva_factor_file = "mva_factor_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

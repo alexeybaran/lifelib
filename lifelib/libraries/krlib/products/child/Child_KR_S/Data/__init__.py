@@ -223,6 +223,13 @@ def av_table():
         index_col=["curve", "key"]).sort_index()
 
 
+def prepared_basis_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(basis_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -241,3 +248,5 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

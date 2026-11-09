@@ -231,6 +231,69 @@ def basis_table():
         input_dir() / basis_file, index_col="param")                 # noqa: F821
 
 
+def prepared_basis_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(basis_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_benefit_scale_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(benefit_scale_table(),
+                        columns=('benefit_pct',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='at')
+
+
+
+def prepared_care_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(care_table(),
+                        columns=('mort_mult', 'entry_share', 'det_rate', 'rec_rate'),
+                        indexing='at')
+
+
+
+def prepared_incidence_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(incidence_table(),
+                        columns=('inc_rate',),
+                        indexing='at')
+
+
+
+def prepared_lapse_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(lapse_table(),
+                        columns=('lapse_rate',),
+                        indexing='at')
+
+
+
+def prepared_surrender_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(surrender_table(),
+                        columns=('rkw_prem_ratio',),
+                        indexing='at')
+
+
+
+def prepared_expense_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(expense_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -253,3 +316,5 @@ expense_file = "expense_table.csv"
 basis_file = "basis_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

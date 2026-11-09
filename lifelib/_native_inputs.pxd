@@ -1,6 +1,8 @@
-from libc.math cimport fabs, isfinite
+from libc.math cimport fabs
+from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
 
 cdef object lookup(object function, object table, object key, object column, object default=*)
+cdef Py_ssize_t indexed_position(object table, object key) except? -2
 cdef object previous(object function, object table, object key, object column, object default=*)
 cdef object contains(object function, object table, object key)
 cdef object key_count(object function, object table)
@@ -24,28 +26,7 @@ cdef inline double f64_abs(double value) noexcept nogil:
 cdef object prepared_interpolation(object function, object table, object column, object years,
                                    object lookup_fn, object last_fn, object math_module)
 
-cdef struct F64Sum:
-    double total
-    double correction
 cdef bint f64_accepts(object function)
-cdef inline void f64_init(F64Sum* state) noexcept:
-    state.total = 0.0
-    state.correction = 0.0
-
-
-cdef inline void f64_add(F64Sum* state, double value) noexcept:
-    cdef double following = state.total + value
-    if fabs(state.total) >= fabs(value):
-        state.correction += (state.total - following) + value
-    else:
-        state.correction += (value - following) + state.total
-    state.total = following
-
-
-cdef inline double f64_result(F64Sum* state) noexcept:
-    if state.correction != 0.0 and isfinite(state.correction):
-        return state.total + state.correction
-    return state.total
 
 
 cdef class LookupContext:
@@ -59,6 +40,7 @@ cdef class LookupContext:
     cdef object column_first, column_second
     cdef Py_ssize_t index_first, index_second
     cdef tuple grouped
+    cdef object keyed_cache
     cdef object get(self, object table, object column, Py_ssize_t* index)
 cdef double lookup_f64(object function, LookupContext context, object table,
                        long long key, object column, object default=*) except? -1
@@ -98,3 +80,68 @@ cdef bint bound_group_probe(LookupContext context, long long group, Py_ssize_t* 
 cdef int bound_group_value(LookupContext context, Py_ssize_t slot, long long key, double* value) except -1
 cdef int group_context_value(LookupContext context, object sub_fn, object contains_fn,
     object lookup_fn, object prepared, Py_ssize_t slot, long long key, double* value) except -1
+
+# Explicit float conversion, distinct from implicit C double conversion.
+cdef double lookup_float_f64(object conversion, object function, LookupContext context,
+                             object table, long long key, object column,
+                             object default=*) except? -1
+
+# Compound lookup keys are packed on the native stack. Object arguments stay
+# strongly referenced for the entire fused wrapper call; exact Unicode admits.
+from cpython.ref cimport PyObject
+cdef struct KeyPart:
+    int kind
+    long long number
+    PyObject* text
+cdef void key_int(KeyPart*, long long, bint) noexcept
+cdef void key_text(KeyPart*, object) noexcept
+cdef double lookup_keyed_float_f64(object, object, LookupContext, object,
+    const KeyPart*, Py_ssize_t, bint, object, object default=*) except? -1
+ctypedef long long KeyInteger
+ctypedef fused KeyArg0:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg1:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg2:
+    KeyInteger
+    bint
+    object
+
+ctypedef fused KeyArg3:
+    KeyInteger
+    bint
+    object
+
+cdef double lookup_key0_float_f64(object conversion, object function, LookupContext context, object table, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key1_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key2_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key3_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, bint tuple_key, object column, object default=*) except? -1
+
+cdef double lookup_key4_float_f64(object conversion, object function, LookupContext context, object table, KeyArg0 key0, KeyArg1 key1, KeyArg2 key2, KeyArg3 key3, bint tuple_key, object column, object default=*) except? -1
+
+cdef object indexed_lookup(object,object,object,object default=*)
+cdef object indexed_contains(object,object)
+
+cdef object omitted_argument
+cdef double lookup_float(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef long long lookup_int(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef bint lookup_bool(object function, tuple keywords, object source, object key, object column=*, object default=*) except? -1
+cdef str lookup_str(object function, tuple keywords, object source, object key, object column=*, object default=*)
+
+cdef object lookup_object(object function, tuple keywords, object source, object key, object column=*, object default=*)
+cdef bint is_missing(object function, tuple keywords, object predicate, object value) except? -1
+
+
+cdef object row(object function, tuple keywords, object table, object key)
+cdef object column(object function, tuple keywords, object table, object name, object report=*)
+cdef object group_sum(object function, tuple keywords, object table, object labels, object first=*, object last=*)
+cdef object table(object function, tuple keywords, object frame, object columns=*, object groups=*, object indexing=*, object rows=*, object report=*, object preserve_scalar_types=*)

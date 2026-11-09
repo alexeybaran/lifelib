@@ -238,6 +238,45 @@ def param_table():
         input_dir() / param_file, index_col="item")                  # noqa: F821
 
 
+def prepared_param_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(param_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_freq_load_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(freq_load_table(),
+                        columns=('freq_load',),
+                        indexing='at')
+
+
+
+def prepared_charge_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(charge_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('q_base', 'improve'),
+                        indexing='at')
+
+
+
+def prepared_rentenfaktor_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rentenfaktor_table(),
+                        columns=('annuity_rate_curr',),
+                        indexing='at')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -258,3 +297,5 @@ freq_load_file = "freq_load_table.csv"
 param_file = "param_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

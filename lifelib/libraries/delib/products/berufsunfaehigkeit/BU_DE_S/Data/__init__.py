@@ -205,6 +205,29 @@ def freq_loading_table():
         input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
 
 
+def prepared_occupation_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(occupation_table(),
+                        columns=('occ_factor',),
+                        indexing='loc')
+
+
+
+def prepared_freq_loading_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(freq_loading_table(),
+                        columns=('freq_load',),
+                        indexing='loc')
+
+
+
+def prepared_claim_duration_table_loc():
+    """Own claim-year calculation columns; follow the public source Cell cache."""
+    return inputs.table(claim_duration_table(),
+                        columns=('recov_rate', 'mort_dis_sel_factor'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -223,3 +246,5 @@ lapse_file = "lapse_table.csv"
 freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -346,22 +346,22 @@ def model_point():
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def rate_class():
     """The underwriting class of the selected model point (spec Table 1) [S3]."""
-    return model_point()["rate_class"]
+    return tables.lookup_object(prepared_model_point(), "rate_class")
 
 
 def sum_assured():
     """F: the initial face amount of the selected model point."""
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def db_option():
@@ -370,7 +370,7 @@ def db_option():
     The Graded and Return of Premium options are minority designs excluded from the
     baseline by the product spec (F3).
     """
-    return model_point()["db_option"]
+    return tables.lookup_object(prepared_model_point(), "db_option")
 
 
 def qual_test():
@@ -381,12 +381,12 @@ def qual_test():
     :func:`corridor_factor` raises on anything else rather than silently applying GPT
     corridor factors.
     """
-    return model_point()["qual_test"]
+    return tables.lookup_object(prepared_model_point(), "qual_test")
 
 
 def premium_type():
     """The premium pattern: ``"LEVEL"``, ``"SINGLE"`` or ``"TARGET"`` **[std]**."""
-    return model_point()["premium_type"]
+    return tables.lookup_object(prepared_model_point(), "premium_type")
 
 
 def premium_mode():
@@ -396,12 +396,12 @@ def premium_mode():
     each policy year (``duration_mth(t) % 12 == 0``) **[std]**; monthly mode is carried
     so the chassis' level-pay pattern remains reachable.
     """
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def premium_pp_ann():
     """The planned annual premium per policy; a billing target only, premiums are flexible."""
-    return float(model_point()["premium_pp_ann"])
+    return tables.lookup_float(prepared_model_point(), "premium_pp_ann")
 
 
 def index_alloc_rate():
@@ -411,7 +411,7 @@ def index_alloc_rate():
     accumulates entirely at the fixed-account rate, which is the control run for the
     segment ladder.
     """
-    return float(model_point()["index_alloc_rate"])
+    return tables.lookup_float(prepared_model_point(), "index_alloc_rate")
 
 
 def av_pp_init():
@@ -422,17 +422,17 @@ def av_pp_init():
     ladder, so a projection from an in-force cell starts with no live segments and
     rebuilds the ladder over its first twelve months.
     """
-    return float(model_point()["av_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "av_pp_init")
 
 
 def loan_bal_init():
     """L(0): the policy loan balance per policy at the outset, 0 at issue."""
-    return float(model_point()["loan_bal_init"])
+    return tables.lookup_float(prepared_model_point(), "loan_bal_init")
 
 
 def pols_if_init():
     """l(0): the in-force probability at the outset, 1 for a single-policy point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration_mth_init():
@@ -442,17 +442,17 @@ def duration_mth_init():
     for an in-force cell.  This is the notes' issue-date / duration offset attribute.
     It is an elapsed count and is already 0-based.
     """
-    return int(model_point()["duration_mth"])
+    return tables.lookup_int(prepared_model_point(), "duration_mth")
 
 
 def has_surr_charge():
     """Whether a surrender charge schedule applies to this model point."""
-    return bool(model_point()["has_surr_charge"])
+    return tables.lookup_bool(prepared_model_point(), "has_surr_charge")
 
 
 def surr_charge_id():
     """The surrender charge schedule ID, a row label of *surr_charge_table.csv*."""
-    return model_point()["surr_charge_id"]
+    return tables.lookup_object(prepared_model_point(), "surr_charge_id")
 
 
 def wd_first_year():
@@ -461,7 +461,7 @@ def wd_first_year():
     2 in the shipped points: withdrawals are allowed after the free-look period [S3]
     and the model takes that as the first anniversary **[std]**.
     """
-    return int(model_point()["wd_first_year"])
+    return tables.lookup_int(prepared_model_point(), "wd_first_year")
 
 
 def loan_first_year():
@@ -470,7 +470,7 @@ def loan_first_year():
     The notes' loan utilization module borrows a level amount annually from a start
     age, e.g. 65 **[std]**; 21 for issue age 45 is that age expressed as a policy year.
     """
-    return int(model_point()["loan_first_year"])
+    return tables.lookup_int(prepared_model_point(), "loan_first_year")
 
 
 def mnlp_rate():
@@ -479,7 +479,7 @@ def mnlp_rate():
     20.80 for M / Non-Tobacco / 45 / band 1 [S3].  The 250,000 example face is a
     higher band whose rate is not public, so the band-1 rate stands in **[std]**.
     """
-    return float(model_point()["mnlp_rate"])
+    return tables.lookup_float(prepared_model_point(), "mnlp_rate")
 
 
 def gsp():
@@ -488,17 +488,17 @@ def gsp():
     No retrieved source gives guideline premiums for this composite, so the shipped
     value is a plausible placeholder, not a computed IRC 7702 figure.
     """
-    return float(model_point()["gsp"])
+    return tables.lookup_float(prepared_model_point(), "gsp")
 
 
 def glp():
     """The guideline level premium (GPT compliance input) **[std]** placeholder."""
-    return float(model_point()["glp"])
+    return tables.lookup_float(prepared_model_point(), "glp")
 
 
 def seven_pay_prem():
     """The 7-pay premium (IRC 7702A compliance input) **[std]** placeholder [R5]."""
-    return float(model_point()["seven_pay_prem"])
+    return tables.lookup_float(prepared_model_point(), "seven_pay_prem")
 
 
 def duration_mth(t):
@@ -579,7 +579,7 @@ def load_prem_rate():
     """
     if is_guaranteed_basis():
         return load_prem_rate_guar                                   # noqa: F821
-    return float(model_point()["load_prem_rate"])
+    return tables.lookup_float(prepared_model_point(), "load_prem_rate")
 
 
 def fixed_rate_ann(t):
@@ -839,7 +839,7 @@ def wd_pp(t):
         return 0.0
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return tables.lookup_float(prepared_model_point(), "wd_pp")
 
 
 def wd_fee_pp(t):
@@ -868,7 +868,7 @@ def loan_new_pp(t):
         return 0.0
     if duration_mth(t) % 12 != 0:
         return 0.0
-    return float(model_point()["loan_new_pp_ann"])
+    return tables.lookup_float(prepared_model_point(), "loan_new_pp_ann")
 
 
 def face_reduction_pp(t):
@@ -1166,7 +1166,7 @@ def seg_bal_active_pp(t):
     before ``t = 0``, so the pool is empty in the first month.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t - 1, m) for m in range(lo, t))
+    return sum(expressions.over(range(lo, t), lambda m: seg_bal_pp(t - 1, m)))
 
 
 def seg_share(t, m):
@@ -1258,7 +1258,7 @@ def seg_bal_tot_pp(t):
     The segments born at ``max(0, t - 11) ... t``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t, m) for m in range(lo, t + 1))
+    return sum(expressions.over(range(lo, t + 1), lambda m: seg_bal_pp(t, m)))
 
 
 def seg_count(t):
@@ -1268,7 +1268,7 @@ def seg_count(t):
     for a model point with ``index_alloc_rate() == 0``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(1 for m in range(lo, t + 1) if seg_bal_pp(t, m) > 0)
+    return sum(expressions.over(range(lo, t + 1), lambda m: 1, where = lambda m: True if seg_bal_pp(t, m) > 0 else False))
 
 
 def seg_return(t):
@@ -1712,7 +1712,7 @@ def is_mec(t):
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')  # noqa: F821
 
 
 def mort_rate(t):
@@ -1955,7 +1955,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
     else:
         raise ValueError("invalid kind")
 
@@ -2286,6 +2286,11 @@ def result_seg():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2374,3 +2379,9 @@ premium_tax_rate = 0.02
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

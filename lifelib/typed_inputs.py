@@ -29,6 +29,16 @@ def _column(table, column):
 
 def lookup(table, key, column, default=_MISSING):
     if isinstance(table, Table):
+        # A pandas scalar selection validates its column before its row. Keep
+        # this error outside missing-key/default handling. Bare Tables retain
+        # their original row-first contract and ValueError for absent columns.
+        if (isinstance(column, str) and table._index_error is not None
+                and table._index_error._index.get('pandas_columns', False)):
+            name = column
+            try:
+                column = table._columns.index(name)
+            except ValueError:
+                raise KeyError(name) from None
         try:
             return table.lookup(key, column)
         except KeyError:
@@ -167,3 +177,91 @@ previous.__modelx_cython_bound_numeric__ = ('numeric_resource_ready', 'bound_pre
 
 lookup.__modelx_cython_bound_bounded__ = 'bound_bounded_f64'
 lookup.__modelx_cython_bound_grouped__ = ('bound_group_probe', 'bound_group_value', 'group_context_value')
+
+# The ordered-key producer is one function, shared with generator consumers.
+from .table_keys import keys
+lookup.__modelx_cython_float_numeric__ = 'lookup_float_f64'
+lookup.__modelx_cython_keyed_float_numeric__ = (
+    'lookup_key0_float_f64', 'lookup_key1_float_f64', 'lookup_key2_float_f64',
+    'lookup_key3_float_f64', 'lookup_key4_float_f64')
+
+
+# Explicit operations: their .pxd return declarations drive native typing.
+_TYPED_LOOKUP = lookup
+_LOOKUP_INT, _LOOKUP_FLOAT, _LOOKUP_BOOL, _LOOKUP_STR = int, float, bool, str
+def _typed_value(source, key, column=_MISSING, default=_MISSING):
+    from .immutable_inputs import Record
+    if isinstance(source, Record):
+        if column is not _MISSING:
+            raise TypeError('Record lookup does not accept a column; use default=')
+        try:
+            return source[key]
+        except KeyError:
+            if default is _MISSING:
+                raise
+            return default
+    if column is _MISSING:
+        raise TypeError('Table lookup requires a column')
+    return _TYPED_LOOKUP(source, key, column, default)
+
+
+def lookup_float(source, key, column=_MISSING, default=_MISSING) -> float:
+    """Read and convert a Table value or Record field to a float64 number."""
+    return _LOOKUP_FLOAT(_typed_value(source, key, column, default))
+
+
+def lookup_int(source, key, column=_MISSING, default=_MISSING) -> int:
+    """Read a signed-int64 value; preserve int conversion and check its range."""
+    result = _LOOKUP_INT(_typed_value(source, key, column, default))
+    if not -(1 << 63) <= result < (1 << 63):
+        raise OverflowError('lookup_int result outside signed 64-bit range')
+    return result
+
+
+def lookup_bool(source, key, column=_MISSING, default=_MISSING) -> bool:
+    """Read a value using Python bool conversion, including NA errors."""
+    return _LOOKUP_BOOL(_typed_value(source, key, column, default))
+
+
+def lookup_str(source, key, column=_MISSING, default=_MISSING) -> str:
+    """Read a value using Python str conversion."""
+    return _LOOKUP_STR(_typed_value(source, key, column, default))
+
+
+for _operation in (lookup_int, lookup_float, lookup_bool, lookup_str):
+    _operation.__modelx_native_operation__ = _operation.__name__
+    _operation.__modelx_cython_helper__ = ('lifelib._native_inputs', _operation.__name__)
+    _native_operations[_operation.__name__] = _operation
+
+
+
+def lookup_object(source, key, column=_MISSING, default=_MISSING) -> object:
+    """Read the original scalar, including missing sentinels, without conversion."""
+    return _typed_value(source, key, column, default)
+
+lookup_object.__modelx_native_operation__ = 'lookup_object'
+lookup_object.__modelx_cython_helper__ = ('lifelib._native_inputs', 'lookup_object')
+_native_operations['lookup_object'] = lookup_object
+
+
+def is_missing(predicate, value) -> bool:
+    """Test a scalar, preserving the current pandas isna callable explicitly.
+
+    Pass the predicate first so it is resolved before evaluating the value,
+    just as in predicate(value). Noncanonical predicates retain their behavior.
+    """
+    return _LOOKUP_BOOL(predicate(value))
+
+
+is_missing.__modelx_native_operation__ = 'is_missing'
+is_missing.__modelx_cython_helper__ = ('lifelib._native_inputs', 'is_missing')
+_native_operations['is_missing'] = is_missing
+
+# Shared declared-call ABI, owned by the generic compiler helper registry.
+# Physical results describe these .pxd dispatchers, including the existing
+# type-compatible replacement contract; they do not infer callback bodies.
+for _operation, _result in ((lookup_float, 'float64'), (lookup_int, 'int64'),
+                           (lookup_bool, 'bool'), (lookup_str, 'unicode'),
+                           (lookup_object, 'object'), (is_missing, 'bool')):
+    _operation.__modelx_cython_call_layout__ = 'keywords'
+    _operation.__modelx_cython_scalar_result__ = _result

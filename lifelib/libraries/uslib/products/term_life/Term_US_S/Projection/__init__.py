@@ -196,37 +196,37 @@ def model_point():
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def rate_class():
     """The underwriting class of the selected model point."""
-    return model_point()["rate_class"]
+    return tables.lookup_object(prepared_model_point(), "rate_class")
 
 
 def plan():
     """The plan code of the selected model point (T10 / T20 / T30)."""
-    return model_point()["plan"]
+    return tables.lookup_object(prepared_model_point(), "plan")
 
 
 def sum_assured():
     """The face amount of the selected model point."""
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def pols_if_init():
     """Initial number of policies in-force."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def premium_mode():
     """The premium mode of the selected model point: A, SA, Q or M [S6]."""
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def band():
@@ -366,8 +366,8 @@ def plt_mort_factor_init_formula():
 
 def plt_mort_factor_init():
     """M(1) actually used: the model point's override if given, else the formula."""
-    o = model_point()["plt_mort_factor_override"]
-    return plt_mort_factor_init_formula() if pd.isna(o) else float(o)  # noqa: F821
+    o = tables.lookup_object(prepared_model_point(), "plt_mort_factor_override")
+    return plt_mort_factor_init_formula() if tables.is_missing(pd.isna, o) else float(o)  # noqa: F821
 
 
 def plt_mort_factor(d):
@@ -382,12 +382,12 @@ def plt_mort_factor(d):
 
 def class_factor():
     """Underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])      # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')      # noqa: F821
 
 
 def mort_rate_base(t):
     """Base-table **annual** mortality rate at the attained age in month t, ``age(t)``."""
-    return float(data.mort_table().loc[age(t), "mort_rate"])                 # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')                 # noqa: F821
 
 
 def mort_rate(t):
@@ -645,11 +645,15 @@ def result_cf_annual():
     than at the anniversary, and so not on ``net_cf``. That gap is the point of the finer
     grid — see the Space docstring.
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index], name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',))
+    return expressions.to_pandas(annual, index_name='policy_year')
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -682,3 +686,9 @@ conv_rate_base = 0.0
 conv_rate_final = 0.0
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

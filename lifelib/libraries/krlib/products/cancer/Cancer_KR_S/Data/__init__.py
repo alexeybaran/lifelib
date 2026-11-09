@@ -250,6 +250,29 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="segment")         # noqa: F821
 
 
+def prepared_survival_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(survival_table(),
+                        columns=('excess_hazard',),
+                        indexing='loc')
+
+
+
+def prepared_care_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(care_table(),
+                        columns=('treat_hazard_yr', 'hosp_days_adm'),
+                        indexing='loc')
+
+
+
+def prepared_tier_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(tier_table(),
+                        columns=('benefit_ratio',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -270,3 +293,5 @@ care_table_file = "care_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -373,7 +373,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def age_at_entry():
@@ -386,7 +386,7 @@ def age_at_entry():
     at ``t = 12, 24, ...`` from the valuation date rather than from the contractual
     anniversary.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -397,7 +397,7 @@ def sex():
     2004 EU directive, so ``premium_mth`` is a model point column and not a rate looked
     up by sex.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -410,7 +410,7 @@ def cover_type():
     worked example runs.  See the Space docstring for what ``total_only`` changes and
     for the one **[std]** departure it forces on the duration clock.
     """
-    v = model_point()["cover_type"]
+    v = tables.lookup_object(prepared_model_point(), "cover_type")
     if v not in ("total_and_partial", "total_only"):
         raise ValueError("invalid cover_type")
     return v
@@ -434,7 +434,7 @@ def trigger_grid():
     data.  The grid enters through :func:`severity_share` and nowhere else: a stricter
     grid is a smaller share of public prevalence, not a different chain.
     """
-    v = model_point()["trigger_grid"]
+    v = tables.lookup_object(prepared_model_point(), "trigger_grid")
     if v not in ("avq5", "avq6", "aggir"):
         raise ValueError("invalid trigger_grid")
     return v
@@ -449,7 +449,7 @@ def rente_total_mth():
     and on a ``reduced`` cell it is the **full guarantee** before the *barème*
     coefficient is applied.
     """
-    return float(model_point()["rente_total_mth"])
+    return tables.lookup_float(prepared_model_point(), "rente_total_mth")
 
 
 def partial_ratio():
@@ -458,7 +458,7 @@ def partial_ratio():
     0.50, modal across five retrieved providers.  The two *rentes* are mutually
     exclusive: recognition of *totale* never opens partial rights.
     """
-    return float(model_point()["partial_ratio"])
+    return tables.lookup_float(prepared_model_point(), "partial_ratio")
 
 
 def partial_ratio_paid():
@@ -472,7 +472,7 @@ def partial_ratio_paid():
 
 def capital_option():
     """Whether the optional *capital d'équipement* is bought."""
-    return bool(model_point()["capital_option"])
+    return tables.lookup_bool(prepared_model_point(), "capital_option")
 
 
 def capital_amount():
@@ -483,7 +483,7 @@ def capital_amount():
     covered state, with no *franchise* **[std]**, and the guarantee is extinguished on
     payment regardless of later deterioration.
     """
-    return float(model_point()["capital_amount"]) if capital_option() else 0.0
+    return tables.lookup_float(prepared_model_point(), "capital_amount") if capital_option() else 0.0
 
 
 def premium_mth():
@@ -495,7 +495,7 @@ def premium_mth():
     The premium is *viagère*: level for the entry age but payable for life, with no
     premium-paying term.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_mode():
@@ -505,7 +505,7 @@ def premium_mode():
     **[std]**: no retrieved document discloses one, so an annual payer pays exactly
     twelve monthly premiums at the start of the policy year.
     """
-    v = model_point()["premium_mode"]
+    v = tables.lookup_object(prepared_model_point(), "premium_mode")
     if v not in ("monthly", "quarterly", "half_yearly", "annual"):
         raise ValueError("invalid premium_mode")
     return v
@@ -534,7 +534,7 @@ def couple_discount():
     mechanics beyond scaling the premium, conditional on facts about a second life the
     model point does not carry.
     """
-    return bool(model_point()["couple_discount"])
+    return tables.lookup_bool(prepared_model_point(), "couple_discount")
 
 
 def couple_factor():
@@ -544,12 +544,12 @@ def couple_factor():
 
 def carence_accident_months():
     """The *carence* for accident, 0 months on every retrieved contract."""
-    return int(model_point()["carence_accident_months"])
+    return tables.lookup_int(prepared_model_point(), "carence_accident_months")
 
 
 def carence_illness_months():
     """The *carence* for illness other than neurological or psychiatric, 12 months."""
-    return int(model_point()["carence_illness_months"])
+    return tables.lookup_int(prepared_model_point(), "carence_illness_months")
 
 
 def carence_neuro_months():
@@ -559,7 +559,7 @@ def carence_neuro_months():
     insurer does when a cause is both frequent and adversely selected, and every
     retrieved contract puts an MMSE overlay on exactly that cause.
     """
-    return int(model_point()["carence_neuro_months"])
+    return tables.lookup_int(prepared_model_point(), "carence_neuro_months")
 
 
 def carence_months(cause):
@@ -588,7 +588,7 @@ def franchise_months():
     corroborated rather than assumed — one retrieved contract restores exactly three
     instalments at the first payment.
     """
-    return int(model_point()["franchise_months"])
+    return tables.lookup_int(prepared_model_point(), "franchise_months")
 
 
 def reduction_qualifying_years():
@@ -597,7 +597,7 @@ def reduction_qualifying_years():
     Eight on the base cell; the observed range is five to eight across the retrieved
     contracts.  Below it a lapsed membership ends with no value at all.
     """
-    return int(model_point()["reduction_qualifying_years"])
+    return tables.lookup_int(prepared_model_point(), "reduction_qualifying_years")
 
 
 def status():
@@ -616,7 +616,7 @@ def status():
 
     An in-force portfolio needs all four kinds of cell.
     """
-    v = model_point()["status"]
+    v = tables.lookup_object(prepared_model_point(), "status")
     if v not in ("autonomous", "partial", "total", "reduced"):
         raise ValueError("invalid status")
     return v
@@ -629,7 +629,7 @@ def claim_duration_months():
     at the end of the month before the valuation date.  A cell seeded at
     ``z0 = franchise_months()`` is therefore paid in its very first month.
     """
-    return int(model_point()["claim_duration_months"])
+    return tables.lookup_int(prepared_model_point(), "claim_duration_months")
 
 
 def years_paid():
@@ -638,12 +638,12 @@ def years_paid():
     It selects the *barème* coefficient the frozen reduced *rente* carries, and it is
     ignored on every other kind of cell.
     """
-    return int(model_point()["years_paid"])
+    return tables.lookup_int(prepared_model_point(), "years_paid")
 
 
 def pols_if_init():
     """Initial number of policies; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 # --- the policy clock ---
@@ -890,7 +890,7 @@ def mort_rate(t):
     :func:`mort_rate_partial` and :func:`mort_rate_total` — and reading a dependent's
     mortality out of this cells is the largest single error available on this product.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1050,8 +1050,7 @@ def carence_factor(t):
     a covered one does, and takes :func:`refunds_carence` with it.
     """
     tbl = data.cause_mix_table()                                     # noqa: F821
-    return float(sum(tbl.loc[c, "share"] for c in tbl.index
-                     if carence_months(c) <= t))
+    return float(sum(expressions.over(tbl.index, lambda c: tbl.loc[c, "share"], where = lambda c: True if carence_months(c) <= t else False)))
 
 
 def aggravation_carence(t):
@@ -1073,7 +1072,7 @@ def prev_param(name):
     to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,
     and it governs the tail — where 65% of this product's lifetime claims fall.
     """
-    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
+    return tables.lookup_float(data.prepared_prevalence_table_loc(), (sex(), name), 'value')  # noqa: F821
 
 
 def prev_rate(t):
@@ -1730,7 +1729,7 @@ def claims(t, kind=None):
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE"))
+        return sum(expressions.over(("RENTE", "CAPITAL", "LAPSE"), lambda k: claims(t, k)))
     if kind == "RENTE":
         part, tot, totr, val = dep_cohorts(t)
         s_p = 1.0 - mort_rate_partial_mth(t)
@@ -1893,8 +1892,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_pols_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
 
 
 def check_states_resid(t):
@@ -1920,8 +1918,7 @@ def check_states():
     still has one.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_states_resid(t)) <= tol
-               for t in range(proj_len() + 1))
+    return all(expressions.over(range(proj_len() + 1), lambda t: abs(check_states_resid(t)) <= tol))
 
 
 def check_part_roll_fwd_resid(t):
@@ -1943,8 +1940,7 @@ def check_part_roll_fwd_resid(t):
 def check_part_roll_fwd():
     """True when the *partielle* ledger closes against its aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_part_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_part_roll_fwd_resid(t)) <= tol))
 
 
 def check_tot_roll_fwd_resid(t):
@@ -1968,8 +1964,7 @@ def check_tot_roll_fwd_resid(t):
 def check_tot_roll_fwd():
     """True when the two *totale* ledgers close against their aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_tot_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_tot_roll_fwd_resid(t)) <= tol))
 
 
 def check_model_point():
@@ -2063,6 +2058,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2107,3 +2107,9 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

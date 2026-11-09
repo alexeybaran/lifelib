@@ -316,7 +316,7 @@ def status():
     price the contract: that always runs from inception as an active life, because the
     *Bruttobeitrag* was struck there.
     """
-    v = model_point()["status"]
+    v = tables.lookup_object(prepared_model_point(), "status")
     if v not in ("aktiv", "leistung"):
         raise ValueError("invalid status")
     return v
@@ -330,7 +330,7 @@ def entry_age():
     here.  An implementation on real dates carries a fractional offset of at most one
     year.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -343,7 +343,7 @@ def sex():
     tariff embeds a mix assumption the insurer bears the risk of.  Model points 1 and 2
     differ in this attribute alone, and their frames are identical.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -351,7 +351,7 @@ def sex():
 
 def berufsgruppe():
     """The occupational rating class, BG1 - BG5; the key into *occupation_table.csv*."""
-    return model_point()["berufsgruppe"]
+    return tables.lookup_object(prepared_model_point(), "berufsgruppe")
 
 
 def occ_factor():
@@ -364,8 +364,7 @@ def occ_factor():
     model point three times the anchor's inception rate carries a premium slightly
     **below** three times the anchor's.
     """
-    return float(data.occupation_table().loc[                        # noqa: F821
-        berufsgruppe(), "occ_factor"])
+    return tables.lookup_float(data.prepared_occupation_table_loc(), berufsgruppe(), 'occ_factor')
 
 
 def bu_rente_mth():
@@ -375,7 +374,7 @@ def bu_rente_mth():
     *Angemessenheitsgrenze* capping it at 60-70 % of gross income, which is a
     underwriting rule rather than a projection parameter and is not modelled.
     """
-    return float(model_point()["bu_rente_mth"])
+    return tables.lookup_float(prepared_model_point(), "bu_rente_mth")
 
 
 def cover_end_age():
@@ -386,7 +385,7 @@ def cover_end_age():
     inception rate accelerates from the mid-forties and cutting the *Endalter* removes
     the most expensive years of cover.
     """
-    return int(model_point()["cover_end_age"])
+    return tables.lookup_int(prepared_model_point(), "cover_end_age")
 
 
 def benefit_end_age():
@@ -398,7 +397,7 @@ def benefit_end_age():
     claim-maintenance cost are zero and **the disabled mass is held rather than deleted**,
     so both state identities still close.
     """
-    return int(model_point()["benefit_end_age"])
+    return tables.lookup_int(prepared_model_point(), "benefit_end_age")
 
 
 def karenz_months():
@@ -409,7 +408,7 @@ def karenz_months():
     Cohorts at duration ``z <= K`` are *berufsunfaehig*, are **not** paid, and **still
     pay premium**, because the *Beitragsbefreiung* runs with the benefit **[std]**.
     """
-    return int(model_point()["karenz_months"])
+    return tables.lookup_int(prepared_model_point(), "karenz_months")
 
 
 def leistungsdyn_rate():
@@ -418,7 +417,7 @@ def leistungsdyn_rate():
     Steps on each anniversary of the **onset**, not of the policy.  Compounding 2 % over
     a claim that can run thirty years raises the final payment to about 1.70x the first.
     """
-    return float(model_point()["leistungsdyn_rate"])
+    return tables.lookup_float(prepared_model_point(), "leistungsdyn_rate")
 
 
 def premium_form():
@@ -432,7 +431,7 @@ def premium_form():
     reached, so a given increase buys less than proportional cover; the direction is
     recorded rather than corrected.
     """
-    v = model_point()["premium_form"]
+    v = tables.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("level", "dynamik"):
         raise ValueError("invalid premium_form")
     return v
@@ -448,7 +447,7 @@ def beitragsdyn_rate():
     """
     if premium_form() == "level":
         return 0.0
-    return float(model_point()["beitragsdyn_rate"])
+    return tables.lookup_float(prepared_model_point(), "beitragsdyn_rate")
 
 
 def prem_mode():
@@ -457,7 +456,7 @@ def prem_mode():
     The key into *freq_loading_table.csv*, which supplies both the months between
     instalments and the *Ratenzahlungszuschlag*.
     """
-    v = model_point()["prem_mode"]
+    v = tables.lookup_object(prepared_model_point(), "prem_mode")
     if v not in ("annual", "half_yearly", "quarterly", "monthly"):
         raise ValueError("invalid prem_mode")
     return v
@@ -483,8 +482,7 @@ def freq_load():
     :func:`beitragsverrechnung` stays exactly the ratio the tariff quotes and the loading
     is invisible in the *Brutto* / *Zahl* split.
     """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_mode(), "freq_load"])
+    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_mode(), 'freq_load')
 
 
 def gross_prem_ann():
@@ -494,7 +492,7 @@ def gross_prem_ann():
     card; no German BU rate card of any kind was obtained for this library, so the
     derivation is the default and the override is the exception.
     """
-    return float(model_point()["gross_prem_ann"])
+    return tables.lookup_float(prepared_model_point(), "gross_prem_ann")
 
 
 def beitragsverrechnung():
@@ -508,7 +506,7 @@ def beitragsverrechnung():
     *Bruttobeitrag* and no further, and across the recalled range collected premium moves
     by more than 40 % either way.
     """
-    return float(model_point()["beitragsverrechnung"])
+    return tables.lookup_float(prepared_model_point(), "beitragsverrechnung")
 
 
 def risk_factor():
@@ -519,7 +517,7 @@ def risk_factor():
     projected above its own modelled cost.  Contrast :func:`occ_factor`, which loads the
     inception rate and so moves every claim and every decrement.
     """
-    return float(model_point()["risk_factor"])
+    return tables.lookup_float(prepared_model_point(), "risk_factor")
 
 
 def au_klausel():
@@ -530,7 +528,7 @@ def au_klausel():
     :func:`au_uplift`, which ships at 1.00 everywhere, so the switch is demonstrably inert
     until a user supplies a number.
     """
-    return bool(model_point()["au_klausel"])
+    return tables.lookup_bool(prepared_model_point(), "au_klausel")
 
 
 def au_uplift():
@@ -543,7 +541,7 @@ def au_uplift():
     """
     if not au_klausel():
         return 1.0
-    return float(model_point()["au_uplift"])
+    return tables.lookup_float(prepared_model_point(), "au_uplift")
 
 
 def wiedereingliederung_months():
@@ -553,7 +551,7 @@ def wiedereingliederung_months():
     never returns to work and is paid nothing.  Paying it on every recovery instead
     overstates it, and the difference is exactly the run-off's own mortality.
     """
-    return int(model_point()["wiedereingliederung_months"])
+    return tables.lookup_int(prepared_model_point(), "wiedereingliederung_months")
 
 
 def duration_init_months():
@@ -565,7 +563,7 @@ def duration_init_months():
     date is a numbered pitfall.  It does *not* touch the first-order shadow, which always
     runs from inception.
     """
-    return int(model_point()["duration_init_months"])
+    return tables.lookup_int(prepared_model_point(), "duration_init_months")
 
 
 def claim_duration_init():
@@ -573,7 +571,7 @@ def claim_duration_init():
 
     Zero on every ``aktiv`` point.  See :func:`seed_claim_dur` for the cohort it seeds.
     """
-    return int(model_point()["claim_duration_init"])
+    return tables.lookup_int(prepared_model_point(), "claim_duration_init")
 
 
 def pols_if_init():
@@ -764,8 +762,8 @@ def recov_rates():
     with 445 cohorts is the difference between a lookup and a quarter of a million of
     them.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
+    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "recov_rate")))
 
 
 def mort_dis_sel_factors():
@@ -774,8 +772,8 @@ def mort_dis_sel_factors():
     3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
+    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "mort_dis_sel_factor")))
 
 
 # --- the best-estimate rates as composed ---
@@ -861,8 +859,7 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return tuple(expressions.over(mort_dis_sel_factors(), lambda s: 1.0 - (1.0 - q * s) ** (1.0 / 12.0)))
 
 
 def recov_rate(z):
@@ -894,7 +891,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
+    return tuple(expressions.over(recov_rates(), lambda r: 1.0 - (1.0 - r) ** (1.0 / 12.0)))
 
 
 def lapse_rate(t):
@@ -955,8 +952,7 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates())
+    return tuple(expressions.over(recov_rates(), lambda r: 1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)))
 
 
 def mort_rate_first_mth(s):
@@ -986,8 +982,7 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return tuple(expressions.over(mort_dis_sel_factors(), lambda f: 1.0 - (1.0 - q * f) ** (1.0 / 12.0)))
 
 
 def disc_first(s):
@@ -1071,7 +1066,7 @@ def beitragssumme_unit():
     original term rather than the remaining one: the charge was incurred at inception.
     """
     g = 1.0 + beitragsdyn_rate()
-    return sum(g ** (y - 1) for y in range(1, cover_end_age() - entry_age() + 1))
+    return sum(expressions.over(range(1, cover_end_age() - entry_age() + 1), lambda y: g ** (y - 1)))
 
 
 def prem_gross_level_pp():
@@ -1327,8 +1322,7 @@ def pv_prem_unit_first():
     which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
-    return sum(disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
-               for s in range(0, first_len()))
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0))
 
 
 def pv_rente_first():
@@ -1358,10 +1352,9 @@ def pv_wiedereingl_first():
     """
     if wiedereingliederung_months() == 0:
         return 0.0
-    return sum(disc_first(s) * wiedereingliederung_months()
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * wiedereingliederung_months()
                * runoff_val_first(s, runoff_months)                  # noqa: F821
-               * (1.0 - mort_rate_first_mth(s))
-               for s in range(0, first_len()))
+               * (1.0 - mort_rate_first_mth(s))))
 
 
 def pv_claim_cost_first():
@@ -1391,8 +1384,7 @@ def pv_admin_first():
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return sum(disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
-               for s in range(0, first_len()))
+    return sum(expressions.over(range(0, first_len()), lambda s: disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)))
 
 
 # --- the best-estimate ledgers ---
@@ -1778,7 +1770,7 @@ def claims(t, kind=None):
         published scope statement rather than a missing column.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE"))
+        return sum(expressions.over(("BU_RENTE", "REINTEGRATION", "LAPSE"), lambda k: claims(t, k)))
     if kind == "BU_RENTE":
         if age(t) >= benefit_end_age():
             return 0.0
@@ -1911,9 +1903,8 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, abs(bu_rente_pp(t)))
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+               * max(1.0, abs(bu_rente_pp(t)))))
 
 
 def check_states_resid(t):
@@ -1935,9 +1926,8 @@ def check_states_resid(t):
 
 def check_states():
     """True when the three ledgers account for the whole in-force population at every t."""
-    return all(abs(check_states_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len() + 1))
+    return all(expressions.over(range(0, proj_len() + 1), lambda t: abs(check_states_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1959,9 +1949,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_dis_roll_fwd_resid(t):
@@ -1982,9 +1971,8 @@ def check_dis_roll_fwd_resid(t):
 
 def check_dis_roll_fwd():
     """True when the disabled ledger rolls forward exactly in every projected month."""
-    return all(abs(check_dis_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_dis_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_runoff_roll_fwd_resid(t):
@@ -2002,9 +1990,8 @@ def check_runoff_roll_fwd_resid(t):
 
 def check_runoff_roll_fwd():
     """True when the § 174 run-off ledger rolls forward exactly in every projected month."""
-    return all(abs(check_runoff_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_runoff_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)))
 
 
 def check_prem_split_resid(t):
@@ -2022,9 +2009,8 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
-    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
-               * max(1.0, abs(prem_gross_ann_pp(t)))
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
+               * max(1.0, abs(prem_gross_ann_pp(t)))))
 
 
 def check_cover_end_resid(t):
@@ -2052,8 +2038,7 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when benefit and premium both stop exactly at their own contractual ages."""
-    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol         # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_cover_end_resid(t)) <= roll_fwd_tol))
 
 
 # --- the result frames ---
@@ -2133,6 +2118,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2167,3 +2157,9 @@ runoff_months = 3
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

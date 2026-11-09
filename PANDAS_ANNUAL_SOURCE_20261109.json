@@ -1,0 +1,363 @@
+{
+  "parent_lifelib": "668d9ec1398feca3332b0c33df6ba64f729ea650",
+  "financial_source_pins": {
+    "adjusted": "7cd6bfa50346b6115b2e91ee1361538292313b9e",
+    "compiler": "414743427aef80bf1c0b9e0b36974006c967e96a",
+    "modelx": "b8b7472c3199874a71f823b0836aae83878b03ff",
+    "original": "76684674a7ef2ca93c53101a68816ef2697f4370",
+    "toolkit": "aad7d588aad4d1a8cad90874b5947a4e6f997db1"
+  },
+  "current_compiler": "7365c4f192b57424c34186b2aa6da7492e1adb27",
+  "source_policy": "literal11annualCell bodies;publicresult_cf dependency; originalyearlabels; no generator-owned27Cells",
+  "models": 11,
+  "policies": 127,
+  "financial_outcomes_per_mode": 2872427,
+  "status": "ANNUAL_SOURCE_FINANCIAL_AND_BOUNDED_NATIVE_PASS;WHOLE_MODEL_AND_PERFORMANCE_OPEN",
+  "changes": [
+    {
+      "model": "frlib/products/eurocroissance/EC_FR_S",
+      "cell": "result_cf_annual",
+      "line": 2570,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the policy year, ``pols_if(12 x (policy_year - 1))``, which is the\n    number the annual-step model this one replaced carried on the same row.  It is the\n    monthly frame **regrouped, never a second projection**, which is what lets the notes'\n    annual figures be laid beside the monthly ones and the difference read off.\n\n    Laid beside the annual-step model this one replaced, the columns split three ways.\n    ``pols_if`` and ``premiums`` agree **exactly on every shipped model point**: the\n    opening in-force is what the monthly decrements compound back to, and a *versement*\n    is collected in a month the contract names and weighted by the in-force of that month\n    under either grid.  ``withdrawals`` agrees on every cell that takes no *rachat\n    partiel*, which is all of them but point 5.  ``charges_taken`` agrees wherever the\n    decrements are switched off (points 1-4); elsewhere its surrender-indemnity term is\n    weighted by the month of exit and moves with the claims.\n\n    The rest do **not** agree, and are not meant to.  ``expenses`` moves because\n    maintenance now accrues at one twelfth a month on the month's own provision and\n    in-force and the annual grid's extra opening-striking charge is gone \u2014 the largest\n    single-year gap on the shipped cells is 33.28 EUR, on point 9.  The ``claims_*``\n    columns move because a claim now falls at the end of the month of exit rather than of\n    the year.  ``liability_cf`` and ``net_cf`` inherit both.  That gap is the point of the\n    finer grid.\n\n    The frame opens on the policy year the model point's first projected month opens, so\n    an in-force cell is indexed from ``duration_inforce() + 1`` rather than from 1.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index(                                                # noqa: F821\n        [duration(t) + 1 for t in df.index], name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the policy year, ``pols_if(12 x (policy_year - 1))``, which is the\n    number the annual-step model this one replaced carried on the same row.  It is the\n    monthly frame **regrouped, never a second projection**, which is what lets the notes'\n    annual figures be laid beside the monthly ones and the difference read off.\n\n    Laid beside the annual-step model this one replaced, the columns split three ways.\n    ``pols_if`` and ``premiums`` agree **exactly on every shipped model point**: the\n    opening in-force is what the monthly decrements compound back to, and a *versement*\n    is collected in a month the contract names and weighted by the in-force of that month\n    under either grid.  ``withdrawals`` agrees on every cell that takes no *rachat\n    partiel*, which is all of them but point 5.  ``charges_taken`` agrees wherever the\n    decrements are switched off (points 1-4); elsewhere its surrender-indemnity term is\n    weighted by the month of exit and moves with the claims.\n\n    The rest do **not** agree, and are not meant to.  ``expenses`` moves because\n    maintenance now accrues at one twelfth a month on the month's own provision and\n    in-force and the annual grid's extra opening-striking charge is gone \u2014 the largest\n    single-year gap on the shipped cells is 33.28 EUR, on point 9.  The ``claims_*``\n    columns move because a claim now falls at the end of the month of exit rather than of\n    the year.  ``liability_cf`` and ``net_cf`` inherit both.  That gap is the point of the\n    finer grid.\n\n    The frame opens on the policy year the model point's first projected month opens, so\n    an in-force cell is indexed from ``duration_inforce() + 1`` rather than from 1.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "e57b38e79d7a422577d4ff2d08f274e80c45db65cab8b6a5bd90de6a9feab9e4",
+      "new_sha256": "1c32c511abb7cc881e7a648147fe70fb40f3c666f560faeb3e2dac9fbfdda41a",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 11,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 154093,
+      "financial_evidence_folder": "pandas-annual-source-02/EC_FR_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 11,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 11,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "frlib/products/assurance_vie_euro/Euro_FR_S",
+      "cell": "result_cf_annual",
+      "line": 1812,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into projection years, indexed by ``y``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the projection year, ``pols_if(12y)``, which is the number the\n    annual-step model this replaced carried on the same row.  It is the monthly frame\n    regrouped, never a second projection.\n\n    ``pols_if`` is the one column the two grids still agree on, because the monthly\n    decrement rates compound back to the annual ones.  The flows do not agree and are not\n    meant to: `versements` and `rachats partiels` are now collected from a block that\n    decrements every month, expenses accrue on the in force of each month, claims fall at\n    the end of the month of exit, and the year's revalorisation is weighted by the\n    December in force.  That gap is the point of the finer grid.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([proj_year(t) for t in df.index], name=\"y\")     # noqa: F821\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into projection years, indexed by ``y``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the projection year, ``pols_if(12y)``, which is the number the\n    annual-step model this replaced carried on the same row.  It is the monthly frame\n    regrouped, never a second projection.\n\n    ``pols_if`` is the one column the two grids still agree on, because the monthly\n    decrement rates compound back to the annual ones.  The flows do not agree and are not\n    meant to: `versements` and `rachats partiels` are now collected from a block that\n    decrements every month, expenses accrue on the in force of each month, claims fall at\n    the end of the month of exit, and the year's revalorisation is weighted by the\n    December in force.  That gap is the point of the finer grid.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [proj_year(t) for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='y')\n\n\n",
+      "old_sha256": "31e1e919fb1aeeeffb3c3a9b10f534049838337bac2ef7d9da5fadcfd8e124df",
+      "new_sha256": "d70b19dc8281ee573610150688128ffde8f2ac9e36b72336ede9b068d7ac2ffb",
+      "index_name": "y",
+      "label_expression": "[proj_year(t) for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 11,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 275591,
+      "financial_evidence_folder": "pandas-annual-source-02/Euro_FR_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 11,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 11,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "uslib/products/fixed_indexed_annuity/FIA_US_S",
+      "cell": "result_cf_annual",
+      "line": 2792,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into contract years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the contract year, ``pols_if(12 * duration)``, which is the number the\n    annual-step model carried on the same row.\n\n    Against the annual grid this agrees exactly on ``pols_if``, ``premiums``,\n    ``commissions`` and ``premium_taxes``, the last three being the single premium and two\n    rates on it.  It does **not** agree on the withdrawal columns, the claims or the\n    expenses, and so not on ``net_cf``: a withdrawal taken at the anniversary is now\n    weighted by the contracts that **reach** it rather than by those that entered the year,\n    claims fall in the month of exit, and maintenance expense accrues monthly.  That gap is\n    the point of the finer grid \u2014 see the Space docstring.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into contract years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the contract year, ``pols_if(12 * duration)``, which is the number the\n    annual-step model carried on the same row.\n\n    Against the annual grid this agrees exactly on ``pols_if``, ``premiums``,\n    ``commissions`` and ``premium_taxes``, the last three being the single premium and two\n    rates on it.  It does **not** agree on the withdrawal columns, the claims or the\n    expenses, and so not on ``net_cf``: a withdrawal taken at the anniversary is now\n    weighted by the contracts that **reach** it rather than by those that entered the year,\n    claims fall in the month of exit, and maintenance expense accrues monthly.  That gap is\n    the point of the finer grid \u2014 see the Space docstring.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n\n",
+      "old_sha256": "55b4413ee99ffe0b374ef6f61a096b56708decfc523f589a4446a457085bf4b5",
+      "new_sha256": "da4dd025d79029b6a5104ee7ef16e1bfdc763606b5aff04553020202057ec923",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 9,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 676852,
+      "financial_evidence_folder": "pandas-annual-source-02/FIA_US_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 9,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 9,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "delib/products/indexpolice/Index_DE_S",
+      "cell": "result_cf_annual",
+      "line": 1841,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    A **regrouping of the monthly frame and never a second projection**: every cash flow\n    column is the sum of that policy year's twelve months while ``pols_if`` is the count at\n    the year's **start**, which is the only reading under which a count and a flow can share\n    a row.  This is the view the technical notes' worked example is stated on.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    A **regrouping of the monthly frame and never a second projection**: every cash flow\n    column is the sum of that policy year's twelve months while ``pols_if`` is the count at\n    the year's **start**, which is the only reading under which a count and a flow can share\n    a row.  This is the view the technical notes' worked example is stated on.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "bed4e8ebba3f8f036473a04ae408257e7d859d2d3f9d4473f12c709986d94a35",
+      "new_sha256": "19a7c55ee2c61da2fa9fc1936a65dcb8b7ca6077902d50df5a54e6e9c21b9b22",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 13,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 117970,
+      "financial_evidence_folder": "pandas-annual-source-02/Index_DE_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 13,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 13,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "delib/products/kapitallebensversicherung/KLV_DE_S",
+      "cell": "result_cf_annual",
+      "line": 2495,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    Every cash flow column is the total of that policy year's twelve months; ``pols_if`` is\n    the count at the **start** of the policy year, ``pols_if(12 k)``, which is the number the\n    annual-step model this replaced carried on the same row and is unchanged by the\n    conversion.  It is the monthly frame **regrouped and never a second projection**, which is\n    what lets the notes' annual worked example stay annual and still be asserted cell by cell.\n\n    ``pols_if`` and the whole annual layer beside it \u2014 the three reserves, the \u00a7 169 value,\n    the surplus ledgers, the paid-up purchase, the equivalence \u2014 are the annual model's own\n    numbers. The cash flow columns are not, and are not meant to be: claims fall in the month\n    of exit and are paid the balances standing at the **last** anniversary, maintenance\n    accrues a twelfth a month on that month's in-force, and a fractionated *Beitrag* is\n    collected on a block that has already lost lives.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    Every cash flow column is the total of that policy year's twelve months; ``pols_if`` is\n    the count at the **start** of the policy year, ``pols_if(12 k)``, which is the number the\n    annual-step model this replaced carried on the same row and is unchanged by the\n    conversion.  It is the monthly frame **regrouped and never a second projection**, which is\n    what lets the notes' annual worked example stay annual and still be asserted cell by cell.\n\n    ``pols_if`` and the whole annual layer beside it \u2014 the three reserves, the \u00a7 169 value,\n    the surplus ledgers, the paid-up purchase, the equivalence \u2014 are the annual model's own\n    numbers. The cash flow columns are not, and are not meant to be: claims fall in the month\n    of exit and are paid the balances standing at the **last** anniversary, maintenance\n    accrues a twelfth a month on that month's in-force, and a fractionated *Beitrag* is\n    collected on a block that has already lost lives.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "f4af5bef20c7f722c5d2400c163b1780cea677a59be61d0b6753eaed8cf07895",
+      "new_sha256": "b3103c99a306e3b94ec717c1ea243ff30f8eae82f1d7c62bd277439a550846ab",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 14,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 182585,
+      "financial_evidence_folder": "pandas-annual-source-02/KLV_DE_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 14,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 14,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "frlib/products/per_assurance/PER_FR_S",
+      "cell": "result_cf_annual",
+      "line": 2011,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into plan years, indexed by ``t_year``.\n\n    The frame **regrouped, never a second projection**, and the table a reader lays beside\n    the annual-step model this one replaced.  ``t_year`` is the 0-based *projected* plan\n    year, ``duration_mth(t) // 12``, and deliberately not :func:`plan_year`: on an\n    in-force cell the plan's own *anciennet\u00e9* label is ahead by ``duration_ifo`` \u2014 the\n    anchor cell's first projected year is its third plan year \u2014 and the notes'\n    worked-example table is keyed 0 \u2026 n-1.\n\n    Each column is aggregated the way its own meaning requires:\n\n    * every **cash flow** column is the total of its twelve months;\n    * ``pols_if`` is ``.first()``, the count at the **start** of the plan year,\n      ``pols_if(12 t_year)`` \u2014 which is the number the annual-step model carried on the\n      same row, exactly, because the monthly decrement rates compound back to the annual\n      ones;\n    * ``av_pp`` is ``.last()``, the balance at the plan-year **end**, ``av_pp(12 t_year +\n      11)`` \u2014 which is what ``av_pp(t)`` meant on the annual grid and what the annual\n      model carried on the same row, to floating point.  Summing a state variable over\n      twelve months would be meaningless.\n\n    Of the eleven columns, four reproduce the annual grid exactly \u2014 ``pols_if``, ``av_pp``,\n    ``premiums`` and ``annuity_conversion`` \u2014 because the *versement* is collected at the\n    plan-year start and weighted by the same count under either grid, the balance is the\n    anniversary balance, and the conversion is a horizon event.  ``claims_maturity`` does\n    too.  The other claims columns and ``expenses`` do **not**, and are not meant to:\n    claims now fall at the end of the month of exit and are valued on the balance held\n    then, and the maintenance charge is borne by the in force of each month rather than of\n    the plan-year start.  ``liability_cf`` and ``net_cf`` follow them.  That gap is the\n    point of the finer grid.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration_mth(t) // 12 for t in df.index],      # noqa: F821\n                     name=\"t_year\")\n    out = df.drop(columns=[\"pols_if\", \"av_pp\"]).groupby(years).sum()\n    out.insert(0, \"av_pp\", df[\"av_pp\"].groupby(years).last())\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into plan years, indexed by ``t_year``.\n\n    The frame **regrouped, never a second projection**, and the table a reader lays beside\n    the annual-step model this one replaced.  ``t_year`` is the 0-based *projected* plan\n    year, ``duration_mth(t) // 12``, and deliberately not :func:`plan_year`: on an\n    in-force cell the plan's own *anciennet\u00e9* label is ahead by ``duration_ifo`` \u2014 the\n    anchor cell's first projected year is its third plan year \u2014 and the notes'\n    worked-example table is keyed 0 \u2026 n-1.\n\n    Each column is aggregated the way its own meaning requires:\n\n    * every **cash flow** column is the total of its twelve months;\n    * ``pols_if`` is ``.first()``, the count at the **start** of the plan year,\n      ``pols_if(12 t_year)`` \u2014 which is the number the annual-step model carried on the\n      same row, exactly, because the monthly decrement rates compound back to the annual\n      ones;\n    * ``av_pp`` is ``.last()``, the balance at the plan-year **end**, ``av_pp(12 t_year +\n      11)`` \u2014 which is what ``av_pp(t)`` meant on the annual grid and what the annual\n      model carried on the same row, to floating point.  Summing a state variable over\n      twelve months would be meaningless.\n\n    Of the eleven columns, four reproduce the annual grid exactly \u2014 ``pols_if``, ``av_pp``,\n    ``premiums`` and ``annuity_conversion`` \u2014 because the *versement* is collected at the\n    plan-year start and weighted by the same count under either grid, the balance is the\n    anniversary balance, and the conversion is a horizon event.  ``claims_maturity`` does\n    too.  The other claims columns and ``expenses`` do **not**, and are not meant to:\n    claims now fall at the end of the month of exit and are valued on the balance held\n    then, and the maintenance charge is borne by the in force of each month rather than of\n    the plan-year start.  ``liability_cf`` and ``net_cf`` follow them.  That gap is the\n    point of the finer grid.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration_mth(t) // 12 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',), last=('av_pp',))\n    return expressions.to_pandas(annual, index_name='t_year')\n\n\n",
+      "old_sha256": "7ddd5610e344658921c2c4671571957e1cbb9b58783f9b4e05e25533c353985d",
+      "new_sha256": "4a82289efcf0292f45889a4b10e0d31227590815bbd885cfd3a3a4db9485fd50",
+      "index_name": "t_year",
+      "label_expression": "[duration_mth(t) // 12 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [
+        "av_pp"
+      ],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 12,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 129372,
+      "financial_evidence_folder": "pandas-annual-source-03/PER_FR_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 12,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 12,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "delib/products/risikolebensversicherung/RLV_DE_S",
+      "cell": "result_cf_annual",
+      "line": 2009,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of that policy year's twelve months; ``pols_if``\n    is the count at the **start** of the policy year, ``pols_if(12 (policy_year - 1))``,\n    which is the number the annual-step model this replaced carried on the same row.  It\n    is the monthly frame **regrouped and never a second projection**, which is what lets\n    the notes' annual worked example stay annual and still be asserted cell by cell.\n\n    On the ten annual-*Zahlweise* model points the two grids agree exactly on four\n    columns \u2014 ``pols_if``, ``prem_gross``, ``premiums`` and ``prem_rebate`` \u2014 because an\n    annual instalment is collected on the anniversary and weighted by the anniversary\n    in-force under either grid.  They do **not** agree on ``claims_death`` or\n    ``expenses``, which now fall where they happen rather than at the anniversary, and so\n    not on ``net_cf``.  On a fractionated point not even the premium columns agree, and\n    that is the *Ratenzahlungszuschlag* finally being charged for something.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of that policy year's twelve months; ``pols_if``\n    is the count at the **start** of the policy year, ``pols_if(12 (policy_year - 1))``,\n    which is the number the annual-step model this replaced carried on the same row.  It\n    is the monthly frame **regrouped and never a second projection**, which is what lets\n    the notes' annual worked example stay annual and still be asserted cell by cell.\n\n    On the ten annual-*Zahlweise* model points the two grids agree exactly on four\n    columns \u2014 ``pols_if``, ``prem_gross``, ``premiums`` and ``prem_rebate`` \u2014 because an\n    annual instalment is collected on the anniversary and weighted by the anniversary\n    in-force under either grid.  They do **not** agree on ``claims_death`` or\n    ``expenses``, which now fall where they happen rather than at the anniversary, and so\n    not on ``net_cf``.  On a fractionated point not even the premium columns agree, and\n    that is the *Ratenzahlungszuschlag* finally being charged for something.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "c7616a3821c170f318e66126ce764024260cee8dcd6547de8e298d06ec4d1e58",
+      "new_sha256": "c649e626593b318ea4421e5e6d2ec921693e170691e5c36ddc91d60a6b2c6432",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 14,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 190200,
+      "financial_evidence_folder": "pandas-annual-source-02/RLV_DE_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 14,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 14,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "delib/products/klassische_rentenversicherung/RV_DE_S",
+      "cell": "result_cf_annual",
+      "line": 2234,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    A **regrouping of the monthly frame and never a second projection**: every cash flow column\n    is the sum of that policy year's twelve months, while ``pols_if`` and ``pols_annuity`` are\n    the counts at the year's **start**, which is the only reading under which a count and a\n    flow can share a row.  This is the view the technical notes' worked example is stated on.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    counts = [\"pols_if\", \"pols_annuity\"]\n    out = df.drop(columns=counts).groupby(years).sum()\n    for i, column in enumerate(counts):\n        out.insert(i, column, df[column].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.\n\n    A **regrouping of the monthly frame and never a second projection**: every cash flow column\n    is the sum of that policy year's twelve months, while ``pols_if`` and ``pols_annuity`` are\n    the counts at the year's **start**, which is the only reading under which a count and a\n    flow can share a row.  This is the view the technical notes' worked example is stated on.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if', 'pols_annuity'))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "e0addfdf665925b6bb0d2421e20f59aff296a67ae968a64464ff58f857090554",
+      "new_sha256": "c075b0ff3d060095036f47173195897d5c9d6dc22752ef2a94aeff792a3e548b",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if",
+        "pols_annuity"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 14,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 437762,
+      "financial_evidence_folder": "pandas-annual-source-03/RV_DE_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 14,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 14,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "frlib/products/temporaire_deces/TD_FR_S",
+      "cell": "result_cf_annual",
+      "line": 1685,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the policy year, ``pols_if(12 * (policy_year - 1))``, which is the\n    number the annual-step model this replaced carried on the same row.  It is the monthly\n    frame **regrouped and never a second projection**, which is what lets the notes'\n    annual worked example stay in the notes and still be asserted.\n\n    On the nine annual-mode model points the two grids agree exactly on three columns \u2014\n    ``pols_if``, ``premiums`` and ``commissions`` \u2014 because an annual cotisation is\n    collected on the anniversary and weighted by the anniversary in-force under either\n    grid, and the commission is a policy-year rate on it.  They do **not** agree on\n    ``claims_death``, ``claims_ptia`` or ``expenses``, which now fall where they happen\n    rather than at the anniversary, and so not on ``net_cf``: 10 094,20 \u20ac of death claims\n    over the worked configuration against the annual grid's 10 396,90 \u20ac, and 2 666,69 \u20ac of\n    expense against 2 676,38 \u20ac.  That gap is the point of the finer grid.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count at\n    the **start** of the policy year, ``pols_if(12 * (policy_year - 1))``, which is the\n    number the annual-step model this replaced carried on the same row.  It is the monthly\n    frame **regrouped and never a second projection**, which is what lets the notes'\n    annual worked example stay in the notes and still be asserted.\n\n    On the nine annual-mode model points the two grids agree exactly on three columns \u2014\n    ``pols_if``, ``premiums`` and ``commissions`` \u2014 because an annual cotisation is\n    collected on the anniversary and weighted by the anniversary in-force under either\n    grid, and the commission is a policy-year rate on it.  They do **not** agree on\n    ``claims_death``, ``claims_ptia`` or ``expenses``, which now fall where they happen\n    rather than at the anniversary, and so not on ``net_cf``: 10 094,20 \u20ac of death claims\n    over the worked configuration against the annual grid's 10 396,90 \u20ac, and 2 666,69 \u20ac of\n    expense against 2 676,38 \u20ac.  That gap is the point of the finer grid.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "7bb8513bc559891cb5e2a9aa4245aeb9e2141270b02d336e237a3b721778ab8a",
+      "new_sha256": "d5ebf6fa729cacb73578364ea1b18614ea705563e8faa3011c47179d3f96c9d8",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 12,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 142799,
+      "financial_evidence_folder": "pandas-annual-source-02/TD_FR_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 12,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 12,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "uslib/products/term_life/Term_US_S",
+      "cell": "result_cf_annual",
+      "line": 633,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count\n    at the **start** of the policy year, ``pols_if(12 * (policy_year - 1))``, which is\n    the number the annual-step model carried on the same row.\n\n    On the shipped annual-mode points the two grids agree exactly on five columns \u2014\n    ``pols_if``, ``premiums``, ``commissions``, ``premium_taxes`` and ``conv_credits`` \u2014\n    because an annual premium is collected on the anniversary and weighted by the\n    anniversary in force under either grid, and the other three are rates on it. They do\n    **not** agree on ``claims`` or ``expenses``, which now fall where they happen rather\n    than at the anniversary, and so not on ``net_cf``. That gap is the point of the finer\n    grid \u2014 see the Space docstring.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index], name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count\n    at the **start** of the policy year, ``pols_if(12 * (policy_year - 1))``, which is\n    the number the annual-step model carried on the same row.\n\n    On the shipped annual-mode points the two grids agree exactly on five columns \u2014\n    ``pols_if``, ``premiums``, ``commissions``, ``premium_taxes`` and ``conv_credits`` \u2014\n    because an annual premium is collected on the anniversary and weighted by the\n    anniversary in force under either grid, and the other three are rates on it. They do\n    **not** agree on ``claims`` or ``expenses``, which now fall where they happen rather\n    than at the anniversary, and so not on ``net_cf``. That gap is the point of the finer\n    grid \u2014 see the Space docstring.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "fbdf4387fa9f0f9fa1eba4341c4de0e47f82530ee47a8e3f0832b3cfdd46c175",
+      "new_sha256": "8969ddb8c7deac6d943d85345c52ed45e13e75826dab492f66576cbc0d3314e7",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 2,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 40368,
+      "financial_evidence_folder": "pandas-annual-source-02/Term_US_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 2,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 2,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    },
+    {
+      "model": "uslib/products/whole_life/WholeLife_US_S",
+      "cell": "result_cf_annual",
+      "line": 1456,
+      "old_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count\n    at the **start** of the policy year, which is the number the annual-step model\n    carried on the same row. The two grids agree on that column exactly and on nothing\n    else, which is the point of the finer one \u2014 see the Space docstring.\n    \"\"\"\n    df = result_cf()\n    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821\n                     name=\"policy_year\")\n    out = df.drop(columns=\"pols_if\").groupby(years).sum()\n    out.insert(0, \"pols_if\", df[\"pols_if\"].groupby(years).first())\n    return out\n\n\n",
+      "new_source": "def result_cf_annual():\n    \"\"\":func:`result_cf` summed into policy years, indexed by ``policy_year``.\n\n    Every cash flow column is the total of its twelve months; ``pols_if`` is the count\n    at the **start** of the policy year, which is the number the annual-step model\n    carried on the same row. The two grids agree on that column exactly and on nothing\n    else, which is the point of the finer one \u2014 see the Space docstring.\n    \"\"\"\n    monthly = inputs.table(result_cf(), report=True)\n    years = [duration(t) + 1 for t in expressions.keys(monthly)]\n    annual = expressions.group_sum(monthly, years, first=('pols_if',))\n    return expressions.to_pandas(annual, index_name='policy_year')\n\n\n",
+      "old_sha256": "4f74875b722658188f532b5a67ba26be85a53678a9d5935603f81f804552c7cd",
+      "new_sha256": "fc360f501a3833e3f530e6c6798b530e145cb087842adc6b74b547e155b4f98d",
+      "index_name": "policy_year",
+      "label_expression": "[duration(t) + 1 for t in df.index]",
+      "first": [
+        "pols_if"
+      ],
+      "last": [],
+      "monthly_dependency": "UNCHANGED_PUBLIC_result_cf_CALL",
+      "observed_original_policy_cases": 15,
+      "native_status": "ANNUAL_OPERATION_GUARD_PASS",
+      "financial_outcomes_per_mode": 524835,
+      "financial_evidence_folder": "pandas-annual-source-02/WholeLife_US_S",
+      "native_guard": {
+        "status": "PASS",
+        "policies": 15,
+        "python_calculation_or_pandas_calls": [],
+        "explicit_public_materializations": 15,
+        "public_monthly_dependency": "PREPARED_OUTSIDE_GUARD_UNCHANGED_PUBLIC_CELL",
+        "native_scope": "ANNUAL_SOURCE_CONSTRUCTION_LABELS_GROUPING;FINAL_PANDAS_BOUNDARY_COUNTED",
+        "full_model_native_status": "OPEN"
+      },
+      "whole_model_native_status": "OPEN",
+      "performance": "NOT_MEASURED"
+    }
+  ],
+  "sampling_correction": "PER/RV only corrected recursionlimit/fail-loud sampling; no compiler/cache change; negatives retained"
+}

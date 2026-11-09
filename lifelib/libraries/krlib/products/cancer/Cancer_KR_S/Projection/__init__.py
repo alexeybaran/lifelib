@@ -315,7 +315,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -328,7 +328,7 @@ def sex():
     후반부터 남자의 암발생률이 더 높아지는」 [R1] -- and the published reference rate crosses
     in the same place.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -345,7 +345,7 @@ def issue_age():
     간편심사 products reach, because [R4] names the 61-75 band as the one carrying
     수준리스크 from an absence of experience.
     """
-    v = int(model_point()["issue_age"])
+    v = tables.lookup_int(prepared_model_point(), "issue_age")
     if not 15 <= v <= 65:
         raise ValueError("issue_age outside the composite's 15-65 range")
     return v
@@ -360,7 +360,7 @@ def expiry_age():
     종신 and because a terminal age lets the projection end at a stated 계약해당일 rather than
     at the terminal age of a **[std]** mortality table.
     """
-    return int(model_point()["expiry_age"])
+    return tables.lookup_int(prepared_model_point(), "expiry_age")
 
 
 def sum_assured():
@@ -373,7 +373,7 @@ def sum_assured():
     supervisor's own illustration at 「예: 5천만 원」 [R3]. The event modules' own amounts
     scale with it off the 3,000만원 reference; see :func:`hosp_daily`.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mth_pp():
@@ -392,7 +392,7 @@ def premium_mth_pp():
     library depends on its being a market rate; ``technical-notes.md`` performs the
     equivalence calculation on the shipped basis and its figure governs.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def chassis():
@@ -405,7 +405,7 @@ def chassis():
     sixty-year projection, and are invisible thereafter. The 비갱신형 form is also the only one
     on which a level premium, a 계약자적립액 and a 해약환급금 curve exist over the whole term.
     """
-    v = model_point()["chassis"]
+    v = tables.lookup_object(prepared_model_point(), "chassis")
     if v not in ("bi_gaengsin", "gaengsin"):
         raise ValueError("invalid chassis")
     return v
@@ -421,7 +421,7 @@ def pay_term():
     rather than a curve [S3], and it leaves 40 years of paid-up cover on the anchor cell, so
     the projection exercises both halves of every recursion.
     """
-    return int(model_point()["pay_term_y"])
+    return tables.lookup_int(prepared_model_point(), "pay_term_y")
 
 
 def wait_months():
@@ -440,7 +440,7 @@ def wait_months():
     inverts [S2] [R3] [R6]. This value is the model point's; each tier's own waiting period is
     :func:`tier_wait_months`, and the two are combined by taking the shorter.
     """
-    return int(model_point()["wait_months"])
+    return tables.lookup_int(prepared_model_point(), "wait_months")
 
 
 def reduction_months():
@@ -456,7 +456,7 @@ def reduction_months():
     recording removals from 2019 [R3] and a carrier confirming in 2025 that 「일반암에 대한
     감액 기간이 축소되는 등」 [S10].
     """
-    return int(model_point()["reduction_months"])
+    return tables.lookup_int(prepared_model_point(), "reduction_months")
 
 
 def similar_ratio():
@@ -472,7 +472,7 @@ def similar_ratio():
     at the two 2024-25 life contracts against 70% in 2021 -- and not the instrument. Model
     point 10 carries the 70% design so that the difference can be priced.
     """
-    return float(model_point()["similar_ratio"])
+    return tables.lookup_float(prepared_model_point(), "similar_ratio")
 
 
 def diag_module():
@@ -483,22 +483,22 @@ def diag_module():
     diagnosis lump sum at all**. The state transitions and the premium waiver still run, so
     the switch removes four benefit lines and nothing else.
     """
-    return int(model_point()["diag_module"])
+    return tables.lookup_int(prepared_model_point(), "diag_module")
 
 
 def hosp_module():
     """Whether the 암 직접치료 입원급여금 module is attached; 1 on the composite."""
-    return int(model_point()["hosp_module"])
+    return tables.lookup_int(prepared_model_point(), "hosp_module")
 
 
 def surg_module():
     """Whether the 암 수술급여금 module is attached; 1 on the composite."""
-    return int(model_point()["surg_module"])
+    return tables.lookup_int(prepared_model_point(), "surg_module")
 
 
 def treat_module():
     """Whether the 항암약물.방사선 치료급여금 module is attached; 1 on the composite."""
-    return int(model_point()["treat_module"])
+    return tables.lookup_int(prepared_model_point(), "treat_module")
 
 
 def waiver_trigger():
@@ -513,7 +513,7 @@ def waiver_trigger():
     rather than through the 약관 at all [S2], so its presence cannot always be read off the
     policy conditions.
     """
-    v = model_point()["waiver_trigger"]
+    v = tables.lookup_object(prepared_model_point(), "waiver_trigger")
     if v not in ("cancer_diag", "none"):
         raise ValueError("invalid waiver_trigger")
     return v
@@ -531,7 +531,7 @@ def cv_form():
     안내만을 위한 상품으로 가입이 불가능하며」, and its own 해약환급금 「해지율을 적용하지
     않고」 [S3 제41조].
     """
-    v = model_point()["cv_form"]
+    v = tables.lookup_object(prepared_model_point(), "cv_form")
     if v not in ("mijigeup", "pyojun"):
         raise ValueError("invalid cv_form")
     return v
@@ -674,8 +674,7 @@ def excess_hazard(tier, k):
     thyroid, 남 65.9% / 여 74.0% [R1], for the general tier, and an [R1]-derived 87.1% / 88.8%
     for the 특정소액암 tier; the front-loading and the ultimate level are **[std]**.
     """
-    return float(data.survival_table().loc[                          # noqa: F821
-        (sex(), tier, k), "excess_hazard"])
+    return tables.lookup_float(data.prepared_survival_table_loc(), (sex(), tier, k), 'excess_hazard')
 
 
 def mort_rate_waived_mth(t, k):
@@ -772,8 +771,8 @@ def inc_rate(t):
     tbl = data.incidence_table().loc[sex()]                          # noqa: F821
     ages = list(tbl.index)
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = max(g for g in ages if g <= a)
-    hi = min(g for g in ages if g >= a)
+    lo = max(expressions.over(ages, lambda g: g, where = lambda g: True if g <= a else False))
+    hi = min(expressions.over(ages, lambda g: g, where = lambda g: True if g >= a else False))
     r_lo = float(tbl.loc[lo, "inc_rate"])
     if hi == lo:
         return r_lo * inc_be_factor                                  # noqa: F821
@@ -795,8 +794,8 @@ def tier_share(col, t):
     tbl = data.tier_share_table().loc[sex()]                         # noqa: F821
     ages = list(tbl.index)
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = max(g for g in ages if g <= a)
-    hi = min(g for g in ages if g >= a)
+    lo = max(expressions.over(ages, lambda g: g, where = lambda g: True if g <= a else False))
+    hi = min(expressions.over(ages, lambda g: g, where = lambda g: True if g >= a else False))
     v_lo = float(tbl.loc[lo, col])
     if hi == lo:
         return v_lo
@@ -1133,12 +1132,12 @@ def pols_minor_exp(t, k):
 
 def pols_waived(t):
     """l_w(t): in force with a 일반암 or 고액암, premium waived, summed over the six cohorts."""
-    return sum(pols_waived_dur(t, k) for k in range(1, 7))
+    return sum(expressions.over(range(1, 7), lambda k: pols_waived_dur(t, k)))
 
 
 def pols_minor(t):
     """l_n(t): in force with a 특정소액암 only, still paying, summed over the six cohorts."""
-    return sum(pols_minor_dur(t, k) for k in range(1, 7))
+    return sum(expressions.over(range(1, 7), lambda k: pols_minor_dur(t, k)))
 
 
 def pols_cancer(t):
@@ -1317,7 +1316,7 @@ def treat_cum_pp(t):
     if t <= 0:
         return 0.0
     k = min(6, (t - 1) // 12 + 1)
-    rate = float(data.care_table().loc[k, "treat_hazard_yr"]) / 12.0  # noqa: F821
+    rate = tables.lookup_float(data.prepared_care_table_loc(), k, 'treat_hazard_yr') / 12.0  # noqa: F821
     return treat_cum_pp(t - 1) + rate * treat_avail(k)
 
 
@@ -1337,7 +1336,7 @@ def benefit_ratio(tier):
     """
     if tier == "similar":
         return similar_ratio()
-    return float(data.tier_table().loc[tier, "benefit_ratio"])       # noqa: F821
+    return tables.lookup_float(data.prepared_tier_table_loc(), tier, 'benefit_ratio')       # noqa: F821
 
 
 def hosp_daily():
@@ -1518,9 +1517,9 @@ def claims(t, kind=None):
     20% relativity is itself the simplification flagged in the specification.
     """
     if kind is None:
-        return sum(claims(t, k) for k in (
+        return sum(expressions.over((
             "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-            "SURGERY", "TREAT", "DEATH", "LAPSE", "MATURITY"))
+            "SURGERY", "TREAT", "DEATH", "LAPSE", "MATURITY"), lambda k: claims(t, k)))
     if kind == "DIAG_GEN":
         return (benefit_ratio("general") * sum_assured() * reduction_factor(t)
                 * diag_gen(t) * diag_module())
@@ -1692,9 +1691,9 @@ def risk_prem_pp(t):
     lives = pols_if(t)
     if lives <= 0.0:
         return 0.0
-    total = sum(claims(t, k) for k in (
+    total = sum(expressions.over((
         "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-        "SURGERY", "TREAT"))
+        "SURGERY", "TREAT"), lambda k: claims(t, k)))
     return total / lives
 
 
@@ -1838,8 +1837,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_pols_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1860,8 +1858,7 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_cancer_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len() - 1))
+    return all(expressions.over(range(proj_len() - 1), lambda t: abs(check_cancer_roll_fwd_resid(t)) <= tol))
 
 
 def check_canc_dur_ledger_resid(t):
@@ -1889,8 +1886,7 @@ def check_canc_dur_ledger_resid(t):
 def check_canc_dur_ledger():
     """True when both first duration cohorts rebuild exactly in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(abs(check_canc_dur_ledger_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_canc_dur_ledger_resid(t)) <= tol))
 
 
 def check_similar_ledger_resid(t):
@@ -1910,8 +1906,7 @@ def check_similar_ledger():
     The identity is read off the claim line, so it says nothing in months where no policy is in
     force. Those months carry no information and are excluded rather than papered over.
     """
-    return all(abs(check_similar_ledger_resid(t)) <= roll_fwd_tol    # noqa: F821
-               for t in range(proj_len()) if pols_if(t) > 0.0)
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_similar_ledger_resid(t)) <= roll_fwd_tol, where = lambda t: True if pols_if(t) > 0.0 else False))
 
 
 def check_treat_ledger_resid(t):
@@ -1927,8 +1922,7 @@ def check_treat_ledger_resid(t):
 
 def check_treat_ledger():
     """True when the once-only treatment ledger stays inside its cap in every month."""
-    return all(abs(check_treat_ledger_resid(t)) <= roll_fwd_tol      # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_treat_ledger_resid(t)) <= roll_fwd_tol))
 
 
 def check_tier_shares_resid(t):
@@ -1950,8 +1944,7 @@ def check_tier_shares_resid(t):
 
 def check_tier_shares():
     """True when the tier decomposition holds at every projected age."""
-    return all(abs(check_tier_shares_resid(t)) <= roll_fwd_tol       # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_tier_shares_resid(t)) <= roll_fwd_tol))
 
 
 def check_waiting_period_resid(t):
@@ -1971,8 +1964,7 @@ def check_waiting_period_resid(t):
 
 def check_waiting_period():
     """True when nothing invasive is paid or transitioned inside the 면책기간."""
-    return all(abs(check_waiting_period_resid(t)) <= roll_fwd_tol    # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_waiting_period_resid(t)) <= roll_fwd_tol))
 
 
 def check_cv_floor_resid(t):
@@ -1993,8 +1985,7 @@ def check_cv_floor_resid(t):
 def check_cv_floor():
     """True when the 해약환급금 stays inside its bounds in every projected month."""
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(abs(check_cv_floor_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_cv_floor_resid(t)) <= tol))
 
 
 def check_net_cf_resid(t):
@@ -2009,7 +2000,7 @@ def check_net_cf_resid(t):
     reader having to know which of them to skip.
     """
     row = result_cf().loc[t]
-    outgo = sum(row[c] for c in row.index if str(c).startswith("claims_"))
+    outgo = sum(expressions.over(row.index, lambda c: row[c], where = lambda c: True if str(c).startswith("claims_") else False))
     return (row["premiums"] - outgo - row["expenses"] - row["claim_expenses"]
             - row["commissions"] - row["net_cf"])
 
@@ -2017,8 +2008,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
 
 
 def check_hosp_cap_resid(t):
@@ -2030,15 +2020,13 @@ def check_hosp_cap_resid(t):
     model of the same product it would bind on the tail, and the difference is a property of
     the model rather than of the contract.
     """
-    tbl = data.care_table()                                          # noqa: F821
-    return max(0.0, max(float(tbl.loc[k, "hosp_days_adm"])
-                        for k in range(1, 7)) - hosp_day_cap()) * in_force(t)
+    tbl = data.prepared_care_table_loc()                                          # noqa: F821
+    return max(0.0, max(expressions.over(range(1, 7), lambda k: tables.lookup_float(tbl, k, "hosp_days_adm"))) - hosp_day_cap()) * in_force(t)
 
 
 def check_hosp_cap():
     """True when no cohort's mean stay passes the 180-day per-stay cap."""
-    return all(abs(check_hosp_cap_resid(t)) <= roll_fwd_tol          # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_hosp_cap_resid(t)) <= roll_fwd_tol))
 
 
 # ===== Cells: result tables =====
@@ -2125,6 +2113,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2195,3 +2188,9 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

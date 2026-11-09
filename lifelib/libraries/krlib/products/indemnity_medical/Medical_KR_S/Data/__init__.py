@@ -248,6 +248,29 @@ def oop_ceiling_table():
         input_dir() / oop_ceiling_file, index_col="decile")          # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_oop_ceiling_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(oop_ceiling_table(),
+                        columns=('ceiling',),
+                        indexing='loc')
+
+
+
+def prepared_claim_shape_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(claim_shape_table(),
+                        columns=('share', 'claim_amount'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -266,3 +289,5 @@ claim_shape_file = "claim_shape_table.csv"
 oop_ceiling_file = "oop_ceiling_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

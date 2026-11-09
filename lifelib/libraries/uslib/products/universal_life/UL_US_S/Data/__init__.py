@@ -122,6 +122,13 @@ def surr_charge_table():
     return pd.read_csv(input_dir() / surr_charge_file, index_col="surr_charge_id")  # noqa: F821
 
 
+def prepared_class_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(class_factor_table(),
+                        columns=('factor',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -142,3 +149,5 @@ prem_persistency_file = "prem_persistency.csv"
 surr_charge_file = "surr_charge_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

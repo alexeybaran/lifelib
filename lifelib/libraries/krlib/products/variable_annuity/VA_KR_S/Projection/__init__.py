@@ -274,12 +274,12 @@ def model_point():
 
 def policy_id():
     """The contract's identifier, carried through to the printed output."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
     """The insured's sex, ``M`` or ``F``: the rating factor of both mortality bases."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def age_at_entry():
@@ -287,7 +287,7 @@ def age_at_entry():
 
     The retrieved envelope is 만15세–70세 [S1] [S2]; the shipped points run 35 to 70.
     """
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def basic_prem_pp():
@@ -298,7 +298,7 @@ def basic_prem_pp():
     observed minimum runs ₩50,000 to ₩500,000 by carrier and the maximum is ₩1,000,000
     per 구좌 [S1] [S2] [S9].
     """
-    return float(model_point()["basic_prem_pp"])
+    return tables.lookup_float(prepared_model_point(), "basic_prem_pp")
 
 
 def pay_term():
@@ -306,7 +306,7 @@ def pay_term():
 
     Retrieved terms are 5 / 7 / 10 / 12 / 15 / 20년납 [S1] [S2].
     """
-    return int(model_point()["pay_term"])
+    return tables.lookup_int(prepared_model_point(), "pay_term")
 
 
 def annuity_age():
@@ -315,7 +315,7 @@ def annuity_age():
     The retrieved envelope is 45–80 [S1] [S5] [S6] [S9]. The 연금개시 전 보험기간 runs
     from the 계약일 to the day before the 연금개시나이 계약해당일 [S4] [S5] [S7].
     """
-    return int(model_point()["annuity_age"])
+    return tables.lookup_int(prepared_model_point(), "annuity_age")
 
 
 def gmab_flag():
@@ -325,7 +325,7 @@ def gmab_flag():
     has to support both forms; the charge and the guarantee are switched together,
     because a 미보증형 pays neither [S4] [S5].
     """
-    return int(model_point()["gmab"])
+    return tables.lookup_int(prepared_model_point(), "gmab")
 
 
 def fund_set():
@@ -336,7 +336,7 @@ def fund_set():
     ``bond50_eq50`` above it [S1] [R1] — so a model point's allocation sits **on** its
     constraint rather than slack of it.
     """
-    return model_point()["fund_set"]
+    return tables.lookup_object(prepared_model_point(), "fund_set")
 
 
 def scenario_id():
@@ -346,12 +346,12 @@ def scenario_id():
     ``low`` and ``high`` are the other two returns a Korean variable illustration must
     show, −1.00% and 3.75% [R2].
     """
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def crediting_basis():
     """The payout-phase crediting basis, a key of ``data.crediting_table()``."""
-    return model_point()["crediting_basis"]
+    return tables.lookup_object(prepared_model_point(), "crediting_basis")
 
 
 def addl_prem_ratio():
@@ -361,12 +361,12 @@ def addl_prem_ratio():
     across the retrieved contracts [S1] [S2] [S4] [S5] [S6] [S7] [S10], and attracting
     **no loading** [S1].
     """
-    return float(model_point()["addl_prem_ratio"])
+    return tables.lookup_float(prepared_model_point(), "addl_prem_ratio")
 
 
 def wd_ratio():
     """중도인출 as a fraction of the 해약환급금, once a policy year; 0 switches it off."""
-    return float(model_point()["wd_ratio"])
+    return tables.lookup_float(prepared_model_point(), "wd_ratio")
 
 
 def wd_start_year():
@@ -380,7 +380,7 @@ def wd_start_year():
     The contract permits twelve withdrawals a policy year from one month after the
     계약일 [S1]; the model takes at most one a year, on the 계약해당일 **[std]**.
     """
-    return int(model_point()["wd_start_year"])
+    return tables.lookup_int(prepared_model_point(), "wd_start_year")
 
 
 def pols_if_init():
@@ -390,7 +390,7 @@ def pols_if_init():
     basic premium, with the withdrawal residual floor and the maximum basic premium both
     expressed per 구좌 [S1] [S2] [S10]. One 구좌 keeps the model point one contract.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def pay_months():
@@ -452,8 +452,7 @@ def yrs_completed(t):
 
 def fund_ids():
     """The 특별계정 fund identifiers of this contract's allocation set, in order."""
-    return tuple(int(i) for i in
-                 data.fund_table().loc[fund_set()].index)            # noqa: F821
+    return tuple(expressions.over(data.fund_table().loc[fund_set()].index, lambda i: int(i)))            # noqa: F821
 
 
 def fund_alloc(j):
@@ -464,7 +463,7 @@ def fund_alloc(j):
     allocation and the drift is itself a modelled quantity — which is what the automatic
     de-risking rules exist to control.
     """
-    return float(data.fund_table().at[(fund_set(), j), "alloc"])     # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'alloc')     # noqa: F821
 
 
 def fund_mgmt_fee(j):
@@ -474,7 +473,7 @@ def fund_mgmt_fee(j):
     [S7 제43조제2호] — so it lives inside the unit price and not in the 월공제액. The
     model takes it monthly at rate/12 **[std]**, the monthly grid having no daily step.
     """
-    return float(data.fund_table().at[(fund_set(), j), "mgmt_fee"])  # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'mgmt_fee')  # noqa: F821
 
 
 def fund_is_bond(j):
@@ -507,8 +506,7 @@ def gross_return(j):
     panel at 904.24원 against the statutory 1,000.00 opening price after fourteen years
     [S11], and no volatility, correlation or time series was retrieved at all.
     """
-    return float(data.return_scenario().at[                          # noqa: F821
-        (scenario_id(), j), "gross_return"])
+    return tables.lookup_float(data.prepared_return_scenario_at(), (scenario_id(), j), 'gross_return')
 
 
 def fund_growth(j):
@@ -530,7 +528,7 @@ def charge_rate(line):
     연금수령기간 중 비용 — plus the commission scale and the insurer's own unit expenses
     [R2].
     """
-    return float(data.charge_table().at[line, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_charge_table_at(), line, 'value')              # noqa: F821
 
 
 def loading_rate():
@@ -843,8 +841,7 @@ def fund_pp_at(t, j, timing):
         return fund_pp_at(t, j, "BEF_DEDUCT") - out * share
     if timing == "AFT_DERISK":
         total = av_pp_at(t, "AFT_DEDUCT")
-        bond = sum(fund_pp_at(t, k, "AFT_DEDUCT")
-                   for k in fund_ids() if fund_is_bond(k))
+        bond = sum(expressions.over(fund_ids(), lambda k: fund_pp_at(t, k, "AFT_DEDUCT"), where = lambda k: True if fund_is_bond(k) else False))
         target = derisk_bond_target * total                          # noqa: F821
         if derisk_amount_pp(t) <= 0.0:
             return fund_pp_at(t, j, "AFT_DEDUCT")
@@ -875,8 +872,7 @@ def derisk_amount_pp(t):
     if not (0 < t_ann() - t <= 12 * derisk_lead_years):              # noqa: F821
         return 0.0
     total = av_pp_at(t, "AFT_DEDUCT")
-    bond = sum(fund_pp_at(t, k, "AFT_DEDUCT")
-               for k in fund_ids() if fund_is_bond(k))
+    bond = sum(expressions.over(fund_ids(), lambda k: fund_pp_at(t, k, "AFT_DEDUCT"), where = lambda k: True if fund_is_bond(k) else False))
     return max(0.0, derisk_bond_target * total - bond)               # noqa: F821
 
 
@@ -894,7 +890,7 @@ def fund_pp(t, j):
 
 def av_pp_at(t, timing):
     """계약자적립액 inside month ``t``, per contract: the funds summed at ``timing``."""
-    return sum(fund_pp_at(t, j, timing) for j in fund_ids())
+    return sum(expressions.over(fund_ids(), lambda j: fund_pp_at(t, j, timing)))
 
 
 def av_pp(t):
@@ -914,7 +910,7 @@ def av_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(fund_pp(t, j) for j in fund_ids())
+    return sum(expressions.over(fund_ids(), lambda j: fund_pp(t, j)))
 
 
 def bond_weight(t):
@@ -926,7 +922,7 @@ def bond_weight(t):
     """
     if t >= t_ann() or av_pp(t) <= 0.0:
         return 1.0
-    return sum(fund_pp(t, j) for j in fund_ids() if fund_is_bond(j)) / av_pp(t)
+    return sum(expressions.over(fund_ids(), lambda j: fund_pp(t, j), where = lambda j: True if fund_is_bond(j) else False)) / av_pp(t)
 
 
 def inv_income_pp(t):
@@ -938,9 +934,8 @@ def inv_income_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(fund_pp_at(t, j, "AFT_DERISK")
-               * ((1.0 + gross_return(j)) ** (1.0 / 12.0) - 1.0)
-               for j in fund_ids())
+    return sum(expressions.over(fund_ids(), lambda j: fund_pp_at(t, j, "AFT_DERISK")
+               * ((1.0 + gross_return(j)) ** (1.0 / 12.0) - 1.0)))
 
 
 def mgmt_fee_pp(t):
@@ -956,10 +951,9 @@ def mgmt_fee_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(fund_pp_at(t, j, "AFT_DERISK")
+    return sum(expressions.over(fund_ids(), lambda j: fund_pp_at(t, j, "AFT_DERISK")
                * (1.0 + gross_return(j)) ** (1.0 / 12.0)
-               * fund_mgmt_fee(j) / 12.0
-               for j in fund_ids())
+               * fund_mgmt_fee(j) / 12.0))
 
 
 def fund_expense_pp(t):
@@ -1172,7 +1166,7 @@ def ann_mort_rate_at_age(x):
     basis at annuitisation but **only in the policyholder's favour** [S1] [S2] [S5];
     that one-way ratchet is not modelled.
     """
-    return float(data.mort_table().at[(sex(), x), "ann_mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'ann_mort_rate')  # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -1182,7 +1176,7 @@ def mort_rate_at_age(x):
     annuities on a separate and lighter 연금생명표, and neither table is public
     [REG-R34]. This is the basis of the death decrement and therefore of the GMDB cost.
     """
-    return float(data.mort_table().at[(sex(), x), "mort_rate"])      # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'mort_rate')      # noqa: F821
 
 
 def mort_rate(t):
@@ -1648,9 +1642,8 @@ def check_net_cf():
     residual. The tolerance is relative to the size of the month's gross flows, cash
     flows on this product running to eight figures in KRW.
     """
-    return all(abs(check_net_cf_resid(t))
-               <= val_tol * max(1.0, abs(net_cf_gen(t)) + abs(net_cf_sep(t)))  # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_net_cf_resid(t))
+               <= val_tol * max(1.0, abs(net_cf_gen(t)) + abs(net_cf_sep(t)))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1671,8 +1664,7 @@ def check_pols_roll_fwd():
     per-month residual. In force is a probability of order 1, so the tolerance is
     ``roll_fwd_tol``.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol      # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1701,9 +1693,8 @@ def check_av_roll_fwd():
     per-month residual, measured per contract on a balance of order 1e7 in KRW, so the
     tolerance is relative.
     """
-    return all(abs(check_av_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(av_pp(t)))                  # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_av_roll_fwd_resid(t))
+               <= val_tol * max(1.0, abs(av_pp(t)))))
 
 
 def check_charge_split_resid(t):
@@ -1723,9 +1714,8 @@ def check_charge_split_resid(t):
 
 def check_charge_split():
     """True when the separate-account investment identity closes at every month."""
-    return all(abs(check_charge_split_resid(t))
-               <= val_tol * max(1.0, abs(av_pp(t)))                  # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_charge_split_resid(t))
+               <= val_tol * max(1.0, abs(av_pp(t)))))
 
 
 def check_gmdb_floor_resid(t):
@@ -1743,9 +1733,8 @@ def check_gmdb_floor_resid(t):
 
 def check_gmdb_floor():
     """True when the death benefit splits cleanly into fund and guarantee at every month."""
-    return all(abs(check_gmdb_floor_resid(t))
-               <= val_tol * max(1.0, abs(db_pp(t)))                  # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_gmdb_floor_resid(t))
+               <= val_tol * max(1.0, abs(db_pp(t)))))
 
 
 def check_bond_floor_resid(t):
@@ -1764,8 +1753,7 @@ def check_bond_floor_resid(t):
 
 def check_bond_floor():
     """True when the 채권형 weight meets the mandatory ladder at every projected month."""
-    return all(abs(check_bond_floor_resid(t)) < roll_fwd_tol         # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_bond_floor_resid(t)) < roll_fwd_tol))
 
 
 def check_surr_chg_cap_resid(t):
@@ -1783,8 +1771,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge is inside the statutory cap at every month."""
-    return all(abs(check_surr_chg_cap_resid(t)) < val_tol            # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_surr_chg_cap_resid(t)) < val_tol))
 
 
 def check_prem_alloc_resid(t):
@@ -1808,8 +1795,7 @@ def check_prem_alloc_resid(t):
 
 def check_prem_alloc():
     """True when the premium allocation matches the published fee stack at every month."""
-    return all(abs(check_prem_alloc_resid(t)) < val_tol              # noqa: F821
-               for t in range(0, proj_len()))
+    return all(expressions.over(range(0, proj_len()), lambda t: abs(check_prem_alloc_resid(t)) < val_tol))
 
 
 def result_cf():
@@ -1916,6 +1902,11 @@ def result_charges():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1956,3 +1947,9 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

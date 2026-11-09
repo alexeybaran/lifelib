@@ -222,6 +222,45 @@ def freq_loading():
         input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
 
 
+def prepared_freq_loading_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(freq_loading(),
+                        columns=('load',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_accum_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table_accum(),
+                        columns=('qx',),
+                        indexing='at')
+
+
+
+def prepared_lapse_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(lapse_table(),
+                        columns=('lapse_rate', 'transfer_rate'),
+                        indexing='at')
+
+
+
+def prepared_income_schedule_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(income_schedule(),
+                        columns=('income',),
+                        indexing='at')
+
+
+
+def prepared_surplus_scenario_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(surplus_scenario(),
+                        columns=('decl_rate',),
+                        indexing='at')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -242,3 +281,5 @@ surplus_file = "surplus_scenario.csv"
 freq_loading_file = "freq_loading.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

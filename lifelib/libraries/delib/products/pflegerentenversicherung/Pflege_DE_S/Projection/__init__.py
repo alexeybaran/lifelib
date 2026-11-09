@@ -281,7 +281,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point, ``PFL-0000NN``."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -296,7 +296,7 @@ def sex():
     endogenous to the price.  Model points 1 and 2 are the same contract on the two sexes:
     equal ``premium_mth_pp()``, unequal projected annuity.
     """
-    v = str(model_point()["sex"])
+    v = tables.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -311,7 +311,7 @@ def age_at_entry():
     permits — predominantly between 45 and 60, when the buyer has seen a parent go into
     care.  Model points 13 and 14 sit at the two ends.
     """
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def duration_mth_init():
@@ -323,7 +323,7 @@ def duration_mth_init():
     terminal age alone, so a point opening at ``t = 240`` simply publishes a shorter frame
     ending at the same index.  Reading it as a shift of the horizon is a listed pitfall.
     """
-    return int(model_point()["duration_mth_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_mth_init")
 
 
 def status_init():
@@ -334,7 +334,7 @@ def status_init():
     valuation date has served whatever deferral its contract carried.  Model point 12 is
     the in-claim case.
     """
-    v = str(model_point()["status"])
+    v = tables.lookup_str(prepared_model_point(), "status")
     if v not in ("aktiv", "pg1", "pg2", "pg3", "pg4", "pg5"):
         raise ValueError("invalid status")
     return v
@@ -349,7 +349,7 @@ def rente_mth():
     contribution and an average pension; the shipped 1 000 € is the round number at the
     lower end of that band and is a **[std]** choice, not an observation.
     """
-    return float(model_point()["rente_mth"])
+    return tables.lookup_float(prepared_model_point(), "rente_mth")
 
 
 def staffel_id():
@@ -360,7 +360,7 @@ def staffel_id():
     level: on ``bahr`` *Pflegegrad* 1 is insured, so a grade-1 life is **waived** there and
     **pays** on ``delib_std``.
     """
-    return str(model_point()["staffel_id"])
+    return tables.lookup_str(prepared_model_point(), "staffel_id")
 
 
 def prem_end_age():
@@ -372,12 +372,12 @@ def prem_end_age():
     buyer's earning life; model point 4 carries it.  Once the term has ended the contract
     is paid up: no premium, no lapse, and the cover runs on.
     """
-    return int(model_point()["prem_end_age"])
+    return tables.lookup_int(prepared_model_point(), "prem_end_age")
 
 
 def prem_mode():
     """The instalment frequency: monthly, quarterly, half_yearly, annual or single."""
-    v = str(model_point()["prem_mode"])
+    v = tables.lookup_str(prepared_model_point(), "prem_mode")
     if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
         raise ValueError("invalid prem_mode")
     return v
@@ -408,7 +408,7 @@ def premium_mth():
     A positive value is taken as the contractual premium and the engine is not consulted —
     which is how an in-force model point carries the premium it was actually sold at.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def rating_factor():
@@ -419,7 +419,7 @@ def rating_factor():
     *Risikozuschlag* scale for this product was established; model point 13 carries 1.50
     as a **[std]** illustration.
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def wartezeit_months():
@@ -432,7 +432,7 @@ def wartezeit_months():
     deterministic: no underwriting implies a long *Wartezeit*, underwriting implies none.
     Model point 7 carries 36 months.
     """
-    return int(model_point()["wartezeit_months"])
+    return tables.lookup_int(prepared_model_point(), "wartezeit_months")
 
 
 def karenz_months():
@@ -447,7 +447,7 @@ def karenz_months():
     disproportionately more claims than its length suggests.  Model point 7 carries six
     months.
     """
-    return int(model_point()["karenz_months"])
+    return tables.lookup_int(prepared_model_point(), "karenz_months")
 
 
 def leistungsdynamik():
@@ -461,7 +461,7 @@ def leistungsdynamik():
     mortality, so the escalation compounds over three to five years, not fifteen.  Model
     point 8 carries 2 % a year.
     """
-    return float(model_point()["leistungsdynamik"])
+    return tables.lookup_float(prepared_model_point(), "leistungsdynamik")
 
 
 def beitragsrueckgewaehr():
@@ -482,7 +482,7 @@ def beitragsrueckgewaehr():
     consequence — the option overstates the death benefit relative to the market-standard
     form — is stated rather than hidden.
     """
-    return bool(model_point()["beitragsrueckgewaehr"])
+    return tables.lookup_bool(prepared_model_point(), "beitragsrueckgewaehr")
 
 
 def stornoabzug_rate():
@@ -500,7 +500,7 @@ def stornoabzug_rate():
     ``FRV_DE_S``'s *euro amount* retained from surrenders and one of its ``result_cf()``
     columns — a different quantity, which is why the two do not share a name.
     """
-    return float(model_point()["stornoabzug_rate"])
+    return tables.lookup_float(prepared_model_point(), "stornoabzug_rate")
 
 
 def pols_if_init():
@@ -510,7 +510,7 @@ def pols_if_init():
     library-wide assertion that ``pols_if`` is a start-of-period count: no decrement has
     been applied when a period opens.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def omega_age():
@@ -536,7 +536,7 @@ def rechnungszins():
     single most leveraged pricing assumption here, because a *Pflegerente*'s benefits fall
     on average some thirty-five years after issue.
     """
-    return float(data.basis_table().at["rechnungszins", "value"])    # noqa: F821
+    return tables.lookup_float(data.prepared_basis_table_at(), 'rechnungszins', 'value')    # noqa: F821
 
 
 def proj_len():
@@ -602,8 +602,7 @@ def benefit_pct(g):
     is far below 100 %, and two tariffs with the same top step and different middle steps
     differ by more than the headline suggests.
     """
-    return float(data.benefit_scale_table().at[                      # noqa: F821
-        (staffel_id(), g), "benefit_pct"])
+    return tables.lookup_float(data.prepared_benefit_scale_table_at(), (staffel_id(), g), 'benefit_pct')
 
 
 def waiver_flag(g):
@@ -633,7 +632,7 @@ def mort_rate(t):
     This is the rate of an **active** life.  In-care mortality is a multiple of its force
     and is :func:`mort_rate_care`.
     """
-    return float(data.mort_table().at[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -691,7 +690,7 @@ def mort_force_care(t, g):
     grade 5.  On *rates* the ratio compresses towards 1 as ``mort_rate`` saturates at the
     oldest ages, which is an artefact of the rate scale and not a change in the basis.
     """
-    mult = float(data.care_table().at[g, "mort_mult"])               # noqa: F821
+    mult = tables.lookup_float(data.prepared_care_table_at(), g, 'mort_mult')               # noqa: F821
     return mult * mort_force(t)
 
 
@@ -706,8 +705,7 @@ def inc_rate(t):
     The *Wartezeit* is **not** applied here.  It gates the force, in :func:`inc_force`, so
     that this cells stays the tariff-comparable table rate at every age.
     """
-    return float(data.incidence_table().at[                          # noqa: F821
-        (sex(), age(t)), "inc_rate"])
+    return tables.lookup_float(data.prepared_incidence_table_at(), (sex(), age(t)), 'inc_rate')
 
 
 def inc_force(t):
@@ -734,7 +732,7 @@ def inc_share(g):
     pitfall, and the model's own stock share at grades 4 and 5 over a whole projection
     exceeds the entry share, which is the arithmetic statement of the same thing.
     """
-    return float(data.care_table().at[g, "entry_share"])             # noqa: F821
+    return tables.lookup_float(data.prepared_care_table_at(), g, 'entry_share')             # noqa: F821
 
 
 def det_rate(g):
@@ -744,7 +742,7 @@ def det_rate(g):
     dominating recovery is one of the four properties a replacement table must preserve,
     and it is what makes the benefit grow over a spell.
     """
-    return float(data.care_table().at[g, "det_rate"])                # noqa: F821
+    return tables.lookup_float(data.prepared_care_table_at(), g, 'det_rate')                # noqa: F821
 
 
 def det_force(t, g):
@@ -772,9 +770,9 @@ def rec_rate(t, g):
     Recovery from grade 1 leads to the **active** state, and a life that recovers starts
     paying its *Beitrag* again.
     """
-    base = float(data.care_table().at[g, "rec_rate"])                # noqa: F821
-    ref = float(data.basis_table().at["rec_age_ref", "value"])       # noqa: F821
-    decay = float(data.basis_table().at["rec_age_decay", "value"])   # noqa: F821
+    base = tables.lookup_float(data.prepared_care_table_at(), g, 'rec_rate')                # noqa: F821
+    ref = tables.lookup_float(data.prepared_basis_table_at(), 'rec_age_ref', 'value')       # noqa: F821
+    decay = tables.lookup_float(data.prepared_basis_table_at(), 'rec_age_decay', 'value')   # noqa: F821
     return base * math.exp(-decay * max(0.0, age(t) - ref))          # noqa: F821
 
 
@@ -802,8 +800,7 @@ def lapse_rate(t):
     """
     if age(t) >= prem_end_age():
         return 0.0
-    return float(data.lapse_table().at[                              # noqa: F821
-        min(policy_year(t), 40), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_at(), min(policy_year(t), 40), 'lapse_rate')
 
 
 def lapse_rate_mth(t):
@@ -1275,8 +1272,7 @@ def rkw_pp(t):
     falls inside § 169 VVG at all is an open question this library states rather than
     assumes away; the table encodes the answer for a contract that does.
     """
-    ratio = float(data.surrender_table().at[                         # noqa: F821
-        min(policy_year(t), 40), "rkw_prem_ratio"])
+    ratio = tables.lookup_float(data.prepared_surrender_table_at(), min(policy_year(t), 40), 'rkw_prem_ratio')
     return ratio * cum_prem_max_pp(t) * (1.0 - stornoabzug_rate())
 
 
@@ -1359,8 +1355,7 @@ def acq_expense_pp():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    permille = float(data.expense_table().at[                        # noqa: F821
-        "acq_permille", "value"])
+    permille = tables.lookup_float(data.prepared_expense_table_at(), 'acq_permille', 'value')
     return permille / 1000.0 * beitragssumme()
 
 
@@ -1372,7 +1367,7 @@ def expense_infl_factor(t):
     sixty-five years it is a factor of about 2.6, which is enough for the per-policy line to
     decide the viability of a small contract on its own.
     """
-    infl = float(data.expense_table().at["expense_infl", "value"])   # noqa: F821
+    infl = tables.lookup_float(data.prepared_expense_table_at(), 'expense_infl', 'value')   # noqa: F821
     return (1.0 + infl) ** (t / 12.0)
 
 
@@ -1385,10 +1380,8 @@ def expenses(t):
     lives.  Claims-handling cost is **not** here — it is a per-event cost and is published
     as its own column, :func:`claim_expenses`.
     """
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
-        "admin_mth_pp", "value"])
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
-        "admin_prem_pct", "value"])
+    admin_pp = tables.lookup_float(data.prepared_expense_table_at(), 'admin_mth_pp', 'value')
+    admin_pct = tables.lookup_float(data.prepared_expense_table_at(), 'admin_prem_pct', 'value')
     total = admin_pp * expense_infl_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
@@ -1408,8 +1401,7 @@ def claim_expenses(t):
     by the insurer, so the *Nachprüfung* is a documentation exercise rather than the
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
-    per_payment = float(data.expense_table().at[                     # noqa: F821
-        "claim_expense_pp", "value"])
+    per_payment = tables.lookup_float(data.prepared_expense_table_at(), 'claim_expense_pp', 'value')
     total = 0.0
     for g in range(1, 6):
         if waiver_flag(g):
@@ -1475,11 +1467,10 @@ def tar_mort_rate(t):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at[                            # noqa: F821
-        "act_mort_margin", "value"])
-    q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
-    q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
+    mix = tables.lookup_float(data.prepared_basis_table_at(), 'unisex_mix_male', 'value')   # noqa: F821
+    margin = tables.lookup_float(data.prepared_basis_table_at(), 'act_mort_margin', 'value')
+    q_m = tables.lookup_float(data.prepared_mort_table_at(), ('M', age(t)), 'mort_rate')    # noqa: F821
+    q_f = tables.lookup_float(data.prepared_mort_table_at(), ('F', age(t)), 'mort_rate')    # noqa: F821
     return min(1.0 - 1e-12, margin * (mix * q_m + (1.0 - mix) * q_f))
 
 
@@ -1496,12 +1487,11 @@ def tar_mort_rate_care(t, g):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at[                            # noqa: F821
-        "care_mort_margin", "value"])
-    mult = float(data.care_table().at[g, "mort_mult"])               # noqa: F821
-    q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
-    q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
+    mix = tables.lookup_float(data.prepared_basis_table_at(), 'unisex_mix_male', 'value')   # noqa: F821
+    margin = tables.lookup_float(data.prepared_basis_table_at(), 'care_mort_margin', 'value')
+    mult = tables.lookup_float(data.prepared_care_table_at(), g, 'mort_mult')               # noqa: F821
+    q_m = tables.lookup_float(data.prepared_mort_table_at(), ('M', age(t)), 'mort_rate')    # noqa: F821
+    q_f = tables.lookup_float(data.prepared_mort_table_at(), ('F', age(t)), 'mort_rate')    # noqa: F821
     q = min(1.0 - 1e-12, mix * q_m + (1.0 - mix) * q_f)
     mu = -math.log(1.0 - q)                                          # noqa: F821
     return min(1.0 - 1e-12, margin * (1.0 - math.exp(-mult * mu)))   # noqa: F821
@@ -1517,13 +1507,11 @@ def tar_inc_rate(t):
     that.  The cap binds only at the very oldest ages, where the exponential proxy would
     otherwise exceed the survival it is applied to.
     """
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at["inc_margin", "value"])     # noqa: F821
-    cap = float(data.basis_table().at["inc_cap", "value"])           # noqa: F821
-    i_m = float(data.incidence_table().at[                           # noqa: F821
-        ("M", age(t)), "inc_rate"])
-    i_f = float(data.incidence_table().at[                           # noqa: F821
-        ("F", age(t)), "inc_rate"])
+    mix = tables.lookup_float(data.prepared_basis_table_at(), 'unisex_mix_male', 'value')   # noqa: F821
+    margin = tables.lookup_float(data.prepared_basis_table_at(), 'inc_margin', 'value')     # noqa: F821
+    cap = tables.lookup_float(data.prepared_basis_table_at(), 'inc_cap', 'value')           # noqa: F821
+    i_m = tables.lookup_float(data.prepared_incidence_table_at(), ('M', age(t)), 'inc_rate')
+    i_f = tables.lookup_float(data.prepared_incidence_table_at(), ('F', age(t)), 'inc_rate')
     return min(margin * (mix * i_m + (1.0 - mix) * i_f), cap)
 
 
@@ -1533,8 +1521,7 @@ def tar_det_rate(t, g):
     ``det_margin = 1.15`` moves lives faster into the higher-paying grades, which is
     prudence on a schedule whose top steps pay most.
     """
-    return min(1.0 - 1e-12, float(data.basis_table().at[             # noqa: F821
-        "det_margin", "value"]) * det_rate(g))
+    return min(1.0 - 1e-12, tables.lookup_float(data.prepared_basis_table_at(), 'det_margin', 'value') * det_rate(g))
 
 
 def tar_rec_rate(t, g):
@@ -1543,8 +1530,7 @@ def tar_rec_rate(t, g):
     ``rec_margin = 0.80`` produces **fewer** recoveries and so longer spells in payment,
     which is the prudent direction for a benefit that stops on recovery.
     """
-    return float(data.basis_table().at[                              # noqa: F821
-        "rec_margin", "value"]) * rec_rate(t, g)
+    return tables.lookup_float(data.prepared_basis_table_at(), 'rec_margin', 'value') * rec_rate(t, g)
 
 
 def tar_p_act(t):
@@ -1768,8 +1754,7 @@ def epv_prem_units():
 
 def epv_admin():
     """G: the expected present value of the per-policy administration cost, first order."""
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
-        "admin_mth_pp", "value"])
+    admin_pp = tables.lookup_float(data.prepared_expense_table_at(), 'admin_mth_pp', 'value')
     total = 0.0
     for t in range(proj_len()):
         total += disc_factor(t) * admin_pp * expense_infl_factor(t) * tar_pols_if(t)
@@ -1778,8 +1763,7 @@ def epv_admin():
 
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
-    per_payment = float(data.expense_table().at[                     # noqa: F821
-        "claim_expense_pp", "value"])
+    per_payment = tables.lookup_float(data.prepared_expense_table_at(), 'claim_expense_pp', 'value')
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
@@ -1833,10 +1817,8 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = float(data.expense_table().at[                        # noqa: F821
-        "acq_permille", "value"]) / 1000.0
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
-        "admin_prem_pct", "value"])
+    permille = tables.lookup_float(data.prepared_expense_table_at(), 'acq_permille', 'value') / 1000.0
+    admin_pct = tables.lookup_float(data.prepared_expense_table_at(), 'admin_prem_pct', 'value')
     m = prem_mode_months()
     if m == 0:
         a1 = permille
@@ -1899,10 +1881,9 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
-    return all(abs(check_net_cf_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+    return all(expressions.over(range(duration_mth_init(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol * scale))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1924,10 +1905,9 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(abs(check_pols_roll_fwd_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+    return all(expressions.over(range(duration_mth_init(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol * scale))
 
 
 def check_states_resid(t):
@@ -1955,10 +1935,9 @@ def check_states_resid(t):
 
 def check_states():
     """True when the ledgers and the absorbed counts partition the cohort at every month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(abs(check_states_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+    return all(expressions.over(range(duration_mth_init(), proj_len()), lambda t: abs(check_states_resid(t)) <= tol * scale))
 
 
 def check_waiver_resid(t):
@@ -1981,10 +1960,9 @@ def check_waiver_resid(t):
 
 def check_waiver():
     """True when the waiver splits the in-term population in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(abs(check_waiver_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+    return all(expressions.over(range(duration_mth_init(), proj_len()), lambda t: abs(check_waiver_resid(t)) <= tol * scale))
 
 
 def check_esc_ledger_resid(t):
@@ -2002,16 +1980,15 @@ def check_esc_ledger_resid(t):
     no total in the frame would look wrong.
     """
     if leistungsdynamik() == 0.0:
-        return sum(esc_pg(t, g) - pols_pg(t, g) for g in range(1, 6))
-    return sum(min(0.0, esc_pg(t, g) - pols_pg(t, g)) for g in range(1, 6))
+        return sum(expressions.over(range(1, 6), lambda g: esc_pg(t, g) - pols_pg(t, g)))
+    return sum(expressions.over(range(1, 6), lambda g: min(0.0, esc_pg(t, g) - pols_pg(t, g))))
 
 
 def check_esc_ledger():
     """True when the escalation ledger dominates the head count in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(abs(check_esc_ledger_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+    return all(expressions.over(range(duration_mth_init(), proj_len()), lambda t: abs(check_esc_ledger_resid(t)) <= tol * scale))
 
 
 def check_prem_equiv_resid(t):
@@ -2039,14 +2016,10 @@ def check_prem_equiv_resid(t):
     p0 = premium_mth_pp() / rating_factor()
     m = prem_mode_months()
     mult = m if m > 0 else 1
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
-        "admin_prem_pct", "value"])
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
-        "admin_mth_pp", "value"])
-    per_payment = float(data.expense_table().at[                     # noqa: F821
-        "claim_expense_pp", "value"])
-    permille = float(data.expense_table().at[                        # noqa: F821
-        "acq_permille", "value"]) / 1000.0
+    admin_pct = tables.lookup_float(data.prepared_expense_table_at(), 'admin_prem_pct', 'value')
+    admin_pp = tables.lookup_float(data.prepared_expense_table_at(), 'admin_mth_pp', 'value')
+    per_payment = tables.lookup_float(data.prepared_expense_table_at(), 'claim_expense_pp', 'value')
+    permille = tables.lookup_float(data.prepared_expense_table_at(), 'acq_permille', 'value') / 1000.0
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 
@@ -2084,11 +2057,11 @@ def check_prem_equiv():
     difference of two large discounted values and an absolute tolerance on it would be a
     statement about the contract's size rather than about the equivalence.
     """
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     if premium_mth() > 0.0:
         return True
     scale = max(premium_mth_pp() / rating_factor() * epv_prem_units(), 1.0)
-    total = sum(check_prem_equiv_resid(t) for t in range(proj_len()))
+    total = sum(expressions.over(range(proj_len()), lambda t: check_prem_equiv_resid(t)))
     return abs(total) <= tol * scale
 
 
@@ -2146,11 +2119,9 @@ def result_states():
             "pols_pg3": [pols_pg(t, 3) for t in ts],
             "pols_pg4": [pols_pg(t, 4) for t in ts],
             "pols_pg5": [pols_pg(t, 5) for t in ts],
-            "pols_karenz": [sum(pols_karenz(t, g, z)
-                                for g in range(1, 6)
-                                for z in range(1, karenz_months() + 1)) for t in ts],
-            "pols_entry": [sum(pols_entry(t, g) for g in range(1, 6)) for t in ts],
-            "pols_grad": [sum(pols_grad(t, g) for g in range(1, 6)) for t in ts],
+            "pols_karenz": [sum(expressions.flatten(expressions.over(range(1, 6), lambda g: expressions.over(range(1, karenz_months() + 1), lambda z: pols_karenz(t, g, z))))) for t in ts],
+            "pols_entry": [sum(expressions.over(range(1, 6), lambda g: pols_entry(t, g))) for t in ts],
+            "pols_grad": [sum(expressions.over(range(1, 6), lambda g: pols_grad(t, g))) for t in ts],
             "pols_reactiv": [pols_reactiv(t) for t in ts],
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
@@ -2164,6 +2135,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2174,3 +2150,9 @@ point_id = 1
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

@@ -410,7 +410,7 @@ def model_point():
 
 def sex():
     """The sex (M / F) of the 피보험자, a rating factor of every Korean rate card [S4]."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -425,7 +425,7 @@ def age_at_entry():
     [S1] [S6] [S9] [S11] [S12]; the mixed basis in that sentence is the documents' own,
     a minimum written 만19세 being 만나이 and a maximum written 65세 being 보험나이.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def renewal_type():
@@ -438,7 +438,7 @@ def renewal_type():
     비갱신형 is the base because it is the market: only three of the 45 disclosed
     products renew and only two carriers sell a renewable term at all [S4].
     """
-    v = model_point()["renewal_type"]
+    v = tables.lookup_object(prepared_model_point(), "renewal_type")
     if v not in ("gaengsin", "bi_gaengsin"):
         raise ValueError("invalid renewal_type: expected gaengsin or bi_gaengsin")
     return v
@@ -458,7 +458,7 @@ def rate_class():
     smoking status for the life of the policy and moves in both directions [S2
     건강체서비스특약Ⅱ 제4조].  This model does not carry the transition.
     """
-    v = model_point()["rate_class"]
+    v = tables.lookup_object(prepared_model_point(), "rate_class")
     if v not in ("standard", "nonsmoker", "preferred", "super_preferred"):
         raise ValueError("invalid rate_class")
     return v
@@ -475,7 +475,7 @@ def maturity_form():
     10.90x at female 40 [S12], which is what a savings contract with a small amount of
     insurance stapled to it looks like.
     """
-    v = model_point()["maturity_form"]
+    v = tables.lookup_object(prepared_model_point(), "maturity_form")
     if v not in ("pure", "rop"):
         raise ValueError("invalid maturity_form: expected pure or rop")
     return v
@@ -489,10 +489,10 @@ def policy_term():
     from 80세 to 90세 and 100세 [S1] [S9] [S12] [S17].  On a 갱신형 contract this is the
     length of one **cycle** and the horizon is :func:`horizon_ceiling`, which is longer.
     """
-    v = int(model_point()["term_y"])
+    v = tables.lookup_int(prepared_model_point(), "term_y")
     if v > 0:
         return v
-    return int(model_point()["expiry_age"]) - age_at_entry()
+    return tables.lookup_int(prepared_model_point(), "expiry_age") - age_at_entry()
 
 
 def pay_term():
@@ -505,7 +505,7 @@ def pay_term():
     Shortened pay is carried because **it is the only way the 무해지 form's post-완납
     step-up can arise at all**, and with it the 0.8% ultimate lapse rate [REG-R27].
     """
-    v = int(model_point()["pay_term_y"])
+    v = tables.lookup_int(prepared_model_point(), "pay_term_y")
     return proj_years() if v <= 0 else v
 
 
@@ -516,7 +516,7 @@ def renew_ceiling():
     contract's expiry [S9]; the composite takes 흥국생명's, which is the only one that
     supports a multi-cycle projection.  Inert on a 비갱신형 point.
     """
-    return int(model_point()["renew_ceiling"])
+    return tables.lookup_int(prepared_model_point(), "renew_ceiling")
 
 
 def sum_assured():
@@ -528,7 +528,7 @@ def sum_assured():
     corporate-only and 체감형 (decreasing) is a disclosure category with no retail
     product in it [S4] [S18].
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mode():
@@ -542,7 +542,7 @@ def premium_mode():
     ``prem_mode_months`` schedule and is not shipped, every retrieved rate card being
     quoted monthly.
     """
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def contract_boundary():
@@ -558,7 +558,7 @@ def contract_boundary():
     projects to the ceiling in the base run **[std]** and carries the truncation as a
     switch.  Naming the convention is part of reporting the number.
     """
-    v = model_point()["contract_boundary"]
+    v = tables.lookup_object(prepared_model_point(), "contract_boundary")
     if v not in ("ceiling", "current_term"):
         raise ValueError("invalid contract_boundary")
     return v
@@ -576,7 +576,7 @@ def acc_death():
     does not sell its 기본형 to women at all, so a female life there must buy the
     보장추가형 and the disclosure prints 0 won in the 기본형 female column [S4] [S6].
     """
-    return bool(model_point()["acc_death"])
+    return tables.lookup_bool(prepared_model_point(), "acc_death")
 
 
 def waiver():
@@ -591,7 +591,7 @@ def waiver():
     3].  On for model points 3 and 4, which are 갱신형, so that the waiver not surviving
     a renewal is exercised [S6].
     """
-    return bool(model_point()["waiver"])
+    return tables.lookup_bool(prepared_model_point(), "waiver")
 
 
 def accel():
@@ -605,7 +605,7 @@ def accel():
     **half the sum assured to 50,000,000 won** rather than the whole benefit, and there
     is **no bar on payment near expiry at all**.
     """
-    return bool(model_point()["accel"])
+    return tables.lookup_bool(prepared_model_point(), "accel")
 
 
 def reinstatement():
@@ -620,7 +620,7 @@ def reinstatement():
     Korean document publishes a reinstatement rate.  What *is* published, and is
     therefore not [std], is the window.
     """
-    return bool(model_point()["reinstatement"])
+    return tables.lookup_bool(prepared_model_point(), "reinstatement")
 
 
 def horizon_ceiling():
@@ -752,8 +752,7 @@ def class_mort_ratio():
     ages **[std]**: the disclosures are at ages 20, 40 and 60 and the ratios move little
     between them.
     """
-    return float(data.rate_class_table().loc[                        # noqa: F821
-        (rate_class(), sex()), "mort_ratio"])
+    return tables.lookup_float(data.prepared_rate_class_table_loc(), (rate_class(), sex()), 'mort_ratio')
 
 
 def class_prem_ratio():
@@ -767,8 +766,7 @@ def class_prem_ratio():
     explains the reversal, so the two ratios are carried as separate columns and neither
     is derived from the other.
     """
-    return float(data.rate_class_table().loc[                        # noqa: F821
-        (rate_class(), sex()), "prem_ratio"])
+    return tables.lookup_float(data.prepared_rate_class_table_loc(), (rate_class(), sex()), 'prem_ratio')
 
 
 def mort_rate_at_age(x):
@@ -781,7 +779,7 @@ def mort_rate_at_age(x):
     still in it, and it is read directly by the premium scale and only through
     :func:`mort_rate_base` by the decrement.
     """
-    return float(data.mort_table().loc[(sex(), int(x)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'mort_rate')  # noqa: F821
 
 
 def acc_mort_rate_at_age(x):
@@ -793,8 +791,7 @@ def acc_mort_rate_at_age(x):
     differ by a factor of 1.77 at male 40.  Used only to split the death decrement for
     the 재해사망 uplift variant, never as a decrement of its own.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(x)), "acc_mort_rate"])
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'acc_mort_rate')
 
 
 def mort_table_mean(x, m):
@@ -805,8 +802,7 @@ def mort_table_mean(x, m):
     quantity, and feeding the best-estimate factor in would move a published rate card by
     an assumption that has nothing to do with pricing.
     """
-    return sum(mort_rate_at_age(a)
-               for a in range(int(x), int(x) + int(m))) / float(m)
+    return sum(expressions.over(range(int(x), int(x) + int(m)), lambda a: mort_rate_at_age(a))) / float(m)
 
 
 def mort_rate_base(t):
@@ -1094,7 +1090,7 @@ def cum_prem_pp(t):
     That is exactly why the waived state is a real state and not a cash-flow adjustment.
     """
     n = min(int(t) + 1, 12 * pay_term())
-    return sum(premium_mth_pp(s) for s in range(n))
+    return sum(expressions.over(range(n), lambda s: premium_mth_pp(s)))
 
 
 def pols_if_init():
@@ -1252,8 +1248,7 @@ def pols_lapse_pool(t):
     reinstate.
     """
     rho = reinstate_rate_eff()
-    return sum(pols_lapse(s) * (1.0 - rho) ** (t - 1 - s)
-               for s in range(max(0, t - reinstate_window), t))      # noqa: F821
+    return sum(expressions.over(range(max(0, t - reinstate_window), t), lambda s: pols_lapse(s) * (1.0 - rho) ** (t - 1 - s)))      # noqa: F821
 
 
 def pols_reinstate(t):
@@ -1505,8 +1500,7 @@ def claims(t, kind=None):
         ``WholeLife_KR_S``.
     """
     if kind is None:
-        return sum(claims(t, k) for k in
-                   ("DEATH", "ACC_DEATH", "ACCEL", "MATURITY", "LAPSE"))
+        return sum(expressions.over(("DEATH", "ACC_DEATH", "ACCEL", "MATURITY", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return sum_assured() * (1.0 - accel_share(t)) * pols_death(t)
     if kind == "ACC_DEATH":
@@ -1679,8 +1673,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the period that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
 
 
 def check_lapse_pool_resid(t):
@@ -1698,8 +1691,7 @@ def check_lapse_pool_resid(t):
 
 def check_lapse_pool():
     """True when the 부활 pool ledger closes in every projected period."""
-    return all(abs(check_lapse_pool_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_lapse_pool_resid(t)) <= roll_fwd_tol))
 
 
 def check_pols_payer_resid(t):
@@ -1717,8 +1709,7 @@ def check_pols_payer_resid(t):
 
 def check_pols_payer():
     """True when payers and waived lives partition the premium-owing in-force."""
-    return all(abs(check_pols_payer_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_payer_resid(t)) <= roll_fwd_tol))
 
 
 def check_prem_level_resid(t):
@@ -1739,8 +1730,7 @@ def check_prem_level_resid(t):
 
 def check_prem_level():
     """True when the premium is level within every 보험기간 of the projection."""
-    return all(abs(check_prem_level_resid(t)) <= roll_fwd_tol        # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_prem_level_resid(t)) <= roll_fwd_tol))
 
 
 def check_decline_timing():
@@ -1807,8 +1797,7 @@ def check_net_cf():
     and far below one won, which is the smallest error a reader adding up the printed
     statement could observe.
     """
-    return all(abs(check_net_cf_resid(t)) <= cash_tol                # noqa: F821
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= cash_tol))
 
 
 def result_cf():
@@ -1878,6 +1867,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1936,3 +1930,9 @@ roll_fwd_tol = 1e-12
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

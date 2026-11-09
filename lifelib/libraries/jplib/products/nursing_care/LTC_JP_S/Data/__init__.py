@@ -177,6 +177,29 @@ def grade_share_table():
         input_dir() / grade_share_file, index_col="grade")           # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_prevalence_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(prevalence_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_grade_share_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(grade_share_table(),
+                        columns=('share_ge',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -191,3 +214,5 @@ prevalence_file = "prevalence_table.csv"
 grade_share_file = "grade_share_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

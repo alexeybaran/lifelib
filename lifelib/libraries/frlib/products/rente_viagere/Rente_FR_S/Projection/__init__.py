@@ -323,7 +323,7 @@ def purchase_price():
     date, not a projected cash flow: the projection carries no premium income.  It enters
     the projection only through :func:`annual_income_init`.
     """
-    return float(model_point()["purchase_price"])
+    return tables.lookup_float(prepared_model_point(), "purchase_price")
 
 
 def effective_year():
@@ -332,7 +332,7 @@ def effective_year():
     The model carries the calendar and not merely the duration, because revalorisation
     and expense inflation step at 31 December.
     """
-    return int(model_point()["effective_year"])
+    return tables.lookup_int(prepared_model_point(), "effective_year")
 
 
 def effective_month():
@@ -342,7 +342,7 @@ def effective_month():
     date needs no day part.  M0 fixes the length of the first partial calendar year,
     13 - M0 months, over which the first revalorisation is pro-rated.
     """
-    v = int(model_point()["effective_month"])
+    v = tables.lookup_int(prepared_model_point(), "effective_month")
     if not 1 <= v <= 12:
         raise ValueError("invalid effective_month")
     return v
@@ -358,9 +358,9 @@ def age_at_entry(life):
     inside a calendar year.
     """
     if life == 1:
-        return int(model_point()["annuitant_age"])
+        return tables.lookup_int(prepared_model_point(), "annuitant_age")
     if life == 2 and reversion_pct() > 0.0:
-        return int(model_point()["reversion_age"])
+        return tables.lookup_int(prepared_model_point(), "reversion_age")
     raise ValueError("invalid life")
 
 
@@ -372,9 +372,9 @@ def birth_year(life):
     else about the calendar.
     """
     if life == 1:
-        return int(model_point()["annuitant_birth_year"])
+        return tables.lookup_int(prepared_model_point(), "annuitant_birth_year")
     if life == 2 and reversion_pct() > 0.0:
-        return int(model_point()["reversion_birth_year"])
+        return tables.lookup_int(prepared_model_point(), "reversion_birth_year")
     raise ValueError("invalid life")
 
 
@@ -386,9 +386,9 @@ def sex(life):
     only; the tariff is ``tariff_table_sex`` for every life, whatever this returns.
     """
     if life == 1:
-        v = model_point()["annuitant_sex"]
+        v = tables.lookup_object(prepared_model_point(), "annuitant_sex")
     elif life == 2 and reversion_pct() > 0.0:
-        v = model_point()["reversion_sex"]
+        v = tables.lookup_object(prepared_model_point(), "reversion_sex")
     else:
         raise ValueError("invalid life")
     if v not in ("M", "F", "mix"):
@@ -405,7 +405,7 @@ def annuity_rate():
     decimals; :func:`check_taux_rente` asserts that agreement, and
     :func:`taux_rente_tariff` is the derivation.
     """
-    return float(model_point()["annuity_rate"])
+    return tables.lookup_float(prepared_model_point(), "annuity_rate")
 
 
 def reversion_pct():
@@ -415,8 +415,8 @@ def reversion_pct():
     1st day of the month following it.  Mutually exclusive with the *annuités garanties*
     in the representative design.
     """
-    v = model_point()["reversion_pct"]
-    return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
+    v = tables.lookup_object(prepared_model_point(), "reversion_pct")
+    return 0.0 if tables.is_missing(pd.isna, v) else float(v)                           # noqa: F821
 
 
 def guarantee_mths():
@@ -426,7 +426,7 @@ def guarantee_mths():
     amount and rising with the same revalorisation index.  No lump-sum commutation of the
     remaining term is offered.
     """
-    return 12 * int(model_point()["guarantee_years"])
+    return 12 * tables.lookup_int(prepared_model_point(), "guarantee_years")
 
 
 def palier_scheme():
@@ -435,7 +435,7 @@ def palier_scheme():
     A *rente par paliers* is a level-within-step function of duration, not an escalation:
     nothing compounds and the steps are contractual percentages of the initial level.
     """
-    v = model_point()["palier_scheme"]
+    v = tables.lookup_object(prepared_model_point(), "palier_scheme")
     if v not in ("none", "inc1", "inc2", "dec1", "dec2"):
         raise ValueError("invalid palier_scheme")
     return v
@@ -447,7 +447,7 @@ def palier_step_years():
     The second step is "d'une durée égale" to the first, which is why one number
     parameterizes both.
     """
-    v = int(model_point()["palier_step_years"])
+    v = tables.lookup_int(prepared_model_point(), "palier_step_years")
     if palier_scheme() == "none":
         return 0
     if v not in (5, 10):
@@ -457,7 +457,7 @@ def palier_step_years():
 
 def payment_freq():
     """m: payments per year, in {12, 4, 2, 1}."""
-    v = int(model_point()["payment_freq"])
+    v = tables.lookup_int(prepared_model_point(), "payment_freq")
     if v not in (12, 4, 2, 1):
         raise ValueError("invalid payment_freq")
     return v
@@ -472,7 +472,7 @@ def payment_timing():
     survival for advance payments understates the liability by roughly one period's
     mortality per payment, which is material at annuitant ages.
     """
-    v = model_point()["payment_timing"]
+    v = tables.lookup_object(prepared_model_point(), "payment_timing")
     if v not in ("arrears", "advance"):
         raise ValueError("invalid payment_timing")
     return v
@@ -486,7 +486,7 @@ def arrerage_charge_rate():
     a flat per-instalment fee they do not, and the payment frequency then changes the
     total.  Ranges from 0.00% to 3% across the retrieved carriers.
     """
-    return float(model_point()["arrerage_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "arrerage_charge_rate")
 
 
 def technical_rate():
@@ -497,7 +497,7 @@ def technical_rate():
     discounts at the risk-free term structure, and reusing i for that produces neither a
     price nor a reserve.  It is carried so a reader can see which rate rho was struck on.
     """
-    return float(model_point()["technical_rate"])
+    return tables.lookup_float(prepared_model_point(), "technical_rate")
 
 
 def mort_basis():
@@ -508,7 +508,7 @@ def mort_basis():
     worked example - which is a scenario, not an expectation - reproduces exactly.  It
     never reaches the pricing side.  See the Space docstring.
     """
-    v = model_point()["mort_basis"]
+    v = tables.lookup_object(prepared_model_point(), "mort_basis")
     if v not in ("table", "scenario"):
         raise ValueError("invalid mort_basis")
     return v
@@ -527,12 +527,12 @@ def death_mth(life):
     as the *prorata*.
     """
     v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def pols_if_init():
     """Initial number of contracts in force; 1.0 on a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration(t):
@@ -622,7 +622,7 @@ def mort_rate_at_age(table_sex, gen, x):
                 * mort_rate_at_age("F", gen, x))
     if table_sex not in ("M", "F"):
         raise ValueError("invalid table_sex")
-    return float(data.mort_table().loc[(table_sex, gen, x), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (table_sex, gen, x), 'mort_rate')  # noqa: F821
 
 
 def mort_rate(t, life):
@@ -713,8 +713,7 @@ def annuity_factor(table_sex):
     not over the projection frame's month indices, so it does not move with the frame.
     """
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum(tariff_lives(t, table_sex) * v ** t
-               for t in range(1, tariff_horizon_mths() + 1)) / 12.0
+    return sum(expressions.over(range(1, tariff_horizon_mths() + 1), lambda t: tariff_lives(t, table_sex) * v ** t)) / 12.0
 
 
 def taux_rente_tariff():
@@ -765,8 +764,7 @@ def certain_excess_years():
     if n <= 0:
         return 0.0
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t    # noqa: F821
-               for t in range(1, n + 1)) / 12.0
+    return sum(expressions.over(range(1, n + 1), lambda t: (1.0 - tariff_lives(t, tariff_table_sex)) * v ** t)) / 12.0
 
 
 def guarantee_coeff():
@@ -1093,7 +1091,7 @@ def claims(t, kind=None):
         part of the *capital constitutif*.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("PRORATA",))
+        return sum(expressions.over(("PRORATA",), lambda k: claims(t, k)))
     if kind == "PRORATA":
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
     raise ValueError("invalid kind")
@@ -1229,8 +1227,7 @@ def check_lives_roll_fwd():
     the **time points** the frame reads, ``t = 0 .. proj_len()``: the last projected
     month, ``proj_len() - 1``, closes at time ``proj_len()``.
     """
-    return bool(all(abs(check_lives_roll_fwd_resid(t)) < 1e-10
-                    for t in range(proj_len() + 1)))
+    return bool(all(expressions.over(range(proj_len() + 1), lambda t: abs(check_lives_roll_fwd_resid(t)) < 1e-10)))
 
 
 def check_revalo_roll_fwd_resid(t):
@@ -1256,8 +1253,7 @@ def check_revalo_roll_fwd_resid(t):
 
 def check_revalo_roll_fwd():
     """Whether the revalorisation index closes against its closed form at every month."""
-    return bool(all(abs(check_revalo_roll_fwd_resid(t)) < 1e-12
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(check_revalo_roll_fwd_resid(t)) < 1e-12)))
 
 
 def check_cum_annuity_roll_fwd_resid(t):
@@ -1272,14 +1268,13 @@ def check_cum_annuity_roll_fwd_resid(t):
     """
     step = 12 // payment_freq()
     start = step - 1 if payment_timing() == "arrears" else 0
-    built = sum(annuity_pp(s) for s in range(start, t + 1, step))
+    built = sum(expressions.over(range(start, t + 1, step), lambda s: annuity_pp(s)))
     return built - cum_annuity_pp(t, "ANNUITANT")
 
 
 def check_cum_annuity_roll_fwd():
     """Whether the cumulative *arrérages* schedule closes at every projected month."""
-    return bool(all(abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8)))
 
 
 def check_calendar_index_resid(t):
@@ -1296,8 +1291,7 @@ def check_calendar_index_resid(t):
 
 def check_calendar_index():
     """Whether the calendar index agrees with the calendar at every projected month."""
-    return bool(all(check_calendar_index_resid(t) == 0
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: check_calendar_index_resid(t) == 0)))
 
 
 def check_payment_factor_resid(t):
@@ -1312,8 +1306,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return bool(all(abs(check_payment_factor_resid(t)) < 1e-12
-                    for t in range(proj_len())))
+    return bool(all(expressions.over(range(proj_len()), lambda t: abs(check_payment_factor_resid(t)) < 1e-12)))
 
 
 def check_revalo_floor():
@@ -1324,8 +1317,7 @@ def check_revalo_floor():
     ``revalo_rate`` fed into the model must therefore leave the annuity where it was
     rather than cutting it.  The sweep starts at month 1, month 0 having no predecessor.
     """
-    return bool(all(revalo_factor(t) >= revalo_factor(t - 1) - 1e-15
-                    for t in range(1, proj_len())))
+    return bool(all(expressions.over(range(1, proj_len()), lambda t: revalo_factor(t) >= revalo_factor(t - 1) - 1e-15)))
 
 
 def check_options_xor():
@@ -1418,6 +1410,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1442,3 +1439,9 @@ expense_maint = 30.0
 inflation_rate = 0.015
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

@@ -135,6 +135,21 @@ def rop_table():
     return pd.read_csv(input_dir() / rop_file, index_col="anniversary")  # noqa: F821
 
 
+def prepared_rop_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rop_table(),
+                        columns=('refund_ratio', 'exercise_rate'),
+                        indexing='loc')
+
+
+
+def prepared_class_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(class_factor_table(),
+                        columns=('factor',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -155,3 +170,5 @@ surr_charge_file = "surr_charge_table.csv"
 rop_file = "rop_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

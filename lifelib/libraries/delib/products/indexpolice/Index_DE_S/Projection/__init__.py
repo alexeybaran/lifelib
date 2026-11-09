@@ -260,7 +260,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point; reporting only."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -272,7 +272,7 @@ def sex():
     value with a floor rather than a sum at risk, mortality is a **timing** assumption and
     the choice moves the result very little.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -280,7 +280,7 @@ def sex():
 
 def entry_age():
     """*Eintrittsalter*: age last birthday at inception, the origin of ``age(t)``."""
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def dur_init():
@@ -293,7 +293,7 @@ def dur_init():
     what makes the in-force cells independent evidence about the recursion rather than a
     replay of it.
     """
-    return int(model_point()["dur_init"])
+    return tables.lookup_int(prepared_model_point(), "dur_init")
 
 
 def pols_if_init():
@@ -302,17 +302,17 @@ def pols_if_init():
     Named rather than written as a literal because it is the scale of the roll-forward
     tolerances and the quantity ``result_cf()``'s first ``pols_if`` value must equal.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def ann_start_age():
     """Attained age at *Rentenbeginn*, the end of the accumulation phase."""
-    return int(model_point()["ann_start_age"])
+    return tables.lookup_int(prepared_model_point(), "ann_start_age")
 
 
 def prem_form():
     """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
-    v = model_point()["prem_form"]
+    v = tables.lookup_object(prepared_model_point(), "prem_form")
     if v not in ("level", "single"):
         raise ValueError("invalid prem_form")
     return v
@@ -323,7 +323,7 @@ def prem_freq():
 
     It selects the *Ratenzahlungszuschlag* in :func:`freq_load` and does nothing else.
     """
-    v = model_point()["prem_freq"]
+    v = tables.lookup_object(prepared_model_point(), "prem_freq")
     if v not in ("annual", "half_yearly", "quarterly", "monthly"):
         raise ValueError("invalid prem_freq")
     return v
@@ -331,12 +331,12 @@ def prem_freq():
 
 def prem_term_y():
     """*Beitragszahlungsdauer* in policy years; 1 on a single premium."""
-    return int(model_point()["prem_term_y"])
+    return tables.lookup_int(prepared_model_point(), "prem_term_y")
 
 
 def av_pp_init():
     """The *Deckungskapital* per policy at ``t_start()``; 0 for new business."""
-    return float(model_point()["av_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "av_pp_init")
 
 
 def guar_locked_init():
@@ -347,12 +347,12 @@ def guar_locked_init():
     different questions: the account says what the policy is worth, the ledger says how
     much of it can never be lost.
     """
-    return float(model_point()["guar_locked_init"])
+    return tables.lookup_float(prepared_model_point(), "guar_locked_init")
 
 
 def prem_paid_init():
     """Annual-mode premiums already paid at ``t_start()``; the base of the guarantee so far."""
-    return float(model_point()["prem_paid_init"])
+    return tables.lookup_float(prepared_model_point(), "prem_paid_init")
 
 
 def guar_level():
@@ -365,7 +365,7 @@ def guar_level():
     model does **not** carry, so the *Garantieniveau* sensitivity it reports is only the
     maturity-floor effect.
     """
-    return float(model_point()["guar_level"])
+    return tables.lookup_float(prepared_model_point(), "guar_level")
 
 
 def guar_rate():
@@ -376,7 +376,7 @@ def guar_rate():
     cannot be projected on one rate.  At 0.25 % the rate equals the reserve charge and the
     account falls in a year that credits nothing, which is model point 13.
     """
-    return float(model_point()["guar_rate"])
+    return tables.lookup_float(prepared_model_point(), "guar_rate")
 
 
 def payoff_form():
@@ -387,7 +387,7 @@ def payoff_form():
     the *Quote* gives away a constant fraction in every state.  Model points 1 and 2 run
     them on the identical index path so the difference is visible rather than argued.
     """
-    v = model_point()["payoff_form"]
+    v = tables.lookup_object(prepared_model_point(), "payoff_form")
     if v not in ("cap", "quote"):
         raise ValueError("invalid payoff_form")
     return v
@@ -395,12 +395,12 @@ def payoff_form():
 
 def index_id():
     """The key into *index_return_table.csv* and *index_param_table.csv*."""
-    return model_point()["index_id"]
+    return tables.lookup_object(prepared_model_point(), "index_id")
 
 
 def elect_id():
     """The key into *election_table.csv*: this policy's *Wahlrecht* path."""
-    return model_point()["elect_id"]
+    return tables.lookup_object(prepared_model_point(), "elect_id")
 
 
 def death_min_rate():
@@ -411,7 +411,7 @@ def death_min_rate():
     half-income treatment of a *Kapitalabfindung*.  It is a floor on the benefit and never
     a sum at risk added to it.
     """
-    return float(model_point()["death_min_rate"])
+    return tables.lookup_float(prepared_model_point(), "death_min_rate")
 
 
 def ann_option():
@@ -421,7 +421,7 @@ def ann_option():
     configuration of the model point, not a take-up rate: modelling it as a rate would
     stand in for a tax comparison this model does not perform.
     """
-    v = model_point()["ann_option"]
+    v = tables.lookup_object(prepared_model_point(), "ann_option")
     if v not in ("annuity", "cash"):
         raise ValueError("invalid ann_option")
     return v
@@ -434,7 +434,7 @@ def surr_charge_on():
     contract**, so a tariff without the clause is a real configuration and not a special
     case.
     """
-    return int(model_point()["surr_charge_on"])
+    return tables.lookup_int(prepared_model_point(), "surr_charge_on")
 
 
 # --- the frame ---------------------------------------------------------------
@@ -569,8 +569,8 @@ def prem_sum():
     Getting that wrong is a numbered pitfall.
     """
     if prem_form() == "single":
-        return float(model_point()["prem_gross_pp"])
-    return float(model_point()["prem_gross_pp"]) * prem_term_y()
+        return tables.lookup_float(prepared_model_point(), "prem_gross_pp")
+    return tables.lookup_float(prepared_model_point(), "prem_gross_pp") * prem_term_y()
 
 
 def freq_load():
@@ -580,8 +580,7 @@ def freq_load():
     convention, no carrier tariff having been established.  It multiplies the premium
     **collected** and nothing else; see :func:`prem_sum`.
     """
-    return float(data.freq_load_table().loc[                         # noqa: F821
-        prem_freq(), "freq_load"])
+    return tables.lookup_float(data.prepared_freq_load_table_loc(), prem_freq(), 'freq_load')
 
 
 def prem_base_pp(k):
@@ -596,8 +595,8 @@ def prem_base_pp(k):
     if k < k_start() or k >= proj_len_y():
         return 0.0
     if prem_form() == "single":
-        return float(model_point()["prem_gross_pp"]) if k == k_start() else 0.0
-    return float(model_point()["prem_gross_pp"]) if k < prem_term_y() else 0.0
+        return tables.lookup_float(prepared_model_point(), "prem_gross_pp") if k == k_start() else 0.0
+    return tables.lookup_float(prepared_model_point(), "prem_gross_pp") if k < prem_term_y() else 0.0
 
 
 def prem_gross_pp(k):
@@ -739,7 +738,7 @@ def surplus_rate(k):
     rate moves with the investment result, and the feedback from the *Garantieniveau*
     through the asset mix to the declared rate is not modelled at all.
     """
-    return float(data.surplus_rate_table().loc[k, "surplus_rate"])   # noqa: F821
+    return tables.lookup_float(data.prepared_surplus_rate_table_loc(), k, 'surplus_rate')   # noqa: F821
 
 
 def elect_index(k):
@@ -752,8 +751,7 @@ def elect_index(k):
     established, and ``always_index`` is a modelling choice made so that the base run
     demonstrates the index mechanic rather than a claim about behaviour.
     """
-    return float(data.election_table().loc[                          # noqa: F821
-        (elect_id(), k), "w"])
+    return tables.lookup_float(data.prepared_election_table_loc(), (elect_id(), k), 'w')
 
 
 def index_base_pp(k):
@@ -813,12 +811,12 @@ def pols_surv_year_end(k):
 
 def pols_death_year(k):
     """The deaths of policy year k, summed over its twelve months."""
-    return sum(pols_death(t) for t in range(12 * k, 12 * k + 12))
+    return sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_death(t)))
 
 
 def pols_lapse_year(k):
     """The surrenders of policy year k, summed over its twelve months."""
-    return sum(pols_lapse(t) for t in range(12 * k, 12 * k + 12))
+    return sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_lapse(t)))
 
 
 def surplus_credit(k):
@@ -882,8 +880,7 @@ def index_cap(k):
     is why the Cap and :func:`surplus_rate` may not be chosen independently — see
     :func:`index_budget_ratio`.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "cap"])
+    return tables.lookup_float(data.prepared_index_param_table_loc(), (index_id(), k), 'cap')
 
 
 def index_quote(k):
@@ -894,8 +891,7 @@ def index_quote(k):
     same budget buys when the underlying is engineered to be cheap, and it moves the
     give-up from somewhere the purchaser can see to somewhere they cannot.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "quote"])
+    return tables.lookup_float(data.prepared_index_param_table_loc(), (index_id(), k), 'quote')
 
 
 def index_return_capped(k, m):
@@ -919,7 +915,7 @@ def index_sum(k):
     same twelve gives 8.9599 %, an error small enough to look like rounding and large
     enough to be wrong at every duration.
     """
-    return sum(index_return_capped(k, m) for m in range(1, 13))
+    return sum(expressions.over(range(1, 13), lambda m: index_return_capped(k, m)))
 
 
 def index_return_year(k):
@@ -999,10 +995,10 @@ def index_budget_ratio():
     Returns 0.0 where nothing was elected to the index arm, there being no budget to
     compare against.
     """
-    budget = sum(opt_budget_pp(t) for t in range(k_start(), proj_len_y()))
+    budget = sum(expressions.over(range(k_start(), proj_len_y()), lambda t: opt_budget_pp(t)))
     if budget <= 0.0:
         return 0.0
-    credits = sum(index_credit_pp(t) for t in range(k_start(), proj_len_y()))
+    credits = sum(expressions.over(range(k_start(), proj_len_y()), lambda t: index_credit_pp(t)))
     return credits / budget
 
 
@@ -1253,7 +1249,7 @@ def mort_rate(t):
     The **annual** rate, flat across a policy year because the attained age steps on the
     anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "qx"])       # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'qx')       # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1283,7 +1279,7 @@ def lapse_rate_base(t):
     a rate flat in duration is a numbered pitfall.  The mean over the anchor's 27 years is
     about 2.6 %, inside the market-wide GDV band; no index-specific rate exists at all.
     """
-    return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_lapse_table_loc(), duration(t), 'lapse_rate')  # noqa: F821
 
 
 def lapse_rate(t):
@@ -1509,7 +1505,7 @@ def claims(t, kind=None):
     not — and that is the product's own rule.
     """
     if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY"))
+        return sum(expressions.over(("DEATH", "LAPSE", "MATURITY"), lambda j: claims(t, j)))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1651,10 +1647,9 @@ def check_net_cf():
     The library-wide form: no argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return bool(all(abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
+    return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
                     * max(abs(premiums(t)), abs(claims(t)),
-                          abs(expenses(t)), 1.0)
-                    for t in range(t_start(), proj_len())))
+                          abs(expenses(t)), 1.0))))
 
 
 def check_av_roll_fwd_resid(k):
@@ -1690,9 +1685,8 @@ def check_av_roll_fwd():
     Tolerance is relative to the balance, the account running to five figures while the
     residual should be zero to machine precision.
     """
-    return bool(all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
-                    * max(abs(av(k)), 1.0)
-                    for k in range(k_start(), proj_len_y())))
+    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
+                    * max(abs(av(k)), 1.0))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1725,11 +1719,10 @@ def check_pols_roll_fwd():
     that leaves twice or never leaves at all.
     """
     ts = range(t_start(), proj_len())
-    closure = sum(pols_death(t) + pols_lapse(t) + pols_maturity(t)
-                  for t in ts) - pols_if_init()
+    closure = sum(expressions.over(ts, lambda t: pols_death(t) + pols_lapse(t) + pols_maturity(t))) - pols_if_init()
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
     return bool(abs(closure) <= tol
-                and all(abs(check_pols_roll_fwd_resid(t)) <= tol for t in ts))
+                and all(expressions.over(ts, lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol)))
 
 
 def check_surplus_alloc_resid(k):
@@ -1749,9 +1742,8 @@ def check_surplus_alloc_resid(k):
 
 def check_surplus_alloc():
     """True when the declared surplus is allocated exactly once in every policy year."""
-    return bool(all(abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
-                    * max(abs(index_base_pp(k)), 1.0)
-                    for k in range(k_start(), proj_len_y())))
+    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
+                    * max(abs(index_base_pp(k)), 1.0))))
 
 
 def check_lock_in_resid(k):
@@ -1775,9 +1767,8 @@ def check_lock_in_resid(k):
 
 def check_lock_in():
     """True when the guaranteed capital is monotone and no credit is negative."""
-    return bool(all(abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
-                    * max(abs(guar_cap_pp(k)), 1.0)
-                    for k in range(k_start(), proj_len_y())))
+    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
+                    * max(abs(guar_cap_pp(k)), 1.0))))
 
 
 def check_index_credit_resid(k):
@@ -1805,8 +1796,7 @@ def check_index_credit_resid(k):
 
 def check_index_credit():
     """True when the *Indexrendite* is inside its contractual bounds in every policy year."""
-    return bool(all(abs(check_index_credit_resid(k)) <= roll_fwd_tol  # noqa: F821
-                    for k in range(k_start(), proj_len_y())))
+    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_index_credit_resid(k)) <= roll_fwd_tol)))
 
 
 # --- the result table --------------------------------------------------------
@@ -1856,12 +1846,10 @@ def result_cf_annual():
     the year's **start**, which is the only reading under which a count and a flow can share
     a row.  This is the view the technical notes' worked example is stated on.
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',))
+    return expressions.to_pandas(annual, index_name='policy_year')
 
 
 def result_index():
@@ -1904,6 +1892,11 @@ def result_index():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1936,3 +1929,9 @@ rentenfaktor_curr = 25.0
 roll_fwd_tol = 1e-08
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

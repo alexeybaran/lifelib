@@ -249,7 +249,7 @@ def cell():
     which is the point the technical notes make about this product: the three cells are
     the same contract with one column changed.
     """
-    v = model_point()["cell"]
+    v = tables.lookup_object(prepared_model_point(), "cell")
     if v not in ("RefOBS-VIA", "RefOBS-TMP", "RefOBS-UNI"):
         raise ValueError("invalid cell")
     return v
@@ -262,7 +262,7 @@ def sex():
     funeral rate card rates by sex, and acceptance is guaranteed with no medical
     selection of any kind.
     """
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def age_at_entry():
@@ -274,7 +274,7 @@ def age_at_entry():
     issues and is what every shipped model point is.  Using age last birthday instead
     shifts the whole mortality lookup by up to a year at entry.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def capital_0():
@@ -285,7 +285,7 @@ def capital_0():
     :func:`capital_pp` is the amount in force in a given month, which differs from this
     from the first anniversary on.
     """
-    return float(model_point()["capital_0"])
+    return tables.lookup_float(prepared_model_point(), "capital_0")
 
 
 def premium_form():
@@ -295,7 +295,7 @@ def premium_form():
     later.  It decides the paying period, whether a premium-stop decrement applies at all,
     and whether the contract can overrun its own capital.
     """
-    v = model_point()["premium_form"]
+    v = tables.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("single", "temporary", "lifetime"):
         raise ValueError("invalid premium_form")
     return v
@@ -303,7 +303,7 @@ def premium_form():
 
 def prem_term_y():
     """The premium-paying term in years; 1 on a single premium, 0 on a lifetime one."""
-    return int(model_point()["prem_term_y"])
+    return tables.lookup_int(prepared_model_point(), "prem_term_y")
 
 
 def prem_cease_age():
@@ -316,7 +316,7 @@ def prem_cease_age():
     documented design that produces the overrun this product is criticised for; defaulting
     this to anything non-zero makes that overrun disappear.
     """
-    return int(model_point()["prem_cease_age"])
+    return tables.lookup_int(prepared_model_point(), "prem_cease_age")
 
 
 def annual_premium():
@@ -329,7 +329,7 @@ def annual_premium():
     2:1 across the retrieved set, so this and :func:`surr_scale` must come from the **same**
     document.
     """
-    return float(model_point()["annual_premium"])
+    return tables.lookup_float(prepared_model_point(), "annual_premium")
 
 
 def prem_freq():
@@ -341,7 +341,7 @@ def prem_freq():
     monthly point carries the loaded figure in :func:`annual_premium` and pays a twelfth
     of it each month.
     """
-    v = int(model_point()["prem_freq"])
+    v = tables.lookup_int(prepared_model_point(), "prem_freq")
     if v not in (1, 2, 4, 12):
         raise ValueError("invalid prem_freq")
     return v
@@ -354,7 +354,7 @@ def carence_months():
     previously.  It is the anti-selection device that replaces underwriting on a
     guaranteed-issue book whose entrants may be 84 years old and know their own health.
     """
-    return int(model_point()["carence_months"])
+    return tables.lookup_int(prepared_model_point(), "carence_months")
 
 
 def carence_refund_basis():
@@ -364,7 +364,7 @@ def carence_refund_basis():
     premium, net of instalment charges.  Gross is the reference **[std]**; the other two
     are carried because they are what two retrieved contracts actually say.
     """
-    v = model_point()["carence_refund_basis"]
+    v = tables.lookup_object(prepared_model_point(), "carence_refund_basis")
     if v not in ("gross", "net_assistance", "net_instalment"):
         raise ValueError("invalid carence_refund_basis")
     return v
@@ -379,7 +379,7 @@ def carence_refund_rate():
     than the legal rate.  No retrieved *capital* contract pays interest on a waiting-period
     refund.
     """
-    return float(model_point()["carence_refund_rate"])
+    return tables.lookup_float(prepared_model_point(), "carence_refund_rate")
 
 
 def accident_mult():
@@ -389,7 +389,7 @@ def accident_mult():
     the waiting period only - inside it the accidental benefit is already the full capital,
     so doubling it there, or applying the multiplier to all deaths, overstates outgo.
     """
-    return float(model_point()["accident_mult"])
+    return tables.lookup_float(prepared_model_point(), "accident_mult")
 
 
 def reval_rate():
@@ -403,7 +403,7 @@ def reval_rate():
     No insurer's actually declared PB rate for a funeral contract in any year was found in
     any public source.
     """
-    return float(model_point()["reval_rate"])
+    return tables.lookup_float(prepared_model_point(), "reval_rate")
 
 
 def reval_prem_linked():
@@ -414,7 +414,7 @@ def reval_prem_linked():
     coupling to a cell that does not have it overstates premium income, and omitting it
     where it exists understates it.
     """
-    return bool(model_point()["reval_prem_linked"])
+    return tables.lookup_bool(prepared_model_point(), "reval_prem_linked")
 
 
 def reval_simple():
@@ -426,12 +426,12 @@ def reval_simple():
     the other retrieved mechanisms take and because the one derivable rate in the file is
     demonstrably geometric.  Which reading the wording intends is [unverified].
     """
-    return bool(model_point()["reval_simple"])
+    return tables.lookup_bool(prepared_model_point(), "reval_simple")
 
 
 def surr_penalty_years():
     """The number of years a surrender penalty applies for; 0 in the reference cell."""
-    return int(model_point()["surr_penalty_years"])
+    return tables.lookup_int(prepared_model_point(), "surr_penalty_years")
 
 
 def surr_penalty_rate():
@@ -440,7 +440,7 @@ def surr_penalty_rate():
     None at two insurers; 5 % in the first ten years, plus a further 5 % charge inside the
     mathematical provision in the first eight, at one.
     """
-    return float(model_point()["surr_penalty_rate"])
+    return tables.lookup_float(prepared_model_point(), "surr_penalty_rate")
 
 
 def reduction_share():
@@ -455,7 +455,7 @@ def reduction_share():
     example checkable; the parameter is the sensitivity dial, and it dominates the
     late-duration liability.  It must never be approximated by perturbing the lapse rate.
     """
-    return float(model_point()["reduction_share"])
+    return tables.lookup_float(prepared_model_point(), "reduction_share")
 
 
 def surr_scale():
@@ -467,7 +467,7 @@ def surr_scale():
     so that the three are consistent, and feeding one insurer's premium into another's
     grid produces plausible-looking and wrong margins.
     """
-    return model_point()["surr_scale"]
+    return tables.lookup_object(prepared_model_point(), "surr_scale")
 
 
 def issue_month():
@@ -478,7 +478,7 @@ def issue_month():
     off by up to one policy year of mortality otherwise.  The column exists so that the
     approximation is visible in the data rather than buried in a formula.
     """
-    v = int(model_point()["issue_month"])
+    v = tables.lookup_int(prepared_model_point(), "issue_month")
     if not 1 <= v <= 12:
         raise ValueError("invalid issue_month")
     return v
@@ -486,7 +486,7 @@ def issue_month():
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -549,7 +549,7 @@ def mort_rate_base(x):
     walk-through basis exactly.  TH 00-02 and TF 00-02 are the homologated regulatory
     tables for this product; they are cited by name and never redistributed here.
     """
-    return float(data.mort_table().loc[(sex(), x), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
 def select_uplift(t):
@@ -1096,7 +1096,7 @@ def claims(t, kind=None):
     identically zero because there is no maturity.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "DEATH_PAID_UP", "LAPSE"))
+        return sum(expressions.over(("DEATH", "DEATH_PAID_UP", "LAPSE"), lambda k: claims(t, k)))
     if kind == "DEATH":
         return pols_death(t) * benefit_pp(t, "DEATH")
     if kind == "DEATH_PAID_UP":
@@ -1176,9 +1176,8 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
-               * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
+               * max(pols_if_init(), 1.0)))
 
 
 def check_surv_annual_resid(t):
@@ -1205,9 +1204,8 @@ def check_surv_annual_resid(t):
 
 def check_surv_annual():
     """True when the monthly decrements compound back to the annual ones in every year."""
-    return all(abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
-               * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
+               * max(pols_if_init(), 1.0)))
 
 
 def check_capital_reval_resid(t):
@@ -1233,9 +1231,8 @@ def check_capital_reval_resid(t):
 
 def check_capital_reval():
     """True when the capital is flat through year 1 and steps once a year after it."""
-    return all(abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
-               * max(capital_0(), 1.0)
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
+               * max(capital_0(), 1.0)))
 
 
 def check_lapse_gate_resid(t):
@@ -1251,15 +1248,14 @@ def check_lapse_gate_resid(t):
     y = policy_year(t)
     first = 12 * (y - 1)
     last = min(first + 11, proj_len() - 1)
-    if any(prem_due_pp(s) > 0.0 for s in range(first, last + 1)):
+    if any(expressions.over(range(first, last + 1), lambda s: prem_due_pp(s) > 0.0)):
         return 0.0
     return lapse_rate_mth(t)
 
 
 def check_lapse_gate():
     """True when no premium-stop decrement is applied where no premium is due."""
-    return all(check_lapse_gate_resid(t) == 0.0
-               for t in range(proj_len()))
+    return all(expressions.over(range(proj_len()), lambda t: check_lapse_gate_resid(t) == 0.0))
 
 
 def check_truncation_resid(t):
@@ -1329,6 +1325,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1363,3 +1364,9 @@ inflation_rate = 0.018
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
+
+expressions = ("Module", "lifelib.expressions")

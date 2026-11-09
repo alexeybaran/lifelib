@@ -191,6 +191,13 @@ def hoechstrechnungszins_table():
         input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
 
 
+def prepared_surplus_scale_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(surplus_scale_table(),
+                        columns=('surplus_init_pct', 'surplus_growth'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -205,3 +212,5 @@ surplus_scale_file = "surplus_scale_table.csv"
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")
