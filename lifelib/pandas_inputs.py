@@ -27,7 +27,8 @@ def _key(value):
     return _scalar(value)
 
 
-def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=False):
+def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=False,
+          preserve_scalar_types=False):
     """Build an existing Table, optionally nested in explicit group Records.
 
     ``groups`` names index levels to group, in the authored nesting order. The
@@ -48,6 +49,11 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
     the selected columns, and row snapshots currently require ungrouped tables.
     ``report=True`` owns axes/dtypes/attrs for to_pandas() without row snapshots;
     rows=True includes report metadata. Plain lookup preparation owns neither.
+
+    ``preserve_scalar_types=True`` retains actual column-selected scalar types
+    and object references, deferring value conversion to selected typed lookups.
+    Only the structure is owned: mutable object cells retain pandas' shallow
+    identity. Keys, dimensions and uniqueness are still validated eagerly.
     """
     if not isinstance(frame, pd.DataFrame):
         raise TypeError('table requires a pandas DataFrame')
@@ -76,12 +82,20 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
     if groups and not remaining_positions:
         raise ValueError('grouping must leave at least one leaf key level')
     root = OrderedDict() if groups else []
-    for label, row in zip(frame.index, selected_frame.itertuples(index=False, name=None)):
+    if preserve_scalar_types:
+        # Series positional selection retains NumPy scalars; itertuples may
+        # convert those scalars to Python builtins. Neither path coerces rows.
+        raw_columns = tuple(selected_frame[name] for name in selected)
+        source_rows = (tuple(column.iloc[position] for column in raw_columns)
+                       for position in range(len(selected_frame)))
+    else:
+        source_rows = selected_frame.itertuples(index=False, name=None)
+    for label, row in zip(frame.index, source_rows):
         parts = tuple(label) if isinstance(frame.index, pd.MultiIndex) else (label,)
         parts = tuple(_key(part) for part in parts)
         leaf_parts = tuple(parts[i] for i in remaining_positions)
         key = leaf_parts[0] if len(leaf_parts) == 1 else leaf_parts
-        value = tuple(_scalar(item) for item in row)
+        value = tuple(row) if preserve_scalar_types else tuple(_scalar(item) for item in row)
         if not groups:
             root.append((key, value))
             continue
@@ -93,7 +107,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
     def build(branch, depth):
         if depth == len(groups):
             return Table([key for key, _ in branch],
-                         [values for _, values in branch], selected, index_error)
+                         [values for _, values in branch], selected, index_error,
+                         preserve_scalar_types=preserve_scalar_types)
         return Record({key: build(value, depth + 1) for key, value in branch.items()})
     result = build(root, 0)
     if not groups and (rows or report):
@@ -104,7 +119,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
         if rows:
             for position in range(len(selected_frame)):
                 public_row = selected_frame.iloc[position]
-                row_values.append(tuple(freeze(public_row[name]) for name in selected))
+                row_values.append(tuple(public_row[name] if preserve_scalar_types
+                                        else freeze(public_row[name]) for name in selected))
                 row_dtypes.append(public_row.dtype)
                 row_names.append(public_row.name)
         object.__setattr__(result, '_metadata', (
@@ -136,6 +152,8 @@ def record(row, *, preserve_scalar_types=False):
     A model can keep its public model_point Cell unchanged and make a separate
     preparation Cell depend on that value. Its mixed-row coercion/name semantics
     stay in the public pandas selection; calculation reads the owned fields.
+    preserve_scalar_types=True retains Series-selected scalar/object references
+    without freezing unrelated values; typed conversion occurs at actual lookup.
     """
     if not isinstance(row, pd.Series):
         raise TypeError('record requires a pandas Series')
@@ -144,7 +162,7 @@ def record(row, *, preserve_scalar_types=False):
     if preserve_scalar_types:
         # Series.items() can yield Python scalars while Series[key] returns a
         # numpy scalar. Preserve the actual public scalar-selection contract.
-        return Record({key: freeze(row[key]) for key in row.index})
+        return Record({key: row[key] for key in row.index}, preserve_scalar_types=True)
     return Record({key: _scalar(value) for key, value in row.items()})
 
 

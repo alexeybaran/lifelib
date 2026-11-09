@@ -37,6 +37,8 @@ def row(table, key):
     object.__setattr__(result, '_items', items)
     object.__setattr__(result, '_index', MappingProxyType(dict(items)))
     object.__setattr__(result, '_native_groups', {})
+    object.__setattr__(result, '_preserve_scalar_types',
+                       getattr(table, '_preserve_scalar_types', False))
     object.__setattr__(result, '_metadata', ('row', metadata[2], metadata[5][position],
                                            metadata[8][position], metadata[6], metadata[7]))
     return result

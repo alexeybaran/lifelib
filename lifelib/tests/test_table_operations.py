@@ -39,6 +39,15 @@ def prepare(function, frame, rows=False):
 def prepare_keywords(function, frame):
     return p.table(function, ('report', 'frame'), frame=frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=p.omitted_argument, report=True)
 
+def prepare_raw(function, frame, rows=False):
+    return p.table(function, ('rows', 'report', 'preserve_scalar_types'), frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=rows, report=True, preserve_scalar_types=True)
+
+def raw_value(function, source, key, column):
+    return p.lookup_object(function, (), source, key, column)
+
+def float_value(function, source, key, column):
+    return p.lookup_float(function, (), source, key, column)
+
 def grouped(function, source, labels, first=(), last=()):
     return p.group_sum(function, ('first', 'last'), source, labels, first=first, last=last)
 

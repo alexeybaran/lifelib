@@ -144,4 +144,4 @@ cdef bint is_missing(object function, tuple keywords, object predicate, object v
 cdef object row(object function, tuple keywords, object table, object key)
 cdef object column(object function, tuple keywords, object table, object name)
 cdef object group_sum(object function, tuple keywords, object table, object labels, object first=*, object last=*)
-cdef object table(object function, tuple keywords, object frame, object columns=*, object groups=*, object indexing=*, object rows=*, object report=*)
+cdef object table(object function, tuple keywords, object frame, object columns=*, object groups=*, object indexing=*, object rows=*, object report=*, object preserve_scalar_types=*)
