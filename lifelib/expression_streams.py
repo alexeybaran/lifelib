@@ -13,6 +13,17 @@ def periods(start, stop=_DOMAIN_MISSING, step=_DOMAIN_MISSING):
     return range(start)
 
 
+def zip_values(sources, *, strict=False):
+    """Zip an authored tuple of iterables, preserving ordinary zip semantics.
+
+    The tuple groups the sources; it does not materialize their values. Iterator
+    acquisition is eager and ordered. Advancement remains lazy and ordered.
+    """
+    if type(sources) is not tuple:
+        raise TypeError('zip_values requires a tuple of source iterables')
+    return zip(*sources, strict=strict)
+
+
 def _validate_unpack(count):
     if count is not None and (type(count) is not int or count < 0):
         raise ValueError('unpack must be None or a nonnegative integer')
@@ -241,8 +252,9 @@ def sum_float(source, function=_NO_CALLBACK, where=None) -> float:
 # Private original identities survive replacement of public helper bindings.
 _FLOAT = float
 _PERIODS, _OVER, _FLATTEN = periods, over, flatten
+_ZIP_VALUES = zip_values
 _SUM_VALUES, _SUM_FLOAT = sum_values, sum_float
-for _function in (_PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT):
+for _function in (_PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _ZIP_VALUES):
     _function.__modelx_cython_helper__ = ('lifelib._native_streams', _function.__name__)
     _function.__modelx_native_operation__ = _function.__name__
     _function.__modelx_cython_scalar_result__ = 'object'

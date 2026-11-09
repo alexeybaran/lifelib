@@ -120,6 +120,7 @@ def rewrite_native_generators(source, namespace='expressions'):
     cells, assignment expressions and forward target bindings are declined.
     """
     from libcst.metadata import ExpressionContext, ExpressionContextProvider, PositionProvider
+    from libcst.metadata.scope_provider import BuiltinAssignment
     wrapper = cst.MetadataWrapper(cst.parse_module(source))
     scopes = wrapper.resolve(ScopeProvider)
     contexts = wrapper.resolve(ExpressionContextProvider)
@@ -190,6 +191,13 @@ def rewrite_native_generators(source, namespace='expressions'):
             while part is not None:
                 parts.append(part)
                 part = part.inner_for_in
+            zipped_sources = []
+            for part in parts:
+                source = part.iter
+                bindings = scopes[source.func]['zip'] if (isinstance(source, cst.Call)
+                    and isinstance(source.func, cst.Name) and source.func.value == 'zip') else ()
+                zipped_sources.append(bool(bindings) and all(isinstance(binding, BuiltinAssignment) for binding in bindings)
+                    and not any(arg.star or arg.keyword and arg.keyword.value != 'strict' for arg in source.args))
             try:
                 targets = [target_names(part.target)[0] for part in parts]
                 flattened = [name for group in targets for name in group]
@@ -203,13 +211,18 @@ def rewrite_native_generators(source, namespace='expressions'):
                     if any(names_read(item.test) & (all_targets - assigned) for item in part.ifs):
                         return decline()
 
-                def produce(part, payload):
+                def produce(part, payload, index=0):
                     names, unpack = target_names(part.target)
                     nested = part.inner_for_in is not None
                     if nested:
-                        payload = produce(part.inner_for_in, payload)
+                        payload = produce(part.inner_for_in, payload, index + 1)
                     parameters = cst.Parameters(params=tuple(cst.Param(cst.Name(name)) for name in names))
-                    arguments = [cst.Arg(part.iter), cst.Arg(cst.Lambda(parameters, payload))]
+                    source = part.iter
+                    if zipped_sources[index]:
+                        sources = cst.Tuple(tuple(cst.Element(arg.value) for arg in source.args if arg.keyword is None))
+                        source = cst.Call(cst.Attribute(cst.Name(namespace), cst.Name('zip_values')),
+                            (cst.Arg(sources), *(arg for arg in source.args if arg.keyword is not None)))
+                    arguments = [cst.Arg(source), cst.Arg(cst.Lambda(parameters, payload))]
                     if part.ifs:
                         condition = cst.Name('True')
                         for item in reversed(part.ifs):
@@ -232,7 +245,8 @@ def rewrite_native_generators(source, namespace='expressions'):
                             'after': wrapper.module.code_for_node(result),
                             'clauses': len(parts), 'targets': targets,
                             'namespace_preexisting': bool(allowed_namespace_nodes),
-                            'helpers': ['over', 'flatten'] if len(parts) > 1 else ['over']})
+                            'helpers': (['over', 'flatten'] if len(parts) > 1 else ['over'])
+                                       + (['zip_values'] if any(zipped_sources) else [])})
             return result
 
     result = wrapper.module.visit(Rewrite()).code

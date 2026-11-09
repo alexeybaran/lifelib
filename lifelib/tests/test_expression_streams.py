@@ -1,9 +1,9 @@
 """Differential contracts for explicit live/Cython iterator helpers."""
-import ast
 from decimal import Decimal
 import importlib
 import inspect
 import itertools
+import ast  # Test-only: parser entry is monkeypatched to fail if called.
 import math
 from pathlib import Path
 import struct
@@ -25,7 +25,7 @@ def native(tmp_path_factory):
             source = (provider / f'{stem}.{suffix}').read_text()
             (root / f'{name}.{suffix}').write_text(source)
     (root / 'stream_probe.pyx').write_text('''cimport stream_native as native
-from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT
+from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _ZIP_VALUES
 
 def periods(*args):
     if len(args) == 1: return native.periods(_PERIODS, (), args[0])
@@ -35,6 +35,14 @@ def periods(*args):
 def over(source, function, where=None, *, unpack=None):
     return native.over(_OVER, (), source, function, where, unpack)
 def flatten(sources): return native.flatten(_FLATTEN, (), sources)
+def zip_values(sources, *, strict=False): return native.zip_values(_ZIP_VALUES, ('strict',), sources, strict=strict)
+def replaced_zip(function, sources, strict):
+    return native.zip_values(function, ('strict','sources'), strict=strict, sources=sources)
+def zipped_internal_map():
+    cdef native.Stream source = native.Stream()
+    source.source = iter(range(3))
+    source.function = lambda value: value + 1
+    return list(native.zip_values(_ZIP_VALUES, (), (source,)))
 def sum_values(source): return native.sum_values(_SUM_VALUES, (), source)
 def sum_float(source, *args, **kwargs):
     if args:

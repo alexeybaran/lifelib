@@ -48,6 +48,7 @@ Standard Python consumers keep their ordinary semantics.
 | `periods(start, stop=omitted, step=omitted)` | Reusable `range` domain; one, two or three supplied arguments have `range` values, integer conversion order and zero-step behavior. Optional arguments may be named. |
 | `over(source, function, where=None, *, unpack=None)` | One-shot lazy stream with standard send/throw/close protocol. Acquire `iter(source)` at construction. For each candidate, unpack if requested, evaluate the predicate, then the payload once. |
 | `flatten(sources)` | One-shot lazy concatenation. Acquire the outer iterator at construction; acquire each inner iterator only when reached. |
+| `zip_values(sources, *, strict=False)` | Zip an authored exact tuple of source iterables, e.g. `zip_values((ages[:-1], ages[1:]))`. It has the values, acquisition order, strict behavior, retries and retained-row lifetime of `zip(*sources, strict=strict)`. |
 | `sum_float(source, function=omitted, where=None) -> float` | Lazily convert each passing contribution with standard `float`, then sum the resulting doubles using float-start summation. Empty input is float `0.0`. |
 | `sum_values(source)` | Compatibility spelling for ordinary builtin `sum(source)`, including empty integer zero, arbitrary integers and custom/NumPy arithmetic. Prefer ordinary `sum` in authored formulas. |
 
@@ -71,6 +72,27 @@ Existing Python consumers remain useful: `all`, `any`, `min`, `max`, `next`,
 identity, tie, ordering and materialization contracts apply. Keep eager lists
 eager before passing them to pandas. Their native coverage is proved separately
 from the stream provider; the presence of these expressions is not a receipt.
+
+`zip_values` is a dedicated resumable iterator, separate from `over` and
+`flatten`. A transient source `StopIteration` or other exception does not close
+it permanently; strict mismatch probes and retries match builtin zip. It
+converts `strict` to truth once before acquiring source iterators from left to
+right. Passing the same iterator twice shares its state; passing the same
+sequence twice creates independent cursors. It retains acquired iterators and
+one reusable result row, as builtin zip does, rather than the source-group tuple.
+Exact ranges within signed 64-bit bounds and exact tuple/list sources advance
+through native cursor state. Wider ranges and arbitrary iterators preserve
+compatibility and require separate coverage admission. The exact tuple group is
+an explicit public restriction, enforced equally in live and native execution.
+Native cached-row ownership uses ordinary GIL ownership on CPython 3.12 and
+the public unique-reference operation on CPython 3.14 and later. Free-threaded
+CPython 3.13 is explicitly rejected at build time. The 3.14 free-threaded path
+still requires its separate Windows acceptance run; this VM validates 3.12.
+
+```python
+sum(e.over(e.zip_values((loss_days, probabilities)),
+           lambda days, probability: days * probability, unpack=2))
+```
 
 Ordinary generator syntax remains valid. For a qualified regional adjustment,
 `over` and `flatten` use native cursors behind standard generator execution and
