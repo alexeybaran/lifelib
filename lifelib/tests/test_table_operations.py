@@ -42,6 +42,9 @@ def prepare(function, frame, rows=False):
 def prepare_keywords(function, frame):
     return p.table(function, ('report', 'frame'), frame=frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=p.omitted_argument, report=True)
 
+def prepare_options(function, frame, rows=False, report=False, raw=False, indexing='loc'):
+    return p.table(function, ('rows', 'report', 'preserve_scalar_types', 'indexing'), frame, columns=p.omitted_argument, groups=p.omitted_argument, rows=rows, report=report, preserve_scalar_types=raw, indexing=indexing)
+
 def prepare_raw(function, frame, rows=False):
     return p.table(function, ('rows', 'report', 'preserve_scalar_types'), frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=rows, report=True, preserve_scalar_types=True)
 

@@ -1659,6 +1659,7 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
     elif type(index) is _report_index_type:
         index_data = index._data
         if (type(index_data) is not _group_numpy.ndarray
+                or index_data.dtype.kind == 'b'
                 or height and index_data.dtype != _report_int64):
             return None
         keys = tuple(int(value) for value in index_data)
@@ -1707,11 +1708,218 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
     return result
 
 
+
+# Physical mixed-column preparation for the existing inputs.table contract.
+from cpython.object cimport PyObject_TypeCheck
+from cpython.long cimport PyLong_Check
+from cpython.float cimport PyFloat_Check
+from cpython.unicode cimport PyUnicode_Check
+from cpython.bytes cimport PyBytes_Check
+from pandas import StringDtype as _frame_string_dtype_type
+cdef object _frame_object_dtype = _group_numpy.dtype('object')
+cdef tuple _frame_numeric_scalar_types = (_numpy_integer_keys + _numpy_float_keys
+    + (_group_numpy.longdouble, _numpy_bool_key, _group_numpy.str_, _group_numpy.bytes_))
+
+
+cdef object _frame_normalize(object value):
+    if type(value) in _frame_numeric_scalar_types:
+        return value.item()
+    if PyObject_TypeCheck(value, <PyTypeObject*>_group_numpy.generic):
+        return _missing
+    if value is None or value is _pandas_NA or value is _pandas_NaT:
+        return value
+    if PyLong_Check(value) or PyFloat_Check(value) or PyUnicode_Check(value) or PyBytes_Check(value):
+        return value
+    return _missing
+
+
+cdef object _frame_axes(object manager):
+    cdef object column_axis = manager.axes[0]
+    cdef object index = manager.axes[1]
+    cdef object data, storage, column_dtype, interval, index_metadata, value
+    cdef tuple columns, keys, row_names
+    if type(column_axis) is not _report_index_type:
+        return None
+    data = column_axis._data
+    if type(data) is _group_numpy.ndarray:
+        storage, column_dtype = data, data.dtype
+    elif type(data) is _report_string_array_type:
+        storage, column_dtype = data._ndarray, data._dtype
+    else:
+        return None
+    columns = tuple(storage)
+    if not columns or len(set(columns)) != len(columns):
+        return None
+    for value in columns:
+        if type(value) is not str:
+            return None
+    if type(index) is _report_range_type:
+        interval = index._range
+        keys = tuple(interval)
+        row_names = keys
+        index_metadata = ('range', interval.start, interval.stop, interval.step, index._name)
+    elif type(index) is _report_index_type:
+        data = index._data
+        if (type(data) is not _group_numpy.ndarray or data.dtype.kind == 'b'
+                or len(data) and data.dtype != _report_int64):
+            return None
+        keys = tuple(int(value) for value in data)
+        row_names = tuple(data)
+        index_metadata = ('labels', keys, index._name, data.dtype)
+    else:
+        return None
+    if len(set(keys)) != len(keys):
+        return None  # Reference preparation preserves conversion/error ordering.
+    return (columns, keys, row_names, index_metadata,
+            ('labels', columns, column_axis._name, column_dtype),
+            (column_dtype, column_axis._name))
+
+
+cdef object _frame_row_dtype(tuple dtypes):
+    cdef object first = dtypes[0]
+    cdef object dtype, left_na, right_na
+    cdef bint same = True
+    cdef bint all_numpy = True
+    cdef bint any_boolean = False
+    cdef bint any_other = False
+    for dtype in dtypes:
+        if isinstance(dtype, _group_numpy.dtype):
+            if dtype.kind == 'b':
+                any_boolean = True
+            else:
+                any_other = True
+        else:
+            all_numpy = False
+        if dtype is first:
+            continue
+        if isinstance(dtype, _group_numpy.dtype) and isinstance(first, _group_numpy.dtype):
+            if dtype != first:
+                same = False
+        elif type(dtype) is _frame_string_dtype_type and type(first) is _frame_string_dtype_type:
+            left_na, right_na = dtype._na_value, first._na_value
+            if dtype._storage != first._storage:
+                return _missing
+            if left_na is not right_na:
+                if not (type(left_na) is float and type(right_na) is float
+                        and left_na != left_na and right_na != right_na):
+                    return _missing
+        else:
+            same = False
+    if same:
+        return first
+    if not all_numpy or any_boolean and any_other:
+        return _frame_object_dtype
+    return _group_numpy.result_type(*dtypes)
+
+
+cdef object _frame_owner(tuple keys, tuple values, tuple columns, object metadata,
+                         bint encoded_errors, bint preserve_scalar_types):
+    cdef object spec, result
+    cdef tuple items = (('multi', False), ('encoded_errors', encoded_errors),
+        ('pandas_columns', True), ('row_bool_labels', False), ('levels', (keys,)),
+        ('level_tables', ()), ('offsets', (0,)), ('boolean_modes', (2,)), ('bias', 0))
+    spec = _record_alloc(<PyTypeObject*>Record, 0)
+    PyObject_GenericSetAttr(spec, '_items', items)
+    PyObject_GenericSetAttr(spec, '_index', MappingProxyType(dict(items)))
+    PyObject_GenericSetAttr(spec, '_native_groups', {})
+    PyObject_GenericSetAttr(spec, '_metadata', None)
+    PyObject_GenericSetAttr(spec, '_preserve_scalar_types', False)
+    result = _record_alloc(<PyTypeObject*>Table, 0)
+    PyObject_GenericSetAttr(result, '_keys', keys)
+    PyObject_GenericSetAttr(result, '_values', values)
+    PyObject_GenericSetAttr(result, '_columns', columns)
+    PyObject_GenericSetAttr(result, '_positions', MappingProxyType({key: i for i, key in enumerate(keys)}))
+    PyObject_GenericSetAttr(result, '_ordered', tuple(sorted(keys)))
+    PyObject_GenericSetAttr(result, '_native_cache', {})
+    PyObject_GenericSetAttr(result, '_index_error', spec)
+    PyObject_GenericSetAttr(result, '_metadata', metadata)
+    PyObject_GenericSetAttr(result, '_preserve_scalar_types', preserve_scalar_types)
+    return result
+
+
+cdef object _native_frame_table(object frame, bint with_rows, bint with_metadata,
+                                bint encoded_errors, bint preserve_scalar_types):
+    cdef object attrs, flags, manager, axes, block, data, places, dtype, row_dtype
+    cdef object raw, value, metadata
+    cdef tuple columns, keys, row_names, dtypes
+    cdef list descriptors, column_dtypes, values, row_values, copied, selected
+    cdef Py_ssize_t height, width, i, j, offset, position
+    if type(frame) is not _report_frame_type:
+        return None
+    attrs, flags = frame._attrs, frame._flags
+    if type(attrs) is not dict or attrs or type(flags) is not _report_flags_type:
+        return None
+    manager = frame._mgr
+    axes = _frame_axes(manager)
+    if axes is None:
+        return None
+    columns, keys, row_names = axes[0], axes[1], axes[2]
+    width, height = len(columns), len(keys)
+    descriptors, column_dtypes = [None] * width, [None] * width
+    for block in manager.blocks:
+        data = block.values
+        places = block._mgr_locs.as_array
+        if type(data) is _group_numpy.ndarray:
+            if (data.ndim != 2 or data.shape[1] != height or data.shape[0] != len(places)
+                    or data.dtype.kind not in ('b', 'i', 'u', 'f', 'c', 'O')):
+                return None
+            for offset in range(len(places)):
+                position = places[offset]
+                if not 0 <= position < width or descriptors[position] is not None:
+                    return None
+                descriptors[position] = (data, offset, False)
+                column_dtypes[position] = data.dtype
+        elif type(data) is _report_string_array_type:
+            raw = data._ndarray
+            if type(raw) is not _group_numpy.ndarray or raw.ndim != 1 or raw.shape[0] != height or len(places) != 1:
+                return None
+            position = places[0]
+            if not 0 <= position < width or descriptors[position] is not None:
+                return None
+            descriptors[position] = (raw, 0, True)
+            column_dtypes[position] = data._dtype
+        else:
+            return None
+    if any(value is None for value in descriptors):
+        return None
+    dtypes = tuple(column_dtypes)
+    row_dtype = _frame_row_dtype(dtypes) if with_rows else None
+    if row_dtype is _missing:
+        return None
+    values, row_values = [], []
+    for i in range(height):
+        copied, selected = [], []
+        for j in range(width):
+            data, offset, value = descriptors[j]
+            raw = data[i] if value else data[offset, i]
+            if with_rows:
+                if row_dtype is _frame_object_dtype or not isinstance(row_dtype, _group_numpy.dtype):
+                    selected.append(raw)
+                else:
+                    selected.append(row_dtype.type(raw))
+            value = raw if preserve_scalar_types else _frame_normalize(raw)
+            if value is _missing:
+                return None
+            copied.append(value)
+        values.append(tuple(copied))
+        if with_rows:
+            row_values.append(tuple(selected))
+    metadata = None
+    if with_metadata:
+        metadata = ('frame', axes[3], axes[4], dtypes,
+            tuple(row_values) if with_rows else None,
+            (row_dtype,) * height if with_rows else (), {},
+            flags._allows_duplicate_labels, row_names if with_rows else (), axes[5])
+    return _frame_owner(keys, tuple(values), columns, metadata,
+                        encoded_errors, preserve_scalar_types)
+
+
+
 cdef object table(object function, tuple keywords, object frame, object columns=_missing,
                   object groups=_missing, object indexing=_missing, object rows=_missing,
                   object report=_missing, object preserve_scalar_types=_missing):
     cdef object prepared
-    if (function is _table_constructor and (rows is True or report is True)
+    if (function is _table_constructor
             and (preserve_scalar_types is _missing or preserve_scalar_types is False
                  or preserve_scalar_types is True)
             and (rows is _missing or rows is True or rows is False)
@@ -1719,8 +1927,13 @@ cdef object table(object function, tuple keywords, object frame, object columns=
             and (columns is _missing or columns is None)
             and (groups is _missing or type(groups) is tuple and not groups)
             and (indexing is _missing or type(indexing) is str and indexing in ('loc', 'at'))):
-        prepared = _native_report_table(frame, rows is True, indexing == 'at',
-                                         preserve_scalar_types is True)
+        if rows is True or report is True:
+            prepared = _native_report_table(frame, rows is True, indexing == 'at',
+                                             preserve_scalar_types is True)
+            if prepared is not None:
+                return prepared
+        prepared = _native_frame_table(frame, rows is True, rows is True or report is True,
+                                        indexing == 'at', preserve_scalar_types is True)
         if prepared is not None:
             return prepared
     return forward_call(function, keywords, ('frame', 'columns', 'groups', 'indexing', 'rows', 'report', 'preserve_scalar_types'),

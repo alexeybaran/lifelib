@@ -351,3 +351,26 @@ bool on a non-boolean index raises the descriptive row-label KeyError; NumPy
 boolean scalars follow index lookup instead. This distinction is separate from
 scalar two-axis lookup. The row/index metadata and native guard pass46 focused
 cases; the initial overbroad NumPy-bool check failed6 cases and is retained.
+
+### Native mixed input preparation
+
+The existing `inputs.table(frame)` syntax now also admits physical mixed NumPy
+numeric/object blocks and Python-backed pandas StringArray columns, with unique
+integer or RangeIndex row labels and unique string column labels. The same path
+supports minimal lookup preparation, `report=True`, `rows=True` and
+`preserve_scalar_types=True`; no new helper or provider ABI is introduced. The
+previous single-float64 report path remains available.
+
+Preparation copies structure and stored values directly into the existing
+Table/Record owners. Normal preparation retains its per-column normalization;
+row snapshots separately retain pandas row coercion. Raw preparation retains
+actual scalar/object references and defers conversion. Public pandas objects
+are still constructed explicitly by `to_pandas`.
+
+Admission checks inspect the physical layout before copying. Unsupported layouts,
+nonempty attrs, grouped/other axes and unsupported normalized object values keep
+the Python reference contract. Empty boolean axes also use that path so their
+row-label errors remain correct. These fallbacks are explicitly incomplete
+native coverage. This does not qualify native Series-to-Record preparation,
+all regional model calculations or the unresolved generic raw-scalar Cell
+return-type issue described above.
