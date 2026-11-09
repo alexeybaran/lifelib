@@ -1,0 +1,316 @@
+# cython: freethreading_compatible=True
+"""Direct Cython helper ABI. No source, AST, expression tree or formula parser."""
+import builtins
+from libc.limits cimport LLONG_MIN, LLONG_MAX
+from cpython.long cimport PyLong_AsLongLong
+from cpython.exc cimport PyErr_Format
+from cpython.object cimport Py_TYPE
+from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _FLOAT, _NO_CALLBACK, _DOMAIN_MISSING
+from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
+from modelx_cython._range_state cimport I64Range, range_init, range_next
+
+cdef object omitted_argument = object()
+cdef object _missing = omitted_argument
+
+cdef extern from *:
+    """
+    static int mx_unpack_noniterable(PyObject *value) {
+        return Py_TYPE(value)->tp_iter == NULL && !PySequence_Check(value);
+    }
+    """
+    bint mx_unpack_noniterable(object value) noexcept
+
+
+cdef object _replacement(object function, tuple keywords, tuple names, tuple values):
+    cdef list positional = []
+    cdef dict named = {}
+    for name in keywords:
+        named[name] = values[names.index(name)]
+    for name, value in zip(names, values):
+        if value is not _missing and name not in named:
+            positional.append(value)
+    return function(*positional, **named)
+
+cdef object _unpack(object value, object count):
+    cdef object first, second, third, iterator
+    cdef list result
+    cdef object position
+    cdef bint exhausted
+    cdef bint noniterable = False
+    if type(value) is tuple:
+        if len(value) < count:
+            raise ValueError(f'not enough values to unpack (expected {count}, got {len(value)})')
+        if len(value) > count:
+            raise ValueError(f'too many values to unpack (expected {count})')
+        return value
+    try:
+        iterator = iter(value)
+    except TypeError:
+        if count in (2, 3) and mx_unpack_noniterable(value):
+            noniterable = True
+        else:
+            raise
+    if noniterable:
+        # Match live Python destructuring without retaining get-iter's error
+        # as exception context or invoking metaclass attribute hooks.
+        PyErr_Format(TypeError, "cannot unpack non-iterable %.200s object", Py_TYPE(value).tp_name)
+    result = []
+    for position in range(count):
+        exhausted = False
+        try:
+            result.append(next(iterator))
+        except StopIteration:
+            exhausted = True
+        if exhausted:
+            raise ValueError(f'not enough values to unpack (expected {count}, got {position})')
+    exhausted = False
+    try:
+        next(iterator)
+    except StopIteration:
+        exhausted = True
+    if not exhausted:
+        raise ValueError(f'too many values to unpack (expected {count})')
+    return tuple(result)
+
+
+cdef object _advance(object source):
+    if type(source) is Stream:
+        return (<Stream>source).next_value()
+    return next(source)
+
+
+cdef void _capture(Stream result, object source) except *:
+    cdef long long start, stop, step
+    result.source = source
+    if type(source) is range:
+        try:
+            start = PyLong_AsLongLong(source.start)
+            stop = PyLong_AsLongLong(source.stop)
+            step = PyLong_AsLongLong(source.step)
+        except OverflowError:
+            result.source = iter(source)
+        else:
+            range_init(&result.counter, start, stop, step)
+            result.bounded = True
+    elif type(source) is tuple:
+        result.source_kind = 1
+    elif type(source) is list:
+        result.source_kind = 2
+    else:
+        result.source = iter(source)
+
+
+cdef Stream _cursor(object source):
+    cdef Stream result
+    if type(source) is Stream:
+        return source
+    result = Stream()
+    result.identity = True
+    _capture(result, source)
+    return result
+
+
+cdef class Stream:
+    def __iter__(self):
+        return self
+
+    def close(self):
+        self.closed = True
+        self.source = self.function = self.predicate = self.current = self.inner = None
+
+    def __next__(self):
+        return self.next_value()
+
+    cdef object next_input(self):
+        cdef long long index
+        cdef object value
+        if self.bounded:
+            if not range_next(&self.counter, &index):
+                raise StopIteration
+            return index
+        if self.source_kind == 1:
+            if self.position >= len(<tuple>self.source):
+                raise StopIteration
+            value = (<tuple>self.source)[self.position]
+            self.position += 1
+            return value
+        if self.source_kind == 2:
+            if self.position >= len(<list>self.source):
+                raise StopIteration
+            value = (<list>self.source)[self.position]
+            self.position += 1
+            return value
+        return _advance(self.source)
+
+    cdef object next_value(self):
+        cdef long long index
+        cdef object value
+        cdef bint exhausted
+        if self.closed:
+            raise StopIteration
+        if self.flattened:
+            return self.next_flattened()
+        while True:
+            exhausted = False
+            try:
+                value = self.next_input()
+            except StopIteration:
+                exhausted = True
+            except BaseException:
+                self.close()
+                raise
+            if exhausted:
+                self.close()
+                raise StopIteration
+            try:
+                self.current = value
+                if self.identity:
+                    return value
+                if self.unpack is None:
+                    if self.predicate is not None and not self.predicate(value):
+                        continue
+                    return self.function(value)
+                arguments = _unpack(value, self.unpack)
+                if self.predicate is not None and not self.predicate(*arguments):
+                    continue
+                return self.function(*arguments)
+            except StopIteration as error:
+                self.close()
+                raise RuntimeError('generator raised StopIteration') from error
+            except BaseException:
+                self.close()
+                raise
+
+    cdef object next_flattened(self):
+        cdef object source
+        cdef bint exhausted
+        while True:
+            if self.inner is not None:
+                exhausted = False
+                try:
+                    return _advance(self.inner)
+                except StopIteration:
+                    exhausted = True
+                except BaseException:
+                    self.close()
+                    raise
+                if exhausted:
+                    self.inner = None
+            exhausted = False
+            try:
+                source = self.next_input()
+            except StopIteration:
+                exhausted = True
+            except BaseException:
+                self.close()
+                raise
+            if exhausted:
+                self.close()
+                raise StopIteration
+            try:
+                self.inner = _cursor(source)
+            except StopIteration as error:
+                self.close()
+                raise RuntimeError('generator raised StopIteration') from error
+            except BaseException:
+                self.close()
+                raise
+
+
+cdef object periods(object current_callable, tuple keywords, object start, object stop=_missing, object step=_missing):
+    if current_callable is not _PERIODS:
+        return _replacement(current_callable, keywords, ('start', 'stop', 'step'), (start, stop, step))
+    if stop is _DOMAIN_MISSING:
+        stop = _missing
+    if step is _DOMAIN_MISSING:
+        step = _missing
+    if step is not _missing:
+        return range(start, stop, step)
+    if stop is not _missing:
+        return range(start, stop)
+    return range(start)
+
+
+cdef object over(object current_callable, tuple keywords, object source, object function, object where=_missing, object unpack=_missing):
+    cdef Stream result
+    if current_callable is not _OVER:
+        return _replacement(current_callable, keywords, ('source', 'function', 'where', 'unpack'),
+                            (source, function, where, unpack))
+    if where is _missing:
+        where = None
+    if unpack is _missing:
+        unpack = None
+    if unpack is not None and (type(unpack) is not int or unpack < 0):
+        raise ValueError('unpack must be None or a nonnegative integer')
+    result = Stream()
+    result.function = function
+    result.predicate = where
+    result.unpack = unpack
+    result.closed = False
+    result.bounded = False
+    _capture(result, source)
+    return result
+
+
+cdef object flatten(object current_callable, tuple keywords, object sources):
+    cdef Stream result
+    if current_callable is not _FLATTEN:
+        return _replacement(current_callable, keywords, ('sources',), (sources,))
+    result = Stream()
+    _capture(result, sources)
+    result.flattened = True
+    return result
+
+
+cdef object sum_values(object current_callable, tuple keywords, object source):
+    if current_callable is not _SUM_VALUES:
+        return _replacement(current_callable, keywords, ('source',), (source,))
+    # CPython's C consumer preserves integer-prefix transitions, big integers,
+    # NumPy/custom scalar dispatch and release-specific summation behavior.
+    # A native Stream supplies C iteration/callbacks without a generator frame.
+    return builtins.sum(source)
+
+
+def provider_version():
+    return 1
+
+
+
+cdef double sum_float_kernel(Stream stream) except *:
+    cdef F64Sum state
+    cdef object value, converter = _FLOAT
+    cdef double contribution
+    f64_init(&state)
+    while True:
+        try:
+            value = stream.next_value()
+        except StopIteration:
+            break
+        try:
+            contribution = converter(value)
+        except StopIteration as error:
+            # Conversion is the body of a private lazy normalization producer.
+            # Do not close an externally retained upstream source on failure.
+            raise RuntimeError('generator raised StopIteration') from error
+        f64_add(&state, contribution)
+    return f64_result(&state)
+
+
+def _identity(value):
+    return value
+
+
+cdef object sum_float(object current_callable, tuple keywords, object source, object function=_missing, object where=_missing):
+    cdef Stream stream
+    if current_callable is not _SUM_FLOAT:
+        return _replacement(current_callable, keywords, ('source', 'function', 'where'),
+                            (source, function, where))
+    if function is not _missing and function is not _NO_CALLBACK:
+        stream = over(_OVER, (), source, function, None if where is _missing else where)
+    elif where is not _missing and where is not None:
+        stream = over(_OVER, (), source, _identity, where)
+    elif type(source) is Stream:
+        stream = source
+    else:
+        stream = _cursor(source)
+    return sum_float_kernel(stream)
