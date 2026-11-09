@@ -122,17 +122,20 @@ def record(row, *, preserve_scalar_types=False):
 
 
 def index(labels):
-    """Own a unique public Index for internal ordered-key operations.
+    """Own public Index labels for internal ordered traversal.
 
-    The public Index Cell remains unchanged. Position is ordinary Table data;
-    key order and scalar types are retained, including empty input. Duplicate
-    labels are rejected explicitly rather than silently deduplicated.
+    The public Index Cell remains unchanged. Unique labels retain the existing
+    Table representation with position data. Duplicate labels use an existing
+    Record containing the owned key tuple, preserving order and multiplicity
+    without weakening Table's unique-lookup-key invariant. This is a traversal
+    input, not an implicit conversion of ambiguous labels into unique lookups.
     """
     if not isinstance(labels, pd.Index):
         raise TypeError('index requires a pandas Index')
+    keys = tuple(_key(label) for label in labels)
     if not labels.is_unique:
-        raise ValueError('index labels must be unique')
-    return Table(tuple(_key(label) for label in labels),
+        return Record({'keys': keys})
+    return Table(keys,
                  tuple((position,) for position in range(len(labels))),
                  ('position',), _at_index_spec(labels, encoded_errors=False))
 

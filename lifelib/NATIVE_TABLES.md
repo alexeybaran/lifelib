@@ -125,9 +125,20 @@ validated, and its cost counted separately and in the full lifecycle.
 types, including NumPy integers/floats/booleans. The default normalizes NumPy
 scalars for numeric preparation. This choice is explicit because `Series.items()`
 and `Series[field]` can yield different scalar classes. `index(public_index)`
-uses an existing Table to own unique ordered labels; it leaves the public Index
-and its metadata unchanged. Duplicate-label preparation is rejected explicitly
-and remains a separate source-operation compatibility/native-coverage obligation.
+owns unique ordered labels in an existing Table and duplicate labels in an
+existing Record containing the owned key tuple. It leaves the public Index and
+its metadata unchanged. `keys` preserves label order and multiplicity in both
+representations. Integer, finite-float and string spans traverse these owned
+labels through the same native producer ABI, including cold/hot resources and
+pickle rebuilds. A duplicate-label traversal input does not turn ambiguous labels
+into unique table lookups. Tuple/MultiIndex label consumers need their own native
+proof; ordinary object iteration is not that proof.
+
+Index snapshot construction currently remains an explicit Python preparation
+boundary, as in the existing adjusted input approach. Direct-Cython tests prove
+native span construction/traversal without Python `keys`, Table or Record method
+calls. They do not qualify complete native input preparation or a model whose
+Index/selection/report source has not yet been migrated and validated.
 
 Live modelx tracks whole-value replacement through normal dependencies. Edits
 inside a pandas object are not tracked. Exported and compiled models do not

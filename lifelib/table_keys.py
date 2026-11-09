@@ -4,7 +4,8 @@
 def keys(table):
     """Return keys in input order, preserving the existing sequence identity.
 
-    Immutable Table keys can use a native int64 span in compiled iterations.
+    Owned Table keys and Record key tuples can use native integer/float/string
+    spans in compiled iterations, preserving duplicate labels and source order.
     Other representations retain the supplied function's ordinary semantics.
     """
     return table['keys']
