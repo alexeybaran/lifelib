@@ -55,6 +55,14 @@ def keyword_read(function,source,key,default):
     return native.lookup_float(function,('default',),source,key,
                                column=native.omitted_argument,default=default)
 
+def keyword_integer(function,source,key,default):
+    return native.lookup_int(function,('default',),source,key,
+                             column=native.omitted_argument,default=default)
+
+def keyword_object(function,source,key,default):
+    return native.lookup_object(function,('default',),source,key,
+                                column=native.omitted_argument,default=default)
+
 def reordered_read(function,source,key,default):
     return native.lookup_float(function,('default','key','source'),
                                default=default,key=key,source=source,
@@ -62,8 +70,16 @@ def reordered_read(function,source,key,default):
 
 def keyword_missing(function,predicate,value):
     return native.is_missing(function,('value','predicate'),value=value,predicate=predicate)
+
+def shared_sum_state(values):
+    cdef native.F64Sum state
+    cdef double value
+    native.f64_init(&state)
+    for value in values:
+        native.f64_add(&state,value)
+    return native.f64_result(&state)
 ''')
-    (root/'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['native.pyx','probe.pyx'],compiler_directives={'language_level':3}))\n")
+    (root/'setup.py').write_text("from pathlib import Path\nfrom setuptools import setup\nfrom Cython.Build import cythonize\nimport modelx_cython\nsetup(ext_modules=cythonize(['native.pyx','probe.pyx'],include_path=[str(Path(modelx_cython.__file__).resolve().parent.parent)],compiler_directives={'language_level':3}))\n")
     r=subprocess.run([sys.executable,'setup.py','build_ext','--inplace'],cwd=root,capture_output=True,text=True)
     (root/'build.log').write_text(r.stdout+r.stderr);assert r.returncode==0,r.stdout+r.stderr
     sys.path.insert(0,str(root))
@@ -111,7 +127,7 @@ def test_defaults_replacement_pickle_and_at_error(native):
     import pandas as pd
     from lifelib.pandas_inputs import table
     record=Record({'age':3})
-    assert native.integer(h.lookup_int,record,'absent',7)==7
+    assert native.keyword_integer(h.lookup_int,record,'absent',7)==7
     source=Table((),(),('rate',))
     assert native.floating(h.lookup_float,source,0,'rate','2.5')==2.5
     seen=[]
@@ -161,11 +177,36 @@ def test_keyword_missing_replacement_keeps_insertion_order(native):
     assert seen == [(('value', None), ('predicate', pd.isna))]
 
 
+@pytest.mark.parametrize('suffix,entry', [('int','integer'), ('float','floating'),
+                                         ('bool','boolean'), ('str','text'), ('object','raw')])
+def test_record_column_is_not_a_default(native,suffix,entry):
+    record = Record({'value': 1.5})
+    function = getattr(h, 'lookup_' + suffix)
+    message = 'Record lookup does not accept a column; use default='
+    for key in ['value', 'absent']:
+        with pytest.raises(TypeError) as python_error:
+            function(record, key, column=7)
+        assert python_error.value.args == (message,)
+        with pytest.raises(TypeError) as native_error:
+            getattr(native, entry)(function, record, key, 7)
+        assert native_error.value.args == python_error.value.args
+
+
 def test_explicit_public_default_sentinel_retains_omission_semantics(native):
     record = Record({'value': 1.5})
     assert native.keyword_read(h.lookup_float, record, 'value', h._MISSING) == 1.5
     with pytest.raises(KeyError):
         native.keyword_read(h.lookup_float, record, 'absent', h._MISSING)
+
+
+@pytest.mark.parametrize('values', [[], [-0.0], [1e16, 1.0, -1e16],
+                                    [0.1, 0.2, -0.3], [float('inf'), 1.0],
+                                    [float('inf'), -float('inf')], [float('nan')]])
+def test_shared_float_state_reexport_preserves_float_start_sum(native,values):
+    import math
+    expected = sum(values, 0.0)
+    actual = native.shared_sum_state(values)
+    assert actual == expected or math.isnan(actual) and math.isnan(expected)
 
 
 @pytest.mark.parametrize('keys,query',[
@@ -203,7 +244,7 @@ def test_object_lookup_keeps_missing_identity(native):
         record=Record({'value':value})
         assert native.raw(h.lookup_object,record,'value') is value
         assert h.lookup_object(record,'value') is value
-    assert native.raw(h.lookup_object,Record({}),'absent',None) is None
+    assert native.keyword_object(h.lookup_object,Record({}),'absent',None) is None
 
 
 @pytest.mark.parametrize('dtype,value', [('int64', 42), ('float64', 0.25), ('bool', True)])

@@ -32,11 +32,12 @@ Ordinary function References can be used instead of module References.
 
 For a Table use `lookup_float(table, complete_key, column, default=...)`.
 For a Record use `lookup_float(record, field, default=...)`.
-Omit `default` when a missing key should raise. Use the keyword consistently;
-the existing third positional Record argument remains a compatibility spelling
-for its default. In that existing overload even `column=` on a Record denotes
-a default, not a column selection. Do not use that ambiguous spelling in new
-expressions. Table column selection keeps its ordinary declared `column` slot.
+Omit `default` when a missing key should raise. Use the keyword consistently.
+A Record has fields rather than columns: supplying its third positional
+argument or `column=` raises TypeError. Table column selection keeps its
+ordinary declared `column` slot, including existing positional calls. This
+retires an unused unqualified Record-default prototype spelling; all1,183
+regional policy reads already use two arguments and need no model edit.
 The optional default is converted by the same rule as a found value; it is used
 only for a missing key, not to mask conversion or column errors. Argument
 expressions evaluate once, from left to right, before lookup. A complete tuple
@@ -76,6 +77,11 @@ reads declared signatures and registered metadata, never callback bodies.
 The six helpers require the shared keyword/scalar ABI introduced by compiler
 `931faba`; that development bundle retains qualified architecture `299d8c1` as
 its base and still requires regional qualification.
+Provider replacement forwarding uses the single compiler-owned
+`_call_layout.pxd` header introduced at `3f99c12`; float-state C names reexport
+the shared `_float_sum_state.pxd`. These are header-only dependencies, with no
+runtime import of an unbuilt native table-provider binary. A Cython source build
+must be able to discover the compiler package's headers.
 
 Table reads compose with the generator lane's existing functions:
 

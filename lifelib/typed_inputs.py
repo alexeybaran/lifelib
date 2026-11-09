@@ -183,9 +183,7 @@ def _typed_value(source, key, column=_MISSING, default=_MISSING):
     from .immutable_inputs import Record
     if isinstance(source, Record):
         if column is not _MISSING:
-            if default is not _MISSING:
-                raise TypeError('Record lookup accepts one optional default')
-            default = column
+            raise TypeError('Record lookup does not accept a column; use default=')
         try:
             return source[key]
         except KeyError:

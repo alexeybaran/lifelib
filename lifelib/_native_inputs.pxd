@@ -1,4 +1,5 @@
-from libc.math cimport fabs, isfinite
+from libc.math cimport fabs
+from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
 
 cdef object lookup(object function, object table, object key, object column, object default=*)
 cdef object previous(object function, object table, object key, object column, object default=*)
@@ -24,28 +25,7 @@ cdef inline double f64_abs(double value) noexcept nogil:
 cdef object prepared_interpolation(object function, object table, object column, object years,
                                    object lookup_fn, object last_fn, object math_module)
 
-cdef struct F64Sum:
-    double total
-    double correction
 cdef bint f64_accepts(object function)
-cdef inline void f64_init(F64Sum* state) noexcept:
-    state.total = 0.0
-    state.correction = 0.0
-
-
-cdef inline void f64_add(F64Sum* state, double value) noexcept:
-    cdef double following = state.total + value
-    if fabs(state.total) >= fabs(value):
-        state.correction += (state.total - following) + value
-    else:
-        state.correction += (value - following) + state.total
-    state.total = following
-
-
-cdef inline double f64_result(F64Sum* state) noexcept:
-    if state.correction != 0.0 and isfinite(state.correction):
-        return state.total + state.correction
-    return state.total
 
 
 cdef class LookupContext:
