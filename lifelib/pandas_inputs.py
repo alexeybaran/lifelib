@@ -46,7 +46,7 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
 
     ``rows=True`` additionally owns pandas-style row scalar coercion for row()
     selection. Lookup-only tables omit this second matrix. Row coercion follows
-    the selected columns, and row snapshots currently require ungrouped tables.
+    the selected columns. Grouped report/row metadata retains remaining levels.
     ``report=True`` owns axes/dtypes/attrs for to_pandas() without row snapshots;
     rows=True includes report metadata. Plain lookup preparation owns neither.
 
@@ -61,8 +61,6 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
         raise ValueError('indexing must be loc or at')
     if indexing == 'at' and groups:
         raise ValueError('at preparation requires complete keys')
-    if (rows or report) and groups:
-        raise ValueError('row/report preparation requires ungrouped tables')
     index_error = _at_index_spec(frame.index, encoded_errors=indexing == 'at') if not groups else None
     selected = list(frame.columns) if columns is None else list(columns)
     if not selected or any(type(name) is not str for name in selected):
@@ -90,46 +88,53 @@ def table(frame, *, columns=None, groups=(), indexing='loc', rows=False, report=
                        for position in range(len(selected_frame)))
     else:
         source_rows = selected_frame.itertuples(index=False, name=None)
-    for label, row in zip(frame.index, source_rows):
+    for position, (label, row) in enumerate(zip(frame.index, source_rows)):
         parts = tuple(label) if isinstance(frame.index, pd.MultiIndex) else (label,)
         parts = tuple(_key(part) for part in parts)
         leaf_parts = tuple(parts[i] for i in remaining_positions)
         key = leaf_parts[0] if len(leaf_parts) == 1 else leaf_parts
         value = tuple(row) if preserve_scalar_types else tuple(_scalar(item) for item in row)
         if not groups:
-            root.append((key, value))
+            root.append((key, value, position))
             continue
         branch = root
-        for position in grouped_positions[:-1]:
-            branch = branch.setdefault(parts[position], OrderedDict())
-        branch.setdefault(parts[grouped_positions[-1]], []).append((key, value))
+        for group_position in grouped_positions[:-1]:
+            branch = branch.setdefault(parts[group_position], OrderedDict())
+        branch.setdefault(parts[grouped_positions[-1]], []).append((key, value, position))
 
     def build(branch, depth):
         if depth == len(groups):
-            return Table([key for key, _ in branch],
-                         [values for _, values in branch], selected, index_error,
-                         preserve_scalar_types=preserve_scalar_types)
+            leaf, leaf_spec = selected_frame, index_error
+            if groups and (rows or report):
+                leaf = selected_frame.iloc[[entry[2] for entry in branch]].copy(deep=False)
+                leaf.index = leaf.index.droplevel(grouped_positions)
+                leaf_spec = _at_index_spec(leaf.index, encoded_errors=False)
+            result = Table([entry[0] for entry in branch],
+                           [entry[1] for entry in branch], selected, leaf_spec,
+                           preserve_scalar_types=preserve_scalar_types)
+            if rows or report:
+                object.__setattr__(result, '_metadata', _report_metadata(
+                    leaf, rows=rows, preserve_scalar_types=preserve_scalar_types))
+            return result
         return Record({key: build(value, depth + 1) for key, value in branch.items()})
-    result = build(root, 0)
-    if not groups and (rows or report):
-        # Row selection has a different scalar-coercion contract from column
-        # lookup. Own it at preparation, rather than guessing a common dtype in
-        # the financial kernel. Public axes and attrs are independent copies.
-        row_values, row_dtypes, row_names = [], [], []
-        if rows:
-            for position in range(len(selected_frame)):
-                public_row = selected_frame.iloc[position]
-                row_values.append(tuple(public_row[name] if preserve_scalar_types
-                                        else freeze(public_row[name]) for name in selected))
-                row_dtypes.append(public_row.dtype)
-                row_names.append(public_row.name)
-        object.__setattr__(result, '_metadata', (
-            'frame', selected_frame.index.copy(deep=True),
-            selected_frame.columns.copy(deep=True), tuple(selected_frame.dtypes),
-            tuple(row_values) if rows else None, tuple(row_dtypes), deepcopy(selected_frame.attrs),
-            selected_frame.flags.allows_duplicate_labels, tuple(row_names),
-            (selected_frame.columns.dtype, selected_frame.columns.name)))
-    return result
+    return build(root, 0)
+
+
+def _report_metadata(frame, *, rows, preserve_scalar_types):
+    # Preserve row coercion separately from per-column scalar selection. This
+    # is preparation only; public calculation/selection stays outside output.
+    row_values, row_dtypes, row_names = [], [], []
+    if rows:
+        for position in range(len(frame)):
+            public_row = frame.iloc[position]
+            row_values.append(tuple(public_row[name] if preserve_scalar_types
+                                    else freeze(public_row[name]) for name in frame.columns))
+            row_dtypes.append(public_row.dtype)
+            row_names.append(public_row.name)
+    return ('frame', frame.index.copy(deep=True), frame.columns.copy(deep=True),
+            tuple(frame.dtypes), tuple(row_values) if rows else None,
+            tuple(row_dtypes), deepcopy(frame.attrs), frame.flags.allows_duplicate_labels,
+            tuple(row_names), (frame.columns.dtype, frame.columns.name))
 
 
 def records(frame):

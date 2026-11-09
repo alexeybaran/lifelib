@@ -1413,12 +1413,14 @@ cdef object row(object function, tuple keywords, object table, object key):
     return result
 
 
-cdef object column(object function, tuple keywords, object table, object name):
+cdef object column(object function, tuple keywords, object table, object name, object report=_missing):
     cdef Py_ssize_t position, i
     cdef tuple columns, values
     cdef list result
-    if function is not _column or type(table) is not Table:
-        return forward_call(function, keywords, ('table', 'name'), (table, name), omitted_argument)
+    cdef object metadata, carrier, items
+    if (function is not _column or type(table) is not Table
+            or not (report is _missing or report is True or report is False)):
+        return forward_call(function, keywords, ('table', 'name', 'report'), (table, name, report), omitted_argument)
     columns = table._columns
     try:
         position = columns.index(name)
@@ -1428,7 +1430,20 @@ cdef object column(object function, tuple keywords, object table, object name):
     result = [None] * len(values)
     for i in range(len(values)):
         result[i] = values[i][position]
-    return tuple(result)
+    if report is not True:
+        return tuple(result)
+    metadata = table._metadata
+    if metadata is None or metadata[0] != 'frame':
+        raise ValueError('column report requires table(..., report=True) metadata')
+    carrier = _record_alloc(<PyTypeObject*>Record, 0)
+    items = (('values', tuple(result)),)
+    PyObject_GenericSetAttr(carrier, '_items', items)
+    PyObject_GenericSetAttr(carrier, '_index', MappingProxyType(dict(items)))
+    PyObject_GenericSetAttr(carrier, '_native_groups', {})
+    PyObject_GenericSetAttr(carrier, '_preserve_scalar_types', getattr(table, '_preserve_scalar_types', False))
+    PyObject_GenericSetAttr(carrier, '_metadata', ('series', metadata[1], metadata[3][position],
+                                                 name, metadata[6], metadata[7]))
+    return carrier
 
 
 from lifelib.table_operations import group_sum as _group_sum

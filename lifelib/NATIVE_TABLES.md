@@ -275,3 +275,53 @@ constructor/lookup cases and4 normal combined integration probes also pass. The
 constructor tests caught and fixed one Python placement property and an integer-axis
 boolean-query guard. Their negative histories are retained. This does not establish
 annual source migration, full-model native coverage or performance acceptance.
+
+### Raw scalar preparation and public Series columns
+
+`inputs.table(frame, preserve_scalar_types=True)` retains the actual per-column
+pandas-selected scalar types and cell object references. `record(series,
+preserve_scalar_types=True)` uses the same rule. Conversion belongs to the
+selected typed lookup, so an unrelated opaque object does not fail preparation.
+Keys, dimensions and uniqueness are still validated. This owns a shallow
+container snapshot: replacing a source cell does not replace its stored value,
+but an interior mutation of a stored mutable object remains shared, as in pandas
+object cells. Existing modelx whole-value tracing and explicit exported/native
+cleanup rules apply. Raw storage policy survives pickle; native caches do not.
+Default constructors retain their previous normalization/freezing behavior.
+
+`table(..., groups=('sex',), report=True)` retains report metadata in existing leaf
+Tables after dropping the named group levels. `rows=True` additionally preserves
+row coercion and row names in each leaf. Group traversal stays explicit; nested
+lookups alone are not proof of pandas partial `.loc` exception semantics.
+
+```python
+# Input preparation Cell, dependent on the public source table.
+def prepared_mortality():
+    return inputs.table(mortality(), groups=('sex',), report=True,
+                        preserve_scalar_types=True)
+
+# A public mortality Series, with native selection before final pandas output.
+selected = tables.subtable(data.prepared_mortality(), sex())
+return expressions.to_pandas(
+    expressions.column(selected, 'mort_rate', report=True))
+```
+
+`column(table, name)` still returns its ordered value tuple. Keyword-only
+`report=True` returns an existing Record carrying positional values and the
+original index, column dtype/name, attrs and flags. This is an internal report
+carrier, not a general Series interface. It requires preserved report metadata
+and never infers missing schema. Scalar preservation follows preparation; column
+selection does not apply pandas row coercion. `to_pandas` only constructs the final
+Series. There is one canonical syntax; no `to_pandas(column=...)` alias.
+
+Native admitted column selection directly copies stored values and metadata
+without Python helper/pandas/owner methods. Focused combined provider checks pass67
+cases and a normal live/export/native Series integration probe passes. Fresh
+builds are required: table's appended optional preserve_scalar_types and column's
+appended optional report parameters extend the declared provider C ABI.
+
+Qualification limits remain explicit. The compiler can currently infer a Cell
+returning an object-declared scalar helper as double from its observed NumPy
+value, losing the NumPy scalar class at that Cell boundary. The failing normal
+CLI test is retained and reported to the compiler owner. These helper/kernel
+checks do not qualify such Cell compositions, all57 models or performance.
