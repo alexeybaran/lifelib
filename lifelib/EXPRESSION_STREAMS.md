@@ -140,3 +140,10 @@ syntax. Seventeen generation-scope power operators use standard builtin
 `pow(base, exponent)` to retain Python numeric/error behavior; the source/hash
 receipt is `GENERATOR_SOURCE_ADJUSTMENTS.json`. No multiline formatting
 workaround is needed with compiler c8b0371's CST pipeline.
+
+These limited adjusted-source power spellings require the standard builtin
+`pow` binding. No adjusted namespace currently defines a Cell/Reference named
+`pow`. Replacing or introducing that name can change a function call, while the
+original `**` operator ignores it; this is an explicit new authoring binding,
+not a universally equivalent rewrite under arbitrary global replacement. The
+original model checkout retains its original operators and is separate.
