@@ -1827,7 +1827,7 @@ def irr_ann():
     lo, hi = -0.99, 5.0
     for _ in range(200):
         mid = 0.5 * (lo + hi)
-        if sum(expressions.over(a * (1.0 + mid) ** m for (a, m) in flows)) - target > 0.0:
+        if sum((a * (1.0 + mid) ** m for (a, m) in flows)) - target > 0.0:
             hi = mid
         else:
             lo = mid
@@ -1883,7 +1883,7 @@ def check_net_cf():
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t))) for t in expressions.periods(proj_start(), proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_prem_split_resid(t):
@@ -1901,7 +1901,7 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
-    return all(expressions.over(abs(check_prem_split_resid(t))
+    return all((abs(check_prem_split_resid(t))
                <= val_tol * max(1.0, abs(premiums(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1921,7 +1921,7 @@ def check_units_roll_fwd_resid(t):
 
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
-    return all(expressions.over(abs(check_units_roll_fwd_resid(t))
+    return all((abs(check_units_roll_fwd_resid(t))
                <= val_tol * max(1.0, abs(units_pp(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1944,7 +1944,7 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
-    return all(expressions.over(abs(check_av_roll_fwd_resid(t))
+    return all((abs(check_av_roll_fwd_resid(t))
                <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR"))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1968,7 +1968,7 @@ def check_benefit_funding_resid(t):
 
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
-    return all(expressions.over(abs(check_benefit_funding_resid(t))
+    return all((abs(check_benefit_funding_resid(t))
                <= val_tol * max(1.0, abs(av_releases(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1988,7 +1988,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force count rolls forward exactly in every projected month."""
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t))
+    return all((abs(check_pols_roll_fwd_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -2025,7 +2025,7 @@ def check_acq_charge_resid(t):
 
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
-    return all(expressions.over(abs(check_acq_charge_resid(t))
+    return all((abs(check_acq_charge_resid(t))
                <= val_tol * max(1.0, charge_acq_total()) for t in expressions.periods(proj_start(), proj_len())))
 
 

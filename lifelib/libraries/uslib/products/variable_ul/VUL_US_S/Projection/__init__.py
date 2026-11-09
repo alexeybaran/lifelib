@@ -423,7 +423,7 @@ def av_pp_init():
     ``sum(SA_i(0)) + FA(0) + LA(0)`` -- the loan account is part of the account value
     [S1][S2][S3][S4], the debt is not.
     """
-    return (sum(expressions.over(sa_pp_init(i) for i in subaccount_ids()))
+    return (sum((sa_pp_init(i) for i in subaccount_ids()))
             + fa_pp_init() + loan_bal_init())
 
 
@@ -729,7 +729,7 @@ def fa_pricing_pp(m):
 
 def av_pricing_pp_at(m, timing):
     """Pricing-path total account value at an intra-month point of policy month m."""
-    return (sum(expressions.over(sa_pricing_pp_at(m, i, timing) for i in subaccount_ids()))
+    return (sum((sa_pricing_pp_at(m, i, timing) for i in subaccount_ids()))
             + fa_pricing_pp_at(m, timing))
 
 
@@ -743,7 +743,7 @@ def av_pricing_pp(m):
     ``av_pricing_pp_at(0, "BEF_PREM") == 0``.  ``m`` counts policy months from issue,
     0-based, so this is the notes' ``AV*_{m+1}``.
     """
-    return (sum(expressions.over(sa_pricing_pp(m, i) for i in subaccount_ids())) + fa_pricing_pp(m))
+    return (sum((sa_pricing_pp(m, i) for i in subaccount_ids())) + fa_pricing_pp(m))
 
 
 def db_pricing_pp(m):
@@ -968,7 +968,7 @@ def unloaned_av_pp_at(t, timing):
     **[std]** -- the loan account is collateral for the debt and is not drawn on.
     ``timing`` takes the :func:`sa_pp_at` values.
     """
-    return (sum(expressions.over(sa_pp_at(t, i, timing) for i in subaccount_ids()))
+    return (sum((sa_pp_at(t, i, timing) for i in subaccount_ids()))
             + fa_pp_at(t, timing))
 
 
@@ -1424,7 +1424,7 @@ def av_pp(t):
     av_pp_init()`` is ``av_pp_at(0, "BEF_PREM")``, and each component starts at its
     own opening balance.
     """
-    return (sum(expressions.over(sa_pp(t, i) for i in subaccount_ids()))
+    return (sum((sa_pp(t, i) for i in subaccount_ids()))
             + fa_pp(t) + la_pp(t))
 
 
@@ -1462,7 +1462,7 @@ def me_charge_pp(t, i=None):
     after attained age 121, when the monthly deduction stops [S1][S2][S4].
     """
     if i is None:
-        return sum(expressions.over(me_charge_pp(t, j) for j in subaccount_ids()))
+        return sum((me_charge_pp(t, j) for j in subaccount_ids()))
     return sa_pp_at(t, i, "BEF_ME") * me_rate_ann / 12               # noqa: F821
 
 
@@ -1479,7 +1479,7 @@ def inv_income_pp(t):
     insurer's M&E revenue is *not* in it: :func:`me_charge_pp` reports that separately
     and :func:`check_net_view` puts the two back together.
     """
-    return (sum(expressions.over(sa_pp(t, i) - sa_pp_at(t, i, "BEF_INV") for i in subaccount_ids()))
+    return (sum((sa_pp(t, i) - sa_pp_at(t, i, "BEF_INV") for i in subaccount_ids()))
             + fa_pp(t) - fa_pp_at(t, "BEF_INV")
             + la_pp(t) - la_pp_at(t, "BEF_PREM"))
 
@@ -1889,7 +1889,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE")))
+        return sum((claims(t, k) for k in ("DEATH", "LAPSE")))
     else:
         raise ValueError("invalid kind")
 
@@ -1936,7 +1936,7 @@ def sa_transfer(t):
     fixed option and the loan account release internally and are not part of this.  A
     memo column for reconciliation, not a liability cash flow.
     """
-    return (sum(expressions.over(sa_pp(t, i) for i in subaccount_ids()))
+    return (sum((sa_pp(t, i) for i in subaccount_ids()))
             * (pols_death(t) + pols_lapse(t)))
 
 

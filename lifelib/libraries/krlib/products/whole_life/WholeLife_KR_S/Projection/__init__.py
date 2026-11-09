@@ -1602,7 +1602,7 @@ def claims(t, kind=None):
     given long enough, the sum assured, and none of them may produce a negative payment.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE", "REDUCTION")))
+        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "REDUCTION")))
     if kind == "DEATH":
         return max(0.0, sum_assured_at(t) - loan_pp(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1718,7 +1718,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the period that failed.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_decrement_sum_resid(t):
@@ -1729,14 +1729,14 @@ def check_decrement_sum_resid(t):
     because the table terminates, every policy leaves by one of them, ``l(T) = 0``, and
     there is no residual population and no tail state anywhere in this model.
     """
-    exits = sum(expressions.over(pols_death(u) + pols_lapse(u) for u in expressions.periods(t + 1)))
-    back = sum(expressions.over(pols_reinstate(u) for u in expressions.periods(1, t + 2)))
+    exits = sum((pols_death(u) + pols_lapse(u) for u in expressions.periods(t + 1)))
+    back = sum((pols_reinstate(u) for u in expressions.periods(1, t + 2)))
     return pols_if(0) + back - exits - pols_if(t + 1)
 
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every period."""
-    return all(expressions.over(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pol_val_roll_fwd_resid(t):
@@ -1757,7 +1757,7 @@ def check_pol_val_roll_fwd_resid(t):
 def check_pol_val_roll_fwd():
     """True when the account rolls forward on its own basis in every period but the last."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(expressions.over(abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
+    return all((abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
 
 
 def check_pol_val_prosp_resid(d):
@@ -1796,7 +1796,7 @@ def check_pol_val_prosp():
     it was on the annual grid at every duration that is not the last year of a life table.
     """
     tol = 12.0 * val_tol * max(sum_assured(), 1.0)                   # noqa: F821
-    return all(expressions.over(abs(check_pol_val_prosp_resid(d)) <= tol for d in expressions.periods(1, proj_len())))
+    return all((abs(check_pol_val_prosp_resid(d)) <= tol for d in expressions.periods(1, proj_len())))
 
 
 def check_surr_chg_cap_resid(d):
@@ -1820,7 +1820,7 @@ def check_surr_chg_cap():
     included.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(expressions.over(abs(check_surr_chg_cap_resid(d)) <= tol for d in expressions.periods(proj_len() + 1)))
+    return all((abs(check_surr_chg_cap_resid(d)) <= tol for d in expressions.periods(proj_len() + 1)))
 
 
 def check_cv_cliff_resid(d):
@@ -1853,8 +1853,8 @@ def check_cv_cliff():
     stand and neither is asserted here as a ratio.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    ok = all(expressions.over(abs(check_cv_cliff_resid(d)) <= tol for d in expressions.periods(proj_len() + 1)))
-    ok = ok and all(expressions.over(cv_pp(d) - bonus_pp(d) <= cv_std_pp(d) + tol for d in expressions.periods(proj_len() + 1)))
+    ok = all((abs(check_cv_cliff_resid(d)) <= tol for d in expressions.periods(proj_len() + 1)))
+    ok = ok and all((cv_pp(d) - bonus_pp(d) <= cv_std_pp(d) + tol for d in expressions.periods(proj_len() + 1)))
     if prem_term() > 0:
         m = prem_period_mths()
         ok = ok and abs(cv_pp(m) - bonus_pp(m) - cv_std_pp(m)) <= tol
@@ -1877,7 +1877,7 @@ def check_loan_roll_fwd_resid(t):
 def check_loan_roll_fwd():
     """True when the loan balance accumulates at the 보험계약대출이율 in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(expressions.over(abs(check_loan_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
+    return all((abs(check_loan_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
 
 
 def check_acq_cost_cap_resid(t):
@@ -1899,7 +1899,7 @@ def check_acq_cost_cap_resid(t):
 def check_acq_cost_cap():
     """True when the acquisition cost and the first-year commission are inside their caps."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(expressions.over(abs(check_acq_cost_cap_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_acq_cost_cap_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1918,7 +1918,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every period."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

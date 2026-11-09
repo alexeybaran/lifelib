@@ -554,7 +554,7 @@ def decl_rate():
     rows = expressions.lookup_object(tbl, crediting_basis(), default=None)
     if rows is None:
         raise ValueError("no crediting basis %s" % crediting_basis())
-    values = set(expressions.over(round(float(v), 12) for v in expressions.column(rows, "decl_rate")))
+    values = set((round(float(v), 12) for v in expressions.column(rows, "decl_rate")))
     if len(values) != 1:
         raise ValueError("declared rate is not uniform within a basis")
     return expressions.lookup_float(rows, expressions.keys(rows)[0], "decl_rate")
@@ -735,7 +735,7 @@ def annuity_factor():
         raise ValueError("only 종신연금형 converts the fund through an annuity factor")
     j = crediting_rate_mth(0)
     v = 1.0 / (1.0 + j)
-    return sum(expressions.over(v ** (t + 1) * pricing_factor(t) for t in expressions.periods(proj_len())))
+    return sum((v ** (t + 1) * pricing_factor(t) for t in expressions.periods(proj_len())))
 
 
 def retention_pp(t):
@@ -1204,7 +1204,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """Whether the cash flow statement reconciles to ``net_cf`` at every projected period."""
     tol = val_tol * prem_pp()                                        # noqa: F821
-    return bool(all(expressions.over(abs(check_net_cf_resid(t)) < tol for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_net_cf_resid(t)) < tol for t in expressions.periods(proj_len()))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1221,7 +1221,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """Whether the payment obligation rolls forward on its own decrements at every t."""
-    return bool(all(expressions.over(abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1240,7 +1240,7 @@ def check_lives_roll_fwd_resid(t):
 
 def check_lives_roll_fwd():
     """Whether the annuitant's survival curve closes against a direct product at every t."""
-    return bool(all(expressions.over(abs(check_lives_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len() + 1))))
+    return bool(all((abs(check_lives_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len() + 1))))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1282,7 +1282,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """Whether the 계약자적립액 recursion closes against its closed form at every t."""
     tol = val_tol * prem_pp()                                        # noqa: F821
-    return bool(all(expressions.over(abs(check_av_roll_fwd_resid(t)) < tol for t in expressions.periods(proj_len() + 1))))
+    return bool(all((abs(check_av_roll_fwd_resid(t)) < tol for t in expressions.periods(proj_len() + 1))))
 
 
 def check_av_terminal():
@@ -1322,7 +1322,7 @@ def check_annuity_basis_resid():
     excess is precisely the shortfall the determination left the insurer to fund, which is
     why that term appears on the right-hand side rather than being tolerated away.
     """
-    built = sum(expressions.over(annuity_pp(t) * pricing_factor(t) * disc_factor(t + 1) for t in expressions.periods(proj_len())))
+    built = sum((annuity_pp(t) * pricing_factor(t) * disc_factor(t + 1) for t in expressions.periods(proj_len())))
     if shape() == "inheritance":
         built += maturity_benefit() * disc_factor(annuity_term_mths())
     return built - av_pp_init() - retention_shortfall_pp()
@@ -1366,7 +1366,7 @@ def check_rate_level():
     if shape() != "life":
         return True
     i0 = crediting_rate(0)
-    return bool(all(expressions.over(abs(crediting_rate(t) - i0) < 1e-15 for t in expressions.periods(proj_len()))))
+    return bool(all((abs(crediting_rate(t) - i0) < 1e-15 for t in expressions.periods(proj_len()))))
 
 
 def check_guarantee_certain():
@@ -1384,7 +1384,7 @@ def check_guarantee_certain():
     """
     if shape() != "life":
         return True
-    return bool(all(expressions.over(abs(payment_factor(t) - pols_if_init()) < roll_fwd_tol for t in expressions.periods(0, annuity_term_mths()))))
+    return bool(all((abs(payment_factor(t) - pols_if_init()) < roll_fwd_tol for t in expressions.periods(0, annuity_term_mths()))))
 
 
 def check_payment_factor_resid(t):
@@ -1409,7 +1409,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the payment weight matches its second construction at every period."""
-    return bool(all(expressions.over(abs(check_payment_factor_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_payment_factor_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
 
 
 def check_surr_value():
@@ -1426,8 +1426,8 @@ def check_surr_value():
     """
     tol = val_tol * prem_pp()                                        # noqa: F821
     if shape() == "life":
-        return bool(all(expressions.over(lapse_rate(t) == 0.0 and cv_pp(t) == 0.0 for t in expressions.periods(proj_len()))))
-    return bool(all(expressions.over(abs(cv_pp(t) - max(av_pp(t), 0.0)) < tol for t in expressions.periods(proj_len() + 1))))
+        return bool(all((lapse_rate(t) == 0.0 and cv_pp(t) == 0.0 for t in expressions.periods(proj_len()))))
+    return bool(all((abs(cv_pp(t) - max(av_pp(t), 0.0)) < tol for t in expressions.periods(proj_len() + 1))))
 
 
 def result_cf():

@@ -859,7 +859,7 @@ def annuities_ended(t):
     """
     n, g = term_m(), guar_m()
     if t == n:
-        return sum(expressions.over(annuities_open(s) for s in expressions.periods(0, n - g + 1)))
+        return sum((annuities_open(s) for s in expressions.periods(0, n - g + 1)))
     if t > n:
         return annuities_open(t - g)
     return 0.0
@@ -972,7 +972,7 @@ def claims(t, kind=None):
         the kind exists so the zero is stated rather than left to inference.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
+        return sum((claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
     if kind == "ANNUITY":
         return annuity_mth() * annuities_if(t)
     if kind == "COMMUTATION":
@@ -1097,7 +1097,7 @@ def check_pols_roll_fwd():
     one test can call the same check across every model.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
 
 
 def check_annuity_ledger_resid(t):
@@ -1123,7 +1123,7 @@ def check_annuity_ledger():
     No argument, one bool over all t; :func:`check_annuity_ledger_resid` gives the
     signed residual of the month that failed.
     """
-    return all(expressions.over(abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_annuity_total_resid(t):
@@ -1144,7 +1144,7 @@ def check_annuity_total_resid(t):
 
 def check_annuity_total():
     """True when the instalments due to date reconcile in every projected month."""
-    return all(expressions.over(abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pay_count_resid(t):
@@ -1160,7 +1160,7 @@ def check_pay_count_resid(t):
 
 def check_pay_count():
     """True when the instalment count and the stream end date agree in every month."""
-    return all(expressions.over(abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return all((abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
 
 
 def check_expired_cover_resid(t):
@@ -1179,7 +1179,7 @@ def check_expired_cover_resid(t):
 
 def check_expired_cover():
     """True when nothing is charged to the in-force population past the policy term."""
-    return all(expressions.over(abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m(), proj_len())))
+    return all((abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m(), proj_len())))
 
 
 def check_class_factor_norm_resid(t):
@@ -1230,7 +1230,7 @@ def check_net_cf():
     bool over all t, with the signed residual of the month that failed at
     :func:`check_net_cf_resid`.
     """
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

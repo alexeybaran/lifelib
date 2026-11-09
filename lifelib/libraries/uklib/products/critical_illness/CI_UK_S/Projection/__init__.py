@@ -460,14 +460,14 @@ def pivot_interp(x, sex_, smoker_, column):
     policy issued young or running long leaves the tabulated region.
     """
     sub = data.prepared_ci_rate_table_generators(sex_, smoker_)                  # noqa: F821
-    ages = sorted(expressions.over(int(a) for a in expressions.keys(sub)))
+    ages = sorted((int(a) for a in expressions.keys(sub)))
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = max(expressions.over(a for a in ages if a <= x))
-        hi = min(expressions.over(a for a in ages if a > x))
+        lo = max((a for a in ages if a <= x))
+        hi = min((a for a in ages if a > x))
     r_lo = expressions.lookup_float(sub, lo, column)
     r_hi = expressions.lookup_float(sub, hi, column)
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
@@ -877,7 +877,7 @@ def claims(t, kind=None):
         the kind exists so that the zero is stated rather than inferred.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE")))
+        return sum((claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE")))
     if kind == "MAIN":
         return benefit_pp(t, "MAIN") * claim_rate_paid_mth(t) * pols_if(t)
     if kind == "AP":
@@ -958,7 +958,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
 def check_claim_split_resid(t):
@@ -987,7 +987,7 @@ def check_claim_split():
     tolerance is a Reference rather than a machine epsilon, and moving that Reference is
     how a user states how much of the artefact they will accept.
     """
-    return all(expressions.over(abs(check_claim_split_resid(t)) <= claim_split_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_claim_split_resid(t)) <= claim_split_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

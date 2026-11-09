@@ -664,7 +664,7 @@ def mort_table_mean(x, m):
     quantity, and feeding the best-estimate factor in would move a published rate card by
     an assumption that has nothing to do with pricing.
     """
-    return sum(expressions.over(mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
+    return sum((mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
 
 
 def mort_rate_base(t):
@@ -1072,7 +1072,7 @@ def pols_lapse_pool(t):
     41, and no blanket balance indexed by projection year can say that.
     """
     rho = reinstate_rate_mth()
-    return sum(expressions.over(pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window_m()), t)))
+    return sum((pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window_m()), t)))
 
 
 def reinstate_rate_mth():
@@ -1311,7 +1311,7 @@ def claims(t, kind=None):
         is a fact about the composite and not about the product class.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LIVING_NEEDS", "LAPSE")))
+        return sum((claims(t, k) for k in ("DEATH", "LIVING_NEEDS", "LAPSE")))
     if kind == "DEATH":
         return sum_assured() * (1.0 - ln_share(t)) * pols_death(t)
     if kind == "LIVING_NEEDS":
@@ -1456,7 +1456,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_lapse_pool_resid(t):
@@ -1475,7 +1475,7 @@ def check_lapse_pool_resid(t):
 
 def check_lapse_pool():
     """True when the 復活 pool ledger closes in every projected policy month."""
-    return all(expressions.over(abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pols_payer_resid(t):
@@ -1490,7 +1490,7 @@ def check_pols_payer_resid(t):
 
 def check_pols_payer():
     """True when payers and waived lives partition the in-force in every projected month."""
-    return all(expressions.over(abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_prem_level_resid(t):
@@ -1517,7 +1517,7 @@ def check_prem_level():
     months by design, and a level-premium check over that series would be asserting the
     payment mode rather than the repricing rule.
     """
-    return all(expressions.over(abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1547,7 +1547,7 @@ def check_net_cf():
     ``cash_tol = 1e-8`` is well above that noise and far below one yen, which is the
     smallest error a reader adding up the printed statement could observe.
     """
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

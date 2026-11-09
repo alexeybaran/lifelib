@@ -1364,7 +1364,7 @@ def expenses(t):
 def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted."""
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
+        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
     elif kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     elif kind == "LAPSE":
@@ -1530,7 +1530,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed. The tolerance scales with pols_if_init(),
     since the residual is an accumulation of rounding on that many policies.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_pua_roll_fwd_resid(t):
@@ -1553,7 +1553,7 @@ def check_pua_roll_fwd():
     check_pua_roll_fwd_resid(t) gives the signed residual. The tolerance is relative to
     the block itself, which reaches six figures of face on a compounding projection.
     """
-    return all(expressions.over(abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return all((abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def prepared_model_point():

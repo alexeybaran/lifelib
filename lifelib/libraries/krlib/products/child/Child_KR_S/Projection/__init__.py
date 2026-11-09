@@ -1250,7 +1250,7 @@ def benefit_cost_pp(t):
     the quantity :func:`risk_prem_ann_pp` accumulates over the first policy year to form the
     notional 보험가입금액 of 감독규정 [별표 15] 제9호 [REG-R21].
     """
-    return sum(expressions.over(benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return sum((benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "NEONATAL")))
 
 
@@ -1419,7 +1419,7 @@ def risk_prem_ann_pp():
     carries the 태아 module, which is most of it: the module's whole cost falls inside the
     first thirteen months of a hundred-year contract.
     """
-    return sum(expressions.over(benefit_cost_pp(t) for t in expressions.periods(0, min(12, proj_len() - 1))))
+    return sum((benefit_cost_pp(t) for t in expressions.periods(0, min(12, proj_len() - 1))))
 
 
 def sa_notional_pp():
@@ -1673,7 +1673,7 @@ def claims(t, kind=None):
         adjustment rather than in the lapse column.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+        return sum((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                     "LIABILITY", "NEONATAL", "DEATH", "LAPSE", "MATURITY",
                     "VOID")))
     if kind == "DEATH":
@@ -1809,7 +1809,7 @@ def epv_outgo_pp():
 
     Benefits, claim handling expense, acquisition and maintenance expense and commission.
     """
-    return sum(expressions.over(pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
+    return sum((pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
                                + commissions(t)) for t in expressions.periods(0, proj_len())))
 
 
@@ -1821,7 +1821,7 @@ def epv_prem_unit_pp():
     annuity the equivalence premium is divided by, and on a 20년납 hundred-year contract it
     is where the waiver and the lapse assumption do all their work.
     """
-    return sum(expressions.over(pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in expressions.periods(0, prem_period_mths())))
+    return sum((pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in expressions.periods(0, prem_period_mths())))
 
 
 def equiv_premium_mth_pp():
@@ -1866,7 +1866,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_waiver_split_resid(t):
@@ -1881,7 +1881,7 @@ def check_waiver_split_resid(t):
 
 def check_waiver_split():
     """True when the paying and waived compartments sum to the in-force block, every month."""
-    return all(expressions.over(abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_exit_total_resid():
@@ -1892,7 +1892,7 @@ def check_exit_total_resid():
     global companion to the per-month roll-forward, and it is what catches a decrement that
     closes locally at every t and still loses mass at the ends.
     """
-    total = sum(expressions.over(pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in expressions.periods(0, proj_len())))
+    total = sum((pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in expressions.periods(0, proj_len())))
     return total - pols_if_init()
 
 
@@ -1914,7 +1914,7 @@ def check_cover_at_birth_resid(t):
     """
     if born(t):
         return 0.0
-    return sum(expressions.over(claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return sum((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "DEATH")))
 
 
@@ -1925,7 +1925,7 @@ def check_cover_at_birth():
     vacuous on a non-foetal model point, where ``birth_month()`` is zero, and that is the
     right behaviour: the same formula covers both.
     """
-    return all(expressions.over(abs(check_cover_at_birth_resid(t)) <= val_tol for t in expressions.periods(0, birth_month() + 1)))
+    return all((abs(check_cover_at_birth_resid(t)) <= val_tol for t in expressions.periods(0, birth_month() + 1)))
 
 
 def check_once_only_resid(t):
@@ -1946,7 +1946,7 @@ def check_once_only_resid(t):
 
 def check_once_only():
     """True when every 최초 1회한 ledger is a valid, non-increasing probability."""
-    return all(expressions.over(check_once_only_resid(t) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return all((check_once_only_resid(t) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_neonatal_term_resid(t):
@@ -1963,7 +1963,7 @@ def check_neonatal_term_resid(t):
 
 def check_neonatal_term():
     """True when the 태아 module pays inside its own terms and nowhere else."""
-    return all(expressions.over(abs(check_neonatal_term_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_neonatal_term_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_cv_floor_resid(t):
@@ -1989,7 +1989,7 @@ def check_cv_floor_resid(t):
 
 def check_cv_floor():
     """True when the surrender value obeys its form's floor in every projected month."""
-    return all(expressions.over(check_cv_floor_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return all((check_cv_floor_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_av_bounds_resid(t):
@@ -2010,7 +2010,7 @@ def check_av_bounds_resid(t):
 
 def check_av_bounds():
     """True when the 계약자적립액 stays inside the bounds its own derivation allows."""
-    return all(expressions.over(check_av_bounds_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return all((check_av_bounds_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_surr_chg_cap_resid(t):
@@ -2027,7 +2027,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge stays inside the 표준해약공제액 at every duration."""
-    return all(expressions.over(check_surr_chg_cap_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return all((check_surr_chg_cap_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_acq_cost_cap_resid():
@@ -2066,7 +2066,7 @@ def check_refund_grid_resid(t):
 
 def check_refund_grid():
     """True when the 환급률 progression reproduces every published node it reaches."""
-    return all(expressions.over(abs(check_refund_grid_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_refund_grid_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_equiv_premium_resid():
@@ -2107,7 +2107,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured("disability"), 1.0)              # noqa: F821
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(0, proj_len())))
 
 
 # --- results ---

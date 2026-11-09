@@ -692,7 +692,7 @@ def beitragssumme_pp():
     """
     mp = model_point()
     last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
-    return sum(expressions.over(prem_pp_sched(u) for u in expressions.periods(last)))
+    return sum((prem_pp_sched(u) for u in expressions.periods(last)))
 
 
 def alpha_total_pp():
@@ -1838,7 +1838,7 @@ def claims(t, kind=None):
     weighting rule and is published as :func:`annuity_payments`.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION")))
+        return sum((claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION")))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -2023,14 +2023,14 @@ def check_decrement_closure_resid(t):
     ``omega_age() - 1``.  A projection truncated before then would fail here rather than
     silently drop the annuity tail.
     """
-    exits = sum(expressions.over(pols_death(s) + pols_lapse(s) + pols_commutation(s) for s in expressions.periods(t_start(), t + 1)))
+    exits = sum((pols_death(s) + pols_lapse(s) + pols_commutation(s) for s in expressions.periods(t_start(), t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
 def check_decrement_closure():
     """True when exits and survivors account for the whole cohort at every projected t."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_decrement_closure_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
+    return all((abs(check_decrement_closure_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 def check_av_roll_fwd_resid(k):
@@ -2185,7 +2185,7 @@ def check_annuity_guarantee_resid(t):
 def check_annuity_guarantee():
     """True when the annuity is weighted by the annuitised count inside the guarantee period."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_annuity_guarantee_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
+    return all((abs(check_annuity_guarantee_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 # ----------------------------------------

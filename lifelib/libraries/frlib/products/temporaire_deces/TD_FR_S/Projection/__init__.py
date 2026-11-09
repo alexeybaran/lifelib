@@ -853,7 +853,7 @@ def tariff_annuity():
     not.  Summed over ``range(proj_len_y())``: the equivalence is annual, so it is struck
     over policy years and is unchanged by the monthly grid.
     """
-    return sum(expressions.over(disc_factor(y) * pols_tariff(y) for y in expressions.periods(proj_len_y())))
+    return sum((disc_factor(y) * pols_tariff(y) for y in expressions.periods(proj_len_y())))
 
 
 def tariff_prem_pv():
@@ -864,7 +864,7 @@ def tariff_prem_pv():
     fixed *frais d'échéance* is deliberately outside it: the fee is the same amount under
     either premium form, so it neither belongs in the equivalence nor changes it.
     """
-    return sum(expressions.over(disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in expressions.periods(proj_len_y())))
+    return sum((disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in expressions.periods(proj_len_y())))
 
 
 def prem_level_pp():
@@ -1401,7 +1401,7 @@ def claims(t, kind=None):
         :func:`check_no_cash_value`.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
+        return sum((claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * (
             suicide_factor(t) * benefit_death_pp(t) + accident_extra_pp(t))
@@ -1558,7 +1558,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t))
+    return all((abs(check_pols_roll_fwd_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1580,7 +1580,7 @@ def check_decrement_closure_resid(t):
     reappears in force** — the arithmetic form of paying the capital twice, which is this
     product's first-order failure mode and which the cash flows alone would not reveal.
     """
-    exits = sum(expressions.over(pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in expressions.periods(t + 1)))
+    exits = sum((pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in expressions.periods(t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
@@ -1591,7 +1591,7 @@ def check_decrement_closure():
     :func:`check_decrement_closure_resid` gives the signed residual of the month that
     failed.
     """
-    return all(expressions.over(abs(check_decrement_closure_resid(t))
+    return all((abs(check_decrement_closure_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1623,7 +1623,7 @@ def check_ptia_gate():
     No argument, one bool over all t;  :func:`check_ptia_gate_resid` gives the signed
     residual of the month that failed.
     """
-    return all(expressions.over(abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_no_cash_value_resid(t):
@@ -1646,7 +1646,7 @@ def check_no_cash_value():
     No argument, one bool over all t;  :func:`check_no_cash_value_resid` gives the signed
     residual of the month that failed.
     """
-    return all(expressions.over(abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

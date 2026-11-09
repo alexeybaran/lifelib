@@ -1376,7 +1376,7 @@ def claims(t, kind=None):
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in (
+        return sum((claims(t, k) for k in (
             "DIAG", "INSITU", "HOSP", "SURGERY", "TREAT", "OUTPATIENT",
             "ADVANCED", "DISCHARGE", "LAPSE")))
     if kind == "DIAG":
@@ -1519,7 +1519,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1537,7 +1537,7 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(expressions.over(abs(check_cancer_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_cancer_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cycle_ledger_resid(t):
@@ -1560,7 +1560,7 @@ def check_cycle_ledger_resid(t):
 def check_cycle_ledger():
     """True when the two-year cycle ledger closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all(expressions.over(abs(check_cycle_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_cycle_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_insitu_ledger_resid(t):
@@ -1584,7 +1584,7 @@ def check_insitu_ledger():
     — keeps running against nobody.  Those months carry no information and are excluded
     rather than papered over.
     """
-    return all(expressions.over(abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len()) if pols_healthy(t) > 0.0))
+    return all((abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len()) if pols_healthy(t) > 0.0))
 
 
 def check_treat_cap_resid(t):
@@ -1602,7 +1602,7 @@ def check_treat_cap_resid(t):
 
 def check_treat_cap():
     """True when the treatment-month ledger stays inside its cap in every month."""
-    return all(expressions.over(abs(check_treat_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return all((abs(check_treat_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_adv_cap_resid(t):
@@ -1618,7 +1618,7 @@ def check_adv_cap_resid(t):
 
 def check_adv_cap():
     """True when the 先進医療 ledger stays inside its cap in every month."""
-    return all(expressions.over(abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
+    return all((abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t) -> object:
@@ -1636,7 +1636,7 @@ def check_net_cf_resid(t) -> object:
     table and not to :func:`net_cf` is caught by the same sweep.
     """
     row = expressions.row(prepared_result_cf_rows(), t)
-    outgo = sum(expressions.over(expressions.lookup_object(row, c) for c in expressions.keys(row) if str(c).startswith("claims_")))
+    outgo = sum((expressions.lookup_object(row, c) for c in expressions.keys(row) if str(c).startswith("claims_")))
     return (expressions.lookup_object(row, "premiums") - outgo - expressions.lookup_object(row, "expenses") - expressions.lookup_object(row, "claim_expenses")
             - expressions.lookup_object(row, "commissions") - expressions.lookup_object(row, "net_cf"))
 
@@ -1644,7 +1644,7 @@ def check_net_cf_resid(t) -> object:
 def check_net_cf():
     """True when the published cash-flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(premium_mth_pp(), 1.0)                      # noqa: F821
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 # ===== Cells: result tables =====

@@ -1579,10 +1579,10 @@ def check_pols_roll_fwd():
     tol = roll_fwd_tol * max(pols_if_init, 1.0)                      # noqa: F821
     if abs(pols_if(proj_len())) > tol:
         return False
-    total = sum(expressions.over(pols_death(t) + pols_lapse(t) + pols_target(t) for t in expressions.periods(proj_len())))
+    total = sum((pols_death(t) + pols_lapse(t) + pols_target(t) for t in expressions.periods(proj_len())))
     if abs(total - pols_if_init) > tol:                              # noqa: F821
         return False
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1604,7 +1604,7 @@ def check_av_roll_fwd():
     of the month that failed.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all(expressions.over(abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cv_ledger_resid(t):
@@ -1635,7 +1635,7 @@ def check_cv_ledger():
     rebuild is independent of the cells that produce the claim.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all(expressions.over(abs(check_cv_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_cv_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1656,7 +1656,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published columns add to :func:`net_cf` in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_fx_ledger_resid(t):
@@ -1673,7 +1673,7 @@ def check_fx_ledger_resid(t):
 def check_fx_ledger():
     """True when the three-rate yen translation closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured() * fx_rate(0))        # noqa: F821
-    return all(expressions.over(abs(check_fx_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return all((abs(check_fx_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

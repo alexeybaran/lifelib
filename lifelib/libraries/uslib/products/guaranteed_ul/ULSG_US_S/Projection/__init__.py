@@ -1804,7 +1804,7 @@ def claims(t, kind=None):
     elif kind == "GRACE":
         return 0.0
     elif kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE", "REFUND", "GRACE")))
+        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "REFUND", "GRACE")))
     else:
         raise ValueError("invalid kind")
 
@@ -1966,7 +1966,7 @@ def guar_min_sg(prem):
     bisection safe.  Evaluated over ``t = 0 .. solve_len() - 1`` in increasing ``t``
     so the shadow recursion never recurses deeply.
     """
-    return min(expressions.over(sg_pp_solve(t, prem) - loan_bal_pp(t) for t in expressions.periods(solve_len())))
+    return min((sg_pp_solve(t, prem) - loan_bal_pp(t) for t in expressions.periods(solve_len())))
 
 
 def no_lapse_premium():

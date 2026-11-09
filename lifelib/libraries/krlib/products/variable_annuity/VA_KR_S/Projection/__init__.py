@@ -452,7 +452,7 @@ def yrs_completed(t):
 
 def fund_ids():
     """The 특별계정 fund identifiers of this contract's allocation set, in order."""
-    return tuple(expressions.over(int(i) for i in expressions.keys(expressions.lookup_object(data.prepared_fund_table_generators(), fund_set()))))            # noqa: F821
+    return tuple((int(i) for i in expressions.keys(expressions.lookup_object(data.prepared_fund_table_generators(), fund_set()))))            # noqa: F821
 
 
 def fund_alloc(j):
@@ -841,7 +841,7 @@ def fund_pp_at(t, j, timing):
         return fund_pp_at(t, j, "BEF_DEDUCT") - out * share
     if timing == "AFT_DERISK":
         total = av_pp_at(t, "AFT_DEDUCT")
-        bond = sum(expressions.over(fund_pp_at(t, k, "AFT_DEDUCT") for k in fund_ids() if fund_is_bond(k)))
+        bond = sum((fund_pp_at(t, k, "AFT_DEDUCT") for k in fund_ids() if fund_is_bond(k)))
         target = derisk_bond_target * total                          # noqa: F821
         if derisk_amount_pp(t) <= 0.0:
             return fund_pp_at(t, j, "AFT_DEDUCT")
@@ -872,7 +872,7 @@ def derisk_amount_pp(t):
     if not (0 < t_ann() - t <= 12 * derisk_lead_years):              # noqa: F821
         return 0.0
     total = av_pp_at(t, "AFT_DEDUCT")
-    bond = sum(expressions.over(fund_pp_at(t, k, "AFT_DEDUCT") for k in fund_ids() if fund_is_bond(k)))
+    bond = sum((fund_pp_at(t, k, "AFT_DEDUCT") for k in fund_ids() if fund_is_bond(k)))
     return max(0.0, derisk_bond_target * total - bond)               # noqa: F821
 
 
@@ -890,7 +890,7 @@ def fund_pp(t, j):
 
 def av_pp_at(t, timing):
     """계약자적립액 inside month ``t``, per contract: the funds summed at ``timing``."""
-    return sum(expressions.over(fund_pp_at(t, j, timing) for j in fund_ids()))
+    return sum((fund_pp_at(t, j, timing) for j in fund_ids()))
 
 
 def av_pp(t):
@@ -910,7 +910,7 @@ def av_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(expressions.over(fund_pp(t, j) for j in fund_ids()))
+    return sum((fund_pp(t, j) for j in fund_ids()))
 
 
 def bond_weight(t):
@@ -922,7 +922,7 @@ def bond_weight(t):
     """
     if t >= t_ann() or av_pp(t) <= 0.0:
         return 1.0
-    return sum(expressions.over(fund_pp(t, j) for j in fund_ids() if fund_is_bond(j))) / av_pp(t)
+    return sum((fund_pp(t, j) for j in fund_ids() if fund_is_bond(j))) / av_pp(t)
 
 
 def inv_income_pp(t):
@@ -934,7 +934,7 @@ def inv_income_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(expressions.over(fund_pp_at(t, j, "AFT_DERISK")
+    return sum((fund_pp_at(t, j, "AFT_DERISK")
                * ((1.0 + gross_return(j)) ** (1.0 / 12.0) - 1.0) for j in fund_ids()))
 
 
@@ -951,7 +951,7 @@ def mgmt_fee_pp(t):
     """
     if t >= t_ann():
         return 0.0
-    return sum(expressions.over(fund_pp_at(t, j, "AFT_DERISK")
+    return sum((fund_pp_at(t, j, "AFT_DERISK")
                * (1.0 + gross_return(j)) ** (1.0 / 12.0)
                * fund_mgmt_fee(j) / 12.0 for j in fund_ids()))
 
@@ -1642,7 +1642,7 @@ def check_net_cf():
     residual. The tolerance is relative to the size of the month's gross flows, cash
     flows on this product running to eight figures in KRW.
     """
-    return all(expressions.over(abs(check_net_cf_resid(t))
+    return all((abs(check_net_cf_resid(t))
                <= val_tol * max(1.0, abs(net_cf_gen(t)) + abs(net_cf_sep(t))) for t in expressions.periods(0, proj_len())))
 
 
@@ -1664,7 +1664,7 @@ def check_pols_roll_fwd():
     per-month residual. In force is a probability of order 1, so the tolerance is
     ``roll_fwd_tol``.
     """
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1693,7 +1693,7 @@ def check_av_roll_fwd():
     per-month residual, measured per contract on a balance of order 1e7 in KRW, so the
     tolerance is relative.
     """
-    return all(expressions.over(abs(check_av_roll_fwd_resid(t))
+    return all((abs(check_av_roll_fwd_resid(t))
                <= val_tol * max(1.0, abs(av_pp(t))) for t in expressions.periods(0, proj_len())))
 
 
@@ -1714,7 +1714,7 @@ def check_charge_split_resid(t):
 
 def check_charge_split():
     """True when the separate-account investment identity closes at every month."""
-    return all(expressions.over(abs(check_charge_split_resid(t))
+    return all((abs(check_charge_split_resid(t))
                <= val_tol * max(1.0, abs(av_pp(t))) for t in expressions.periods(0, proj_len())))
 
 
@@ -1733,7 +1733,7 @@ def check_gmdb_floor_resid(t):
 
 def check_gmdb_floor():
     """True when the death benefit splits cleanly into fund and guarantee at every month."""
-    return all(expressions.over(abs(check_gmdb_floor_resid(t))
+    return all((abs(check_gmdb_floor_resid(t))
                <= val_tol * max(1.0, abs(db_pp(t))) for t in expressions.periods(0, proj_len())))
 
 
@@ -1753,7 +1753,7 @@ def check_bond_floor_resid(t):
 
 def check_bond_floor():
     """True when the 채권형 weight meets the mandatory ladder at every projected month."""
-    return all(expressions.over(abs(check_bond_floor_resid(t)) < roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_bond_floor_resid(t)) < roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_surr_chg_cap_resid(t):
@@ -1771,7 +1771,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge is inside the statutory cap at every month."""
-    return all(expressions.over(abs(check_surr_chg_cap_resid(t)) < val_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_surr_chg_cap_resid(t)) < val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_prem_alloc_resid(t):
@@ -1795,7 +1795,7 @@ def check_prem_alloc_resid(t):
 
 def check_prem_alloc():
     """True when the premium allocation matches the published fee stack at every month."""
-    return all(expressions.over(abs(check_prem_alloc_resid(t)) < val_tol for t in expressions.periods(0, proj_len())))
+    return all((abs(check_prem_alloc_resid(t)) < val_tol for t in expressions.periods(0, proj_len())))
 
 
 def result_cf():

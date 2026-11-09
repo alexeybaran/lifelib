@@ -713,7 +713,7 @@ def annuity_factor(table_sex):
     not over the projection frame's month indices, so it does not move with the frame.
     """
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum(expressions.over(tariff_lives(t, table_sex) * v ** t for t in expressions.periods(1, tariff_horizon_mths() + 1))) / 12.0
+    return sum((tariff_lives(t, table_sex) * v ** t for t in expressions.periods(1, tariff_horizon_mths() + 1))) / 12.0
 
 
 def taux_rente_tariff():
@@ -764,7 +764,7 @@ def certain_excess_years():
     if n <= 0:
         return 0.0
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum(expressions.over((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t for t in expressions.periods(1, n + 1))) / 12.0
+    return sum(((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t for t in expressions.periods(1, n + 1))) / 12.0
 
 
 def guarantee_coeff():
@@ -1091,7 +1091,7 @@ def claims(t, kind=None):
         part of the *capital constitutif*.
     """
     if kind is None:
-        return sum(expressions.over(claims(t, k) for k in ("PRORATA",)))
+        return sum((claims(t, k) for k in ("PRORATA",)))
     if kind == "PRORATA":
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
     raise ValueError("invalid kind")
@@ -1227,7 +1227,7 @@ def check_lives_roll_fwd():
     the **time points** the frame reads, ``t = 0 .. proj_len()``: the last projected
     month, ``proj_len() - 1``, closes at time ``proj_len()``.
     """
-    return bool(all(expressions.over(abs(check_lives_roll_fwd_resid(t)) < 1e-10 for t in expressions.periods(proj_len() + 1))))
+    return bool(all((abs(check_lives_roll_fwd_resid(t)) < 1e-10 for t in expressions.periods(proj_len() + 1))))
 
 
 def check_revalo_roll_fwd_resid(t):
@@ -1253,7 +1253,7 @@ def check_revalo_roll_fwd_resid(t):
 
 def check_revalo_roll_fwd():
     """Whether the revalorisation index closes against its closed form at every month."""
-    return bool(all(expressions.over(abs(check_revalo_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_revalo_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
 
 
 def check_cum_annuity_roll_fwd_resid(t):
@@ -1268,13 +1268,13 @@ def check_cum_annuity_roll_fwd_resid(t):
     """
     step = 12 // payment_freq()
     start = step - 1 if payment_timing() == "arrears" else 0
-    built = sum(expressions.over(annuity_pp(s) for s in expressions.periods(start, t + 1, step)))
+    built = sum((annuity_pp(s) for s in expressions.periods(start, t + 1, step)))
     return built - cum_annuity_pp(t, "ANNUITANT")
 
 
 def check_cum_annuity_roll_fwd():
     """Whether the cumulative *arrérages* schedule closes at every projected month."""
-    return bool(all(expressions.over(abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8 for t in expressions.periods(proj_len()))))
 
 
 def check_calendar_index_resid(t):
@@ -1291,7 +1291,7 @@ def check_calendar_index_resid(t):
 
 def check_calendar_index():
     """Whether the calendar index agrees with the calendar at every projected month."""
-    return bool(all(expressions.over(check_calendar_index_resid(t) == 0 for t in expressions.periods(proj_len()))))
+    return bool(all((check_calendar_index_resid(t) == 0 for t in expressions.periods(proj_len()))))
 
 
 def check_payment_factor_resid(t):
@@ -1306,7 +1306,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return bool(all(expressions.over(abs(check_payment_factor_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
+    return bool(all((abs(check_payment_factor_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
 
 
 def check_revalo_floor():
@@ -1317,7 +1317,7 @@ def check_revalo_floor():
     ``revalo_rate`` fed into the model must therefore leave the annuity where it was
     rather than cutting it.  The sweep starts at month 1, month 0 having no predecessor.
     """
-    return bool(all(expressions.over(revalo_factor(t) >= revalo_factor(t - 1) - 1e-15 for t in expressions.periods(1, proj_len()))))
+    return bool(all((revalo_factor(t) >= revalo_factor(t - 1) - 1e-15 for t in expressions.periods(1, proj_len()))))
 
 
 def check_options_xor():

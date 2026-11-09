@@ -1883,7 +1883,7 @@ def check_net_cf():
     """
     tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
-    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
+    return all((abs(check_net_cf_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1907,7 +1907,7 @@ def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
+    return all((abs(check_pols_roll_fwd_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
 
 
 def check_states_resid(t):
@@ -1937,7 +1937,7 @@ def check_states():
     """True when the ledgers and the absorbed counts partition the cohort at every month."""
     tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_states_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
+    return all((abs(check_states_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
 
 
 def check_waiver_resid(t):
@@ -1962,7 +1962,7 @@ def check_waiver():
     """True when the waiver splits the in-term population in every projected month."""
     tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_waiver_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
+    return all((abs(check_waiver_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
 
 
 def check_esc_ledger_resid(t):
@@ -1980,15 +1980,15 @@ def check_esc_ledger_resid(t):
     no total in the frame would look wrong.
     """
     if leistungsdynamik() == 0.0:
-        return sum(expressions.over(esc_pg(t, g) - pols_pg(t, g) for g in expressions.periods(1, 6)))
-    return sum(expressions.over(min(0.0, esc_pg(t, g) - pols_pg(t, g)) for g in expressions.periods(1, 6)))
+        return sum((esc_pg(t, g) - pols_pg(t, g) for g in expressions.periods(1, 6)))
+    return sum((min(0.0, esc_pg(t, g) - pols_pg(t, g)) for g in expressions.periods(1, 6)))
 
 
 def check_esc_ledger():
     """True when the escalation ledger dominates the head count in every projected month."""
     tol = tables.lookup_float(data.prepared_basis_table_at(), 'roll_fwd_tol', 'value')      # noqa: F821
     scale = max(pols_if_init(), 1.0)
-    return all(expressions.over(abs(check_esc_ledger_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
+    return all((abs(check_esc_ledger_resid(t)) <= tol * scale for t in expressions.periods(duration_mth_init(), proj_len())))
 
 
 def check_prem_equiv_resid(t):
@@ -2061,7 +2061,7 @@ def check_prem_equiv():
     if premium_mth() > 0.0:
         return True
     scale = max(premium_mth_pp() / rating_factor() * epv_prem_units(), 1.0)
-    total = sum(expressions.over(check_prem_equiv_resid(t) for t in expressions.periods(proj_len())))
+    total = sum((check_prem_equiv_resid(t) for t in expressions.periods(proj_len())))
     return abs(total) <= tol * scale
 
 
@@ -2119,9 +2119,9 @@ def result_states():
             "pols_pg3": [pols_pg(t, 3) for t in ts],
             "pols_pg4": [pols_pg(t, 4) for t in ts],
             "pols_pg5": [pols_pg(t, 5) for t in ts],
-            "pols_karenz": [sum(expressions.over(pols_karenz(t, g, z) for g in expressions.periods(1, 6) for z in expressions.periods(1, karenz_months() + 1))) for t in ts],
-            "pols_entry": [sum(expressions.over(pols_entry(t, g) for g in expressions.periods(1, 6))) for t in ts],
-            "pols_grad": [sum(expressions.over(pols_grad(t, g) for g in expressions.periods(1, 6))) for t in ts],
+            "pols_karenz": [sum((pols_karenz(t, g, z) for g in expressions.periods(1, 6) for z in expressions.periods(1, karenz_months() + 1))) for t in ts],
+            "pols_entry": [sum((pols_entry(t, g) for g in expressions.periods(1, 6))) for t in ts],
+            "pols_grad": [sum((pols_grad(t, g) for g in expressions.periods(1, 6))) for t in ts],
             "pols_reactiv": [pols_reactiv(t) for t in ts],
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
