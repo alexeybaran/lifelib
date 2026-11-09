@@ -33,6 +33,12 @@ def select_keyword(function, source, key):
 def values(function, source, name):
     return p.column(function, (), source, name)
 
+def prepare(function, frame, rows=False):
+    return p.table(function, ('rows', 'report'), frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=rows, report=True)
+
+def prepare_keywords(function, frame):
+    return p.table(function, ('report', 'frame'), frame=frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=p.omitted_argument, report=True)
+
 def grouped(function, source, labels, first=(), last=()):
     return p.group_sum(function, ('first', 'last'), source, labels, first=first, last=last)
 

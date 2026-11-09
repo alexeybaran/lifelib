@@ -68,6 +68,8 @@ def to_pandas(value, *, index_name=_MISSING):
     def axis(spec):
         if type(spec) is tuple and spec[0] == 'labels':
             return pd.Index(spec[1], name=spec[2], dtype=spec[3])
+        if type(spec) is tuple and spec[0] == 'range':
+            return pd.RangeIndex(spec[1], spec[2], spec[3], name=spec[4])
         return spec.copy(deep=True)
     if type(value) is Table:
         meta = value._metadata
@@ -83,7 +85,7 @@ def to_pandas(value, *, index_name=_MISSING):
     elif type(value) is Record and value._metadata is not None and value._metadata[0] == 'row':
         meta = value._metadata
         result = pd.Series([entry[1] for entry in value._items],
-                           index=meta[1].copy(deep=True), dtype=meta[2], name=meta[3])
+                           index=axis(meta[1]), dtype=meta[2], name=meta[3])
         result.attrs = deepcopy(meta[4])
         result.flags.allows_duplicate_labels = meta[5]
     else:

@@ -250,3 +250,28 @@ roundtrips, with no Python helper/pandas calls in the grouped kernel. Original
 monthly inputs and actual authored group labels/state-column calls were observed;
 annual outputs were never used as calculation templates. This is kernel proof,
 not yet annual source migration or whole-model native/performance qualification.
+
+## Native preparation of ordinary numeric reports
+
+The existing `inputs.table(frame, report=True)` and `rows=True` constructors now
+have a direct declared Cython operation. Canonical single-block float64 DataFrames
+with string columns, basic integer Index/RangeIndex axes and empty attrs copy
+through C buffers into the existing Table/Record owners. Read-only and strided
+blocks, empty axes, original axis classes/names, row scalar classes, flags and
+source-independent snapshots are preserved. No pandas methods, Python constructor
+helper or Python Table/Record initializer executes on this admitted path.
+
+Constructor selection does not change the public Python signature or defaults.
+Replaced functions preserve original keyword order/omission through the shared
+binder. Other blocks/axes/attrs, grouped or pruned-column preparation, and minimal
+lookup-only construction retain reference preparation and remain explicitly outside
+this native-constructor proof. The private physical-storage adapter is tested and
+pinned with its pandas/NumPy versions; future layouts require qualification.
+
+Native constructor and grouped reduction together pass127 original policy cases
+across all11 annual grouping models with bit-exact output metadata and pickle
+roundtrips and zero Python helper/pandas frames in preparation/grouping.116 focused
+constructor/lookup cases and4 normal combined integration probes also pass. The
+constructor tests caught and fixed one Python placement property and an integer-axis
+boolean-query guard. Their negative histories are retained. This does not establish
+annual source migration, full-model native coverage or performance acceptance.
