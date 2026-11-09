@@ -13,12 +13,17 @@ _MISSING = object()
 
 
 def row(table, key):
-    """Select a unique labelled row, preserving prepared pandas row coercion."""
+    """Select a unique row from an ungrouped table prepared with rows=True.
+
+    Pandas scalar coercion follows the columns selected during preparation.
+    """
     if not isinstance(table, Table):
         raise TypeError('row requires an owned Table')
     metadata = table._metadata
     if metadata is None or metadata[0] != 'frame':
-        raise ValueError('row requires a table prepared with pandas row metadata')
+        raise ValueError('row requires table(..., rows=True) with pandas row metadata')
+    if metadata[4] is None:
+        raise ValueError('row requires table(..., rows=True)')
     try:
         if table._index_error is not None and not _valid_index_key(key, table._index_error):
             raise KeyError(key)
@@ -38,7 +43,7 @@ def row(table, key):
 
 
 def column(table, name):
-    """Return ordered immutable values, with the existing column scalar types.
+    """Materialize ordered immutable values with existing column scalar types.
 
     This is a value sequence, not a public Series. No aggregation or missing-value
     policy is implied. Use to_pandas(table) to restore the labelled public report.
@@ -63,7 +68,7 @@ def to_pandas(value, *, index_name=_MISSING):
     if type(value) is Table:
         meta = value._metadata
         if meta is None or meta[0] != 'frame':
-            raise ValueError('to_pandas requires preserved report metadata')
+            raise ValueError('to_pandas requires table(..., report=True) metadata')
         index, columns, dtypes = meta[1].copy(deep=True), meta[2].copy(deep=True), meta[3]
         result = pd.DataFrame({name: pd.Series([row[i] for row in value._values],
                                index=index, dtype=dtypes[i])
