@@ -220,6 +220,14 @@ def prepared_freq_loading_table_loc():
                         indexing='loc')
 
 
+
+def prepared_claim_duration_table_loc():
+    """Own claim-year calculation columns; follow the public source Cell cache."""
+    return inputs.table(claim_duration_table(),
+                        columns=('recov_rate', 'mort_dis_sel_factor'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 

@@ -209,3 +209,44 @@ in lifecycle measurements. Native preparation, primitive column consumers,
 grouping, arbitrary selection/alignment, and complete regional source migration
 remain separate open gates. No full-model completion or performance claim follows
 from selector tests.
+
+## Grouped cash-flow reports
+
+```python
+monthly = inputs.table(result_cf(), report=True)
+annual = operations.group_sum(
+    monthly, [duration(t) + 1 for t in keys(monthly)],
+    first='pols_if', last=('av_pp',))
+return operations.to_pandas(annual, index_name='policy_year')
+```
+
+`group_sum(table, labels, *, first=(), last=())` puts first columns first, then last
+columns, then summed columns in their source order. A single column name or a
+sequence is accepted for first/last; duplicate state columns raise ValueError.
+First/last select the first/last nonmissing value independently in each column.
+Labels remain explicit actuarial expressions: duration+1, plan-year months//12
+and positional twelve-row buckets are different operations. Canonical labels
+are eager lists or tuples, not a promised arbitrary streaming input.
+
+The current native domain is float64 columns and builtin signed-int64 or float
+labels in lists/tuples. Missing float labels are dropped; all-missing states and
+empty index/column dtypes are preserved. The provider runs a compensated C sum
+for ordinary groups. Installed pandas' explicit segmented-ufunc capability also
+selects NumPy's C reduceat for monotonic group ids without NaNs in the sum block,
+matching its cancellation behavior. No pandas grouping or Python helper executes
+inside either admitted kernel; CPython/NumPy C APIs own objects and buffers.
+
+Other dtypes, Series label alignment, old metadata layouts and unsupported label
+objects keep the pandas reference behavior through compatibility execution. Those
+paths are not completed native coverage. Exact warning source locations differ
+between Python reference and compiled calls; warning-filter/location behavior
+remains an explicit semantic review obligation. Generic malformed-column/error
+ordering in prepared source tables also remains open.
+
+The kernel passed27 direct selection/group cases and one normal live/export/native
+report/cache/pickle probe. All11 original annual grouping models passed127 original
+policy cases with bit-exact financial values, axes/dtypes and output pickle
+roundtrips, with no Python helper/pandas calls in the grouped kernel. Original
+monthly inputs and actual authored group labels/state-column calls were observed;
+annual outputs were never used as calculation templates. This is kernel proof,
+not yet annual source migration or whole-model native/performance qualification.

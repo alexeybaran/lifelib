@@ -1428,3 +1428,147 @@ cdef object column(object function, tuple keywords, object table, object name):
     for i in range(len(values)):
         result[i] = values[i][position]
     return tuple(result)
+
+
+from lifelib.table_operations import group_sum as _group_sum
+import numpy as _group_numpy
+from pandas.core.groupby import ops as _group_pandas_ops
+cdef object _group_float64 = _group_numpy.dtype('float64')
+cdef object _group_sum_ufunc = getattr(_group_pandas_ops, '_REDUCEAT_UFUNCS', {}).get('sum')
+cdef object _group_reduceat = None if _group_sum_ufunc is None else _group_sum_ufunc.reduceat
+
+
+cdef object group_sum(object function, tuple keywords, object table, object labels,
+                      object first=_missing, object last=_missing):
+    cdef tuple metadata, columns, requested, ordered_columns, group_keys, source_values
+    cdef tuple output_values, output_dtypes
+    cdef object key, value, result, index_dtype
+    cdef dict groups, positions
+    cdef list source_columns, modes, rows
+    cdef list summed_columns, starts
+    cdef Py_ssize_t i, j, group, width, size, slot, previous_group = -2, offset = 0
+    cdef double number, y, updated
+    cdef bint integral = True, floating = True, monotonic = True, missing_sum = False
+    cdef double[::1] totals, compensation
+    cdef double[:, ::1] work_values
+    cdef object work_array, reduced
+    cdef unsigned char[::1] seen
+    if function is not _group_sum or type(table) is not Table:
+        return forward_call(function, keywords, ('table', 'labels', 'first', 'last'),
+                            (table, labels, first, last), omitted_argument)
+    metadata = table._metadata
+    if (metadata is None or len(metadata) < 10 or metadata[0] != 'frame'
+            or type(labels) not in (tuple, list)):
+        return forward_call(function, keywords, ('table', 'labels', 'first', 'last'),
+                            (table, labels, first, last), omitted_argument)
+    for value in metadata[3]:
+        if value != _group_float64:
+            return forward_call(function, keywords, ('table', 'labels', 'first', 'last'),
+                                (table, labels, first, last), omitted_argument)
+    for key in labels:
+        integral = integral and type(key) is int and -(1 << 63) <= key < (1 << 63)
+        floating = floating and type(key) is float
+    if not integral and not floating:
+        return forward_call(function, keywords, ('table', 'labels', 'first', 'last'),
+                            (table, labels, first, last), omitted_argument)
+    if first is _missing:
+        first = ()
+    if last is _missing:
+        last = ()
+    first = (first,) if isinstance(first, str) else tuple(first)
+    last = (last,) if isinstance(last, str) else tuple(last)
+    requested = first + last
+    if len(set(requested)) != len(requested):
+        raise ValueError('first and last columns must be distinct')
+    columns = table._columns
+    for key in requested:
+        if key not in columns:
+            raise KeyError(key)
+    if len(labels) != len(table._keys):
+        raise ValueError('group labels must match table length')
+    ordered_columns = requested + tuple(key for key in columns if key not in requested)
+    source_columns = [columns.index(key) for key in ordered_columns]
+    modes = [1 if key in first else 2 if key in last else 0 for key in ordered_columns]
+    # Missing group labels are dropped, matching pandas' default dropna=True.
+    group_keys = tuple(sorted(set(key for key in labels if key == key)))
+    positions = {key: i for i, key in enumerate(group_keys)}
+    width, size = len(ordered_columns), len(group_keys)
+    totals = array('d', [0.0]) * (width * size)
+    compensation = array('d', [0.0]) * (width * size)
+    seen = array('B', [0]) * (width * size)
+    source_values = table._values
+    for i in range(len(labels)):
+        key = labels[i]
+        group = -1 if key != key else positions[key]
+        if group < previous_group:
+            monotonic = False
+        previous_group = group
+        if key != key:
+            offset += 1
+            continue
+        for j in range(width):
+            number = source_values[i][source_columns[j]]
+            if number != number:
+                if modes[j] == 0:
+                    missing_sum = True
+                continue
+            slot = group * width + j
+            if modes[j] == 1:
+                if not seen[slot]:
+                    totals[slot] = number
+            elif modes[j] == 2:
+                totals[slot] = number
+            else:
+                y = number - compensation[slot]
+                updated = totals[slot] + y
+                compensation[slot] = (updated - totals[slot]) - y
+                if compensation[slot] != compensation[slot]:
+                    compensation[slot] = 0.0
+                totals[slot] = updated
+            seen[slot] = 1
+    # pandas 3.1 admits NumPy's segmented C reduction for monotonic group ids
+    # without NaNs in the floating sum block. Other installed pandas versions
+    # use the compensated C loop above. The donor's explicit ufunc capability
+    # is read once at provider import; no formulas or helper bodies are parsed.
+    summed_columns = [j for j in range(width) if modes[j] == 0]
+    if (_group_reduceat is not None and monotonic and not missing_sum
+            and size and summed_columns):
+        starts = []
+        previous_group = -1
+        for i in range(offset, len(labels)):
+            group = positions[labels[i]]
+            if group != previous_group:
+                starts.append(i - offset)
+            previous_group = group
+        work_array = _group_numpy.empty((len(summed_columns), len(labels) - offset), dtype='float64')
+        work_values = work_array
+        for j in range(len(summed_columns)):
+            for i in range(offset, len(labels)):
+                work_values[j, i - offset] = source_values[i][source_columns[summed_columns[j]]]
+        reduced = _group_reduceat(work_array, _group_numpy.array(starts, dtype='intp'), axis=1)
+        for j in range(len(summed_columns)):
+            for i in range(size):
+                totals[i * width + summed_columns[j]] = reduced[j, i]
+    rows = []
+    for i in range(size):
+        rows.append(tuple(totals[i * width + j] if modes[j] == 0 or seen[i * width + j]
+                          else float('nan') for j in range(width)))
+    output_values = tuple(rows)
+    output_dtypes = (_group_float64,) * width
+    if not labels:
+        index_dtype = 'object'
+    else:
+        index_dtype = 'int64' if integral else 'float64'
+    result = _record_alloc(<PyTypeObject*>Table, 0)
+    PyObject_GenericSetAttr(result, '_keys', group_keys)
+    PyObject_GenericSetAttr(result, '_values', output_values)
+    PyObject_GenericSetAttr(result, '_columns', ordered_columns)
+    PyObject_GenericSetAttr(result, '_positions', MappingProxyType(positions))
+    PyObject_GenericSetAttr(result, '_ordered', group_keys)
+    PyObject_GenericSetAttr(result, '_native_cache', {})
+    PyObject_GenericSetAttr(result, '_index_error', None)
+    PyObject_GenericSetAttr(result, '_metadata', (
+        'frame', ('labels', group_keys, None, index_dtype),
+        ('labels', ordered_columns, metadata[9][1], metadata[9][0]),
+        output_dtypes, None, (), metadata[6], metadata[7], (), metadata[9]))
+    return result

@@ -762,8 +762,8 @@ def recov_rates():
     with 445 cohorts is the difference between a lookup and a quarter of a million of
     them.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(expressions.over(range(1, 12), lambda y: float(tbl.loc[y, "recov_rate"])))
+    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "recov_rate")))
 
 
 def mort_dis_sel_factors():
@@ -772,8 +772,8 @@ def mort_dis_sel_factors():
     3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(expressions.over(range(1, 12), lambda y: float(tbl.loc[y, "mort_dis_sel_factor"])))
+    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
+    return tuple(expressions.over(range(1, 12), lambda y: tables.lookup_float(tbl, y, "mort_dis_sel_factor")))
 
 
 # --- the best-estimate rates as composed ---

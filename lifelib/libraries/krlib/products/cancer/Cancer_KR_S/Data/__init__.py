@@ -261,7 +261,7 @@ def prepared_survival_table_loc():
 def prepared_care_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
     return inputs.table(care_table(),
-                        columns=('treat_hazard_yr',),
+                        columns=('treat_hazard_yr', 'hosp_days_adm'),
                         indexing='loc')
 
 
