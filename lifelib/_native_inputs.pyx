@@ -1266,10 +1266,14 @@ cdef object _explicit_value(object source, object key, object column, object def
                 raise KeyError(key)
             return default
         return value
-    if column is _missing:
-        raise TypeError('Table lookup requires a column')
     if type(source) is Table:
+        if column is _missing:
+            raise TypeError('Table lookup requires a column')
         return indexed_lookup(source, key, column, default)
+    if column is _missing:
+        if default is _missing:
+            return _typed_python_value(source, key)
+        return _typed_python_value(source, key, default=default)
     if default is _missing:
         return _typed_python_value(source, key, column)
     return _typed_python_value(source, key, column, default)

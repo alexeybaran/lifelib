@@ -246,6 +246,23 @@ assert probe.missing(h.is_missing, pd.isna, None) is False
     assert run.returncode == 0, run.stdout + run.stderr
 
 
+@pytest.mark.parametrize('suffix,entry', [('int','integer'), ('float','floating'),
+                                       ('bool','boolean'), ('str','text'), ('object','raw')])
+def test_record_subclasses_keep_the_python_compatibility_contract(native,suffix,entry):
+    calls = []
+    class DerivedRecord(Record):
+        def __getitem__(self,key):
+            calls.append(key)
+            return super().__getitem__(key)
+    source = DerivedRecord({'value': 2})
+    function = getattr(h, 'lookup_' + suffix)
+    expected = function(source, 'value')
+    calls.clear()
+    actual = getattr(native, entry)(function, source, 'value')
+    assert type(actual) is type(expected) and actual == expected
+    assert calls == ['value']  # compatibility is preserved, not native admission
+
+
 @pytest.mark.parametrize('indexing', ['loc', 'at'])
 @pytest.mark.parametrize('keys,queries', [
     ([True, False], [True, False, 1, 0, 1.0]),
