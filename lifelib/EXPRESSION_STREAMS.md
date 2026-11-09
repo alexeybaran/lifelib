@@ -46,7 +46,7 @@ Standard Python consumers keep their ordinary semantics.
 | Helper | Contract |
 |---|---|
 | `periods(start, stop=omitted, step=omitted)` | Reusable `range` domain; one, two or three supplied arguments have `range` values, integer conversion order and zero-step behavior. Optional arguments may be named. |
-| `over(source, function, where=None, *, unpack=None)` | One-shot lazy stream. Acquire `iter(source)` at construction. For each candidate, unpack if requested, evaluate the predicate, then the payload once. |
+| `over(source, function, where=None, *, unpack=None)` | One-shot lazy stream with standard send/throw/close protocol. Acquire `iter(source)` at construction. For each candidate, unpack if requested, evaluate the predicate, then the payload once. |
 | `flatten(sources)` | One-shot lazy concatenation. Acquire the outer iterator at construction; acquire each inner iterator only when reached. |
 | `sum_float(source, function=omitted, where=None) -> float` | Lazily convert each passing contribution with standard `float`, then sum the resulting doubles using float-start summation. Empty input is float `0.0`. |
 | `sum_values(source)` | Compatibility spelling for ordinary builtin `sum(source)`, including empty integer zero, arbitrary integers and custom/NumPy arithmetic. Prefer ordinary `sum` in authored formulas. |
@@ -72,18 +72,25 @@ identity, tie, ordering and materialization contracts apply. Keep eager lists
 eager before passing them to pandas. Their native coverage is proved separately
 from the stream provider; the presence of these expressions is not a receipt.
 
-Retain ordinary generator expressions in regional migrations. Cython emits
-native generator state and typed loops/Cell calls directly. Replacing a
-generator expression with `over` changes its protocol: a replacement consumer
-can call a generator's `send` or `throw`, while `over` is an iterator API. The
-experimental automatic stream source adapter was therefore retired; its
-financial experiment is not a semantic qualification of that migration.
+Ordinary generator syntax remains valid. For a qualified regional adjustment,
+`over` and `flatten` use native cursors behind standard generator execution and
+a small Cython protocol compatibility adapter. The adapter preserves rejected
+pre-start sends and invalid throws without closing the producer; valid execution,
+throw normalization and close use the standard runtime. Legacy throw warning
+origin, metaclass hooks, payload lifetime and unpacked binding lifetime are
+covered by differential contracts. Upstream iterators do not receive close/throw.
 
-Standard Cython generator objects support the tested iteration/send/throw/close
-protocols. They differ from CPython generator introspection: generator type
-checks, frame locals and `gi_suspended` are not identical. These implementation
-introspection operations are outside the inventoried pricing operations and are
-not qualified by the present native evidence.
+The source adjustment declines nested generator objects, escaping lambda
+captures, assignment expressions, asynchronous forms and unsupported target
+bindings. None appears in the 520 current regional generator expressions.
+Independent for-clauses retain lazy dependent inner bounds and flat value order.
+The public helper binding is an explicit authoring choice; arbitrary edits to
+helper implementation globals require rebuilding native artifacts.
+
+Generator implementation objects and Cython introspection differ from CPython:
+exact generator type, code/frame locals and `gi_suspended` are not promised.
+These operations are outside the inventoried pricing operations; the documented
+iteration/send/throw/close behavior is tested separately.
 
 `unpack=N` is explicit because a tuple may itself be one intended callback
 argument. It accepts a nonnegative exact Python integer. Unpacking runs before
@@ -141,7 +148,7 @@ semantics through compatibility iteration. Arbitrary source iterators and Python
 callbacks also retain compatibility behavior. These paths are tested, but do
 not complete a native coverage row.
 
-Current evidence is a provider/binding checkpoint. Full regional source
+Current evidence is a provider/binding and generator-protocol checkpoint. Full regional source
 integration, transitive typed payload/domain coverage, financial differentials,
 operation matrix reconciliation and matched timing remain required.
 The surrounding compiler Cell return/cache ABI also remains a gate: a traced
@@ -151,15 +158,7 @@ the existing object ABI, preserving ordinary sums' empty integer zero and strict
 report dtypes. That fix does not establish arbitrary object replacement support
 for every traced numeric Cell; provider tests alone do not qualify that boundary.
 
-Regional adjustments retain all original generator/comprehension and consumer
-syntax. Seventeen generation-scope power operators use standard builtin
-`pow(base, exponent)` to retain Python numeric/error behavior; the source/hash
-receipt is `GENERATOR_SOURCE_ADJUSTMENTS.json`. No multiline formatting
-workaround is needed with compiler c8b0371's CST pipeline.
-
-These limited adjusted-source power spellings require the standard builtin
-`pow` binding. No adjusted namespace currently defines a Cell/Reference named
-`pow`. Replacing or introducing that name can change a function call, while the
-original `**` operator ignores it; this is an explicit new authoring binding,
-not a universally equivalent rewrite under arbitrary global replacement. The
-original model checkout retains its original operators and is separate.
+Regional formulas retain their original power operators. The compiler preserves
+Python result/error semantics outside its proved real-power domain, so no new
+public `pow` binding or power-spelling source workaround is required. The retired
+adjustment receipt remains in Git for reproducibility.

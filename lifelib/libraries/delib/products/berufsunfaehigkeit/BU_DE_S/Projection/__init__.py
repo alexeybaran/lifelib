@@ -859,7 +859,7 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - pow((1.0 - q * s), (1.0 / 12.0))
+    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
                  for s in mort_dis_sel_factors())
 
 
@@ -892,7 +892,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - pow((1.0 - r), (1.0 / 12.0)) for r in recov_rates())
+    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
 
 
 def lapse_rate(t):
@@ -953,7 +953,7 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - pow((1.0 - r * recov_load_first), (1.0 / 12.0))  # noqa: F821
+    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
                  for r in recov_rates())
 
 
@@ -984,7 +984,7 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - pow((1.0 - q * f), (1.0 / 12.0))
+    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
                  for f in mort_dis_sel_factors())
 
 
@@ -1069,7 +1069,7 @@ def beitragssumme_unit():
     original term rather than the remaining one: the charge was incurred at inception.
     """
     g = 1.0 + beitragsdyn_rate()
-    return sum(pow(g, (y - 1)) for y in range(1, cover_end_age() - entry_age() + 1))
+    return sum(g ** (y - 1) for y in range(1, cover_end_age() - entry_age() + 1))
 
 
 def prem_gross_level_pp():

@@ -1827,7 +1827,7 @@ def irr_ann():
     lo, hi = -0.99, 5.0
     for _ in range(200):
         mid = 0.5 * (lo + hi)
-        if sum(a * pow((1.0 + mid), m) for a, m in flows) - target > 0.0:
+        if sum(a * (1.0 + mid) ** m for a, m in flows) - target > 0.0:
             hi = mid
         else:
             lo = mid

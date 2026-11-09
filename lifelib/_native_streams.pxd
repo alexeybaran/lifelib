@@ -4,11 +4,13 @@ from modelx_cython._range_state cimport I64Range
 cdef object omitted_argument
 
 cdef class Stream:
-    cdef object source, function, predicate, unpack, current, inner
+    cdef object source, function, predicate, unpack, current, inner, pending
     cdef bint closed, bounded, flattened, identity
     cdef int source_kind
     cdef Py_ssize_t position
     cdef I64Range counter
+    cdef bint prepare_next(self) except *
+    cdef object take_pending(self)
     cdef object next_value(self)
     cdef object next_flattened(self)
     cdef object next_input(self)
@@ -20,3 +22,7 @@ cdef object sum_values(object current_callable, tuple keywords, object source)
 
 cdef double sum_float_kernel(Stream source) except *
 cdef object sum_float(object current_callable, tuple keywords, object source, object function=*, object where=*)
+
+cdef class ProtocolGenerator:
+    cdef object generator
+    cdef bint started

@@ -13,54 +13,6 @@ def periods(start, stop=_DOMAIN_MISSING, step=_DOMAIN_MISSING):
     return range(start)
 
 
-class _Over:
-    def __init__(self, source, function, where=None, unpack=None):
-        _validate_unpack(unpack)
-        self.source = iter(source)
-        self.function, self.where = function, where
-        self.unpack, self.current = unpack, None
-        self.closed = False
-
-    def __iter__(self):
-        return self
-
-    def close(self):
-        self.closed = True
-        self.source = self.function = self.where = self.current = None
-
-    def __next__(self):
-        if self.closed:
-            raise StopIteration
-        while True:
-            exhausted = False
-            try:
-                value = next(self.source)
-            except StopIteration:
-                exhausted = True
-            except BaseException:
-                self.close()
-                raise
-            if exhausted:
-                self.close()
-                raise StopIteration
-            try:
-                self.current = value
-                if self.unpack is None:
-                    if self.where is not None and not self.where(value):
-                        continue
-                    return self.function(value)
-                arguments = _unpack(value, self.unpack)
-                if self.where is not None and not self.where(*arguments):
-                    continue
-                return self.function(*arguments)
-            except StopIteration as error:
-                self.close()
-                raise RuntimeError('generator raised StopIteration') from error
-            except BaseException:
-                self.close()
-                raise
-
-
 def _validate_unpack(count):
     if count is not None and (type(count) is not int or count < 0):
         raise ValueError('unpack must be None or a nonnegative integer')
@@ -75,6 +27,9 @@ def _unpack(value, count):
     if count == 3:
         first, second, third = value
         return first, second, third
+    if count == 4:
+        first, second, third, fourth = value
+        return first, second, third, fourth
     iterator = iter(value)
     result = []
     for position in range(count):
@@ -95,9 +50,112 @@ def _unpack(value, count):
     return tuple(result)
 
 
+
+def _stream_generator(cursor):
+    try:
+        while True:
+            try:
+                cursor.pending = next(cursor)
+            except StopIteration:
+                return
+            yield _take_pending(cursor)
+    finally:
+        cursor.close()
+
+
+def _take_pending(cursor):
+    value = cursor.pending
+    cursor.pending = None
+    return value
+
+
+
+class _InputCursor:
+    def __init__(self, source, unpack):
+        _validate_unpack(unpack)
+        self.source = iter(source)
+        self.unpack = unpack
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def close(self):
+        self.closed = True
+        self.source = None
+
+    def __next__(self):
+        if self.closed:
+            raise StopIteration
+        exhausted = False
+        try:
+            value = next(self.source)
+        except StopIteration:
+            exhausted = True
+        except BaseException:
+            self.close()
+            raise
+        if exhausted:
+            self.close()
+            raise StopIteration
+        if self.unpack is None:
+            return value
+        try:
+            return _unpack(value, self.unpack)
+        except StopIteration as error:
+            self.close()
+            raise RuntimeError('generator raised StopIteration') from error
+        except BaseException:
+            self.close()
+            raise
+
+
+
+# Private compatibility name used by cross-provider profiling oracles.
+_Over = _InputCursor
+
+
+class _ProtocolGenerator:
+    def __init__(self, generator):
+        self.generator = generator
+        self.started = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.started = True
+        return next(self.generator)
+
+    @property
+    def send(self):
+        return self.generator.send
+
+    @property
+    def throw(self):
+        return self.generator.throw
+
+    @property
+    def close(self):
+        return self.generator.close
+
+
+
+def _mapped_generator(cursor, function, where, unpack):
+    if unpack is None:
+        return (function(value) for value in cursor if where is None or where(value))
+    if unpack == 2:
+        return (function(a, b) for a, b in cursor if where is None or where(a, b))
+    if unpack == 3:
+        return (function(a, b, c) for a, b, c in cursor if where is None or where(a, b, c))
+    if unpack == 4:
+        return (function(a, b, c, d) for a, b, c, d in cursor if where is None or where(a, b, c, d))
+    return (function(*arguments) for arguments in cursor if where is None or where(*arguments))
+
+
 def over(source, function, where=None, *, unpack=None):
     """Map lazily, optionally filtering inputs before evaluating the payload."""
-    return _Over(source, function, where, unpack)
+    return _ProtocolGenerator(_mapped_generator(_InputCursor(source, unpack), function, where, unpack))
 
 
 class _Flatten:
@@ -150,7 +208,7 @@ class _Flatten:
 
 def flatten(sources):
     """Lazily traverse each inner iterable in one flat, ordered sequence."""
-    return _Flatten(sources)
+    return _ProtocolGenerator(_stream_generator(_Flatten(sources)))
 
 
 def sum_values(source):
@@ -158,9 +216,9 @@ def sum_values(source):
     return sum(source)
 
 
-class _FloatTerms(_Over):
-    def __init__(self, source):
-        super().__init__(source, _FLOAT)
+def _FloatTerms(source):
+    converter = _FLOAT
+    return (converter(value) for value in source)
 
 
 _NO_CALLBACK = object()
