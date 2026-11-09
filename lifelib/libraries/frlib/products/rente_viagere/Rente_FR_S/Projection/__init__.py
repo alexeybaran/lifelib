@@ -416,7 +416,7 @@ def reversion_pct():
     in the representative design.
     """
     v = tables.lookup_object(prepared_model_point(), "reversion_pct")
-    return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
+    return 0.0 if tables.is_missing(pd.isna, v) else float(v)                           # noqa: F821
 
 
 def guarantee_mths():
@@ -527,7 +527,7 @@ def death_mth(life):
     as the *prorata*.
     """
     v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def pols_if_init():

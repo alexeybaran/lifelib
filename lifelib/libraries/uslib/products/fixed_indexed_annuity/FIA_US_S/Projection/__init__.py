@@ -567,7 +567,7 @@ def glwb_basis():
 def joint_age():
     """The issue age (ANB) of the joint covered person; the annuitant's own if blank."""
     given = tables.lookup_object(prepared_model_point(), "joint_age")
-    return age_at_entry() if pd.isna(given) else int(given)           # noqa: F821
+    return age_at_entry() if tables.is_missing(pd.isna, given) else int(given)           # noqa: F821
 
 
 def income_start_age():
@@ -662,7 +662,7 @@ def av_pp_init():
     [S10].
     """
     given = tables.lookup_object(prepared_model_point(), "av_initial")
-    if pd.isna(given):                                               # noqa: F821
+    if tables.is_missing(pd.isna, given):                                               # noqa: F821
         return premium_pp() * (1.0 + bonus_rate())
     return float(given)
 
@@ -677,7 +677,7 @@ def benefit_base_pp_init():
     if not glwb_elected():
         return 0.0
     given = tables.lookup_object(prepared_model_point(), "bb_initial")
-    if pd.isna(given):                                               # noqa: F821
+    if tables.is_missing(pd.isna, given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -687,7 +687,7 @@ def rollup_base_pp_init():
     if not glwb_elected():
         return 0.0
     given = tables.lookup_object(prepared_model_point(), "rb_initial")
-    if pd.isna(given):                                               # noqa: F821
+    if tables.is_missing(pd.isna, given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -699,7 +699,7 @@ def mgsv_pp_init():
     ``93,811.84 = 87,500 x 1.01^7`` is that value rolled forward seven years.
     """
     given = tables.lookup_object(prepared_model_point(), "mgv_initial")
-    if pd.isna(given):                                               # noqa: F821
+    if tables.is_missing(pd.isna, given):                                               # noqa: F821
         return net_consideration_ratio * premium_pp()                # noqa: F821
     return float(given)
 
@@ -707,13 +707,13 @@ def mgsv_pp_init():
 def lw_pp_init():
     """LW at entry: zero before exercise, else the stated in-force income amount."""
     given = tables.lookup_object(prepared_model_point(), "lw_initial")
-    return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
+    return 0.0 if tables.is_missing(pd.isna, given) else float(given)                   # noqa: F821
 
 
 def payout_rate_init():
     """The payout percentage already locked at entry; zero before exercise."""
     given = tables.lookup_object(prepared_model_point(), "payout_rate_initial")
-    return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
+    return 0.0 if tables.is_missing(pd.isna, given) else float(given)                   # noqa: F821
 
 
 def phase_init():

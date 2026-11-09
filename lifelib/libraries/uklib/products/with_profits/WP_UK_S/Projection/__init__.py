@@ -492,7 +492,7 @@ def guarantee_years():
     Read from a semicolon-separated model point column, empty on the endowment chassis.
     """
     v = tables.lookup_object(prepared_model_point(), "guarantee_dates")
-    if pd.isna(v):                                                   # noqa: F821
+    if tables.is_missing(pd.isna, v):                                                   # noqa: F821
         return ()
     return tuple(int(float(s)) for s in str(v).split(";") if str(s).strip())
 

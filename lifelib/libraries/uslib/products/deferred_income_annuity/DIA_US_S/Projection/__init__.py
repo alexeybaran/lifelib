@@ -525,7 +525,7 @@ def purchase_rate_dp():
     returning ``None``, so every "not set" on this Space is a negative sentinel.
     """
     v = tables.lookup_object(prepared_model_point(), "purchase_rate_dp")
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def other_qlac_premium():
@@ -658,7 +658,7 @@ def adjust_mth():
     named deterministically on the model point instead, and is off by default.
     """
     v = tables.lookup_object(prepared_model_point(), "adjust_mth")
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def adjust_start_mth():
@@ -668,7 +668,7 @@ def adjust_start_mth():
     inside the maximum deferral and the maximum income start age [S1][S2][S3][S4].
     """
     v = tables.lookup_object(prepared_model_point(), "adjust_start_mth")
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def income_start_mth():
@@ -709,7 +709,7 @@ def accel_mth():
     deterministically on the model point and is off by default.
     """
     v = tables.lookup_object(prepared_model_point(), "accel_mth")
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def commute_mth():
@@ -720,13 +720,13 @@ def commute_mth():
     implemented, for the same reason as the other two options.
     """
     v = tables.lookup_object(prepared_model_point(), "commute_mth")
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def commute_frac():
     """The fraction of the remaining guaranteed payments commuted; up to 100% [S4][R13]."""
     v = tables.lookup_object(prepared_model_point(), "commute_frac")
-    return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
+    return 0.0 if tables.is_missing(pd.isna, v) else float(v)                           # noqa: F821
 
 
 def mort_rate_base(t, life):

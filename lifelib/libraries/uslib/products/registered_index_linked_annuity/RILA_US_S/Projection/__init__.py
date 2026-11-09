@@ -498,7 +498,7 @@ def wd_schedule_id():
 
 def is_uncapped():
     """True when the model point leaves ``declared_cap`` blank [S2]."""
-    return bool(pd.isna(tables.lookup_object(prepared_model_point(), "declared_cap")))              # noqa: F821
+    return bool(tables.is_missing(pd.isna, tables.lookup_object(prepared_model_point(), "declared_cap")))              # noqa: F821
 
 
 def policy_term():
