@@ -25,6 +25,22 @@ sum(flatten(over(periods(1, 6), lambda g:
     over(periods(1, karenz_months() + 1), lambda z: pols_karenz(t, g, z)))))
 ```
 
+
+Use `from lifelib import expressions as e` for one shared expression namespace.
+The facade re-exports the exact registered function objects; it adds no wrappers,
+registry or runtime. Preparation remains explicit in `lifelib.pandas_inputs`.
+
+```python
+e.sum_float(net_cf(t) * disc(t) for t in range(proj_len()))
+e.sum_float(e.periods(proj_len()),
+            lambda t: claims(t) * e.lookup_float(rates, age(t), "discount"))
+all(check_state(label) for label in e.keys(prepared_states()))
+```
+
+Typed lookup variants describe one lookup operation with distinct public result
+contracts. `is_missing(predicate, value)` preserves the current predicate binding.
+Standard Python consumers keep their ordinary semantics.
+
 ## Small vocabulary
 
 | Helper | Contract |
