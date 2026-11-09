@@ -37,16 +37,20 @@ def row(table, key):
     object.__setattr__(result, '_items', items)
     object.__setattr__(result, '_index', MappingProxyType(dict(items)))
     object.__setattr__(result, '_native_groups', {})
+    object.__setattr__(result, '_preserve_scalar_types',
+                       getattr(table, '_preserve_scalar_types', False))
     object.__setattr__(result, '_metadata', ('row', metadata[2], metadata[5][position],
                                            metadata[8][position], metadata[6], metadata[7]))
     return result
 
 
-def column(table, name):
+def column(table, name, *, report=False):
     """Materialize ordered immutable values with existing column scalar types.
 
     This is a value sequence, not a public Series. No aggregation or missing-value
-    policy is implied. Use to_pandas(table) to restore the labelled public report.
+    policy is implied. With report=True, select an existing Record carrying the
+    positional values and preserved axes/dtype/name/attrs/flags for to_pandas().
+    This internal report carrier does not provide a general labelled Series API.
     """
     if not isinstance(table, Table):
         raise TypeError('column requires an owned Table')
@@ -54,7 +58,22 @@ def column(table, name):
         position = table._columns.index(name)
     except ValueError:
         raise KeyError(name) from None
-    return tuple(values[position] for values in table._values)
+    values = tuple(values[position] for values in table._values)
+    if not report:
+        return values
+    meta = table._metadata
+    if meta is None or meta[0] != 'frame':
+        raise ValueError('column report requires table(..., report=True) metadata')
+    result = object.__new__(Record)
+    items = (('values', values),)
+    object.__setattr__(result, '_items', items)
+    object.__setattr__(result, '_index', MappingProxyType(dict(items)))
+    object.__setattr__(result, '_native_groups', {})
+    object.__setattr__(result, '_preserve_scalar_types',
+                       getattr(table, '_preserve_scalar_types', False))
+    object.__setattr__(result, '_metadata', ('series', meta[1], meta[3][position],
+                                          name, meta[6], meta[7]))
+    return result
 
 
 def to_pandas(value, *, index_name=_MISSING):
@@ -63,6 +82,9 @@ def to_pandas(value, *, index_name=_MISSING):
     Python/pandas execution at this output boundary is explicit and timed. Row
     and column calculations precede it. Untagged records are not guessed to be
     report rows, and tables without preserved metadata are rejected.
+
+    A column selected with report=True restores a Series using its original
+    index, dtype and column name. No filtering, ordering or reduction occurs.
     """
     import pandas as pd
     def axis(spec):
@@ -82,9 +104,10 @@ def to_pandas(value, *, index_name=_MISSING):
         result.columns = columns
         result.attrs = deepcopy(meta[6])
         result.flags.allows_duplicate_labels = meta[7]
-    elif type(value) is Record and value._metadata is not None and value._metadata[0] == 'row':
+    elif type(value) is Record and value._metadata is not None and value._metadata[0] in ('row', 'series'):
         meta = value._metadata
-        result = pd.Series([entry[1] for entry in value._items],
+        values = value._index['values'] if meta[0] == 'series' else [entry[1] for entry in value._items]
+        result = pd.Series(values,
                            index=axis(meta[1]), dtype=meta[2], name=meta[3])
         result.attrs = deepcopy(meta[4])
         result.flags.allows_duplicate_labels = meta[5]

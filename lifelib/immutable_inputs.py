@@ -2,6 +2,8 @@
 
 Construction is explicit: existing dictionaries and pandas objects are never
 silently frozen. Keys and authored enum objects retain their Python identity.
+The explicit preserve_scalar_types option owns structure while retaining raw
+cell references, including mutable object cells; it is a shallow snapshot.
 """
 from bisect import bisect_right
 from collections.abc import Mapping
@@ -9,14 +11,16 @@ from types import MappingProxyType
 
 
 class Record(Mapping):
-    __slots__ = ('_items', '_index', '_native_groups', '_metadata')
+    __slots__ = ('_items', '_index', '_native_groups', '_metadata', '_preserve_scalar_types')
 
-    def __init__(self, values):
-        items = tuple((key, freeze(value)) for key, value in values.items())
+    def __init__(self, values, *, preserve_scalar_types=False):
+        items = tuple((key, value if preserve_scalar_types else freeze(value))
+                      for key, value in values.items())
         object.__setattr__(self, '_items', items)
         object.__setattr__(self, '_index', MappingProxyType(dict(items)))
         object.__setattr__(self, '_native_groups', {})
         object.__setattr__(self, '_metadata', None)
+        object.__setattr__(self, '_preserve_scalar_types', bool(preserve_scalar_types))
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')
@@ -34,6 +38,8 @@ class Record(Mapping):
         return len(self._index)
 
     def __reduce__(self):
+        if getattr(self, '_preserve_scalar_types', False):
+            return _restore_record, (type(self), dict(self._items), self._metadata, True)
         if self._metadata is None:
             return type(self), (dict(self._items),)
         return _restore_record, (type(self), dict(self._items), self._metadata)
@@ -46,11 +52,12 @@ class Record(Mapping):
 
 
 class Table(Mapping):
-    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered', '_native_cache', '_index_error', '_metadata')
+    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered', '_native_cache', '_index_error', '_metadata', '_preserve_scalar_types')
 
-    def __init__(self, keys, values, columns, index_error=None):
+    def __init__(self, keys, values, columns, index_error=None, *, preserve_scalar_types=False):
         keys, columns = tuple(keys), tuple(columns)
-        values = tuple(tuple(freeze(value) for value in row) for row in values)
+        values = tuple(tuple(value if preserve_scalar_types else freeze(value)
+                             for value in row) for row in values)
         if not columns or len(set(columns)) != len(columns):
             raise ValueError('table columns must be nonempty and unique')
         if any(type(column) is not str for column in columns):
@@ -73,6 +80,7 @@ class Table(Mapping):
         object.__setattr__(self, '_native_cache', {})
         object.__setattr__(self, '_index_error', freeze(index_error))
         object.__setattr__(self, '_metadata', None)
+        object.__setattr__(self, '_preserve_scalar_types', bool(preserve_scalar_types))
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')
@@ -126,6 +134,8 @@ class Table(Mapping):
         args = (self._keys, self._values, self._columns)
         if self._index_error is not None:
             args += (self._index_error,)
+        if getattr(self, '_preserve_scalar_types', False):
+            return _restore_table, (type(self), args, self._metadata, True)
         if self._metadata is None:
             return type(self), args
         return _restore_table, (type(self), args, self._metadata)
@@ -137,14 +147,14 @@ class Table(Mapping):
         return self
 
 
-def _restore_record(cls, values, metadata):
-    result = cls(values)
+def _restore_record(cls, values, metadata, preserve_scalar_types=False):
+    result = cls(values, preserve_scalar_types=preserve_scalar_types) if preserve_scalar_types else cls(values)
     object.__setattr__(result, '_metadata', metadata)
     return result
 
 
-def _restore_table(cls, args, metadata):
-    result = cls(*args)
+def _restore_table(cls, args, metadata, preserve_scalar_types=False):
+    result = cls(*args, preserve_scalar_types=preserve_scalar_types) if preserve_scalar_types else cls(*args)
     object.__setattr__(result, '_metadata', metadata)
     return result
 

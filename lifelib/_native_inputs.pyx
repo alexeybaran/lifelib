@@ -1407,17 +1407,20 @@ cdef object row(object function, tuple keywords, object table, object key):
     PyObject_GenericSetAttr(result, '_items', items)
     PyObject_GenericSetAttr(result, '_index', MappingProxyType(dict(items)))
     PyObject_GenericSetAttr(result, '_native_groups', {})
+    PyObject_GenericSetAttr(result, '_preserve_scalar_types', getattr(table, '_preserve_scalar_types', False))
     PyObject_GenericSetAttr(result, '_metadata', ('row', metadata[2], metadata[5][position],
                                                 metadata[8][position], metadata[6], metadata[7]))
     return result
 
 
-cdef object column(object function, tuple keywords, object table, object name):
+cdef object column(object function, tuple keywords, object table, object name, object report=_missing):
     cdef Py_ssize_t position, i
     cdef tuple columns, values
     cdef list result
-    if function is not _column or type(table) is not Table:
-        return forward_call(function, keywords, ('table', 'name'), (table, name), omitted_argument)
+    cdef object metadata, carrier, items
+    if (function is not _column or type(table) is not Table
+            or not (report is _missing or report is True or report is False)):
+        return forward_call(function, keywords, ('table', 'name', 'report'), (table, name, report), omitted_argument)
     columns = table._columns
     try:
         position = columns.index(name)
@@ -1427,7 +1430,20 @@ cdef object column(object function, tuple keywords, object table, object name):
     result = [None] * len(values)
     for i in range(len(values)):
         result[i] = values[i][position]
-    return tuple(result)
+    if report is not True:
+        return tuple(result)
+    metadata = table._metadata
+    if metadata is None or metadata[0] != 'frame':
+        raise ValueError('column report requires table(..., report=True) metadata')
+    carrier = _record_alloc(<PyTypeObject*>Record, 0)
+    items = (('values', tuple(result)),)
+    PyObject_GenericSetAttr(carrier, '_items', items)
+    PyObject_GenericSetAttr(carrier, '_index', MappingProxyType(dict(items)))
+    PyObject_GenericSetAttr(carrier, '_native_groups', {})
+    PyObject_GenericSetAttr(carrier, '_preserve_scalar_types', getattr(table, '_preserve_scalar_types', False))
+    PyObject_GenericSetAttr(carrier, '_metadata', ('series', metadata[1], metadata[3][position],
+                                                 name, metadata[6], metadata[7]))
+    return carrier
 
 
 from lifelib.table_operations import group_sum as _group_sum
@@ -1581,7 +1597,8 @@ from lifelib.pandas_inputs import table as _table_constructor
 cdef object _report_int64 = _group_numpy.dtype('int64')
 
 
-cdef object _native_report_table(object frame, bint with_rows, bint encoded_errors):
+cdef object _native_report_table(object frame, bint with_rows, bint encoded_errors,
+                                 bint preserve_scalar_types):
     """Copy admitted physical report storage without pandas/Python operations."""
     cdef object manager, block, data, index, column_axis, column_data, column_storage
     cdef object index_data, index_spec, index_metadata, column_dtype, flags, result, spec
@@ -1648,7 +1665,10 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
         raise ValueError('duplicate table key')
     copied, copied_rows = [], []
     for i in range(height):
-        copied.append(tuple(numbers[j, i] for j in range(width)))
+        if preserve_scalar_types:
+            copied.append(tuple(data[j, i] for j in range(width)))
+        else:
+            copied.append(tuple(numbers[j, i] for j in range(width)))
         if with_rows:
             copied_rows.append(tuple(data[j, i] for j in range(width)))
     values = tuple(copied)
@@ -1675,21 +1695,25 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
     PyObject_GenericSetAttr(result, '_native_cache', {})
     PyObject_GenericSetAttr(result, '_index_error', spec)
     PyObject_GenericSetAttr(result, '_metadata', metadata)
+    PyObject_GenericSetAttr(result, '_preserve_scalar_types', preserve_scalar_types)
     return result
 
 
 cdef object table(object function, tuple keywords, object frame, object columns=_missing,
                   object groups=_missing, object indexing=_missing, object rows=_missing,
-                  object report=_missing):
+                  object report=_missing, object preserve_scalar_types=_missing):
     cdef object prepared
     if (function is _table_constructor and (rows is True or report is True)
+            and (preserve_scalar_types is _missing or preserve_scalar_types is False
+                 or preserve_scalar_types is True)
             and (rows is _missing or rows is True or rows is False)
             and (report is _missing or report is True or report is False)
             and (columns is _missing or columns is None)
             and (groups is _missing or type(groups) is tuple and not groups)
             and (indexing is _missing or type(indexing) is str and indexing in ('loc', 'at'))):
-        prepared = _native_report_table(frame, rows is True, indexing == 'at')
+        prepared = _native_report_table(frame, rows is True, indexing == 'at',
+                                         preserve_scalar_types is True)
         if prepared is not None:
             return prepared
-    return forward_call(function, keywords, ('frame', 'columns', 'groups', 'indexing', 'rows', 'report'),
-                        (frame, columns, groups, indexing, rows, report), omitted_argument)
+    return forward_call(function, keywords, ('frame', 'columns', 'groups', 'indexing', 'rows', 'report', 'preserve_scalar_types'),
+                        (frame, columns, groups, indexing, rows, report, preserve_scalar_types), omitted_argument)

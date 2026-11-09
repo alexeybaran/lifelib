@@ -33,11 +33,23 @@ def select_keyword(function, source, key):
 def values(function, source, name):
     return p.column(function, (), source, name)
 
+def report_values(function, source, name):
+    return p.column(function, ('report',), source, name, report=True)
+
 def prepare(function, frame, rows=False):
     return p.table(function, ('rows', 'report'), frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=rows, report=True)
 
 def prepare_keywords(function, frame):
     return p.table(function, ('report', 'frame'), frame=frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=p.omitted_argument, report=True)
+
+def prepare_raw(function, frame, rows=False):
+    return p.table(function, ('rows', 'report', 'preserve_scalar_types'), frame, columns=p.omitted_argument, groups=p.omitted_argument, indexing=p.omitted_argument, rows=rows, report=True, preserve_scalar_types=True)
+
+def raw_value(function, source, key, column):
+    return p.lookup_object(function, (), source, key, column)
+
+def float_value(function, source, key, column):
+    return p.lookup_float(function, (), source, key, column)
 
 def grouped(function, source, labels, first=(), last=()):
     return p.group_sum(function, ('first', 'last'), source, labels, first=first, last=last)
@@ -172,5 +184,5 @@ def test_row_snapshots_are_explicit_and_follow_selected_columns(native):
     expected = frame[['age']].loc[0]
     pd.testing.assert_series_equal(to_pandas(native.select(row, selected, 0)), expected, check_exact=True)
     assert type(row(selected, 0)['age']) is np.int64
-    with pytest.raises(ValueError, match='ungrouped'):
+    with pytest.raises(ValueError, match='leave at least'):
         inputs.table(frame.rename_axis('t'), groups=('t',), rows=True)
