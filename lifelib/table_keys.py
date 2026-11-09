@@ -1,13 +1,17 @@
 """Ordered key traversal over the existing owned table representation."""
+from .immutable_inputs import Record
 
 
 def keys(table):
     """Return keys in input order, preserving the existing sequence identity.
 
-    Owned Table keys and Record key tuples can use native integer/float/string
-    spans in compiled iterations, preserving duplicate labels and source order.
+    Tables return row keys; ordinary Records return field names. Explicit owned
+    Index Records return labels, preserving duplicates without confusing a real
+    Record field named ``keys`` with an Index snapshot.
     Other representations retain the supplied function's ordinary semantics.
     """
+    if isinstance(table, Record) and table._metadata != ('index',):
+        return tuple(table)
     return table['keys']
 
 

@@ -9,13 +9,14 @@ from types import MappingProxyType
 
 
 class Record(Mapping):
-    __slots__ = ('_items', '_index', '_native_groups')
+    __slots__ = ('_items', '_index', '_native_groups', '_metadata')
 
     def __init__(self, values):
         items = tuple((key, freeze(value)) for key, value in values.items())
         object.__setattr__(self, '_items', items)
         object.__setattr__(self, '_index', MappingProxyType(dict(items)))
         object.__setattr__(self, '_native_groups', {})
+        object.__setattr__(self, '_metadata', None)
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')
@@ -33,7 +34,9 @@ class Record(Mapping):
         return len(self._index)
 
     def __reduce__(self):
-        return type(self), (dict(self._items),)
+        if self._metadata is None:
+            return type(self), (dict(self._items),)
+        return _restore_record, (type(self), dict(self._items), self._metadata)
 
     def __copy__(self):
         return self
@@ -43,7 +46,7 @@ class Record(Mapping):
 
 
 class Table(Mapping):
-    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered', '_native_cache', '_index_error')
+    __slots__ = ('_keys', '_values', '_columns', '_positions', '_ordered', '_native_cache', '_index_error', '_metadata')
 
     def __init__(self, keys, values, columns, index_error=None):
         keys, columns = tuple(keys), tuple(columns)
@@ -69,6 +72,7 @@ class Table(Mapping):
         object.__setattr__(self, '_ordered', ordered)
         object.__setattr__(self, '_native_cache', {})
         object.__setattr__(self, '_index_error', freeze(index_error))
+        object.__setattr__(self, '_metadata', None)
 
     def __setattr__(self, name, value):
         raise AttributeError('immutable input')
@@ -122,13 +126,27 @@ class Table(Mapping):
         args = (self._keys, self._values, self._columns)
         if self._index_error is not None:
             args += (self._index_error,)
-        return type(self), args
+        if self._metadata is None:
+            return type(self), args
+        return _restore_table, (type(self), args, self._metadata)
 
     def __copy__(self):
         return self
 
     def __deepcopy__(self, memo):
         return self
+
+
+def _restore_record(cls, values, metadata):
+    result = cls(values)
+    object.__setattr__(result, '_metadata', metadata)
+    return result
+
+
+def _restore_table(cls, args, metadata):
+    result = cls(*args)
+    object.__setattr__(result, '_metadata', metadata)
+    return result
 
 
 def freeze(value):

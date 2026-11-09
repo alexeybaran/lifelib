@@ -2,6 +2,7 @@ from libc.math cimport fabs
 from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
 
 cdef object lookup(object function, object table, object key, object column, object default=*)
+cdef Py_ssize_t indexed_position(object table, object key) except? -2
 cdef object previous(object function, object table, object key, object column, object default=*)
 cdef object contains(object function, object table, object key)
 cdef object key_count(object function, object table)
@@ -138,3 +139,7 @@ cdef str lookup_str(object function, tuple keywords, object source, object key, 
 
 cdef object lookup_object(object function, tuple keywords, object source, object key, object column=*, object default=*)
 cdef bint is_missing(object function, tuple keywords, object predicate, object value) except? -1
+
+
+cdef object row(object function, tuple keywords, object table, object key)
+cdef object column(object function, tuple keywords, object table, object name)

@@ -137,12 +137,14 @@ def test_record_subclass_keeps_keys_override_and_declines_span(native):
         def __getitem__(self,key):
             return ('changed',)
     source = Changed({'keys': (3, 1, 3)})
+    object.__setattr__(source, '_metadata', ('index',))
     assert native.collect(keys, source) is None
     assert native.raw(keys, source) == keys(source) == ('changed',)
 
 
 def test_keyword_keys_preserve_current_function_call_shape(native):
-    source = Record({'keys': (3, 1, 3)})
+    import pandas as pd
+    source = pandas_inputs.index(pd.Index([3, 1, 3]))
     assert native.keyword_raw(keys, source) is source['keys']
     calls = []
     def keyword_only(*, table):
@@ -152,3 +154,11 @@ def test_keyword_keys_preserve_current_function_call_shape(native):
     assert calls == [source]
     with pytest.raises(TypeError):
         native.raw(keyword_only, source)
+
+
+def test_record_fields_do_not_confuse_real_keys_field_with_owned_index(native):
+    source = Record({'keys': (3, 1, 3), 'premium': 4.0})
+    for value in [source, pickle.loads(pickle.dumps(source))]:
+        assert keys(value) == ('keys', 'premium')
+        assert native.raw(keys, value) == ('keys', 'premium')
+        assert native.collect(keys, value) is None

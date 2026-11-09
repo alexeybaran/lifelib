@@ -1234,6 +1234,24 @@ cdef object indexed_lookup(object table, object key, object column, object defau
             return data.raw_values[row][cache.index]
     return _lookup(table, key, column) if default is _missing else _lookup(table, key, column, default)
 
+cdef Py_ssize_t indexed_position(object table, object key) except? -2:
+    """Native unique-row position, or -1 when the key domain is not admitted."""
+    cdef KeyPart[4] parts
+    cdef Py_ssize_t count, position
+    cdef bint tuple_key
+    cdef KeyedCache cache
+    cdef KeyedView data
+    if _pack_key(key, &parts[0], &count, &tuple_key):
+        cache = _keyed_cache(_indexed_context(table), table, 0)
+        data = cache.data
+        if data is not None:
+            position = data.find(&parts[0], count, tuple_key)
+            if position < 0:
+                raise KeyError(data.error_key(&parts[0], count, tuple_key))
+            return position
+    return -1
+
+
 cdef object indexed_contains(object table, object key):
     cdef KeyPart[4] parts
     cdef Py_ssize_t count
@@ -1357,3 +1375,54 @@ cdef bint is_missing(object function, tuple keywords, object predicate, object v
             number = PyFloat_AsDouble(value)
             return number != number
     return _typed_bool(predicate(value))
+
+
+from types import MappingProxyType
+from cpython.object cimport PyObject_GenericSetAttr, PyTypeObject
+from lifelib.table_operations import row as _row, column as _column
+
+# Cython 3.2.9's bundled declaration takes PyObject*, whereas Python 3.12's
+# actual API takes PyTypeObject*. Keep the real signature for GCC14 as well.
+cdef extern from "Python.h":
+    object _record_alloc "PyType_GenericAlloc"(PyTypeObject*, Py_ssize_t)
+
+cdef object row(object function, tuple keywords, object table, object key):
+    cdef Py_ssize_t position
+    cdef tuple metadata, values, columns, items
+    cdef object result
+    if function is not _row or type(table) is not Table:
+        return forward_call(function, keywords, ('table', 'key'), (table, key), omitted_argument)
+    metadata = table._metadata
+    if metadata is None or metadata[0] != 'frame':
+        raise ValueError('row requires a table prepared with pandas row metadata')
+    position = indexed_position(table, key)
+    if position < 0:
+        return forward_call(function, keywords, ('table', 'key'), (table, key), omitted_argument)
+    values = metadata[4][position]
+    columns = table._columns
+    items = tuple((columns[i], values[i]) for i in range(len(columns)))
+    result = _record_alloc(<PyTypeObject*>Record, 0)
+    PyObject_GenericSetAttr(result, '_items', items)
+    PyObject_GenericSetAttr(result, '_index', MappingProxyType(dict(items)))
+    PyObject_GenericSetAttr(result, '_native_groups', {})
+    PyObject_GenericSetAttr(result, '_metadata', ('row', metadata[2], metadata[5][position],
+                                                metadata[8][position], metadata[6], metadata[7]))
+    return result
+
+
+cdef object column(object function, tuple keywords, object table, object name):
+    cdef Py_ssize_t position, i
+    cdef tuple columns, values
+    cdef list result
+    if function is not _column or type(table) is not Table:
+        return forward_call(function, keywords, ('table', 'name'), (table, name), omitted_argument)
+    columns = table._columns
+    try:
+        position = columns.index(name)
+    except ValueError:
+        raise KeyError(name) from None
+    values = table._values
+    result = [None] * len(values)
+    for i in range(len(values)):
+        result[i] = values[i][position]
+    return tuple(result)

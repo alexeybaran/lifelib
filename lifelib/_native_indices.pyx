@@ -18,9 +18,9 @@ cdef tuple _owned_keys(object source):
     if type(source) is Table:
         return source._keys
     if type(source) is Record:
-        value = source._index.get('keys')
-        if type(value) is tuple:
-            return value
+        if source._metadata == ('index',):
+            return source._index['keys']
+        return tuple(source._index)
     return None
 
 
@@ -33,7 +33,7 @@ cdef object keys(object function, tuple keywords, object table):
         if type(table) is Table:
             return table._keys
         if type(table) is Record:
-            return table._index['keys']
+            return _owned_keys(table)
     return forward_call(function, keywords, ('table',), (table,), omitted_argument)
 
 

@@ -153,3 +153,53 @@ Python helper invocations is tested separately from primitive-only execution.
 Neither successful compilation nor a zero-call profile alone qualifies an entire
 regional model. Full operation coverage, financial validation, generated-code
 evidence and matched performance remain separate gates.
+
+## Row and column expressions
+
+`lifelib.table_operations` provides two more directly registered selectors:
+
+```python
+prepared = inputs.table(result_cf())
+selected = operations.row(prepared, t)
+claims = sum(tables.lookup_float(selected, name)
+             for name in keys(selected) if name.startswith('claims_'))
+rates = operations.column(prepared, 'rate')
+```
+
+`row(table, key)` selects one unique row into the existing Record. Preparation
+owns the actual pandas row scalar coercion separately from column values:
+an int64 column beside a float64 column stays integral for column lookup,
+while the selected pandas-style numeric row contains float64 scalars. Nullable
+missing singletons, field order, row name and output dtype are retained.
+`column(table, name)` returns ordered immutable values, with the same scalar
+normalization as existing Table column lookup. It is not a Series, does not
+align values by labels, and does not imply pandas skip-missing reductions.
+
+`keys(table)` gives row keys. `keys(record)` gives ordinary field names. An
+explicit owned Index snapshot has a private tag, so a real policy field named
+`keys` is never mistaken for an Index's label tuple. Duplicate Index traversal
+keeps its original order and multiplicity. Old Table/Record constructor and
+unpickling forms remain valid; private native caches are discarded on pickle.
+
+The two selectors use the existing `_native_inputs` provider and shared keyword
+ABI. Exact owners and admitted lookup-key domains use native Cython selection,
+with no Python helper, pandas indexing or Python Table/Record methods. Cold/warm
+selection and output metadata were tested in live, exported and compiled modes.
+This has the object-capable/CPython ownership level of the existing MYGA/VA
+providers, not a claim that values or allocation are entirely unboxed. Replaced
+callables, subclasses and unsupported key domains retain compatibility behavior;
+those fallback executions do not establish native coverage.
+
+`operations.to_pandas(table)` constructs the public DataFrame from preserved
+metadata. `to_pandas(selected_row)` constructs its Series. The boundary restores
+axis classes/names, column order, dtypes, missing entries, attrs and duplicate-label
+flags and returns independent public objects. `index_name=` explicitly renames the
+axis (including `None`); omission preserves its name. Untagged Records and Tables
+without report metadata are rejected instead of guessed into report schemas.
+
+Preparation now explicitly owns row-coercion metadata; it still uses Python and
+pandas, as does final public materialization. Their costs/storage must be included
+in lifecycle measurements. Native preparation, primitive column consumers,
+grouping, arbitrary selection/alignment, and complete regional source migration
+remain separate open gates. No full-model completion or performance claim follows
+from selector tests.
