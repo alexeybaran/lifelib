@@ -3,7 +3,13 @@
 import builtins
 from libc.limits cimport LLONG_MIN, LLONG_MAX
 from cpython.long cimport PyLong_AsLongLong
-from cpython.exc cimport PyErr_Format
+from cpython.exc cimport PyErr_Format, PyErr_WarnEx
+from cpython.version cimport PY_VERSION_HEX
+
+cdef extern from "Python.h":
+    bint PyExceptionClass_Check(object value) noexcept
+    bint PyExceptionInstance_Check(object value) noexcept
+    bint PyTraceBack_Check(object value) noexcept
 from cpython.object cimport Py_TYPE
 from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _FLOAT, _NO_CALLBACK, _DOMAIN_MISSING
 from modelx_cython._float_sum_state cimport F64Sum, f64_init, f64_add, f64_result
@@ -40,7 +46,7 @@ cdef object _unpack(object value, object count):
     try:
         iterator = iter(value)
     except TypeError:
-        if count in (2, 3) and mx_unpack_noniterable(value):
+        if count in (2, 3, 4) and mx_unpack_noniterable(value):
             noniterable = True
         else:
             raise
@@ -86,6 +92,7 @@ cdef void _capture(Stream result, object source) except *:
         else:
             range_init(&result.counter, start, stop, step)
             result.bounded = True
+            result.source = None
     elif type(source) is tuple:
         result.source_kind = 1
     elif type(source) is list:
@@ -114,6 +121,18 @@ cdef class Stream:
 
     def __next__(self):
         return self.next_value()
+
+    cdef bint prepare_next(self) except *:
+        try:
+            self.pending = self.next_value()
+        except StopIteration:
+            return False
+        return True
+
+    cdef object take_pending(self):
+        cdef object value = self.pending
+        self.pending = None
+        return value
 
     cdef object next_input(self):
         cdef long long index
@@ -157,14 +176,15 @@ cdef class Stream:
                 self.close()
                 raise StopIteration
             try:
-                self.current = value
                 if self.identity:
-                    return value
+                    return value if self.unpack is None else _unpack(value, self.unpack)
+                self.current = value
                 if self.unpack is None:
                     if self.predicate is not None and not self.predicate(value):
                         continue
                     return self.function(value)
                 arguments = _unpack(value, self.unpack)
+                self.current = arguments
                 if self.predicate is not None and not self.predicate(*arguments):
                     continue
                 return self.function(*arguments)
@@ -211,6 +231,76 @@ cdef class Stream:
                 raise
 
 
+
+def _stream_generator(Stream cursor):
+    try:
+        while True:
+            if not cursor.prepare_next():
+                return
+            yield cursor.take_pending()
+    finally:
+        cursor.close()
+
+
+
+
+cdef class ProtocolGenerator:
+    def __init__(self, generator):
+        self.generator = generator
+        self.started = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.started = True
+        return next(self.generator)
+
+    def send(self, value, /):
+        if not self.started and value is not None and self.generator.gi_frame is not None:
+            raise TypeError("can't send non-None value to a just-started generator")
+        self.started = True
+        return self.generator.send(value)
+
+    def throw(self, *args, **kwargs):
+        if kwargs:
+            raise TypeError('generator.throw() takes no keyword arguments')
+        if not args:
+            raise TypeError('throw expected at least 1 argument, got 0')
+        if len(args) > 3:
+            raise TypeError(f'throw expected at most 3 arguments, got {len(args)}')
+        if len(args) > 1:
+            if PY_VERSION_HEX >= 0x030C0000:
+                PyErr_WarnEx(DeprecationWarning, 'the (type, exc, tb) signature of throw() is deprecated, use the single-arg signature instead.', 1)
+        if len(args) > 2 and args[2] is not None:
+            if not PyTraceBack_Check(args[2]):
+                raise TypeError('throw() third argument must be a traceback object')
+        kind = args[0]
+        if PyExceptionClass_Check(kind):
+            pass
+        elif PyExceptionInstance_Check(kind):
+            if len(args) > 1 and args[1] is not None:
+                raise TypeError('instance exception may not have a separate value')
+        else:
+            PyErr_Format(TypeError, "exceptions must be classes or instances deriving from BaseException, not %.200s", Py_TYPE(kind).tp_name)
+        return self.generator.throw(*args)
+
+    def close(self):
+        return self.generator.close()
+
+
+def _mapped_generator(Stream cursor, object function, object where, object unpack):
+    if unpack is None:
+        return (function(value) for value in cursor if where is None or where(value))
+    if unpack == 2:
+        return (function(a, b) for a, b in cursor if where is None or where(a, b))
+    if unpack == 3:
+        return (function(a, b, c) for a, b, c in cursor if where is None or where(a, b, c))
+    if unpack == 4:
+        return (function(a, b, c, d) for a, b, c, d in cursor if where is None or where(a, b, c, d))
+    return (function(*arguments) for arguments in cursor if where is None or where(*arguments))
+
+
 cdef object periods(object current_callable, tuple keywords, object start, object stop=_missing, object step=_missing):
     if current_callable is not _PERIODS:
         return _replacement(current_callable, keywords, ('start', 'stop', 'step'), (start, stop, step))
@@ -237,6 +327,15 @@ cdef object over(object current_callable, tuple keywords, object source, object 
     if unpack is not None and (type(unpack) is not int or unpack < 0):
         raise ValueError('unpack must be None or a nonnegative integer')
     result = Stream()
+    result.identity = True
+    result.unpack = unpack
+    _capture(result, source)
+    return ProtocolGenerator(_mapped_generator(result, function, where, unpack))
+
+
+cdef Stream _over_cursor(object source, object function, object where, object unpack=None):
+    cdef Stream result
+    result = Stream()
     result.function = function
     result.predicate = where
     result.unpack = unpack
@@ -253,7 +352,7 @@ cdef object flatten(object current_callable, tuple keywords, object sources):
     result = Stream()
     _capture(result, sources)
     result.flattened = True
-    return result
+    return ProtocolGenerator(_stream_generator(result))
 
 
 cdef object sum_values(object current_callable, tuple keywords, object source):
@@ -300,9 +399,9 @@ cdef object sum_float(object current_callable, tuple keywords, object source, ob
         return _replacement(current_callable, keywords, ('source', 'function', 'where'),
                             (source, function, where))
     if function is not _missing and function is not _NO_CALLBACK:
-        stream = over(_OVER, (), source, function, None if where is _missing else where)
+        stream = _over_cursor(source, function, None if where is _missing else where)
     elif where is not _missing and where is not None:
-        stream = over(_OVER, (), source, _identity, where)
+        stream = _over_cursor(source, _identity, where)
     elif type(source) is Stream:
         stream = source
     else:

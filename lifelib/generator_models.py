@@ -1,4 +1,4 @@
-"""Opt-in, inspectable boolean helper adaptation of ordinary model formulas.
+"""Opt-in, inspectable shared-helper adaptations of ordinary model formulas.
 
 Apply to a separately loaded adjusted model. Original serialized model files
 are never written. This overlay changes authoring syntax; its receipt is not a
@@ -107,6 +107,151 @@ def apply_generators(model):
         for child in list(space.spaces.values()):
             visit(child)
 
+    for space in list(model.spaces.values()):
+        visit(space)
+    return receipt
+
+
+def rewrite_native_generators(source, namespace='expressions'):
+    """Offline, reviewable authoring change; never a compiler recognizer.
+
+    Supported generator clauses become the shared over/flatten vocabulary.
+    Standard consumers and eager comprehensions stay authored. Escaping closure
+    cells, assignment expressions and forward target bindings are declined.
+    """
+    from libcst.metadata import ExpressionContext, ExpressionContextProvider, PositionProvider
+    wrapper = cst.MetadataWrapper(cst.parse_module(source))
+    scopes = wrapper.resolve(ScopeProvider)
+    contexts = wrapper.resolve(ExpressionContextProvider)
+    positions = wrapper.resolve(PositionProvider)
+    if any(assignment.name == namespace for scope in set(scopes.values())
+           for assignment in scope.assignments):
+        return source, []
+    changes = []
+
+    def names_read(expression):
+        result = set()
+        class Reads(cst.CSTVisitor):
+            def visit_Name(self, node):
+                if contexts.get(node) is ExpressionContext.LOAD:
+                    result.add(node.value)
+        expression.visit(Reads())
+        return result
+
+    def target_names(target):
+        if isinstance(target, cst.Name):
+            return [target.value], False
+        if (isinstance(target, (cst.Tuple, cst.List))
+                and len(target.elements) in (2, 3, 4)
+                and all(isinstance(item, cst.Element) and isinstance(item.value, cst.Name)
+                        for item in target.elements)):
+            return [item.value.value for item in target.elements], True
+        raise ValueError('unsupported target')
+
+    class Rewrite(cst.CSTTransformer):
+        def __init__(self):
+            self.starts = []
+        def visit_GeneratorExp(self, node):
+            self.starts.append(len(changes))
+        def leave_GeneratorExp(self, before, after):
+            start = self.starts.pop()
+            def decline():
+                del changes[start:]
+                return before
+
+            class Safety(cst.CSTVisitor):
+                generators = 0
+                unsafe = False
+                def visit_GeneratorExp(self, node): self.generators += 1
+                def visit_Lambda(self, node): self.unsafe = True
+                visit_NamedExpr = visit_Await = visit_Yield = visit_Lambda
+                def visit_CompFor(self, node): self.unsafe |= node.asynchronous is not None
+            safety = Safety()
+            before.visit(safety)
+            if safety.unsafe or safety.generators != 1:
+                return decline()
+            parts = []
+            part = before.for_in
+            while part is not None:
+                parts.append(part)
+                part = part.inner_for_in
+            try:
+                targets = [target_names(part.target)[0] for part in parts]
+                flattened = [name for group in targets for name in group]
+                if len(flattened) != len(set(flattened)) or namespace in flattened:
+                    return decline()
+                all_targets, assigned = set(flattened), set()
+                for i, part in enumerate(parts):
+                    if i and names_read(part.iter) & (all_targets - assigned):
+                        return decline()
+                    assigned.update(targets[i])
+                    if any(names_read(item.test) & (all_targets - assigned) for item in part.ifs):
+                        return decline()
+
+                def produce(part, payload):
+                    names, unpack = target_names(part.target)
+                    nested = part.inner_for_in is not None
+                    if nested:
+                        payload = produce(part.inner_for_in, payload)
+                    parameters = cst.Parameters(params=tuple(cst.Param(cst.Name(name)) for name in names))
+                    arguments = [cst.Arg(part.iter), cst.Arg(cst.Lambda(parameters, payload))]
+                    if part.ifs:
+                        condition = cst.Name('True')
+                        for item in reversed(part.ifs):
+                            if isinstance(condition, cst.IfExp):
+                                condition = condition.with_changes(lpar=(cst.LeftParen(),), rpar=(cst.RightParen(),))
+                            condition = cst.IfExp(test=item.test, body=condition, orelse=cst.Name('False'))
+                        arguments.append(cst.Arg(cst.Lambda(parameters, condition), keyword=cst.Name('where')))
+                    if unpack:
+                        arguments.append(cst.Arg(cst.Integer(str(len(names))), keyword=cst.Name('unpack')))
+                    result = cst.Call(cst.Attribute(cst.Name(namespace), cst.Name('over')), tuple(arguments))
+                    if nested:
+                        result = cst.Call(cst.Attribute(cst.Name(namespace), cst.Name('flatten')), (cst.Arg(result),))
+                    return result
+                result = produce(after.for_in, after.elt)
+            except ValueError:
+                return decline()
+            position = positions[before]
+            changes.append({'line': position.start.line, 'column': position.start.column,
+                            'before': wrapper.module.code_for_node(before),
+                            'after': wrapper.module.code_for_node(result),
+                            'clauses': len(parts), 'targets': targets,
+                            'helpers': ['over', 'flatten'] if len(parts) > 1 else ['over']})
+            return result
+
+    result = wrapper.module.visit(Rewrite()).code
+    cst.parse_module(result)  # Check emitted syntax; no formula execution.
+    return result, changes
+
+
+def apply_native_generators(model):
+    """Apply the qualified source vocabulary on a separately loaded model.
+
+    Original consumers remain unchanged. Receipts retain complete source/hashes;
+    they are authoring evidence, not a native or financial qualification claim.
+    """
+    from . import expressions
+    receipt = []
+    def visit(space):
+        if 'expressions' in space.cells or getattr(space, 'expressions', expressions) is not expressions:
+            return
+        for cell in list(space.cells.values()):
+            if cell.formula is None:
+                continue
+            before = cell.formula.source
+            after, operations = rewrite_native_generators(before)
+            if not operations:
+                continue
+            space.expressions = expressions
+            doc = cell.doc
+            cell.formula = after
+            if doc:
+                cell.doc = doc
+            receipt.append({'cell': cell.fullname, 'before': before, 'after': after,
+                            'before_sha256': _digest(before), 'after_sha256': _digest(after),
+                            'operations': operations, 'native_coverage': 'UNQUALIFIED'})
+        for child in list(space.spaces.values()):
+            visit(child)
     for space in list(model.spaces.values()):
         visit(space)
     return receipt
