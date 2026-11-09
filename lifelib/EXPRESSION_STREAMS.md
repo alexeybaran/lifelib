@@ -41,12 +41,39 @@ Typed lookup variants describe one lookup operation with distinct public result
 contracts. `is_missing(predicate, value)` preserves the current predicate binding.
 Standard Python consumers keep their ordinary semantics.
 
+## Identity traversal (ABI 2 development extension)
+
+The optional-mapper extension passed provider/protocol and normal-CLI checks.
+It does not qualify new all-model source variants until their financial, native
+coverage and matched performance checks pass. Rebuild
+native packages after this `.pxd` change; cross-revision binary ABI is not promised.
+
+```python
+sum(e.over(net_cf(t) * discount(t) for t in e.periods(proj_len())))
+all(e.over(abs(check_resid(t)) <= tolerance for t in e.periods(proj_len())))
+tuple(e.over(e.keys(rates), where=lambda age: age <= attained_age))
+```
+
+`over(source)` creates its own fresh identity traversal. It acquires `iter(source)`
+at construction and yields the original objects lazily, without a mapper callback.
+A source may already be suspended; the wrapper still starts fresh. Sent values
+are ignored. Throw/close affect the wrapper and release its source reference;
+they are not forwarded to an independently retained source.
+
+With only `where=`, test each source value before yielding that same object.
+Unpacking requires an explicit mapper; `over(source, unpack=2)` raises before
+iterator acquisition. Explicit `function=None` remains a non-callable mapper
+and fails lazily on the first selected contribution. These distinctions preserve
+existing callback calls and make omission an intentional identity operation.
+Cython compiles an authored generator expression normally; the provider never
+examines its body or introduces a per-item mapper for this form.
+
 ## Small vocabulary
 
 | Helper | Contract |
 |---|---|
 | `periods(start, stop=omitted, step=omitted)` | Reusable `range` domain; one, two or three supplied arguments have `range` values, integer conversion order and zero-step behavior. Optional arguments may be named. |
-| `over(source, function, where=None, *, unpack=None)` | One-shot lazy stream with standard send/throw/close protocol. Acquire `iter(source)` at construction. For each candidate, unpack if requested, evaluate the predicate, then the payload once. |
+| `over(source, function=omitted, where=None, *, unpack=None)` | One-shot lazy stream with standard send/throw/close protocol. Acquire `iter(source)` at construction. For each candidate, unpack if requested, evaluate the predicate, then the payload once. |
 | `flatten(sources)` | One-shot lazy concatenation. Acquire the outer iterator at construction; acquire each inner iterator only when reached. |
 | `zip_values(sources, *, strict=False)` | Zip an authored exact tuple of source iterables, e.g. `zip_values((ages[:-1], ages[1:]))`. It has the values, acquisition order, strict behavior, retries and retained-row lifetime of `zip(*sources, strict=strict)`. |
 | `sum_float(source, function=omitted, where=None) -> float` | Lazily convert each passing contribution with standard `float`, then sum the resulting doubles using float-start summation. Empty input is float `0.0`. |

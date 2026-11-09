@@ -25,14 +25,14 @@ def native(tmp_path_factory):
             source = (provider / f'{stem}.{suffix}').read_text()
             (root / f'{name}.{suffix}').write_text(source)
     (root / 'stream_probe.pyx').write_text('''cimport stream_native as native
-from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _ZIP_VALUES
+from lifelib.expression_streams import _PERIODS, _OVER, _FLATTEN, _SUM_VALUES, _SUM_FLOAT, _ZIP_VALUES, _NO_CALLBACK
 
 def periods(*args):
     if len(args) == 1: return native.periods(_PERIODS, (), args[0])
     if len(args) == 2: return native.periods(_PERIODS, (), args[0], args[1])
     if len(args) == 3: return native.periods(_PERIODS, (), args[0], args[1], args[2])
     return _PERIODS(*args)
-def over(source, function, where=None, *, unpack=None):
+def over(source, function=_NO_CALLBACK, where=None, *, unpack=None):
     return native.over(_OVER, (), source, function, where, unpack)
 def flatten(sources): return native.flatten(_FLATTEN, (), sources)
 def zip_values(sources, *, strict=False): return native.zip_values(_ZIP_VALUES, ('strict',), sources, strict=strict)
@@ -365,3 +365,113 @@ def test_native_execution_does_not_parse_an_ast(native, monkeypatch):
         total = native.sum_float(native.periods(5), float, where=bool)
         flattened = list(native.flatten(native.over(range(2), lambda n: range(n))))
     assert total == 10.0 and flattened == [0]
+
+
+@pytest.mark.parametrize('filtered', [False, True])
+def test_identity_traversal_creation_identity_and_release(api, filtered):
+    events = []
+    class Payload:
+        def __del__(self): events.append('release')
+    class Source:
+        position = 0
+        def __iter__(self): events.append('iter'); return self
+        def __next__(self):
+            events.append(('next', self.position))
+            if self.position:
+                raise StopIteration('source result')
+            self.position += 1
+            return Payload()
+    predicate = (lambda value: events.append('where') or True) if filtered else None
+    stream = api.over(Source(), where=predicate)
+    assert events == ['iter']
+    value = next(stream)
+    assert type(value) is Payload
+    del value
+    assert events[-1] == 'release'  # No identity mapper or yielded local retains it.
+    with pytest.raises(StopIteration) as raised: next(stream)
+    assert type(raised.value) is StopIteration and raised.value.value is None
+    with pytest.raises(StopIteration): next(stream)
+
+
+def test_identity_traversal_owns_fresh_protocol_not_source_delegation(api):
+    sent = []
+    def values():
+        sent.append((yield 0))
+        sent.append((yield 1))
+        sent.append((yield 2))
+        yield 3
+    source = values()
+    assert next(source) == 0
+    stream = api.over(source)
+    with pytest.raises(TypeError, match="can't send non-None"):
+        stream.send(99)
+    assert next(stream) == 1
+    assert stream.send(99) == 2
+    assert sent == [None, None]  # Wrapper send does not forward to the source.
+    stream.close()
+    assert next(source) == 3
+    source.close()
+
+
+def test_identity_filter_order_and_exception_identity(api):
+    events = []
+    failure = LookupError('identity predicate')
+    def predicate(value):
+        events.append(value)
+        if value == 3: raise failure
+        return value % 2
+    stream = api.over(range(5), where=predicate)
+    assert events == [] and next(stream) == 1 and events == [0, 1]
+    with pytest.raises(LookupError) as raised: next(stream)
+    assert raised.value is failure and events == [0, 1, 2, 3]
+    with pytest.raises(StopIteration): next(stream)
+
+
+def test_identity_predicate_stopiteration_is_body_error(api):
+    failure = StopIteration('predicate')
+    def predicate(value): raise failure
+    stream = api.over((1,), where=predicate)
+    with pytest.raises(RuntimeError, match='generator raised StopIteration') as raised:
+        next(stream)
+    assert raised.value.__cause__ is failure and raised.value.__context__ is failure
+
+
+def test_identity_explicit_none_stays_noncallable_and_unpack_requires_mapper(api):
+    stream = api.over((1,), None)
+    with pytest.raises(TypeError): next(stream)
+    events = []
+    class Source:
+        def __iter__(self): events.append('iter'); return iter(())
+    with pytest.raises(TypeError, match='unpack requires a mapping function'):
+        api.over(Source(), unpack=2)
+    assert events == []
+    assert list(api.over(((1, 2),))) == [(1, 2)]
+    assert list(api.over((1, 2), unpack=None)) == [1, 2]
+
+
+def test_identity_where_only_keeps_discarded_values_lazy(api):
+    events = []
+    class Payload:
+        def __del__(self): events.append('release')
+    def source():
+        yield Payload()
+        assert events == ['release']
+    assert list(api.over(source(), where=lambda value: False)) == []
+    assert events == ['release']
+
+
+def test_identity_explicit_default_marker_is_still_identity(api):
+    marker = inspect.signature(live.over).parameters['function'].default
+    value = object()
+    assert list(api.over((value,), function=marker)) == [value]
+
+
+def test_identity_failure_leaves_retained_source_resumable(api):
+    source = iter((1, 2, 3))
+    failure = LookupError('stop predicate')
+    def predicate(value): raise failure
+    stream = api.over(source, where=predicate)
+    with pytest.raises(LookupError) as raised: next(stream)
+    assert raised.value is failure
+    assert next(source) == 2
+    with pytest.raises(StopIteration): next(stream)

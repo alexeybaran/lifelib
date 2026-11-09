@@ -17,7 +17,7 @@ cdef class Stream:
 
 cdef object periods(object current_callable, tuple keywords, object start, object stop=*, object step=*)
 cdef object zip_values(object current_callable, tuple keywords, object sources, object strict=*)
-cdef object over(object current_callable, tuple keywords, object source, object function, object where=*, object unpack=*)
+cdef object over(object current_callable, tuple keywords, object source, object function=*, object where=*, object unpack=*)
 cdef object flatten(object current_callable, tuple keywords, object sources)
 cdef object sum_values(object current_callable, tuple keywords, object source)
 
