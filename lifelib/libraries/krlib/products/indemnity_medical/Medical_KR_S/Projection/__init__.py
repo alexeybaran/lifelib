@@ -992,7 +992,7 @@ def sev_points(stream):
 
 def sev_mean(stream):
     """The expected cost of one event in a severity stream, KRW, before any trend."""
-    return sum(expressions.over(sev_points(stream), lambda c, p: c * p, unpack = 2))
+    return sum(expressions.over(c * p for (c, p) in sev_points(stream)))
 
 
 # --- 급여 reimbursement — the main contract ---------------------------------
@@ -1323,7 +1323,7 @@ def claims_ann_pp(y, kind=None):
     With no ``kind`` the sum over all five.
     """
     if kind is None:
-        return sum(expressions.over(("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE"), lambda k: claims_ann_pp(y, k)))
+        return sum(expressions.over(claims_ann_pp(y, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     if kind == "GE_IN":
         return claims_ge_in_pp(y) * ge_limit_factor(y)
     if kind == "GE_OUT":
@@ -1496,7 +1496,7 @@ def reld_surcharge(y):
 
     This is the revenue the wording requires be distributed to the 1단계 contracts.
     """
-    return sum(expressions.over((2, 3, 4, 5), lambda b: band_share(y, b) * band_relativity(b)))
+    return sum(expressions.over(band_share(y, b) * band_relativity(b) for b in (2, 3, 4, 5)))
 
 
 def reld_solved(y):
@@ -1702,7 +1702,7 @@ def claims(t, kind=None):
     an annual quantity rather than a unit of account.
     """
     if kind is None:
-        return sum(expressions.over(("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     return pols_if(t) * claims_ann_pp(policy_year(t), kind) / 12.0
 
 
@@ -1797,7 +1797,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1815,7 +1815,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= cash_tol))
+    return all(expressions.over(abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def check_claim_shape_resid():
@@ -1827,9 +1827,9 @@ def check_claim_shape_resid():
     would pass both sums and is caught separately.
     """
     ks = shape_buckets()
-    s = sum(expressions.over(ks, lambda k: shape_share(k)))
-    m = sum(expressions.over(ks, lambda k: shape_share(k) * shape_rel(k)))
-    neg = sum(expressions.over(ks, lambda k: max(0.0, -shape_share(k))))
+    s = sum(expressions.over(shape_share(k) for k in ks))
+    m = sum(expressions.over(shape_share(k) * shape_rel(k) for k in ks))
+    neg = sum(expressions.over(max(0.0, -shape_share(k)) for k in ks))
     return abs(s - 1.0) + abs(m - 1.0) + neg
 
 
@@ -1845,14 +1845,14 @@ def check_band_shares_resid(y):
     negative.  A bucket that fell through :func:`band_of` — an amount that matched no
     band — would show here as a shortfall.
     """
-    s = sum(expressions.over((1, 2, 3, 4, 5), lambda b: band_share(y, b)))
-    neg = sum(expressions.over((1, 2, 3, 4, 5), lambda b: max(0.0, -band_share(y, b))))
+    s = sum(expressions.over(band_share(y, b) for b in (1, 2, 3, 4, 5)))
+    neg = sum(expressions.over(max(0.0, -band_share(y, b)) for b in (1, 2, 3, 4, 5)))
     return (s - 1.0) + neg
 
 
 def check_band_shares():
     """True when the band shares partition the contracts in every policy year."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: abs(check_band_shares_resid(y)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_band_shares_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_relativity_neutral_resid(y):
@@ -1875,7 +1875,7 @@ def check_relativity_neutral_resid(y):
 
 def check_relativity_neutral():
     """True when the experience relativity is self-financing in every policy year."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_renewal_corridor_resid(y):
@@ -1903,7 +1903,7 @@ def check_renewal_corridor_resid(y):
 
 def check_renewal_corridor():
     """True when neither priced unit moves more than 25% in a year, age effect excluded."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: check_renewal_corridor_resid(y) <= roll_fwd_tol))
+    return all(expressions.over(check_renewal_corridor_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_annual_limits_resid(y):
@@ -1943,7 +1943,7 @@ def check_annual_limits_resid(y):
 
 def check_annual_limits():
     """True when no contractual money or count limit is exceeded in any policy year."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: check_annual_limits_resid(y) <= roll_fwd_tol))
+    return all(expressions.over(check_annual_limits_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_indemnity_resid(y):
@@ -1961,7 +1961,7 @@ def check_indemnity_resid(y):
 
 def check_indemnity():
     """True when the claim never exceeds the incurred covered loss in any policy year."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: check_indemnity_resid(y) <= roll_fwd_tol))
+    return all(expressions.over(check_indemnity_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_oop_ceiling_resid(y):
@@ -1980,7 +1980,7 @@ def check_oop_ceiling_resid(y):
 
 def check_oop_ceiling():
     """True when the truncated 급여 covered loss stays inside the public annual ceiling."""
-    return all(expressions.over(range(1, policy_year(proj_len() - 1) + 1), lambda y: check_oop_ceiling_resid(y) <= roll_fwd_tol))
+    return all(expressions.over(check_oop_ceiling_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_expense_split_resid():

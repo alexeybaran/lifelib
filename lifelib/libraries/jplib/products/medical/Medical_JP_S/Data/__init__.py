@@ -193,6 +193,23 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_los_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(los_table(), groups=('band_start',), preserve_scalar_types = True)
+
+
+def prepared_los_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(los_table().index)
+
+
+def prepared_incidence_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(incidence_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 

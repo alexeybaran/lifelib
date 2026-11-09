@@ -220,6 +220,18 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_lapse_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(lapse_table(), groups=('segment',), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_flat_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(lapse_table(), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

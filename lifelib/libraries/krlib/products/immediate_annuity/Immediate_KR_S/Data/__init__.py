@@ -144,6 +144,13 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_crediting_groups_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(crediting_table().set_index("basis_id", append=True), groups=("basis_id",), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

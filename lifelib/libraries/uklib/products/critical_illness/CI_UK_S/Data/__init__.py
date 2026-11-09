@@ -96,6 +96,13 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
+
+
+def prepared_ci_rate_table_generators(sex_, smoker_):
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(ci_rate_table().loc[(sex_, smoker_)], preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -106,3 +113,5 @@ ci_rate_file = "ci_rate_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

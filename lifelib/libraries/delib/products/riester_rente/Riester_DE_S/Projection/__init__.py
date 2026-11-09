@@ -1761,8 +1761,8 @@ def claims(t, kind=None):
         of it; that approximation is gone.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "LAPSE", "TRANSFER",
-                                          "LUMPSUM", "COMMUTATION", "ANNUITY"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
+                                          "LUMPSUM", "COMMUTATION", "ANNUITY")))
     k = proj_year(t)
     if kind == "DEATH":
         return db_pp(k) * pols_death(t)
@@ -1957,8 +1957,8 @@ def check_net_cf():
     argument, one bool over all ``t``; :func:`check_net_cf_resid` gives the signed residual
     of the month that failed.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))))
+    return all(expressions.over(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+               * max(1.0, guar_pp(k_conv() + 1)) for t in expressions.periods(proj_len())))
 
 
 def check_av_roll_fwd_resid(k):
@@ -1986,8 +1986,8 @@ def check_av_roll_fwd_resid(k):
     if k >= k_conv():
         return av_total_pp(k + 1)
     months = range(12 * k, 12 * k + 12)
-    out = sum(expressions.over(months, lambda t: claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "TRANSFER")
-              + exit_charge_pp(t)))
+    out = sum(expressions.over(claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "TRANSFER")
+              + exit_charge_pp(t) for t in months))
     return (av_total_at(k + 1, "BEF_PREM")
             - (av_total_at(k, "BEF_PREM") + prem_to_av_pp(k) * pols_if(12 * k)
                + int_credited(k) - out))
@@ -1995,8 +1995,8 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the account rolls forward exactly in every projected year."""
-    return all(expressions.over(range(proj_len_y()), lambda k: abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))))
+    return all(expressions.over(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+               * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
 def check_guar_roll_fwd_resid(k):
@@ -2031,11 +2031,11 @@ def check_guar_roll_fwd():
     cannot shrink the guarantee further.  Both are stated per projection **year**: the
     accumulator counts contributions, and a contribution is an annual event.
     """
-    ok = all(expressions.over(range(proj_len_y()), lambda k: abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
-             * max(1.0, guar_pp(k_conv() + 1))))
-    cap = all(expressions.over(range(k_conv()), lambda k: guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
+    ok = all(expressions.over(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+             * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
+    cap = all(expressions.over(guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
               * (eigenbeitrag_pp(k) + zulage_pp(k) + contrib_extra_pp()
-                 + rider_prem_pp()) + roll_fwd_tol))
+                 + rider_prem_pp()) + roll_fwd_tol for k in expressions.periods(k_conv())))
     return bool(ok and cap)
 
 
@@ -2069,9 +2069,9 @@ def check_pols_roll_fwd():
     the survivor term is exactly zero and the identity is exact rather than approximate.
     """
     n = proj_len()
-    step = all(expressions.over(range(n), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               * max(pols_if_init(), 1.0)))
-    exits = sum(expressions.over(range(n), lambda s: pols_death(s) + pols_lapse(s) + pols_transfer(s)))
+    step = all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+               * max(pols_if_init(), 1.0) for t in expressions.periods(n)))
+    exits = sum(expressions.over(pols_death(s) + pols_lapse(s) + pols_transfer(s) for s in expressions.periods(n)))
     if is_kleinbetrag():
         exits += pols_conv()
     closure = abs(exits + pols_if(n) - pols_if_init()) <= (
@@ -2114,8 +2114,8 @@ def check_conversion_resid(k):
 
 def check_conversion():
     """True when the conversion at *Rentenbeginn* closes on all four identities."""
-    return all(expressions.over(range(proj_len_y()), lambda k: check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))))
+    return all(expressions.over(check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
+               * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
 def check_zulage_lag_resid(k):
@@ -2141,8 +2141,8 @@ def check_zulage_lag_resid(k):
 
 def check_zulage_lag():
     """True when the Zulage is credited one projection year after it is earned, everywhere."""
-    return all(expressions.over(range(proj_len_y()), lambda k: abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))))
+    return all(expressions.over(abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
+               * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
 def result_cf():

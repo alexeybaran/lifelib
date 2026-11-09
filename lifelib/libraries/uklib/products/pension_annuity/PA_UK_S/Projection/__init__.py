@@ -910,7 +910,7 @@ def claims(t, kind=None):
         partial period.
     """
     if kind is None:
-        return sum(expressions.over(("VP", "PROP"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("VP", "PROP")))
     if kind == "VP":
         if vp_pct() <= 0.0:
             return 0.0
@@ -1023,7 +1023,7 @@ def check_lives_roll_fwd():
     every projected month and the close of the last one.  The signed residual of a
     failing time point stays available as :func:`check_lives_roll_fwd_resid`.
     """
-    return all(expressions.over(range(proj_len() + 1), lambda k: abs(check_lives_roll_fwd_resid(k)) < 1e-10))
+    return all(expressions.over(abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
 
 
 def check_payment_factor_resid(t):
@@ -1038,7 +1038,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_payment_factor_resid(t)) < 1e-10))
+    return all(expressions.over(abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
 
 
 def check_guarantee_xor():

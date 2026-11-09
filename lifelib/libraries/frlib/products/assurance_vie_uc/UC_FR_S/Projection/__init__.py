@@ -1388,7 +1388,7 @@ def claims(t, kind=None):
     the account value - all except the death strain.  See the Space docstring.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "LAPSE"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("DEATH", "LAPSE")))
     av = av_pp_at(t, "BEF_DECR")
     if kind == "DEATH":
         return pols_death(t) * (av + nar(t))
@@ -1551,7 +1551,7 @@ def check_av_roll_fwd():
     one test can call the same check across every account-value model in the library.
     """
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_av_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_unit_roll_fwd_resid(t):
@@ -1571,7 +1571,7 @@ def check_unit_roll_fwd_resid(t):
 def check_unit_roll_fwd():
     """True when the unit count closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, units_init())                      # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_unit_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_unit_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1588,7 +1588,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= pols_tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= pols_tol for t in expressions.periods(proj_len())))
 
 
 def check_floor_base_resid(t):
@@ -1606,7 +1606,7 @@ def check_floor_base_resid(t):
 def check_floor_base():
     """True when the floor base moves on premiums and surrenders alone."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_floor_base_resid(t)) <= tol))
+    return all(expressions.over(abs(check_floor_base_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_nar_bounds_resid(t):
@@ -1627,7 +1627,7 @@ def check_nar_bounds_resid(t):
 
 def check_nar_bounds():
     """True when the `capital sous risque` stays inside ``[0, cap]`` in every month."""
-    return all(expressions.over(range(proj_len()), lambda t: check_nar_bounds_resid(t) == 0.0))
+    return all(expressions.over(check_nar_bounds_resid(t) == 0.0 for t in expressions.periods(proj_len())))
 
 
 def check_benefit_funding_resid(t):
@@ -1648,7 +1648,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded by the account value plus the death strain."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_benefit_funding_resid(t)) <= tol))
+    return all(expressions.over(abs(check_benefit_funding_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():

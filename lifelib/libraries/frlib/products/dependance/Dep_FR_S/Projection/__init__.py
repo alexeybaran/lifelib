@@ -1049,8 +1049,8 @@ def carence_factor(t):
     arises from a cause still inside its *carence* leaves the in-force ledger exactly as
     a covered one does, and takes :func:`refunds_carence` with it.
     """
-    tbl = data.cause_mix_table()                                     # noqa: F821
-    return float(sum(expressions.over(tbl.index, lambda c: tbl.loc[c, "share"], where = lambda c: True if carence_months(c) <= t else False)))
+    tbl = data.prepared_cause_mix_index()                                     # noqa: F821
+    return float(sum(expressions.over(expressions.lookup_object(data.prepared_cause_shares(), c) for c in expressions.keys(tbl) if carence_months(c) <= t)))
 
 
 def aggravation_carence(t):
@@ -1729,7 +1729,7 @@ def claims(t, kind=None):
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
     if kind is None:
-        return sum(expressions.over(("RENTE", "CAPITAL", "LAPSE"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE")))
     if kind == "RENTE":
         part, tot, totr, val = dep_cohorts(t)
         s_p = 1.0 - mort_rate_partial_mth(t)
@@ -1892,7 +1892,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_states_resid(t):
@@ -1918,7 +1918,7 @@ def check_states():
     still has one.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len() + 1), lambda t: abs(check_states_resid(t)) <= tol))
+    return all(expressions.over(abs(check_states_resid(t)) <= tol for t in expressions.periods(proj_len() + 1)))
 
 
 def check_part_roll_fwd_resid(t):
@@ -1940,7 +1940,7 @@ def check_part_roll_fwd_resid(t):
 def check_part_roll_fwd():
     """True when the *partielle* ledger closes against its aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_part_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_part_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_tot_roll_fwd_resid(t):
@@ -1964,7 +1964,7 @@ def check_tot_roll_fwd_resid(t):
 def check_tot_roll_fwd():
     """True when the two *totale* ledgers close against their aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_tot_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_tot_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_model_point():

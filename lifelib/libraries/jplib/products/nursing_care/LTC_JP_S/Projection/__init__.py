@@ -551,8 +551,8 @@ def omega_age():
     females on 第三分野標準生命表2018 [REG-R18] [REG-R20], and whatever a replacement table
     carries after that.  The table's last row for a sex has ``mort_rate = 1``.
     """
-    tbl = data.mort_table()                                          # noqa: F821
-    return int(max(expressions.over(tbl.index, lambda s, a: a, where = lambda s, a: True if s == sex() else False, unpack = 2)))
+    tbl = data.prepared_mort_index_generators()                                          # noqa: F821
+    return int(max(expressions.over(a for (s, a) in expressions.keys(tbl) if s == sex())))
 
 
 def proj_len():
@@ -1300,7 +1300,7 @@ def check_pols_roll_fwd():
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that
     failed.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_nesting_resid(t):
@@ -1330,7 +1330,7 @@ def check_nesting():
     three checks are cash flow and roll-forward identities of a *period* and stop at
     ``proj_len() - 1``.
     """
-    return all(expressions.over(range(proj_len() + 1), lambda t: check_nesting_resid(t) >= -roll_fwd_tol))
+    return all(expressions.over(check_nesting_resid(t) >= -roll_fwd_tol for t in expressions.periods(proj_len() + 1)))
 
 
 def check_ann_ledger_resid(t):
@@ -1351,7 +1351,7 @@ def check_ann_ledger_resid(t):
 
 def check_ann_ledger():
     """True when the annuity ledger closes in every projected month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_ann_ledger_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_ann_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1371,7 +1371,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the cash flow statement re-adds to :func:`net_cf` in every month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= 1e-6))
+    return all(expressions.over(abs(check_net_cf_resid(t)) <= 1e-6 for t in expressions.periods(proj_len())))
 
 
 # --- result tables ---

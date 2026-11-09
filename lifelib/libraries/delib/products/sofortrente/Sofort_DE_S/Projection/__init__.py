@@ -1096,7 +1096,7 @@ def annuity_payments(t, kind=None):
     rather than in a total.
     """
     if kind is None:
-        return sum(expressions.over(("ANNUITANT", "SURVIVOR"), lambda k: annuity_payments(t, k)))
+        return sum(expressions.over(annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR")))
     if not is_payment_mth(t):
         return 0.0
     if kind == "ANNUITANT":
@@ -1127,7 +1127,7 @@ def claims(t, kind=None):
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
     """
     if kind is None:
-        return sum(expressions.over(("GUARANTEE", "REFUND"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("GUARANTEE", "REFUND")))
     if kind == "GUARANTEE":
         if not is_payment_mth(t):
             return 0.0
@@ -1232,7 +1232,7 @@ def check_net_cf():
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol)))
+    return bool(all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1265,13 +1265,13 @@ def check_lives_roll_fwd():
     a life that leaves and reappears fails here rather than in a cash flow.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    if not all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_lives_roll_fwd_resid(t)) <= tol)):
+    if not all(expressions.over(abs(check_lives_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
         return False
     lives = [1]
     if surv_pct() > 0.0:
         lives.append(2)
     for life in lives:
-        deaths = sum(expressions.over(range(t_start(), proj_len()), lambda t: lives_death(t, life)))
+        deaths = sum(expressions.over(lives_death(t, life) for t in expressions.periods(t_start(), proj_len())))
         closure = (deaths + lives_if(proj_len(), life)
                    - lives_if(t_start(), life))
         if abs(closure) > tol:
@@ -1303,8 +1303,8 @@ def check_annuity_roll_fwd():
     *Überschussverwendung* ratchet rather than fluctuate.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    stepped = all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_annuity_roll_fwd_resid(t)) <= tol))
-    ratchet = all(expressions.over(range(t_start() + 1, proj_len()), lambda t: annuity_pp(t) >= annuity_pp(t - 1) - tol))
+    stepped = all(expressions.over(abs(check_annuity_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
+    ratchet = all(expressions.over(annuity_pp(t) >= annuity_pp(t - 1) - tol for t in expressions.periods(t_start() + 1, proj_len())))
     return bool(stepped and ratchet)
 
 
@@ -1335,10 +1335,10 @@ def check_refund_run_off():
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
     if refund_form() == "none":
-        return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: refund_pp(t) == 0.0)))
-    if not all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_refund_run_off_resid(t)) <= tol)):
+        return bool(all(expressions.over(refund_pp(t) == 0.0 for t in expressions.periods(t_start(), proj_len()))))
+    if not all(expressions.over(abs(check_refund_run_off_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
         return False
-    if not all(expressions.over(range(t_start() + 1, proj_len()), lambda t: refund_pp(t) <= refund_pp(t - 1) + tol)):
+    if not all(expressions.over(refund_pp(t) <= refund_pp(t - 1) + tol for t in expressions.periods(t_start() + 1, proj_len()))):
         return False
     if refund_pp(proj_len() - 1) > tol:
         return False
@@ -1377,7 +1377,7 @@ def check_payment_factor_resid(t):
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_payment_factor_resid(t)) <= tol)))
+    return bool(all(expressions.over(abs(check_payment_factor_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_guarantee_certain_resid(t):
@@ -1401,7 +1401,7 @@ def check_guarantee_certain():
     there is nothing to be certain about.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_guarantee_certain_resid(t)) <= tol)))
+    return bool(all(expressions.over(abs(check_guarantee_certain_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_equivalence_resid():

@@ -998,8 +998,8 @@ def pv_death_1st():
     n = policy_term()
     x0 = issue_age()
     return sum_death() * sum(
-        expressions.over(range(n), lambda k: disc_factor_1st(k + 1) * tpx_1st(k) * rating_factor()
-        * mort_rate_at_age(x0 + k)))
+        expressions.over(disc_factor_1st(k + 1) * tpx_1st(k) * rating_factor()
+        * mort_rate_at_age(x0 + k) for k in expressions.periods(n)))
 
 
 def pv_maturity_1st():
@@ -1027,7 +1027,7 @@ def ann_due_prem_1st():
     ``sum over k = 0 .. m-1 of v1^k * kpx``.  Exactly 1.0 on an *Einmalbeitrag*, which is why
     the single-premium branch needs no special case anywhere.
     """
-    return sum(expressions.over(range(prem_term()), lambda k: disc_factor_1st(k) * tpx_1st(k)))
+    return sum(expressions.over(disc_factor_1st(k) * tpx_1st(k) for k in expressions.periods(prem_term())))
 
 
 def ann_due_term_1st():
@@ -1037,7 +1037,7 @@ def ann_due_term_1st():
     loading, which runs for the whole term rather than for the premium-paying period - the
     asymmetry that makes an *abgekürzte Beitragszahlungsdauer* dearer per premium.
     """
-    return sum(expressions.over(range(policy_term()), lambda k: disc_factor_1st(k) * tpx_1st(k)))
+    return sum(expressions.over(disc_factor_1st(k) * tpx_1st(k) for k in expressions.periods(policy_term())))
 
 
 def prem_gross_pp():
@@ -2042,7 +2042,7 @@ def claims(t, kind=None):
         maturity decides a payment rather than only a label.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "MATURITY", "LAPSE"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("DEATH", "MATURITY", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * benefit_death_pp(t)
     if kind == "MATURITY":
@@ -2201,7 +2201,7 @@ def check_net_cf():
     failed.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
+    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2227,7 +2227,7 @@ def check_pols_roll_fwd():
     residual of the year that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_decrement_closure_resid(t):
@@ -2240,7 +2240,7 @@ def check_decrement_closure_resid(t):
     :func:`check_pols_roll_fwd`: it catches a wrong starting cohort, an exit counted in two
     places, and a maturity that double-counts the final year's surrenders.
     """
-    exits = sum(expressions.over(range(t_start(), t + 1), lambda s: pols_death(s) + pols_lapse(s) + pols_maturity(s)))
+    exits = sum(expressions.over(pols_death(s) + pols_lapse(s) + pols_maturity(s) for s in expressions.periods(t_start(), t + 1)))
     carried = pols_if(t + 1) if t < proj_len() - 1 else 0.0
     return exits + carried - pols_if_init()
 
@@ -2253,7 +2253,7 @@ def check_decrement_closure():
     closure identity: the three exit streams sum to :func:`pols_if_init` exactly.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_decrement_closure_resid(t)) <= tol))
+    return all(expressions.over(abs(check_decrement_closure_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_res_roll_fwd_resid(k):
@@ -2287,7 +2287,7 @@ def check_res_roll_fwd():
     the signed residual of the year that failed.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_res_roll_fwd_resid(k)) <= tol))
+    return all(expressions.over(abs(check_res_roll_fwd_resid(k)) <= tol for k in expressions.periods(k_start(), proj_len_y())))
 
 
 def check_surplus_roll_fwd_resid(k):
@@ -2321,7 +2321,7 @@ def check_surplus_roll_fwd():
     gives the signed residual of the year that failed.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_surplus_roll_fwd_resid(k)) <= tol))
+    return all(expressions.over(abs(check_surplus_roll_fwd_resid(k)) <= tol for k in expressions.periods(k_start(), proj_len_y())))
 
 
 def check_surr_floor_resid(k):
@@ -2357,7 +2357,7 @@ def check_surr_floor():
     quotes one in eleven months the annual grid never priced.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_surr_floor_resid(k)) <= tol))
+    return all(expressions.over(abs(check_surr_floor_resid(k)) <= tol for k in expressions.periods(k_start(), proj_len_y())))
 
 
 def check_surr_nonneg_resid(t):
@@ -2378,7 +2378,7 @@ def check_surr_nonneg_resid(t):
 def check_surr_nonneg():
     """True when the *Rückkaufswert* is non-negative in every projected month."""
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_surr_nonneg_resid(t)) <= tol))
+    return all(expressions.over(abs(check_surr_nonneg_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_equivalence_resid(t):
@@ -2407,7 +2407,7 @@ def check_equivalence():
     *Zahlbeitrag* instead of on the *Bruttobeitrag*.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_equivalence_resid(t)) <= tol))
+    return all(expressions.over(abs(check_equivalence_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_rechnungszins_cap_resid(t):
@@ -2426,7 +2426,7 @@ def check_rechnungszins_cap():
 
     No argument, one bool; :func:`check_rechnungszins_cap_resid` gives the signed shortfall.
     """
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def check_zillmer_cap_resid(t):
@@ -2452,7 +2452,7 @@ def check_zillmer_cap():
     No argument, one bool; :func:`check_zillmer_cap_resid` gives the signed shortfall.
     """
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_zillmer_cap_resid(t)) <= tol))
+    return all(expressions.over(abs(check_zillmer_cap_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
 
 
 def result_cf():

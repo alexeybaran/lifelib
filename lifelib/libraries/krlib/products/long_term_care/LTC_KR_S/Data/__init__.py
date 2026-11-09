@@ -239,6 +239,23 @@ def prepared_dementia_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_incidence_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(incidence_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_av_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(av_table(), preserve_scalar_types = True)
+
+
+def prepared_grade_share_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(grade_share_table(), groups=('grade',), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

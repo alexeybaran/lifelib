@@ -200,6 +200,13 @@ def prepared_grade_share_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_mort_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(mort_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 

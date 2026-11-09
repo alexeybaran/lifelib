@@ -217,6 +217,18 @@ def prepared_prevalence_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_cause_mix_index():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(cause_mix_table().index)
+
+
+def prepared_cause_shares():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.record(cause_mix_table()["share"], preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

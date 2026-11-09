@@ -221,6 +221,13 @@ def prepared_mort_table_at():
                         indexing='at')
 
 
+
+
+def prepared_fund_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(fund_table(), groups=('fund_set',), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

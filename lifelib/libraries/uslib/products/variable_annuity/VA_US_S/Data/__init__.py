@@ -167,6 +167,18 @@ def prepared_fund_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_mort_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(mort_table(), preserve_scalar_types = True)
+
+
+def prepared_mort_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(mort_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 

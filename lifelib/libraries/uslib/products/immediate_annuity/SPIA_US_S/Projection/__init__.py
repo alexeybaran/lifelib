@@ -1182,7 +1182,7 @@ def check_lives_roll_fwd():
     probabilities that is zero when the model is right, and ``math.isclose(x, 0.0)``
     is False for every nonzero ``x`` at the default relative tolerance.
     """
-    return all(expressions.over(range(proj_len() + 1), lambda k: abs(check_lives_roll_fwd_resid(k)) < 1e-10))
+    return all(expressions.over(abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
 
 
 def check_payment_factor_resid(t):
@@ -1203,7 +1203,7 @@ def check_payment_factor():
     See :func:`check_payment_factor_resid` for what the residual catches and why a
     quantity that is zero by construction is checked at all.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_payment_factor_resid(t)) < 1e-10))
+    return all(expressions.over(abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
 
 
 def result_cf():

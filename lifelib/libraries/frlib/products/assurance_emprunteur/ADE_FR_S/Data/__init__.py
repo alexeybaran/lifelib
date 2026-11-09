@@ -195,6 +195,23 @@ def prepared_itt_termination_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_mort_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(mort_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_itt_inception_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(itt_inception_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_crd_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(crd_rate_table(), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

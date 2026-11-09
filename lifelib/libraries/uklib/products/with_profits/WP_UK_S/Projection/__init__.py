@@ -494,7 +494,7 @@ def guarantee_years():
     v = tables.lookup_object(prepared_model_point(), "guarantee_dates")
     if tables.is_missing(pd.isna, v):                                                   # noqa: F821
         return ()
-    return tuple(expressions.over(str(v).split(";"), lambda s: int(float(s)), where = lambda s: True if str(s).strip() else False))
+    return tuple(expressions.over(int(float(s)) for s in str(v).split(";") if str(s).strip()))
 
 
 def wd_rate():
@@ -1371,7 +1371,7 @@ def guarantee_imminent(t):
     between one and twelve months away.  On the annual grid this was the single period
     before a guarantee-date period, which is the same window counted in years.
     """
-    if any(expressions.over(guarantee_years(), lambda g: 0 < 12 * g - 1 - t <= 12)):
+    if any(expressions.over(0 < 12 * g - 1 - t <= 12 for g in guarantee_years())):
         return guarantee_imminent_factor                             # noqa: F821
     return 1.0
 
@@ -1497,7 +1497,7 @@ def claims(t, kind=None):
     exit *is* a surrender, paid MVR-free, so it is already inside the surrender line.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "SURRENDER", "MATURITY"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("DEATH", "SURRENDER", "MATURITY")))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "SURRENDER":
@@ -1582,7 +1582,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_asset_share_roll_fwd_resid(t):
@@ -1609,7 +1609,7 @@ def check_asset_share_roll_fwd_resid(t):
 
 def check_asset_share_roll_fwd():
     """True when the asset share recursion closes in every projected month."""
-    return all(expressions.over(range(proj_start(), proj_len()), lambda t: abs(check_asset_share_roll_fwd_resid(t)) <= 1e-8))
+    return all(expressions.over(abs(check_asset_share_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_fb_mvr_exclusive():
@@ -1620,7 +1620,7 @@ def check_fb_mvr_exclusive():
     produce both, and would then pay a final bonus and deduct a reduction on the same
     exit.
     """
-    return all(expressions.over(range(proj_start(), proj_len()), lambda t: min(final_bonus_pp(t), mvr_pp(t)) <= 1e-9))
+    return all(expressions.over(min(final_bonus_pp(t), mvr_pp(t)) <= 1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_mvr_bound():
@@ -1629,7 +1629,7 @@ def check_mvr_bound():
     It may not exceed the excess of the unit value over the underlying asset value,
     ``max(0, GB - AS)``.  The bound is a conduct rule, not a modelling nicety.
     """
-    return all(expressions.over(range(proj_start(), proj_len()), lambda t: mvr_pp(t) <= max(0.0, guar_benefit_pp(t) - asset_share(t)) + 1e-9))
+    return all(expressions.over(mvr_pp(t) <= max(0.0, guar_benefit_pp(t) - asset_share(t)) + 1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_fund_nonneg():
@@ -1642,7 +1642,7 @@ def check_fund_nonneg():
     enough to read past.  :func:`wd_pp` caps the withdrawal at the fund and
     :func:`proj_len` stops at exhaustion; this asserts that they worked.
     """
-    return all(expressions.over(range(proj_start(), proj_len()), lambda t: units(t) >= -1e-9 and asset_share(t) >= -1e-9))
+    return all(expressions.over(units(t) >= -1e-9 and asset_share(t) >= -1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_payout_corridor():

@@ -511,19 +511,18 @@ def inception_rate(t):
     understated through exposure errors, and licensees must apply the CMI's indicative
     adjustments.
     """
-    sub = data.inception_table().loc[                                # noqa: F821
-        (sex(), occ_class(), deferred_weeks())]
-    ages = sorted(expressions.over(sub.index, lambda a: int(a)))
+    sub = inputs.table(data.inception_table().loc[(sex(), occ_class(), deferred_weeks())], preserve_scalar_types = True)
+    ages = sorted(expressions.over(int(a) for a in expressions.keys(sub)))
     x = age(t)
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = max(expressions.over(ages, lambda a: a, where = lambda a: True if a <= x else False))
-        hi = min(expressions.over(ages, lambda a: a, where = lambda a: True if a > x else False))
-    r_lo = float(sub.loc[lo, "inception_rate"])
-    r_hi = float(sub.loc[hi, "inception_rate"])
+        lo = max(expressions.over(a for a in ages if a <= x))
+        hi = min(expressions.over(a for a in ages if a > x))
+    r_lo = expressions.lookup_float(sub, lo, "inception_rate")
+    r_hi = expressions.lookup_float(sub, hi, "inception_rate")
     r = r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)
     return max(0.0, r) * cycle_factor                                # noqa: F821
 
@@ -779,7 +778,7 @@ def pols_sick_surv(t):
     """
     v = sick_cohorts(t)
     surv = claim_rate_vectors()[2]
-    return sum(expressions.over(expressions.zip_values((v, surv)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(a * b for (a, b) in expressions.zip_values((v, surv)) if a != 0.0))
 
 
 def pols_recovery(t):
@@ -790,7 +789,7 @@ def pols_recovery(t):
     """
     v = sick_cohorts(t)
     rec = claim_rate_vectors()[0]
-    return sum(expressions.over(expressions.zip_values((v, rec)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(a * b for (a, b) in expressions.zip_values((v, rec)) if a != 0.0))
 
 
 def pols_death_sick(t):
@@ -801,7 +800,7 @@ def pols_death_sick(t):
     """
     v = sick_cohorts(t)
     rec, dth, _ = claim_rate_vectors()
-    return sum(expressions.over(expressions.zip_values((v, rec, dth)), lambda a, r, d: a * (1.0 - r) * d, where = lambda a, r, d: True if a != 0.0 else False, unpack = 3))
+    return sum(expressions.over(a * (1.0 - r) * d for (a, r, d) in expressions.zip_values((v, rec, dth)) if a != 0.0))
 
 
 def pols_exit(t):
@@ -980,7 +979,7 @@ def claims(t, kind=None):
     stated instead of inferred from a missing column.
     """
     if kind is None:
-        return sum(expressions.over(("BENEFIT", "DEATH", "LAPSE"), lambda k: claims(t, k)))
+        return sum(expressions.over(claims(t, k) for k in ("BENEFIT", "DEATH", "LAPSE")))
     if kind == "BENEFIT":
         return claim_severity * amount_payable_pp(t) * pols_sick_surv(t)  # noqa: F821
     if kind in ("DEATH", "LAPSE"):
@@ -1035,7 +1034,7 @@ def pv_benefits():
     claims-in-payment liability the notes value.  See :func:`disc_factor` for why
     discounting appears in this model and nowhere else in the library.
     """
-    return sum(expressions.over(range(proj_len()), lambda t: claims(t, "BENEFIT") * disc_factor(t)))
+    return sum(expressions.over(claims(t, "BENEFIT") * disc_factor(t) for t in expressions.periods(proj_len())))
 
 
 def annuity_dis():
@@ -1074,7 +1073,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
 def check_states_resid(t):
@@ -1095,7 +1094,7 @@ def check_states():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_states_resid` gives the signed residual of the month that failed.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)))
+    return all(expressions.over(abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
 def check_benefit_max():

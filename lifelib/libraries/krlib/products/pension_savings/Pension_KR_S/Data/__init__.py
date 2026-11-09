@@ -275,6 +275,28 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+
+
+def prepared_decl_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(decl_rate_table(), groups=('scenario',), preserve_scalar_types = True)
+
+
+def prepared_guar_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(guar_rate_table(), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(lapse_table(), groups=('basis', 'segment'), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_flat_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(lapse_table(), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 

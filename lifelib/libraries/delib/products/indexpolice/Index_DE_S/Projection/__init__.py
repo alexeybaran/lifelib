@@ -811,12 +811,12 @@ def pols_surv_year_end(k):
 
 def pols_death_year(k):
     """The deaths of policy year k, summed over its twelve months."""
-    return sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_death(t)))
+    return sum(expressions.over(pols_death(t) for t in expressions.periods(12 * k, 12 * k + 12)))
 
 
 def pols_lapse_year(k):
     """The surrenders of policy year k, summed over its twelve months."""
-    return sum(expressions.over(range(12 * k, 12 * k + 12), lambda t: pols_lapse(t)))
+    return sum(expressions.over(pols_lapse(t) for t in expressions.periods(12 * k, 12 * k + 12)))
 
 
 def surplus_credit(k):
@@ -915,7 +915,7 @@ def index_sum(k):
     same twelve gives 8.9599 %, an error small enough to look like rounding and large
     enough to be wrong at every duration.
     """
-    return sum(expressions.over(range(1, 13), lambda m: index_return_capped(k, m)))
+    return sum(expressions.over(index_return_capped(k, m) for m in expressions.periods(1, 13)))
 
 
 def index_return_year(k):
@@ -995,10 +995,10 @@ def index_budget_ratio():
     Returns 0.0 where nothing was elected to the index arm, there being no budget to
     compare against.
     """
-    budget = sum(expressions.over(range(k_start(), proj_len_y()), lambda t: opt_budget_pp(t)))
+    budget = sum(expressions.over(opt_budget_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
     if budget <= 0.0:
         return 0.0
-    credits = sum(expressions.over(range(k_start(), proj_len_y()), lambda t: index_credit_pp(t)))
+    credits = sum(expressions.over(index_credit_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
     return credits / budget
 
 
@@ -1505,7 +1505,7 @@ def claims(t, kind=None):
     not — and that is the product's own rule.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "LAPSE", "MATURITY"), lambda j: claims(t, j)))
+        return sum(expressions.over(claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY")))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1647,9 +1647,9 @@ def check_net_cf():
     The library-wide form: no argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return bool(all(expressions.over(range(t_start(), proj_len()), lambda t: abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
+    return bool(all(expressions.over(abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
                     * max(abs(premiums(t)), abs(claims(t)),
-                          abs(expenses(t)), 1.0))))
+                          abs(expenses(t)), 1.0) for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_av_roll_fwd_resid(k):
@@ -1685,8 +1685,8 @@ def check_av_roll_fwd():
     Tolerance is relative to the balance, the account running to five figures while the
     residual should be zero to machine precision.
     """
-    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
-                    * max(abs(av(k)), 1.0))))
+    return bool(all(expressions.over(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
+                    * max(abs(av(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1719,10 +1719,10 @@ def check_pols_roll_fwd():
     that leaves twice or never leaves at all.
     """
     ts = range(t_start(), proj_len())
-    closure = sum(expressions.over(ts, lambda t: pols_death(t) + pols_lapse(t) + pols_maturity(t))) - pols_if_init()
+    closure = sum(expressions.over(pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in ts)) - pols_if_init()
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
     return bool(abs(closure) <= tol
-                and all(expressions.over(ts, lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol)))
+                and all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in ts)))
 
 
 def check_surplus_alloc_resid(k):
@@ -1742,8 +1742,8 @@ def check_surplus_alloc_resid(k):
 
 def check_surplus_alloc():
     """True when the declared surplus is allocated exactly once in every policy year."""
-    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
-                    * max(abs(index_base_pp(k)), 1.0))))
+    return bool(all(expressions.over(abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
+                    * max(abs(index_base_pp(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
 def check_lock_in_resid(k):
@@ -1767,8 +1767,8 @@ def check_lock_in_resid(k):
 
 def check_lock_in():
     """True when the guaranteed capital is monotone and no credit is negative."""
-    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
-                    * max(abs(guar_cap_pp(k)), 1.0))))
+    return bool(all(expressions.over(abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
+                    * max(abs(guar_cap_pp(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
 def check_index_credit_resid(k):
@@ -1796,7 +1796,7 @@ def check_index_credit_resid(k):
 
 def check_index_credit():
     """True when the *Indexrendite* is inside its contractual bounds in every policy year."""
-    return bool(all(expressions.over(range(k_start(), proj_len_y()), lambda k: abs(check_index_credit_resid(k)) <= roll_fwd_tol)))
+    return bool(all(expressions.over(abs(check_index_credit_resid(k)) <= roll_fwd_tol for k in expressions.periods(k_start(), proj_len_y()))))
 
 
 # --- the result table --------------------------------------------------------

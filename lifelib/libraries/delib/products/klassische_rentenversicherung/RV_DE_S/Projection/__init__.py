@@ -692,7 +692,7 @@ def beitragssumme_pp():
     """
     mp = model_point()
     last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
-    return sum(expressions.over(range(last), lambda u: prem_pp_sched(u)))
+    return sum(expressions.over(prem_pp_sched(u) for u in expressions.periods(last)))
 
 
 def alpha_total_pp():
@@ -1838,7 +1838,7 @@ def claims(t, kind=None):
     weighting rule and is published as :func:`annuity_payments`.
     """
     if kind is None:
-        return sum(expressions.over(("DEATH", "LAPSE", "COMMUTATION"), lambda j: claims(t, j)))
+        return sum(expressions.over(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION")))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -2023,14 +2023,14 @@ def check_decrement_closure_resid(t):
     ``omega_age() - 1``.  A projection truncated before then would fail here rather than
     silently drop the annuity tail.
     """
-    exits = sum(expressions.over(range(t_start(), t + 1), lambda s: pols_death(s) + pols_lapse(s) + pols_commutation(s)))
+    exits = sum(expressions.over(pols_death(s) + pols_lapse(s) + pols_commutation(s) for s in expressions.periods(t_start(), t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
 def check_decrement_closure():
     """True when exits and survivors account for the whole cohort at every projected t."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(expressions.over(result_cf().index, lambda t: abs(check_decrement_closure_resid(t)) <= tol))
+    return all(expressions.over(abs(check_decrement_closure_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 def check_av_roll_fwd_resid(k):
@@ -2185,7 +2185,7 @@ def check_annuity_guarantee_resid(t):
 def check_annuity_guarantee():
     """True when the annuity is weighted by the annuitised count inside the guarantee period."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all(expressions.over(result_cf().index, lambda t: abs(check_annuity_guarantee_resid(t)) <= tol))
+    return all(expressions.over(abs(check_annuity_guarantee_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 # ----------------------------------------
@@ -2291,6 +2291,13 @@ def result_pols():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+
+
+def prepared_result_cf_index():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.index(result_cf().index)
 
 
 # ---------------------------------------------------------------------------

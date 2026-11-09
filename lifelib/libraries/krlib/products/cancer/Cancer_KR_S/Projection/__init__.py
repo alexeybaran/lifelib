@@ -771,8 +771,8 @@ def inc_rate(t):
     tbl = data.incidence_table().loc[sex()]                          # noqa: F821
     ages = list(tbl.index)
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = max(expressions.over(ages, lambda g: g, where = lambda g: True if g <= a else False))
-    hi = min(expressions.over(ages, lambda g: g, where = lambda g: True if g >= a else False))
+    lo = max(expressions.over(g for g in ages if g <= a))
+    hi = min(expressions.over(g for g in ages if g >= a))
     r_lo = float(tbl.loc[lo, "inc_rate"])
     if hi == lo:
         return r_lo * inc_be_factor                                  # noqa: F821
@@ -794,8 +794,8 @@ def tier_share(col, t):
     tbl = data.tier_share_table().loc[sex()]                         # noqa: F821
     ages = list(tbl.index)
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = max(expressions.over(ages, lambda g: g, where = lambda g: True if g <= a else False))
-    hi = min(expressions.over(ages, lambda g: g, where = lambda g: True if g >= a else False))
+    lo = max(expressions.over(g for g in ages if g <= a))
+    hi = min(expressions.over(g for g in ages if g >= a))
     v_lo = float(tbl.loc[lo, col])
     if hi == lo:
         return v_lo
@@ -1132,12 +1132,12 @@ def pols_minor_exp(t, k):
 
 def pols_waived(t):
     """l_w(t): in force with a 일반암 or 고액암, premium waived, summed over the six cohorts."""
-    return sum(expressions.over(range(1, 7), lambda k: pols_waived_dur(t, k)))
+    return sum(expressions.over(pols_waived_dur(t, k) for k in expressions.periods(1, 7)))
 
 
 def pols_minor(t):
     """l_n(t): in force with a 특정소액암 only, still paying, summed over the six cohorts."""
-    return sum(expressions.over(range(1, 7), lambda k: pols_minor_dur(t, k)))
+    return sum(expressions.over(pols_minor_dur(t, k) for k in expressions.periods(1, 7)))
 
 
 def pols_cancer(t):
@@ -1517,9 +1517,9 @@ def claims(t, kind=None):
     20% relativity is itself the simplification flagged in the specification.
     """
     if kind is None:
-        return sum(expressions.over((
+        return sum(expressions.over(claims(t, k) for k in (
             "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-            "SURGERY", "TREAT", "DEATH", "LAPSE", "MATURITY"), lambda k: claims(t, k)))
+            "SURGERY", "TREAT", "DEATH", "LAPSE", "MATURITY")))
     if kind == "DIAG_GEN":
         return (benefit_ratio("general") * sum_assured() * reduction_factor(t)
                 * diag_gen(t) * diag_module())
@@ -1691,9 +1691,9 @@ def risk_prem_pp(t):
     lives = pols_if(t)
     if lives <= 0.0:
         return 0.0
-    total = sum(expressions.over((
+    total = sum(expressions.over(claims(t, k) for k in (
         "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-        "SURGERY", "TREAT"), lambda k: claims(t, k)))
+        "SURGERY", "TREAT")))
     return total / lives
 
 
@@ -1837,7 +1837,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_pols_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1858,7 +1858,7 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len() - 1), lambda t: abs(check_cancer_roll_fwd_resid(t)) <= tol))
+    return all(expressions.over(abs(check_cancer_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
 
 
 def check_canc_dur_ledger_resid(t):
@@ -1886,7 +1886,7 @@ def check_canc_dur_ledger_resid(t):
 def check_canc_dur_ledger():
     """True when both first duration cohorts rebuild exactly in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_canc_dur_ledger_resid(t)) <= tol))
+    return all(expressions.over(abs(check_canc_dur_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_similar_ledger_resid(t):
@@ -1906,7 +1906,7 @@ def check_similar_ledger():
     The identity is read off the claim line, so it says nothing in months where no policy is in
     force. Those months carry no information and are excluded rather than papered over.
     """
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_similar_ledger_resid(t)) <= roll_fwd_tol, where = lambda t: True if pols_if(t) > 0.0 else False))
+    return all(expressions.over(abs(check_similar_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len()) if pols_if(t) > 0.0))
 
 
 def check_treat_ledger_resid(t):
@@ -1922,7 +1922,7 @@ def check_treat_ledger_resid(t):
 
 def check_treat_ledger():
     """True when the once-only treatment ledger stays inside its cap in every month."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_treat_ledger_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_treat_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_tier_shares_resid(t):
@@ -1944,7 +1944,7 @@ def check_tier_shares_resid(t):
 
 def check_tier_shares():
     """True when the tier decomposition holds at every projected age."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_tier_shares_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_tier_shares_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_waiting_period_resid(t):
@@ -1964,7 +1964,7 @@ def check_waiting_period_resid(t):
 
 def check_waiting_period():
     """True when nothing invasive is paid or transitioned inside the 면책기간."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_waiting_period_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_waiting_period_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_cv_floor_resid(t):
@@ -1985,10 +1985,10 @@ def check_cv_floor_resid(t):
 def check_cv_floor():
     """True when the 해약환급금 stays inside its bounds in every projected month."""
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_cv_floor_resid(t)) <= tol))
+    return all(expressions.over(abs(check_cv_floor_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
-def check_net_cf_resid(t):
+def check_net_cf_resid(t) -> object:
     """The published cash-flow statement's residual in month t; zero everywhere.
 
     Rebuilds ``net_cf`` from the columns of :func:`result_cf` rather than from :func:`net_cf`,
@@ -1999,16 +1999,16 @@ def check_net_cf_resid(t):
     ``claims`` subtotal beside them**, so the columns of the table sum to ``net_cf`` without a
     reader having to know which of them to skip.
     """
-    row = result_cf().loc[t]
-    outgo = sum(expressions.over(row.index, lambda c: row[c], where = lambda c: True if str(c).startswith("claims_") else False))
-    return (row["premiums"] - outgo - row["expenses"] - row["claim_expenses"]
-            - row["commissions"] - row["net_cf"])
+    row = expressions.row(prepared_result_cf_rows(), t)
+    outgo = sum(expressions.over(expressions.lookup_object(row, c) for c in expressions.keys(row) if str(c).startswith("claims_")))
+    return (expressions.lookup_object(row, "premiums") - outgo - expressions.lookup_object(row, "expenses") - expressions.lookup_object(row, "claim_expenses")
+            - expressions.lookup_object(row, "commissions") - expressions.lookup_object(row, "net_cf"))
 
 
 def check_net_cf():
     """True when the published cash flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_net_cf_resid(t)) <= tol))
+    return all(expressions.over(abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_hosp_cap_resid(t):
@@ -2021,12 +2021,12 @@ def check_hosp_cap_resid(t):
     the model rather than of the contract.
     """
     tbl = data.prepared_care_table_loc()                                          # noqa: F821
-    return max(0.0, max(expressions.over(range(1, 7), lambda k: tables.lookup_float(tbl, k, "hosp_days_adm"))) - hosp_day_cap()) * in_force(t)
+    return max(0.0, max(expressions.over(tables.lookup_float(tbl, k, "hosp_days_adm") for k in expressions.periods(1, 7))) - hosp_day_cap()) * in_force(t)
 
 
 def check_hosp_cap():
     """True when no cohort's mean stay passes the 180-day per-stay cap."""
-    return all(expressions.over(range(proj_len()), lambda t: abs(check_hosp_cap_resid(t)) <= roll_fwd_tol))
+    return all(expressions.over(abs(check_hosp_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 # ===== Cells: result tables =====
@@ -2116,6 +2116,13 @@ def result_pols():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+
+
+def prepared_result_cf_rows():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return inputs.table(result_cf(), rows=True, preserve_scalar_types = True)
 
 
 # ---------------------------------------------------------------------------
