@@ -2596,12 +2596,10 @@ def result_cf_annual():
     The frame opens on the policy year the model point's first projected month opens, so
     an in-force cell is indexed from ``duration_inforce() + 1`` rather than from 1.
     """
-    df = result_cf()
-    years = pd.Index(                                                # noqa: F821
-        [duration(t) + 1 for t in df.index], name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',))
+    return expressions.to_pandas(annual, index_name='policy_year')
 
 
 def result_provisions():

@@ -2508,12 +2508,10 @@ def result_cf_annual():
     accrues a twelfth a month on that month's in-force, and a fractionated *Beitrag* is
     collected on a block that has already lost lives.
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',))
+    return expressions.to_pandas(annual, index_name='policy_year')
 
 
 def result_surplus():

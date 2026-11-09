@@ -2040,13 +2040,10 @@ def result_cf_annual():
     the plan-year start.  ``liability_cf`` and ``net_cf`` follow them.  That gap is the
     point of the finer grid.
     """
-    df = result_cf()
-    years = pd.Index([duration_mth(t) // 12 for t in df.index],      # noqa: F821
-                     name="t_year")
-    out = df.drop(columns=["pols_if", "av_pp"]).groupby(years).sum()
-    out.insert(0, "av_pp", df["av_pp"].groupby(years).last())
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration_mth(t) // 12 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',), last=('av_pp',))
+    return expressions.to_pandas(annual, index_name='t_year')
 
 
 def result_state():

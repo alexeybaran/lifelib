@@ -1824,11 +1824,10 @@ def result_cf_annual():
     the end of the month of exit, and the year's revalorisation is weighted by the
     December in force.  That gap is the point of the finer grid.
     """
-    df = result_cf()
-    years = pd.Index([proj_year(t) for t in df.index], name="y")     # noqa: F821
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [proj_year(t) for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if',))
+    return expressions.to_pandas(annual, index_name='y')
 
 
 def result_pb():

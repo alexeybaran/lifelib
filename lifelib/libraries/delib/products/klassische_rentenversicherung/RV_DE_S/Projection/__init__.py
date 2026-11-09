@@ -2239,14 +2239,10 @@ def result_cf_annual():
     the counts at the year's **start**, which is the only reading under which a count and a
     flow can share a row.  This is the view the technical notes' worked example is stated on.
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    counts = ["pols_if", "pols_annuity"]
-    out = df.drop(columns=counts).groupby(years).sum()
-    for i, column in enumerate(counts):
-        out.insert(i, column, df[column].groupby(years).first())
-    return out
+    monthly = inputs.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in expressions.keys(monthly)]
+    annual = expressions.group_sum(monthly, years, first=('pols_if', 'pols_annuity'))
+    return expressions.to_pandas(annual, index_name='policy_year')
 
 
 def result_pols():
