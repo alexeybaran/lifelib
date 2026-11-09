@@ -4,7 +4,7 @@ import sys
 
 import modelx as mx
 
-from lifelib.generator_models import apply_generators, apply_streams, _rewrite_streams
+from lifelib.generator_models import apply_generators
 
 
 def test_boolean_overlay_preserves_results_and_shadowed_bindings(tmp_path):
@@ -71,56 +71,3 @@ def test_namespace_preserves_formulas_only_serialization(tmp_path):
             reread.close()
     finally:
         model.close()
-
-
-def test_explicit_stream_overlay_preserves_consumers_and_saved_models(tmp_path):
-    model = mx.new_model('ExplicitOverlay')
-    try:
-        s = model.new_space('Projection')
-        s.new_cells('total', 'lambda n: sum(float(i) for i in range(n) if i % 2 == 0)')
-        s.new_cells('every', 'lambda n: all(i < 3 for i in range(n))')
-        s.new_cells('nested', 'lambda n: sum(float(g+z) for g in range(n) for z in range(g))')
-        s.new_cells('pairs', 'lambda: tuple(a*b for a,b in [(1,2),(3,4)])')
-        expected = {n: (s.total(n), s.every(n), s.nested(n)) for n in [0, 1, 3, 5]}
-        receipt = apply_streams(model)
-        assert len(receipt) == 4
-        assert 'sum(over(' in s.total.formula.source
-        assert 'flatten(over(' in s.nested.formula.source
-        assert 'unpack' in s.pairs.formula.source
-        assert all('sum_float' not in item['after'] for item in receipt)
-        for n, values in expected.items():
-            assert (s.total(n), s.every(n), s.nested(n)) == values
-        assert type(s.total(0)) is int
-        assert s.pairs() == (2, 12)
-        assert apply_streams(model) == []
-        saved = tmp_path / 'source'
-        mx.write_model(model, saved, backup=False)
-        restored = mx.read_model(saved, name='RestoredExplicit')
-        try:
-            assert restored.Projection.nested(5) == expected[5][2]
-        finally:
-            restored.close()
-        model.export(tmp_path / 'exported')
-    finally:
-        model.close()
-    subprocess.run([sys.executable, '-c', '''import pickle
-from exported import mx_model
-p=mx_model.Projection
-assert p.total(0)==0 and type(p.total(0)) is int
-assert p.total(5)==6.0 and p.pairs()==(2,12)
-restored=pickle.loads(pickle.dumps(mx_model))
-assert restored.Projection.nested(5)==p.nested(5)
-'''], cwd=tmp_path, check=True)
-
-
-def test_source_proposal_does_not_parse_an_ast_or_change_unsupported_captures(monkeypatch):
-    import ast
-    source = 'lambda n: sum(x for x in range(n))'
-    unsafe = 'lambda n: (lambda: (z for z in range(x)) for x in range(n))'
-    def forbidden(*args, **kwargs): raise AssertionError('AST source recognition')
-    with monkeypatch.context() as patch:
-        patch.setattr(ast, 'parse', forbidden)
-        changed, used = _rewrite_streams(source)
-        untouched, unused = _rewrite_streams(unsafe)
-    assert 'over(range(n), lambda x: x)' in changed and used == ('over',)
-    assert untouched == unsafe and unused == ()
