@@ -816,7 +816,7 @@ def d_raw(t):
     平均在院日数 that :func:`los_probs` is calibrated to [REG-R27].
     """
     b = los_band(t)
-    return sum(expressions.over(zip(los_days(b), los_probs(b)), lambda g, p: p * g, unpack = 2))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * g, unpack = 2))
 
 
 def d_pay_capped(t):
@@ -828,7 +828,7 @@ def d_pay_capped(t):
     *mean* instead would give ``min(20.20, 60) = 20.20`` and remove the limit silently.
     """
     b = los_band(t)
-    return sum(expressions.over(zip(los_days(b), los_probs(b)), lambda g, p: p * min(g, limit_per_hosp()), unpack = 2))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * min(g, limit_per_hosp()), unpack = 2))
 
 
 def d_ben_capped(t):
@@ -840,7 +840,7 @@ def d_ben_capped(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum(expressions.over(zip(los_days(b), los_probs(b)), lambda g, p: p * max(f, min(g, limit_per_hosp())), unpack = 2))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, min(g, limit_per_hosp())), unpack = 2))
 
 
 def d_ben_raw(t):
@@ -851,7 +851,7 @@ def d_ben_raw(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum(expressions.over(zip(los_days(b), los_probs(b)), lambda g, p: p * max(f, g), unpack = 2))
+    return sum(expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, g), unpack = 2))
 
 
 def share_free():

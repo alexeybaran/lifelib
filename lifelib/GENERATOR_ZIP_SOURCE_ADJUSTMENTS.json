@@ -1,0 +1,379 @@
+{
+  "status": "LIVE_ALL5_PASS_NATIVE_VALIDATION_PENDING",
+  "provider": "e85ed7385c295342ae56d326fc2e27768fd34c87",
+  "compiler": "6a7eeadb48a8c1314d5b9dbb741eb155bc483a0c",
+  "zip_generator_sites": 13,
+  "files": {
+    "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S/Projection/__init__.py": {
+      "before_sha256": "22af766cc6bbc87155b90ad6caafed8b55d57e3104e11100b74c1b58e2df84f3",
+      "after_sha256": "1828a18dc1c45ea15e36537c36b520e99b964c30b9a0cee67912fdd10c149166"
+    },
+    "lifelib/libraries/jplib/products/individual_annuity/Annuity_JP_S/Projection/__init__.py": {
+      "before_sha256": "73e459c9c41a60fe32d5de1cf161508a330cdee5e400a728b7421a375f5f1c94",
+      "after_sha256": "3a0e15897708242ac586032320d7c129bdfc0e2538b9fa629b86efb29ba4520e"
+    },
+    "lifelib/libraries/jplib/products/medical/Medical_JP_S/Projection/__init__.py": {
+      "before_sha256": "8693e1aa97cf69da7647eb75a82db9940b32782a21cac54bbb66bf7723821990",
+      "after_sha256": "5cf390594c81a31ad3b6576b0476cad50067bc2724d2cd8c1c1b84d423ff3afc"
+    },
+    "lifelib/libraries/krlib/products/long_term_care/LTC_KR_S/Projection/__init__.py": {
+      "before_sha256": "bba9a9505700fa1d3e91d5813b63b7e152445664a969fe8de3b8dcd119b7b96e",
+      "after_sha256": "3ef0772a371aa108de8ffbc5bf198acb60a3404436b714cc161055d73efd7dc2"
+    },
+    "lifelib/libraries/uklib/products/income_protection/IP_UK_S/Projection/__init__.py": {
+      "before_sha256": "4cef1fab78e7f0dcb406d30fc1be72984889efd9585fbc0abab142285f7f8ae1",
+      "after_sha256": "560eb357127ac3086d8e5f5385af7237db04131c65b16846941db1d08e5b3e17"
+    }
+  },
+  "operations": [
+    {
+      "model": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+      "line": 1188,
+      "column": 15,
+      "before": "a * r for a, r in zip(v, rho) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, rho)), lambda a, r: a * r, where = lambda a, r: True if a != 0.0 else False, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "r"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+      "line": 1200,
+      "column": 15,
+      "before": "a * (1.0 - r) * x for a, r, x in zip(v, rho, tau) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, rho, tau)), lambda a, r, x: a * (1.0 - r) * x, where = lambda a, r, x: True if a != 0.0 else False, unpack = 3)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "r",
+          "x"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+      "line": 1211,
+      "column": 15,
+      "before": "a * (1.0 - r) * (1.0 - x) * d\n           for a, r, x, d in zip(v, rho, tau, qs) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, rho, tau, qs)), lambda a, r, x, d: a * (1.0 - r) * (1.0 - x) * d, where = lambda a, r, x, d: True if a != 0.0 else False, unpack = 4)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "r",
+          "x",
+          "d"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+      "line": 1225,
+      "column": 15,
+      "before": "a * b for a, b in zip(v, surv) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, surv)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/jplib/products/individual_annuity/Annuity_JP_S",
+      "line": 1854,
+      "column": 14,
+      "before": "wt * lapse_rate(12 * y) for wt, y in zip(w, ys)",
+      "after": "expressions.over(expressions.zip_values((w, ys)), lambda wt, y: wt * lapse_rate(12 * y), unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "wt",
+          "y"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/jplib/products/individual_annuity/Annuity_JP_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/jplib/products/medical/Medical_JP_S",
+      "line": 819,
+      "column": 15,
+      "before": "p * g for g, p in zip(los_days(b), los_probs(b))",
+      "after": "expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * g, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "g",
+          "p"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/jplib/products/medical/Medical_JP_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/jplib/products/medical/Medical_JP_S",
+      "line": 831,
+      "column": 15,
+      "before": "p * min(g, limit_per_hosp())\n           for g, p in zip(los_days(b), los_probs(b))",
+      "after": "expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * min(g, limit_per_hosp()), unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "g",
+          "p"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/jplib/products/medical/Medical_JP_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/jplib/products/medical/Medical_JP_S",
+      "line": 844,
+      "column": 15,
+      "before": "p * max(f, min(g, limit_per_hosp()))\n           for g, p in zip(los_days(b), los_probs(b))",
+      "after": "expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, min(g, limit_per_hosp())), unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "g",
+          "p"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/jplib/products/medical/Medical_JP_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/jplib/products/medical/Medical_JP_S",
+      "line": 856,
+      "column": 15,
+      "before": "p * max(f, g) for g, p in zip(los_days(b), los_probs(b))",
+      "after": "expressions.over(expressions.zip_values((los_days(b), los_probs(b))), lambda g, p: p * max(f, g), unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "g",
+          "p"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/jplib/products/medical/Medical_JP_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/krlib/products/long_term_care/LTC_KR_S",
+      "line": 844,
+      "column": 20,
+      "before": "(p, q) for p, q in zip(ages[:-1], ages[1:]) if p <= x <= q",
+      "after": "expressions.over(expressions.zip_values((ages[:-1], ages[1:])), lambda p, q: (p, q), where = lambda p, q: True if p <= x <= q else False, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "p",
+          "q"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/krlib/products/long_term_care/LTC_KR_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/uklib/products/income_protection/IP_UK_S",
+      "line": 782,
+      "column": 15,
+      "before": "a * b for a, b in zip(v, surv) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, surv)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/uklib/products/income_protection/IP_UK_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/uklib/products/income_protection/IP_UK_S",
+      "line": 793,
+      "column": 15,
+      "before": "a * b for a, b in zip(v, rec) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, rec)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/uklib/products/income_protection/IP_UK_S/Projection/__init__.py"
+    },
+    {
+      "model": "lifelib/libraries/uklib/products/income_protection/IP_UK_S",
+      "line": 804,
+      "column": 15,
+      "before": "a * (1.0 - r) * d\n           for a, r, d in zip(v, rec, dth) if a != 0.0",
+      "after": "expressions.over(expressions.zip_values((v, rec, dth)), lambda a, r, d: a * (1.0 - r) * d, where = lambda a, r, d: True if a != 0.0 else False, unpack = 3)",
+      "clauses": 1,
+      "targets": [
+        [
+          "a",
+          "r",
+          "d"
+        ]
+      ],
+      "namespace_preexisting": false,
+      "helpers": [
+        "over",
+        "zip_values"
+      ],
+      "file": "lifelib/libraries/uklib/products/income_protection/IP_UK_S/Projection/__init__.py"
+    }
+  ],
+  "live_financial_summary": {
+    "status": "PASS",
+    "models": [
+      {
+        "model": "lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+        "status": "PASS",
+        "reports": 24,
+        "policies": 12,
+        "command": [
+          "/workspace/cloud-setup/venv/bin/python",
+          "/workspace/work/cloud-generators-20261108/oracles/census-financial_probe.py",
+          "/workspace/work/cloud-generators-20261108/native-generator-models-2/lifelib/libraries/frlib/products/assurance_emprunteur/ADE_FR_S",
+          "/workspace/work/cloud-generators-20261108/native-zip-live-financial-1/024"
+        ],
+        "original_receipt_sha256": "659f7a451f5f754d234c860ee90704415f9317a56b3db4d2b6a5cb0416d472bf",
+        "actual_receipt_sha256": "4578e6064cba3599688ff95aa8a89e90df2b5e80ec64b77c17b65fd3a417f4ad",
+        "serialized_sha256_identical": true
+      },
+      {
+        "model": "lifelib/libraries/jplib/products/individual_annuity/Annuity_JP_S",
+        "status": "PASS",
+        "reports": 18,
+        "policies": 9,
+        "command": [
+          "/workspace/cloud-setup/venv/bin/python",
+          "/workspace/work/cloud-generators-20261108/oracles/census-financial_probe.py",
+          "/workspace/work/cloud-generators-20261108/native-generator-models-2/lifelib/libraries/jplib/products/individual_annuity/Annuity_JP_S",
+          "/workspace/work/cloud-generators-20261108/native-zip-live-financial-1/038"
+        ],
+        "original_receipt_sha256": "0dada1610fcd93ef92250d59b94a97406078b4560c010e259b58c24168793d8b",
+        "actual_receipt_sha256": "662ccdd128c0bb604fac6088483ef83baf01dc5d74edcbe55ab344442a8215fe",
+        "serialized_sha256_identical": true
+      },
+      {
+        "model": "lifelib/libraries/jplib/products/medical/Medical_JP_S",
+        "status": "PASS",
+        "reports": 27,
+        "policies": 9,
+        "command": [
+          "/workspace/cloud-setup/venv/bin/python",
+          "/workspace/work/cloud-generators-20261108/oracles/census-financial_probe.py",
+          "/workspace/work/cloud-generators-20261108/native-generator-models-2/lifelib/libraries/jplib/products/medical/Medical_JP_S",
+          "/workspace/work/cloud-generators-20261108/native-zip-live-financial-1/039"
+        ],
+        "original_receipt_sha256": "4da64f68fcc3e3dbc310b861d23d9925ed0eec560f1cca7d4eef6af38135e367",
+        "actual_receipt_sha256": "4a5089ed7740e9ad0bcd5595931573ecb55c38323186c21389728cfcc4f69592",
+        "serialized_sha256_identical": true
+      },
+      {
+        "model": "lifelib/libraries/krlib/products/long_term_care/LTC_KR_S",
+        "status": "PASS",
+        "reports": 18,
+        "policies": 9,
+        "command": [
+          "/workspace/cloud-setup/venv/bin/python",
+          "/workspace/work/cloud-generators-20261108/oracles/census-financial_probe.py",
+          "/workspace/work/cloud-generators-20261108/native-generator-models-2/lifelib/libraries/krlib/products/long_term_care/LTC_KR_S",
+          "/workspace/work/cloud-generators-20261108/native-zip-live-financial-1/048"
+        ],
+        "original_receipt_sha256": "0528321fb57fcad4ddf0e5431a236a266d283da1b9bd3ba29353b263a19c2a93",
+        "actual_receipt_sha256": "07dad1b57817d7349e2596f370d35a0f8be5d1e3e6e38351f8a1c3b93d71a70b",
+        "serialized_sha256_identical": true
+      },
+      {
+        "model": "lifelib/libraries/uklib/products/income_protection/IP_UK_S",
+        "status": "PASS",
+        "reports": 14,
+        "policies": 7,
+        "command": [
+          "/workspace/cloud-setup/venv/bin/python",
+          "/workspace/work/cloud-generators-20261108/oracles/census-financial_probe.py",
+          "/workspace/work/cloud-generators-20261108/native-generator-models-2/lifelib/libraries/uklib/products/income_protection/IP_UK_S",
+          "/workspace/work/cloud-generators-20261108/native-zip-live-financial-1/063"
+        ],
+        "original_receipt_sha256": "54d7a85de5ca380d7116f0dc079933f4b74c360f7fd6c03832490186ecb28889",
+        "actual_receipt_sha256": "422735c486c367b3ccee1675383c6629049723173840cac36293a4c59bb058b2",
+        "serialized_sha256_identical": true
+      }
+    ],
+    "timing_qualification": false,
+    "native_qualification": false
+  },
+  "primitive_native_coverage_complete": false,
+  "timing_qualification": false,
+  "binding_contract": "Explicit zip_values authoring with the standard builtin zip source binding; mutable helper replacements keep authored keywords via existing ABI."
+}

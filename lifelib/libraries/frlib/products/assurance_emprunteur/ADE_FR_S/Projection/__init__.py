@@ -1185,7 +1185,7 @@ def pols_itt_recovery(t):
     """
     v = itt_cohorts(t)
     rho = itt_rate_vectors()[0]
-    return sum(expressions.over(zip(v, rho), lambda a, r: a * r, where = lambda a, r: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(expressions.zip_values((v, rho)), lambda a, r: a * r, where = lambda a, r: True if a != 0.0 else False, unpack = 2))
 
 
 def pols_itt_to_ipt(t):
@@ -1197,7 +1197,7 @@ def pols_itt_to_ipt(t):
     """
     v = itt_cohorts(t)
     rho, tau, _, _ = itt_rate_vectors()
-    return sum(expressions.over(zip(v, rho, tau), lambda a, r, x: a * (1.0 - r) * x, where = lambda a, r, x: True if a != 0.0 else False, unpack = 3))
+    return sum(expressions.over(expressions.zip_values((v, rho, tau)), lambda a, r, x: a * (1.0 - r) * x, where = lambda a, r, x: True if a != 0.0 else False, unpack = 3))
 
 
 def pols_itt_death(t):
@@ -1208,7 +1208,7 @@ def pols_itt_death(t):
     """
     v = itt_cohorts(t)
     rho, tau, qs, _ = itt_rate_vectors()
-    return sum(expressions.over(zip(v, rho, tau, qs), lambda a, r, x, d: a * (1.0 - r) * (1.0 - x) * d, where = lambda a, r, x, d: True if a != 0.0 else False, unpack = 4))
+    return sum(expressions.over(expressions.zip_values((v, rho, tau, qs)), lambda a, r, x, d: a * (1.0 - r) * (1.0 - x) * d, where = lambda a, r, x, d: True if a != 0.0 else False, unpack = 4))
 
 
 def pols_itt_stay(t):
@@ -1221,7 +1221,7 @@ def pols_itt_stay(t):
     """
     v = itt_cohorts(t)
     surv = itt_rate_vectors()[3]
-    return sum(expressions.over(zip(v, surv), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(expressions.zip_values((v, surv)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
 
 
 def pols_itt_cap(t):

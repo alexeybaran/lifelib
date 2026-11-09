@@ -779,7 +779,7 @@ def pols_sick_surv(t):
     """
     v = sick_cohorts(t)
     surv = claim_rate_vectors()[2]
-    return sum(expressions.over(zip(v, surv), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(expressions.zip_values((v, surv)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
 
 
 def pols_recovery(t):
@@ -790,7 +790,7 @@ def pols_recovery(t):
     """
     v = sick_cohorts(t)
     rec = claim_rate_vectors()[0]
-    return sum(expressions.over(zip(v, rec), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
+    return sum(expressions.over(expressions.zip_values((v, rec)), lambda a, b: a * b, where = lambda a, b: True if a != 0.0 else False, unpack = 2))
 
 
 def pols_death_sick(t):
@@ -801,7 +801,7 @@ def pols_death_sick(t):
     """
     v = sick_cohorts(t)
     rec, dth, _ = claim_rate_vectors()
-    return sum(expressions.over(zip(v, rec, dth), lambda a, r, d: a * (1.0 - r) * d, where = lambda a, r, d: True if a != 0.0 else False, unpack = 3))
+    return sum(expressions.over(expressions.zip_values((v, rec, dth)), lambda a, r, d: a * (1.0 - r) * d, where = lambda a, r, d: True if a != 0.0 else False, unpack = 3))
 
 
 def pols_exit(t):

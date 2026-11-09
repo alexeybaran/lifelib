@@ -841,7 +841,7 @@ def disclosed_inc_at(x):
     elif x >= hi:
         a, b = ages[-2], ages[-1]
     else:
-        a, b = next(expressions.over(zip(ages[:-1], ages[1:]), lambda p, q: (p, q), where = lambda p, q: True if p <= x <= q else False, unpack = 2))
+        a, b = next(expressions.over(expressions.zip_values((ages[:-1], ages[1:])), lambda p, q: (p, q), where = lambda p, q: True if p <= x <= q else False, unpack = 2))
     g = math.log(rate(b) / rate(a)) / (b - a)                        # noqa: F821
     return rate(a) * math.exp(g * (x - a))                           # noqa: F821
 

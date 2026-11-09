@@ -1845,7 +1845,7 @@ def lapse_rate_mean(weighting="count"):
         w = [av_pp(y) for y in ys]
     else:
         raise ValueError("invalid weighting")
-    num = sum(expressions.over(zip(w, ys), lambda wt, y: wt * lapse_rate(12 * y), unpack = 2))
+    num = sum(expressions.over(expressions.zip_values((w, ys)), lambda wt, y: wt * lapse_rate(12 * y), unpack = 2))
     den = sum(w)
     return num / den if den else 0.0
 
