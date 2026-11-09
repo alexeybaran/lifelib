@@ -19,6 +19,7 @@ from cpython.ref cimport PyObject
 cimport cython
 from lifelib.immutable_inputs import Table, Record
 from lifelib.typed_inputs import _FLOOR, _native_operations
+from modelx_cython._call_layout cimport forward_call
 
 cdef object _missing = object()
 cdef object omitted_argument = _missing
@@ -1284,26 +1285,13 @@ cdef object _explicit_value(object source, object key, object column, object def
     return _typed_python_value(source, key, column, default)
 
 
-cdef object _explicit_replacement(object function, tuple keywords, tuple names, tuple values):
-    # Compatibility only. Canonical reads never allocate dispatch containers.
-    # Reconstruct BEFORE validating canonical Record columns/defaults.
-    cdef list positional = []
-    cdef dict named = {}
-    for name in keywords:
-        named[name] = values[names.index(name)]
-    for name, value in zip(names, values):
-        if value is not omitted_argument and name not in named:
-            positional.append(value)
-    return function(*positional, **named)
-
-
 cdef double lookup_float(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     cdef KeyPart[4] parts
     cdef Py_ssize_t count
     cdef bint tuple_key
     if function is not _lookup_float_fn:
-        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
-                                     (source, key, column, default))
+        return forward_call(function, keywords, ('source', 'key', 'column', 'default'),
+                            (source, key, column, default), omitted_argument)
     if column is _typed_missing:
         column = _missing
     if default is _typed_missing:
@@ -1316,8 +1304,8 @@ cdef double lookup_float(object function, tuple keywords, object source, object 
 
 cdef long long lookup_int(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     if function is not _lookup_int_fn:
-        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
-                                     (source, key, column, default))
+        return forward_call(function, keywords, ('source', 'key', 'column', 'default'),
+                            (source, key, column, default), omitted_argument)
     result = _typed_int(_explicit_value(source,key,column,default))
     if not -(1 << 63) <= result < (1 << 63):
         raise OverflowError('lookup_int result outside signed 64-bit range')
@@ -1326,15 +1314,15 @@ cdef long long lookup_int(object function, tuple keywords, object source, object
 
 cdef bint lookup_bool(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing) except? -1:
     if function is not _lookup_bool_fn:
-        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
-                                     (source, key, column, default))
+        return forward_call(function, keywords, ('source', 'key', 'column', 'default'),
+                            (source, key, column, default), omitted_argument)
     return _typed_bool(_explicit_value(source,key,column,default))
 
 
 cdef str lookup_str(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing):
     if function is not _lookup_str_fn:
-        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
-                                     (source, key, column, default))
+        return forward_call(function, keywords, ('source', 'key', 'column', 'default'),
+                            (source, key, column, default), omitted_argument)
     return _typed_str(_explicit_value(source,key,column,default))
 
 
@@ -1342,8 +1330,8 @@ cdef object _lookup_object_fn = _native_operations['lookup_object']
 
 cdef object lookup_object(object function, tuple keywords, object source, object key, object column=_missing, object default=_missing):
     if function is not _lookup_object_fn:
-        return _explicit_replacement(function, keywords, ('source', 'key', 'column', 'default'),
-                                     (source, key, column, default))
+        return forward_call(function, keywords, ('source', 'key', 'column', 'default'),
+                            (source, key, column, default), omitted_argument)
     return _explicit_value(source,key,column,default)
 
 
@@ -1356,7 +1344,8 @@ cdef object _is_missing_fn = _native_operations['is_missing']
 cdef bint is_missing(object function, tuple keywords, object predicate, object value) except? -1:
     cdef double number
     if function is not _is_missing_fn:
-        return _explicit_replacement(function, keywords, ('predicate', 'value'), (predicate, value))
+        return forward_call(function, keywords, ('predicate', 'value'),
+                            (predicate, value), omitted_argument)
     if predicate is _pandas_isna:
         if value is None or value is _pandas_NA or value is _pandas_NaT:
             return True

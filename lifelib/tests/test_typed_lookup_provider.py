@@ -70,6 +70,14 @@ def reordered_read(function,source,key,default):
 
 def keyword_missing(function,predicate,value):
     return native.is_missing(function,('value','predicate'),value=value,predicate=predicate)
+
+def shared_sum_state(values):
+    cdef native.F64Sum state
+    cdef double value
+    native.f64_init(&state)
+    for value in values:
+        native.f64_add(&state,value)
+    return native.f64_result(&state)
 ''')
     (root/'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['native.pyx','probe.pyx'],compiler_directives={'language_level':3}))\n")
     r=subprocess.run([sys.executable,'setup.py','build_ext','--inplace'],cwd=root,capture_output=True,text=True)
@@ -189,6 +197,16 @@ def test_explicit_public_default_sentinel_retains_omission_semantics(native):
     assert native.keyword_read(h.lookup_float, record, 'value', h._MISSING) == 1.5
     with pytest.raises(KeyError):
         native.keyword_read(h.lookup_float, record, 'absent', h._MISSING)
+
+
+@pytest.mark.parametrize('values', [[], [-0.0], [1e16, 1.0, -1e16],
+                                    [0.1, 0.2, -0.3], [float('inf'), 1.0],
+                                    [float('inf'), -float('inf')], [float('nan')]])
+def test_shared_float_state_reexport_preserves_float_start_sum(native,values):
+    import math
+    expected = sum(values, 0.0)
+    actual = native.shared_sum_state(values)
+    assert actual == expected or math.isnan(actual) and math.isnan(expected)
 
 
 @pytest.mark.parametrize('keys,query',[

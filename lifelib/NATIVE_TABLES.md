@@ -77,6 +77,11 @@ reads declared signatures and registered metadata, never callback bodies.
 The six helpers require the shared keyword/scalar ABI introduced by compiler
 `931faba`; that development bundle retains qualified architecture `299d8c1` as
 its base and still requires regional qualification.
+Provider replacement forwarding uses the single compiler-owned
+`_call_layout.pxd` header introduced at `3f99c12`; float-state C names reexport
+the shared `_float_sum_state.pxd`. These are header-only dependencies, with no
+runtime import of an unbuilt native table-provider binary. A Cython source build
+must be able to discover the compiler package's headers.
 
 Table reads compose with the generator lane's existing functions:
 
