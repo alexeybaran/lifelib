@@ -6,6 +6,9 @@ not parse generator expressions or inspect lambda bodies to recognize them.
 This development API is not yet a qualification of all regional models.
 
 ```python
+sum_float(net_cf(t) * disc(t) for t in range(proj_len()))
+
+# Optional shorthand for deliberately authored iterator operations.
 sum_float(periods(proj_len()), lambda t: net_cf(t) * disc(t))
 sum_float(periods(proj_len()), lambda t: claims(t),
           where=lambda t: pols_if(t) > 0.0)
@@ -52,6 +55,19 @@ Existing Python consumers remain useful: `all`, `any`, `min`, `max`, `next`,
 identity, tie, ordering and materialization contracts apply. Keep eager lists
 eager before passing them to pandas. Their native coverage is proved separately
 from the stream provider; the presence of these expressions is not a receipt.
+
+Retain ordinary generator expressions in regional migrations. Cython emits
+native generator state and typed loops/Cell calls directly. Replacing a
+generator expression with `over` changes its protocol: a replacement consumer
+can call a generator's `send` or `throw`, while `over` is an iterator API. The
+experimental automatic stream source adapter was therefore retired; its
+financial experiment is not a semantic qualification of that migration.
+
+Standard Cython generator objects support the tested iteration/send/throw/close
+protocols. They differ from CPython generator introspection: generator type
+checks, frame locals and `gi_suspended` are not identical. These implementation
+introspection operations are outside the inventoried pricing operations and are
+not qualified by the present native evidence.
 
 `unpack=N` is explicit because a tuple may itself be one intended callback
 argument. It accepts a nonnegative exact Python integer. Unpacking runs before
