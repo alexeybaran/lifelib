@@ -47,6 +47,9 @@ def raw(function,source,key,*args):
     if not args:return native.lookup_object(function,source,key)
     elif len(args)==1:return native.lookup_object(function,source,key,args[0])
     return native.lookup_object(function,source,key,args[0],args[1])
+
+def missing(function,predicate,value):
+    return native.is_missing(function,predicate,value)
 ''')
     (root/'setup.py').write_text("from setuptools import setup\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize(['native.pyx','probe.pyx'],compiler_directives={'language_level':3}))\n")
     r=subprocess.run([sys.executable,'setup.py','build_ext','--inplace'],cwd=root,capture_output=True,text=True)
@@ -158,6 +161,89 @@ def test_explicit_native_record_keeps_public_numpy_scalar_types(native,dtype,val
     assert type(raw) is type(public['value']) and raw == public['value']
     assert native.integer(h.lookup_int, record, 'value') == int(public['value'])
     assert native.floating(h.lookup_float, record, 'value') == float(public['value'])
+
+
+@pytest.mark.parametrize('indexing', ['loc', 'at'])
+@pytest.mark.parametrize('kind', ['int64', 'uint64', 'float32', 'float64', 'bool_'])
+def test_numpy_query_keys_use_native_admission_and_original_error_scalars(native,indexing,kind):
+    import numpy as np
+    import pandas as pd
+    from lifelib import pandas_inputs
+    scalar = getattr(np, kind)
+    labels = [True, False] if kind == 'bool_' else [1, 2]
+    frame = pd.DataFrame({'rate': [1.5, 2.5]}, index=pd.Index(labels))
+    prepared = pandas_inputs.table(frame, indexing=indexing)
+    for query in [scalar(labels[0]), scalar(5)]:
+        try: expected = float(getattr(frame, indexing)[query, 'rate'])
+        except Exception as error:
+            for call in [h.lookup_float, lambda *a: native.floating(h.lookup_float, *a)]:
+                with pytest.raises(type(error)) as actual: call(prepared, query, 'rate')
+                assert actual.value.args == error.args
+                assert [type(x) for x in actual.value.args] == [type(x) for x in error.args]
+        else:
+            calls = []
+            def profile(frame,event,arg):
+                if event == 'call' and frame.f_code in {h.lookup_float.__code__, h.lookup.__code__,
+                                                       h._typed_value.__code__, Table.lookup.__code__}:
+                    calls.append(frame.f_code.co_name)
+            sys.setprofile(profile)
+            try: assert native.floating(h.lookup_float, prepared, query, 'rate') == expected
+            finally: sys.setprofile(None)
+            assert calls == []
+
+
+@pytest.mark.parametrize('value', [None, True, False, 0, 2**100, 'missing', b'',
+                                 -0.0, float('nan'), float('inf')])
+def test_scalar_missing_predicate_matches_pandas_without_python(native,value):
+    import pandas as pd
+    values = [value, pd.NA, pd.NaT]
+    forbidden = {h.is_missing.__code__, pd.isna.__code__}
+    calls = []
+    def profile(frame,event,arg):
+        if event == 'call' and frame.f_code in forbidden:
+            calls.append(frame.f_code.co_name)
+    expected = [h.is_missing(pd.isna, item) for item in values]
+    sys.setprofile(profile)
+    try:
+        assert [native.missing(h.is_missing, pd.isna, item) for item in values] == expected
+    finally:
+        sys.setprofile(None)
+    assert calls == []
+
+
+def test_missing_predicate_current_callable_and_numpy_scalars(native):
+    import numpy as np
+    import pandas as pd
+    for value in [np.int64(42), np.uint64(2**64-1), np.bool_(False),
+                  np.float32('nan'), np.float64('nan'), np.float64(0.5)]:
+        assert native.missing(h.is_missing,pd.isna,value) is bool(pd.isna(value))
+    events = []
+    sentinel = RuntimeError('predicate')
+    def predicate(value):
+        events.append(value)
+        raise sentinel
+    with pytest.raises(RuntimeError) as error:
+        native.missing(h.is_missing,predicate,3)
+    assert error.value is sentinel and events == [3]
+    def replacement(predicate,value):
+        events.append(('helper',value))
+        return False
+    assert native.missing(replacement,pd.isna,4) is False
+    assert events[-1] == ('helper',4)
+
+
+def test_predicate_replaced_before_provider_import_is_not_admitted(native):
+    source = '''import pandas as pd
+def replacement(value):
+    return False
+pd.isna = replacement
+from lifelib import typed_inputs as h
+import probe
+assert probe.missing(h.is_missing, pd.isna, None) is False
+'''
+    run = subprocess.run([sys.executable, '-c', source], cwd=Path(native.__file__).parent,
+                         capture_output=True, text=True)
+    assert run.returncode == 0, run.stdout + run.stderr
 
 
 @pytest.mark.parametrize('indexing', ['loc', 'at'])

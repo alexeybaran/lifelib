@@ -362,7 +362,7 @@ def sex():
     table [S7].  The scale itself is not public, so the sex effect reaches this model
     through the **[std]** utilisation factors rather than through a premium table.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -378,7 +378,7 @@ def issue_age():
     [REG-R17 제7-63조제2항제6호다목].  This is the widest single **[std]** in the
     specification.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def premium_mth_pp():
@@ -399,7 +399,7 @@ def premium_mth_pp():
     Only the *first* year is an input.  Every later year is the renewal recursion of
     :func:`prem_ge_base` and :func:`prem_np_base`.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def np_share():
@@ -417,7 +417,7 @@ def np_share():
     **only** the rider: at 60% a band-5 policyholder pays
     ``0.40 + 0.60 x 4.00 = 2.80x`` the base total premium, but only 2.46x at 48.75%.
     """
-    return float(model_point()["np_share"])
+    return tables.lookup_float(prepared_model_point(), "np_share")
 
 
 def np_rider():
@@ -427,7 +427,7 @@ def np_rider():
     the three sub-limits and **the whole experience-rating loop** — the contract becomes
     a plain 급여-only attained-age renewable.  Model point 5 is that election.
     """
-    return bool(int(model_point()["np_rider"]))
+    return bool(tables.lookup_int(prepared_model_point(), "np_rider"))
 
 
 def three_np():
@@ -438,7 +438,7 @@ def three_np():
     it is not held those treatments are not covered at all rather than falling back into
     the main limit.  Model point 6 is that election.
     """
-    return bool(int(model_point()["three_np"])) and np_rider()
+    return bool(tables.lookup_int(prepared_model_point(), "three_np")) and np_rider()
 
 
 def annual_limit():
@@ -452,7 +452,7 @@ def annual_limit():
     severity distribution further.  상해 and 질병 carry **separate** limits, so the
     whole-contract annual exposure with both parts held is ₩100,000,000.
     """
-    return float(model_point()["annual_limit"])
+    return tables.lookup_float(prepared_model_point(), "annual_limit")
 
 
 def visit_cap():
@@ -462,7 +462,7 @@ def visit_cap():
     5세대 carrier menu [S3].  It binds at a covered outpatient cost of ₩250,000 on the
     급여 side, the same crossing point at both provider tiers.
     """
-    return float(model_point()["visit_cap"])
+    return tables.lookup_float(prepared_model_point(), "visit_cap")
 
 
 def oop_decile():
@@ -475,7 +475,7 @@ def oop_decile():
     differently by income decile — which is exactly why the 비급여 half, which has no
     such truncation, is 57.1% of claims against a 15.8% share of national spend.
     """
-    return int(model_point()["oop_decile"])
+    return tables.lookup_int(prepared_model_point(), "oop_decile")
 
 
 def clinic_share():
@@ -489,7 +489,7 @@ def clinic_share():
     [R7] — normalised over the named classes.  Provider mix is a first-order variable in
     this product in a way it is in nothing else in the library.
     """
-    return float(model_point()["clinic_share"])
+    return tables.lookup_float(prepared_model_point(), "clinic_share")
 
 
 def nhi_covered():
@@ -502,7 +502,7 @@ def nhi_covered():
     is why it is a model point attribute.  It also switches the 본인부담상한제 off, since
     a life outside the scheme is not refunded by it.  Model point 10 is that branch.
     """
-    return bool(int(model_point()["nhi_covered"]))
+    return bool(tables.lookup_int(prepared_model_point(), "nhi_covered"))
 
 
 def trend_mult():
@@ -517,7 +517,7 @@ def trend_mult():
     not bind economically below a 30% claim trend**, and that is a model finding rather than
     an artefact of this parameterisation.
     """
-    return float(model_point()["trend_mult"])
+    return tables.lookup_float(prepared_model_point(), "trend_mult")
 
 
 def util_mult():
@@ -531,7 +531,7 @@ def util_mult():
     on which the public truncation binds — at 0.8018 in policy year 1 and 0.6024 by policy
     year 10.
     """
-    return float(model_point()["util_mult"])
+    return tables.lookup_float(prepared_model_point(), "util_mult")
 
 
 def reld_on():
@@ -543,7 +543,7 @@ def reld_on():
     had three renewals at flat relativity before the loop switched on.  Off on model
     points 5 and 9, where the contract is a plain attained-age renewable.
     """
-    return bool(int(model_point()["reld_on"])) and np_rider()
+    return bool(tables.lookup_int(prepared_model_point(), "reld_on")) and np_rider()
 
 
 def noclaim_on():
@@ -555,7 +555,7 @@ def noclaim_on():
     premium where the relativity applies only to the rider, and it **stacks** with the
     band-1 discount.
     """
-    return bool(int(model_point()["noclaim_on"]))
+    return bool(tables.lookup_int(prepared_model_point(), "noclaim_on"))
 
 
 def suspend_rate():
@@ -568,7 +568,7 @@ def suspend_rate():
     different projection, entering the product in force at resumption.  Model point 9
     carries 3% a year.
     """
-    return float(model_point()["suspend_rate"])
+    return tables.lookup_float(prepared_model_point(), "suspend_rate")
 
 
 # --- Time and the projection horizon ---------------------------------------
@@ -645,7 +645,7 @@ def mort_rate(t):
     """
     x = min(age(t), int(data.mort_table().index.get_level_values(   # noqa: F821
         "age").max()))
-    return float(data.mort_table().loc[(sex(), x), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1019,8 +1019,7 @@ def oop_ceiling():
     """
     if not nhi_covered():
         return float("inf")
-    return float(data.oop_ceiling_table().loc[oop_decile(),          # noqa: F821
-                                             "ceiling"])
+    return tables.lookup_float(data.prepared_oop_ceiling_table_loc(), oop_decile(), 'ceiling')
 
 
 def oop_trunc(y):
@@ -1404,7 +1403,7 @@ def shape_share(bucket):
     Bucket 0 is the no-claim mass, 72.9% of contracts assessed at commencement [R12],
     and it is what becomes 1단계.
     """
-    return float(data.claim_shape_table().loc[bucket, "share"])      # noqa: F821
+    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'share')      # noqa: F821
 
 
 def shape_mean():
@@ -1428,8 +1427,7 @@ def shape_rel(bucket):
     m = shape_mean()
     if m <= 0.0:
         return 0.0
-    return float(data.claim_shape_table().loc[bucket,                # noqa: F821
-                                              "claim_amount"]) / m
+    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'claim_amount') / m
 
 
 def band_of(amount):
@@ -2093,6 +2091,11 @@ def result_prem():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2189,3 +2192,7 @@ cash_tol = 1e-06
 shape_tol = 1e-09
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

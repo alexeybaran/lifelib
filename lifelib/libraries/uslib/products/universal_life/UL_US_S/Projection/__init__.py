@@ -286,22 +286,22 @@ def model_point():
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def rate_class():
     """The underwriting class of the selected model point (one of six)."""
-    return model_point()["rate_class"]
+    return tables.lookup_object(prepared_model_point(), "rate_class")
 
 
 def sum_assured():
     """The initial total face amount F of the selected model point."""
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def db_option():
@@ -309,7 +309,7 @@ def db_option():
 
     Option C (return of premium) is out of scope in the product spec.
     """
-    return model_point()["db_option"]
+    return tables.lookup_object(prepared_model_point(), "db_option")
 
 
 def qual_test():
@@ -318,17 +318,17 @@ def qual_test():
     CVAT is out of scope in the product spec, so :func:`corridor_factor` raises on
     anything else rather than silently applying GPT corridor factors.
     """
-    return model_point()["qual_test"]
+    return tables.lookup_object(prepared_model_point(), "qual_test")
 
 
 def premium_type():
     """The premium pattern: ``"LEVEL"``, ``"SINGLE"`` or ``"TARGET"`` **[std]**."""
-    return model_point()["premium_type"]
+    return tables.lookup_object(prepared_model_point(), "premium_type")
 
 
 def premium_pp_ann():
     """The planned annual premium per policy; a billing target only [S3]."""
-    return float(model_point()["premium_pp_ann"])
+    return tables.lookup_float(prepared_model_point(), "premium_pp_ann")
 
 
 def load_prem_rate():
@@ -337,7 +337,7 @@ def load_prem_rate():
     The load is itself a non-guaranteed element in the source design, which is why it
     sits in the model point table rather than in a Reference.
     """
-    return float(model_point()["load_prem_rate"])
+    return tables.lookup_float(prepared_model_point(), "load_prem_rate")
 
 
 def av_pp_init():
@@ -346,7 +346,7 @@ def av_pp_init():
     The notes' ``av_initial``: the opening balance of the first projected month,
     ``av_pp_at(0, "BEF_PREM")``.
     """
-    return float(model_point()["av_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "av_pp_init")
 
 
 def loan_bal_init():
@@ -355,12 +355,12 @@ def loan_bal_init():
     The notes' ``loan_balance_initial``: the opening balance of the first projected
     month, ``loan_bal_pp_bom(0)``.
     """
-    return float(model_point()["loan_bal_init"])
+    return tables.lookup_float(prepared_model_point(), "loan_bal_init")
 
 
 def pols_if_init():
     """l(0): the in-force probability at the outset, 1 for a single-policy point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration_mth_init():
@@ -370,32 +370,32 @@ def duration_mth_init():
     for an in-force cell.  This is the notes' ``policy_month_offset``, and it is an
     elapsed count, already 0-based.
     """
-    return int(model_point()["duration_mth"])
+    return tables.lookup_int(prepared_model_point(), "duration_mth")
 
 
 def has_surr_charge():
     """Whether a surrender charge schedule applies to this model point."""
-    return bool(model_point()["has_surr_charge"])
+    return tables.lookup_bool(prepared_model_point(), "has_surr_charge")
 
 
 def surr_charge_id():
     """The surrender charge schedule ID, a row label of *surr_charge_table.csv*."""
-    return model_point()["surr_charge_id"]
+    return tables.lookup_object(prepared_model_point(), "surr_charge_id")
 
 
 def gsp():
     """The guideline single premium (GPT compliance input) [S3]."""
-    return float(model_point()["gsp"])
+    return tables.lookup_float(prepared_model_point(), "gsp")
 
 
 def glp():
     """The guideline level premium (GPT compliance input) [S3]."""
-    return float(model_point()["glp"])
+    return tables.lookup_float(prepared_model_point(), "glp")
 
 
 def seven_pay_prem():
     """The 7-pay premium (IRC 7702A compliance input) [S3]."""
-    return float(model_point()["seven_pay_prem"])
+    return tables.lookup_float(prepared_model_point(), "seven_pay_prem")
 
 
 def duration_mth(t):
@@ -560,7 +560,7 @@ def wd_pp(t):
         return 0.0
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return tables.lookup_float(prepared_model_point(), "wd_pp")
 
 
 def wd_used_year(t):
@@ -1111,7 +1111,7 @@ def is_mec(t):
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')  # noqa: F821
 
 
 def mort_rate(t):
@@ -1562,6 +1562,11 @@ def result_av():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1618,3 +1623,7 @@ premium_tax_rate = 0.025
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

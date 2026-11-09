@@ -90,6 +90,13 @@ def mort_table():
         input_dir() / mort_table_file, index_col=["sex", "age"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -98,3 +105,5 @@ model_point_file = "model_point_table.csv"
 mort_table_file = "mort_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

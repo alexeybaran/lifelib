@@ -138,6 +138,21 @@ def premium_rates():
         index_col=["product", "sex", "risk_class", "issue_age"])
 
 
+def prepared_nsp_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(nsp_table(),
+                        columns=('nsp',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -154,3 +169,5 @@ mort_table_file = "mort_table.csv"
 premium_rates_file = "premium_rates.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

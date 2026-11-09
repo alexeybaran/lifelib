@@ -360,7 +360,7 @@ def sex():
     incidence where the female rates are far below the male ones, and by the savings
     element, which is sex-neutral.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -375,7 +375,7 @@ def age_at_entry():
     CI source retrieved [S3] [S4] [R13] and is five years below the whole life chassis's
     15-65 ceiling.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -388,7 +388,7 @@ def sum_assured():
     추가납입 are held at zero **[std]**, so ``SA`` is also the 기본사망보험금 of
     [S1 별표1 주7].
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def pols_if_init():
@@ -398,7 +398,7 @@ def pols_if_init():
     library.  It is read from the model point rather than hard-coded so that a user can
     project a block by scaling one row.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def prem_term():
@@ -410,7 +410,7 @@ def prem_term():
     step and the acceleration can be observed separately.  The menu runs 5 to 30년납 in
     fives and 55 to 80세납, with 5년납 and 10년납 offered on the 기본환급형 only [S4].
     """
-    return int(model_point()["prem_term"])
+    return tables.lookup_int(prepared_model_point(), "prem_term")
 
 
 def prem_period():
@@ -465,7 +465,7 @@ def premium_pp():
     implies, times the 저해지-to-기본환급형 form factor of 1.10224 published for one
     identical cell [S4], with 0.937 for the 무해지 form **[std]**.
     """
-    return float(model_point()["premium_annual"])
+    return tables.lookup_float(prepared_model_point(), "premium_annual")
 
 
 def premium_mth_pp():
@@ -499,7 +499,7 @@ def accel_rate():
     excluded because it is not a pure acceleration: it extinguishes the death benefit and
     replaces it with a separately funded 유족위로금 [S4].
     """
-    a = float(model_point()["accel_rate"])
+    a = tables.lookup_float(prepared_model_point(), "accel_rate")
     if not 0.0 < a < 1.0:
         raise ValueError("accel_rate must lie strictly between 0 and 1")
     return a
@@ -526,7 +526,7 @@ def resid_floor_mult():
     stated complement: on a long-surviving post-CI policy the account overtakes the nominal
     and the floor becomes the benefit.
     """
-    return float(model_point()["resid_floor_mult"])
+    return tables.lookup_float(prepared_model_point(), "resid_floor_mult")
 
 
 def cv_floor_ratio():
@@ -544,7 +544,7 @@ def cv_floor_ratio():
     the premium was calculated on a 최적해지율, which is why the lapse assumption on this
     product is a supervisory matter [REG-R19] [REG-R27].
     """
-    k = float(model_point()["cv_floor_ratio"])
+    k = tables.lookup_float(prepared_model_point(), "cv_floor_ratio")
     if not 0.0 <= k <= 1.0:
         raise ValueError("invalid cv_floor_ratio")
     return k
@@ -566,7 +566,7 @@ def first_year_scope():
     The modelling consequence is real — it requires the 중대한 암 incidence to be split
     into a breast component and the rest, which :func:`breast_share` supplies.
     """
-    v = model_point()["first_year_scope"]
+    v = tables.lookup_object(prepared_model_point(), "first_year_scope")
     if v not in ("breast", "all"):
         raise ValueError("invalid first_year_scope")
     return v
@@ -606,7 +606,7 @@ def lapse_basis():
     profitability, and the resulting switching raised observed 표준형 lapse, which was fed
     back into the 무해지 assumption — 「악순환」 [REG-R27].
     """
-    v = model_point()["lapse_basis"]
+    v = tables.lookup_object(prepared_model_point(), "lapse_basis")
     if v not in ("log_linear", "table"):
         raise ValueError("invalid lapse_basis")
     return v
@@ -623,7 +623,7 @@ def mort_be_factor():
     to, because ``omega_age`` is the horizon of the table and a structural property of the
     projection rather than an experience assumption.
     """
-    return float(model_point()["mort_adj"])
+    return tables.lookup_float(prepared_model_point(), "mort_adj")
 
 
 def ci_be_factor():
@@ -635,7 +635,7 @@ def ci_be_factor():
     far the weaker of the two.  0.75 on model point 9, removing a quarter of the rate as a
     stated **[std]** unwinding of the 안전할증 [R1].
     """
-    return float(model_point()["ci_adj"])
+    return tables.lookup_float(prepared_model_point(), "ci_adj")
 
 
 def mort_ci_factor():
@@ -656,7 +656,7 @@ def mort_ci_factor():
     It is a model point column so that the sensitivity can be read directly, and model
     point 9 runs it at 2.00.
     """
-    return float(model_point()["mort_ci_factor"])
+    return tables.lookup_float(prepared_model_point(), "mort_ci_factor")
 
 
 def waiver_rate(t):
@@ -680,7 +680,7 @@ def waiver_rate(t):
     """
     if t < 0 or t >= prem_period_mths():
         return 0.0
-    return float(model_point()["waiver_rate"])
+    return tables.lookup_float(prepared_model_point(), "waiver_rate")
 
 
 def pol_loan_util():
@@ -692,7 +692,7 @@ def pol_loan_util():
     납입기간, where the base is the **suppressed** value — which is the configuration in
     which the CI carve-out's doubling of the limit is visible.
     """
-    return float(model_point()["pol_loan_util"])
+    return tables.lookup_float(prepared_model_point(), "pol_loan_util")
 
 
 def pol_loan_year():
@@ -702,7 +702,7 @@ def pol_loan_year():
     already 0-based: it is a point on the anniversary clock, not an index into the frame,
     and it did not move when the frame did.
     """
-    return int(model_point()["pol_loan_year"])
+    return tables.lookup_int(prepared_model_point(), "pol_loan_year")
 
 
 def omega_age():
@@ -787,7 +787,7 @@ def mort_rate_at_age(y):
     :mod:`~.CI_KR_S.Data`.  This is the rate the pricing recursions use unadjusted:
     ``mort_be_factor`` is a lever on the *decrement*, not a change to the 산출방법서 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -906,8 +906,7 @@ def ci_rate_at_age(y, cause):
     """
     if y > ci_cover_end_age:                                         # noqa: F821
         return 0.0
-    return float(data.ci_incidence_table().loc[                      # noqa: F821
-        (sex(), y, cause), "ci_rate"])
+    return tables.lookup_float(data.prepared_ci_incidence_table_loc(), (sex(), y, cause), 'ci_rate')
 
 
 def ci_wait_factor():
@@ -2479,6 +2478,11 @@ def result_val():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2539,3 +2543,7 @@ val_tol = 1e-08
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

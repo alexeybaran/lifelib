@@ -14,7 +14,7 @@ return tables.lookup_float(data.mortality_table(), (sex(), age()), 'rate')
 
 # Keep the public model_point Series. Prepare a separate internal Record:
 def policy_record():
-    return inputs.record(model_point())
+    return inputs.record(model_point(), preserve_scalar_types=True)
 
 return tables.lookup_int(policy_record(), 'age_at_entry')
 ```
@@ -43,6 +43,20 @@ preserved, including `float(None)`, invalid numeric strings, and ambiguous
 `bool(pd.NA)`. `lookup_object` preserves `None`, `pd.NA` and `pd.NaT` identity.
 It is an explicit object-valued operation, not evidence of primitive arithmetic.
 
+For an optional actuarial override, use the scalar predicate explicitly:
+
+```python
+override = tables.lookup_object(policy_record(), 'annuity_rate_override', None)
+return default_rate() if tables.is_missing(pd.isna, override) else float(override)
+```
+
+`is_missing(predicate, value)` returns a boolean. Passing the current predicate
+first preserves its resolution before the value is evaluated, and keeps ordinary
+predicate Reference replacements working. The canonical pandas scalar predicate
+uses native checks for the inventoried builtin/NumPy numeric and boolean values,
+strings, `None`, `NA` and `NaT`. Noncanonical predicates and unsupported values use
+the original predicate and remain compatibility paths, not native coverage.
+
 The provider's `.pxd` declares these result types directly. The compiler's
 existing registered-symbol linker connects a named function Reference or one
 registered module member to that declaration. There is no pandas/formula
@@ -52,7 +66,9 @@ this mechanism. Cython checks and compiles the declared call normally.
 Native full-key lookup admits exact string, bool, signed-int64 and finite float
 components, and complete tuples of up to four components. Integral floats and
 integers follow exact Python key equality without converting large integers to
-double. Unsupported keys retain compatibility behavior and remain a coverage
+double. NumPy integer, boolean and float16/32/64 query scalars use the same native
+key path where their value fits the declared domain, retaining original error
+argument scalar types. Unsupported keys retain compatibility behavior and remain a coverage
 gap until separately implemented and evidenced. Native resources are owned by
 the immutable input and rebuilt after unpickling. They hold no policy cache.
 
@@ -67,6 +83,14 @@ copies selected inputs rather than changing the public pandas objects. Final
 public pandas construction remains an explicit materialization boundary; its
 labels, column order, index classes/names, dtypes and missing entries must be
 validated, and its cost counted separately and in the full lifecycle.
+
+`record(row, preserve_scalar_types=True)` copies the actual `row[field]` scalar
+types, including NumPy integers/floats/booleans. The default normalizes NumPy
+scalars for numeric preparation. This choice is explicit because `Series.items()`
+and `Series[field]` can yield different scalar classes. `index(public_index)`
+uses an existing Table to own unique ordered labels; it leaves the public Index
+and its metadata unchanged. Duplicate-label preparation is rejected explicitly
+and remains a separate source-operation compatibility/native-coverage obligation.
 
 Live modelx tracks whole-value replacement through normal dependencies. Edits
 inside a pandas object are not tracked. Exported and compiled models do not

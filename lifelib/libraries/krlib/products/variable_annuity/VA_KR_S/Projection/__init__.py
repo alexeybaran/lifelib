@@ -274,12 +274,12 @@ def model_point():
 
 def policy_id():
     """The contract's identifier, carried through to the printed output."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
     """The insured's sex, ``M`` or ``F``: the rating factor of both mortality bases."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def age_at_entry():
@@ -287,7 +287,7 @@ def age_at_entry():
 
     The retrieved envelope is 만15세–70세 [S1] [S2]; the shipped points run 35 to 70.
     """
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def basic_prem_pp():
@@ -298,7 +298,7 @@ def basic_prem_pp():
     observed minimum runs ₩50,000 to ₩500,000 by carrier and the maximum is ₩1,000,000
     per 구좌 [S1] [S2] [S9].
     """
-    return float(model_point()["basic_prem_pp"])
+    return tables.lookup_float(prepared_model_point(), "basic_prem_pp")
 
 
 def pay_term():
@@ -306,7 +306,7 @@ def pay_term():
 
     Retrieved terms are 5 / 7 / 10 / 12 / 15 / 20년납 [S1] [S2].
     """
-    return int(model_point()["pay_term"])
+    return tables.lookup_int(prepared_model_point(), "pay_term")
 
 
 def annuity_age():
@@ -315,7 +315,7 @@ def annuity_age():
     The retrieved envelope is 45–80 [S1] [S5] [S6] [S9]. The 연금개시 전 보험기간 runs
     from the 계약일 to the day before the 연금개시나이 계약해당일 [S4] [S5] [S7].
     """
-    return int(model_point()["annuity_age"])
+    return tables.lookup_int(prepared_model_point(), "annuity_age")
 
 
 def gmab_flag():
@@ -325,7 +325,7 @@ def gmab_flag():
     has to support both forms; the charge and the guarantee are switched together,
     because a 미보증형 pays neither [S4] [S5].
     """
-    return int(model_point()["gmab"])
+    return tables.lookup_int(prepared_model_point(), "gmab")
 
 
 def fund_set():
@@ -336,7 +336,7 @@ def fund_set():
     ``bond50_eq50`` above it [S1] [R1] — so a model point's allocation sits **on** its
     constraint rather than slack of it.
     """
-    return model_point()["fund_set"]
+    return tables.lookup_object(prepared_model_point(), "fund_set")
 
 
 def scenario_id():
@@ -346,12 +346,12 @@ def scenario_id():
     ``low`` and ``high`` are the other two returns a Korean variable illustration must
     show, −1.00% and 3.75% [R2].
     """
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def crediting_basis():
     """The payout-phase crediting basis, a key of ``data.crediting_table()``."""
-    return model_point()["crediting_basis"]
+    return tables.lookup_object(prepared_model_point(), "crediting_basis")
 
 
 def addl_prem_ratio():
@@ -361,12 +361,12 @@ def addl_prem_ratio():
     across the retrieved contracts [S1] [S2] [S4] [S5] [S6] [S7] [S10], and attracting
     **no loading** [S1].
     """
-    return float(model_point()["addl_prem_ratio"])
+    return tables.lookup_float(prepared_model_point(), "addl_prem_ratio")
 
 
 def wd_ratio():
     """중도인출 as a fraction of the 해약환급금, once a policy year; 0 switches it off."""
-    return float(model_point()["wd_ratio"])
+    return tables.lookup_float(prepared_model_point(), "wd_ratio")
 
 
 def wd_start_year():
@@ -380,7 +380,7 @@ def wd_start_year():
     The contract permits twelve withdrawals a policy year from one month after the
     계약일 [S1]; the model takes at most one a year, on the 계약해당일 **[std]**.
     """
-    return int(model_point()["wd_start_year"])
+    return tables.lookup_int(prepared_model_point(), "wd_start_year")
 
 
 def pols_if_init():
@@ -390,7 +390,7 @@ def pols_if_init():
     basic premium, with the withdrawal residual floor and the maximum basic premium both
     expressed per 구좌 [S1] [S2] [S10]. One 구좌 keeps the model point one contract.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def pay_months():
@@ -464,7 +464,7 @@ def fund_alloc(j):
     allocation and the drift is itself a modelled quantity — which is what the automatic
     de-risking rules exist to control.
     """
-    return float(data.fund_table().at[(fund_set(), j), "alloc"])     # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'alloc')     # noqa: F821
 
 
 def fund_mgmt_fee(j):
@@ -474,7 +474,7 @@ def fund_mgmt_fee(j):
     [S7 제43조제2호] — so it lives inside the unit price and not in the 월공제액. The
     model takes it monthly at rate/12 **[std]**, the monthly grid having no daily step.
     """
-    return float(data.fund_table().at[(fund_set(), j), "mgmt_fee"])  # noqa: F821
+    return tables.lookup_float(data.prepared_fund_table_at(), (fund_set(), j), 'mgmt_fee')  # noqa: F821
 
 
 def fund_is_bond(j):
@@ -507,8 +507,7 @@ def gross_return(j):
     panel at 904.24원 against the statutory 1,000.00 opening price after fourteen years
     [S11], and no volatility, correlation or time series was retrieved at all.
     """
-    return float(data.return_scenario().at[                          # noqa: F821
-        (scenario_id(), j), "gross_return"])
+    return tables.lookup_float(data.prepared_return_scenario_at(), (scenario_id(), j), 'gross_return')
 
 
 def fund_growth(j):
@@ -530,7 +529,7 @@ def charge_rate(line):
     연금수령기간 중 비용 — plus the commission scale and the insurer's own unit expenses
     [R2].
     """
-    return float(data.charge_table().at[line, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_charge_table_at(), line, 'value')              # noqa: F821
 
 
 def loading_rate():
@@ -1172,7 +1171,7 @@ def ann_mort_rate_at_age(x):
     basis at annuitisation but **only in the policyholder's favour** [S1] [S2] [S5];
     that one-way ratchet is not modelled.
     """
-    return float(data.mort_table().at[(sex(), x), "ann_mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'ann_mort_rate')  # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -1182,7 +1181,7 @@ def mort_rate_at_age(x):
     annuities on a separate and lighter 연금생명표, and neither table is public
     [REG-R34]. This is the basis of the death decrement and therefore of the GMDB cost.
     """
-    return float(data.mort_table().at[(sex(), x), "mort_rate"])      # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_at(), (sex(), x), 'mort_rate')      # noqa: F821
 
 
 def mort_rate(t):
@@ -1916,6 +1915,11 @@ def result_charges():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1956,3 +1960,7 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

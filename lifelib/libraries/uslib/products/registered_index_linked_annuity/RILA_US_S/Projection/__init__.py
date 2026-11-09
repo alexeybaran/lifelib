@@ -354,32 +354,32 @@ def model_point():
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def premium_pp():
     """P: the single purchase payment per contract; no subsequent payments [S1][S2]."""
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def pols_if_init():
     """l(0): in-force probability at issue, 1 for a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def term_years():
     """T: the index-linked term in years, from the 1 / 3 / 6 menu [S1][S2]."""
-    return int(model_point()["term_years"])
+    return tables.lookup_int(prepared_model_point(), "term_years")
 
 
 def buffer():
@@ -388,7 +388,7 @@ def buffer():
     The buffer absorbs the first ``b`` of index loss and passes the excess through; 10% is
     the one level present in every retrieved insurer's menu [S1]-[S6].
     """
-    return float(model_point()["buffer"])
+    return tables.lookup_float(prepared_model_point(), "buffer")
 
 
 def crediting_type():
@@ -398,7 +398,7 @@ def crediting_type():
     that only one insurer in the sample offers and that needs a **four**-option
     replicating portfolio rather than three [S5].
     """
-    return model_point()["crediting_type"]
+    return tables.lookup_object(prepared_model_point(), "crediting_type")
 
 
 def declared_cap():
@@ -408,12 +408,12 @@ def declared_cap():
     retrievable, both insurer rate pages returning HTTP 403. A blank means the option is
     uncapped, in which case the out-of-the-money call is valued at zero [S2].
     """
-    return float(model_point()["declared_cap"])
+    return tables.lookup_float(prepared_model_point(), "declared_cap")
 
 
 def declared_step():
     """s: the declared Step Rate, 8% **[std]**; observed illustrative 8% [S1]."""
-    return float(model_point()["declared_step"])
+    return tables.lookup_float(prepared_model_point(), "declared_step")
 
 
 def declared_edge():
@@ -422,7 +422,7 @@ def declared_edge():
     No Edge value appears in any retrieved document; 6% is set below the 8% Step because
     the Edge design pays down to -b rather than to 0 and so buys a lower rate.
     """
-    return float(model_point()["declared_edge"])
+    return tables.lookup_float(prepared_model_point(), "declared_edge")
 
 
 def participation():
@@ -431,12 +431,12 @@ def participation():
     At ``PR = 1`` the notes' BUFFER + CAP + PR portfolio collapses **exactly** to the
     BUFFER + CAP one, so a single branch serves both; see :func:`opt_component`.
     """
-    return float(model_point()["participation"])
+    return tables.lookup_float(prepared_model_point(), "participation")
 
 
 def floor_rate():
     """f: the floor for the ``FLOOR`` crediting module, a positive fraction [S5]."""
-    return float(model_point()["floor_rate"])
+    return tables.lookup_float(prepared_model_point(), "floor_rate")
 
 
 def iv_family():
@@ -450,7 +450,7 @@ def iv_family():
     design [S1], which uses no option pricing; it predates AG 54's July 1, 2024 effective
     date [R2] and is carried as a tractable regression contrast, not as a live design.
     """
-    return model_point()["iv_family"]
+    return tables.lookup_object(prepared_model_point(), "iv_family")
 
 
 def amort_rule():
@@ -461,7 +461,7 @@ def amort_rule():
     time to expiry**. One insurer needs both, split by state [S3], so this is a
     configuration flag rather than a modelling opinion.
     """
-    return model_point()["amort_rule"]
+    return tables.lookup_object(prepared_model_point(), "amort_rule")
 
 
 def nge_reset():
@@ -471,7 +471,7 @@ def nge_reset():
     applies the ASOP No. 2 determination rule in :func:`declared_cap_solved`, floored at
     the contractual guaranteed minimum [S2][R5][REG-R26].
     """
-    return bool(model_point()["nge_reset"])
+    return tables.lookup_bool(prepared_model_point(), "nge_reset")
 
 
 def wd_rate_ann():
@@ -483,22 +483,22 @@ def wd_rate_ann():
     Reference because the notes' worked example and the notes' behavioural rule are
     mutually inconsistent - see the README.
     """
-    return float(model_point()["wd_rate_ann"])
+    return tables.lookup_float(prepared_model_point(), "wd_rate_ann")
 
 
 def scenario_id():
     """The market scenario the model point runs on, a key into *market_scenario.csv*."""
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def wd_schedule_id():
     """The scheduled withdrawal programme, a key into *withdrawal_table.csv*."""
-    return model_point()["wd_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "wd_schedule_id")
 
 
 def is_uncapped():
     """True when the model point leaves ``declared_cap`` blank [S2]."""
-    return bool(pd.isna(model_point()["declared_cap"]))              # noqa: F821
+    return bool(pd.isna(tables.lookup_object(prepared_model_point(), "declared_cap")))              # noqa: F821
 
 
 def policy_term():
@@ -1686,7 +1686,7 @@ def mort_rate(t):
     [REG-R65] and the payout chassis's 108.4% is annuitant-select and deliberately not
     imported.
     """
-    rate = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])   # noqa: F821
+    rate = tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')   # noqa: F821
     return rate * mort_ae_factor                                     # noqa: F821
 
 
@@ -2251,6 +2251,11 @@ def result_iv():
     return pd.DataFrame(out, index=pd.Index(ts, name="t"))           # noqa: F821
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2317,3 +2322,7 @@ premium_tax_rate = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

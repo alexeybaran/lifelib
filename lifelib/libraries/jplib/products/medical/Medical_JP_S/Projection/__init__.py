@@ -299,7 +299,7 @@ def chassis():
     [S7][S9][S10].  The composite takes 終身 — the majority design, and the one that
     exercises the lifetime aggregate limit, which a ten-year term does not.
     """
-    v = model_point()["chassis"]
+    v = tables.lookup_object(prepared_model_point(), "chassis")
     if v not in ("shushin", "teiki"):
         raise ValueError("invalid chassis")
     return v
@@ -311,7 +311,7 @@ def issue_age():
     満年齢 is the attained age at the 契約日 with the fraction discarded, incremented at
     each 年単位の契約応当日 [S4][S10].
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
@@ -321,7 +321,7 @@ def sex():
     at 20 and 30, below from 40 on [S3][S8] — which is a morbidity feature, not a
     pricing artefact, and is what the **[std]** sex factors on incidence reproduce.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -334,7 +334,7 @@ def daily_amount():
     structure, not a sum-assured structure, so ``D`` multiplies *days* and never a
     benefit amount.
     """
-    return float(model_point()["daily_amount"])
+    return tables.lookup_float(prepared_model_point(), "daily_amount")
 
 
 def limit_per_hosp():
@@ -344,7 +344,7 @@ def limit_per_hosp():
     attribute and not a state variable.  Any code path that varies it over ``t`` models a
     contract term that does not exist.
     """
-    v = int(model_point()["limit_per_hosp"])
+    v = tables.lookup_int(prepared_model_point(), "limit_per_hosp")
     if v <= 0:
         raise ValueError("limit_per_hosp must be positive")
     return v
@@ -358,7 +358,7 @@ def limit_agg():
     the 疾病 and 災害 limbs is the disclosed treatment at two carriers and is what this
     model implements — see :func:`agg_days_dis` and :func:`agg_days_acc`.
     """
-    return float(model_point()["limit_agg"])
+    return tables.lookup_float(prepared_model_point(), "limit_agg")
 
 
 def prem_period_type():
@@ -368,7 +368,7 @@ def prem_period_type():
     no surrender value ever arises; the 短期払 variant is the only route by which this
     chassis acquires one at all.
     """
-    v = model_point()["prem_period"]
+    v = tables.lookup_object(prepared_model_point(), "prem_period")
     if v not in ("whole_life", "to_65"):
         raise ValueError("invalid prem_period")
     return v
@@ -387,7 +387,7 @@ def premium_mth_pp():
     Level and 無配当 with no insurer repricing right on the 終身 chassis [S3][S6][S8], so
     every future premium is inside the contract boundary.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def prem_mode():
@@ -398,12 +398,12 @@ def prem_mode():
     company-set discount [S4] is an immaterial modal refinement and is not modelled
     **[std scope]**.
     """
-    return model_point()["prem_mode"]
+    return tables.lookup_object(prepared_model_point(), "prem_mode")
 
 
 def surg_mult_ih():
     """m_ih: the 手術給付金 multiple of D for surgery **in hospital**, 20 or 10 [S1][S3]."""
-    return float(model_point()["surg_mult_ih"])
+    return tables.lookup_float(prepared_model_point(), "surg_mult_ih")
 
 
 def surg_mult_op():
@@ -412,7 +412,7 @@ def surg_mult_op():
     Zero is a real market design, not a missing value: one carrier pays a flat 10倍 in
     hospital and does not cover outpatient surgery at all [S10].
     """
-    return float(model_point()["surg_mult_op"])
+    return tables.lookup_float(prepared_model_point(), "surg_mult_op")
 
 
 def min_days_5():
@@ -423,12 +423,12 @@ def min_days_5():
     model choice and the two cannot be averaged: against a 28.4-day national mean stay
     the floor is invisible, against a 2.4-day 白内障 stay it roughly doubles the payment.
     """
-    return bool(model_point()["min_days_5"])
+    return tables.lookup_bool(prepared_model_point(), "min_days_5")
 
 
 def adv_rider():
     """Whether the 先進医療特約 is attached [S1][S3][S5][S6][S7][S9]."""
-    return bool(model_point()["adv_rider"])
+    return tables.lookup_bool(prepared_model_point(), "adv_rider")
 
 
 def lump_rider():
@@ -438,7 +438,7 @@ def lump_rider():
     as the mean stay falls a per-day benefit shrinks and a per-admission benefit does
     not.
     """
-    return bool(model_point()["lump_rider"])
+    return tables.lookup_bool(prepared_model_point(), "lump_rider")
 
 
 def tokusoku_3dis():
@@ -450,7 +450,7 @@ def tokusoku_3dis():
     about 61.1% for men and 50.1% for women [REG-R28], so this is a mass-market feature
     rather than a fringe option.
     """
-    return bool(model_point()["tokusoku_3dis"])
+    return tables.lookup_bool(prepared_model_point(), "tokusoku_3dis")
 
 
 def waiver_3dis():
@@ -460,7 +460,7 @@ def waiver_3dis():
     急性心筋梗塞 or on 脳卒中 under the conditions the 特則 sets [S1] — which is why
     :func:`waived` is an absorbing state rather than a two-state chain.
     """
-    return bool(model_point()["waiver_3dis"])
+    return tables.lookup_bool(prepared_model_point(), "waiver_3dis")
 
 
 def surg_after_limit():
@@ -471,7 +471,7 @@ def surg_after_limit():
     [S4] — the only positively stated treatment among the retrieved 約款 — and carries
     the alternative as this switch.  See :func:`surg_ih_eff`.
     """
-    return bool(model_point()["surg_after_limit"])
+    return tables.lookup_bool(prepared_model_point(), "surg_after_limit")
 
 
 def pols_if_init():
@@ -581,7 +581,7 @@ def mort_rate_at_age(x):
     terminal age take the terminal rate.
     """
     a = min(int(x), omega_age())
-    return float(data.mort_table().loc[(sex(), a), "mort_rate"])     # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), a), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1636,6 +1636,11 @@ def result_days():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1702,3 +1707,7 @@ roll_fwd_tol = 1e-10
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

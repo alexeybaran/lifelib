@@ -315,7 +315,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def issue_age():
@@ -327,12 +327,12 @@ def issue_age():
     valuation age by about half a year; the base run accepts the offset **[std]**,
     exactly as the third-sector chassis does.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
     """The sex (M / F) of the insured, a rating factor and a mortality table key."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -343,12 +343,12 @@ def lump_amount():
 
     Paying it does **not** terminate the contract [S1] [S4] [S7] [S12].
     """
-    return float(model_point()["lump_amount"])
+    return tables.lookup_float(prepared_model_point(), "lump_amount")
 
 
 def annuity_amount():
     """A_N: the 基準介護年金額, one annual 介護年金 instalment [S1] [S7] [S8] [S10]."""
-    return float(model_point()["annuity_amount"])
+    return tables.lookup_float(prepared_model_point(), "annuity_amount")
 
 
 def grade_lump():
@@ -357,7 +357,7 @@ def grade_lump():
     要介護2以上 on the composite, the modal single threshold across the seven carriers
     and the one whose public base rate is best evidenced **[std]**.
     """
-    return str(model_point()["grade_lump"])
+    return tables.lookup_str(prepared_model_point(), "grade_lump")
 
 
 def grade_annuity():
@@ -366,7 +366,7 @@ def grade_annuity():
     要介護3以上 on the composite, one grade above the lump sum, which is the tiering
     three carriers use **[std]**.
     """
-    return str(model_point()["grade_annuity"])
+    return tables.lookup_str(prepared_model_point(), "grade_annuity")
 
 
 def grade_waiver():
@@ -377,7 +377,7 @@ def grade_waiver():
     model has to get right: it creates a band of lives paying nothing and receiving
     nothing.
     """
-    return str(model_point()["grade_waiver"])
+    return tables.lookup_str(prepared_model_point(), "grade_waiver")
 
 
 def annuity_max():
@@ -387,7 +387,7 @@ def annuity_max():
     Ten on the composite: simultaneously one carrier's hard cap [S1] and one of
     another's published terms [S7], so the cap is evidenced from both sides **[std]**.
     """
-    return int(model_point()["annuity_max"])
+    return tables.lookup_int(prepared_model_point(), "annuity_max")
 
 
 def annuity_test():
@@ -404,7 +404,7 @@ def annuity_test():
         again from instalment 1 [S1] [S2].  This is the only consumer of
         :func:`rec_rate`.
     """
-    v = model_point()["annuity_test"]
+    v = tables.lookup_object(prepared_model_point(), "annuity_test")
     if v not in ("survival", "state"):
         raise ValueError("invalid annuity_test")
     return v
@@ -418,17 +418,17 @@ def company_limb():
     only effect here is on :func:`f_age`, because it is what partly backfills the
     sub-65 restriction on the public limb.
     """
-    return bool(model_point()["company_limb"])
+    return tables.lookup_bool(prepared_model_point(), "company_limb")
 
 
 def dementia_rider():
     """True where the 認知症一時金特約 is attached.  Off on the anchor cell."""
-    return bool(model_point()["dementia_rider"])
+    return tables.lookup_bool(prepared_model_point(), "dementia_rider")
 
 
 def dementia_amount():
     """The 認知症診断一時金 amount of the rider, paid once per contract [S4] [S5] [S7]."""
-    return float(model_point()["dementia_amount"])
+    return tables.lookup_float(prepared_model_point(), "dementia_amount")
 
 
 def mci_fraction():
@@ -438,7 +438,7 @@ def mci_fraction():
     market-wide parameters in this product.  See the Space docstring for why the two
     limbs are carried as one event.
     """
-    return float(model_point()["mci_fraction"])
+    return tables.lookup_float(prepared_model_point(), "mci_fraction")
 
 
 def waiting_1y():
@@ -448,7 +448,7 @@ def waiting_1y():
     model point flag because it is the explicit price of three-question simplified
     underwriting at one carrier [S7].
     """
-    return bool(model_point()["waiting_1y"])
+    return tables.lookup_bool(prepared_model_point(), "waiting_1y")
 
 
 def waiting_mths():
@@ -468,7 +468,7 @@ def sel_lapse_lambda():
     No Japanese selective-lapse evidence was retrieved; the level is a **[std]**
     placeholder identical to the third-sector chassis's.
     """
-    return float(model_point()["sel_lapse_lambda"])
+    return tables.lookup_float(prepared_model_point(), "sel_lapse_lambda")
 
 
 def rec_rate():
@@ -503,7 +503,7 @@ def rec_rate():
     [S1], so recovery has nothing to act on.  Returning zero on the survival test is
     what makes that explicit.
     """
-    return float(model_point()["rec_rate"]) if annuity_test() == "state" else 0.0
+    return tables.lookup_float(prepared_model_point(), "rec_rate") if annuity_test() == "state" else 0.0
 
 
 def rec_rate_mth():
@@ -520,12 +520,12 @@ def premium_mth_pp():
     public [REG-R2].  The anchor cell's ¥11,500 is the rounded sum of two published
     specimen rates at male 60, 月払, 終身/終身払 [S6] [S8] **[std]**.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def prem_mode():
     """The 払込回数: monthly on the composite, which is why the grid is monthly [S1]."""
-    return str(model_point()["prem_mode"])
+    return tables.lookup_str(prepared_model_point(), "prem_mode")
 
 
 def prem_period_type():
@@ -536,7 +536,7 @@ def prem_period_type():
     such number — 終身払 runs to the terminal age of the table, which is what
     :func:`proj_len` computes.  The model point column keeps the name ``prem_period``.
     """
-    v = model_point()["prem_period"]
+    v = tables.lookup_object(prepared_model_point(), "prem_period")
     if v != "whole_life":
         raise ValueError("only 終身払 is in scope")
     return v
@@ -601,7 +601,7 @@ def mort_rate_base(t):
     A **[std]** construction in the shape of 第三分野標準生命表2018 — quoted anchors joined by
     a log-linear graduation — rather than a copy of it; see :mod:`~.LTC_JP_S.Data`.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate(t):
@@ -713,7 +713,7 @@ def prev_param(name):
     parameters; the file also carries the two sourced 認定率 anchors they were pinned to,
     4.3% at ages 65-74 and 31.1% at 75 and over [R4] [R5] [REG-R30].
     """
-    return float(data.prevalence_table().loc[name, "value"])         # noqa: F821
+    return tables.lookup_float(data.prepared_prevalence_table_loc(), name, 'value')         # noqa: F821
 
 
 def grade_share(grade):
@@ -726,7 +726,7 @@ def grade_share(grade):
     at young ones.  The published composition is a single all-ages figure, so no
     observed range exists **[std]**.
     """
-    return float(data.grade_share_table().loc[grade, "share_ge"])    # noqa: F821
+    return tables.lookup_float(data.prepared_grade_share_table_loc(), grade, 'share_ge')    # noqa: F821
 
 
 def prev_rate(t):
@@ -1447,6 +1447,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1487,3 +1492,7 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

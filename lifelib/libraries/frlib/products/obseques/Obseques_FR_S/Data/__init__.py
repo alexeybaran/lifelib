@@ -186,6 +186,13 @@ def single_prem_table():
         index_col="age").sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -202,3 +209,5 @@ surr_scale_file = "surr_scale_table.csv"
 single_prem_file = "single_prem_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

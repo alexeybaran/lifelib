@@ -517,12 +517,12 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the model point; printed, never used in a formula."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
     """The sex (M / F) of the member, the key into the mortality and annuity tables."""
-    v = str(model_point()["sex"])
+    v = tables.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -536,7 +536,7 @@ def age_init():
     applied with the annexed *décalage d'âge* age shifts, which the shipped proxy does
     not reproduce.
     """
-    return int(model_point()["age"])
+    return tables.lookup_int(prepared_model_point(), "age")
 
 
 def retirement_age():
@@ -547,7 +547,7 @@ def retirement_age():
     grid.  It is the single most important number on the model point: it sets both the
     length of the projection and, through ``years_to_horizon``, every year's target mix.
     """
-    return int(model_point()["retirement_age"])
+    return tables.lookup_int(prepared_model_point(), "retirement_age")
 
 
 def duration_ifo():
@@ -558,7 +558,7 @@ def duration_ifo():
     anniversary of the first *versement*, not of the projection start.  The anchor cell
     carries 2, so its window closes after two projected years rather than five.
     """
-    return int(model_point()["duration_ifo"])
+    return tables.lookup_int(prepared_model_point(), "duration_ifo")
 
 
 def compartment():
@@ -570,7 +570,7 @@ def compartment():
     from the main-residence early-release case, which is the only discretionary limb of
     the seven, so ``exit_table.csv`` carries a lower ``early_release_rate`` for them.
     """
-    v = str(model_point()["compartment"])
+    v = tables.lookup_str(prepared_model_point(), "compartment")
     if v not in ("c1", "c2", "c3"):
         raise ValueError("invalid compartment")
     return v
@@ -584,7 +584,7 @@ def allocation_profile():
     against a hard-coded list, so adding an insurer profile to ``allocation_grid.csv``
     is enough to make it usable.
     """
-    v = str(model_point()["allocation_profile"])
+    v = tables.lookup_str(prepared_model_point(), "allocation_profile")
     if v not in set(data.allocation_grid().index.get_level_values(0)):  # noqa: F821
         raise ValueError("allocation_profile not in allocation_grid.csv")
     return v
@@ -596,17 +596,17 @@ def premium_init():
     Zero on a cell that has stopped contributing — a c2 or c3 compartment reached by an
     incoming transfer holds acquired rights and receives nothing further.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def av_euro_init():
     """The per-policy euro-support balance carried into the projection."""
-    return float(model_point()["av_euro_init"])
+    return tables.lookup_float(prepared_model_point(), "av_euro_init")
 
 
 def av_uc_init():
     """The per-policy *unités de compte* balance carried into the projection."""
-    return float(model_point()["av_uc_init"])
+    return tables.lookup_float(prepared_model_point(), "av_uc_init")
 
 
 def death_floor_init():
@@ -617,7 +617,7 @@ def death_floor_init():
     return is *negative* carries a base **above** its balance, which is the only state in
     which the floor bites; model point 10 is that cell.
     """
-    return float(model_point()["death_floor_init"])
+    return tables.lookup_float(prepared_model_point(), "death_floor_init")
 
 
 def death_floor_flag():
@@ -626,7 +626,7 @@ def death_floor_flag():
     Included as standard in two sampled contracts, optional in three and an age-rated
     rider in one, so it is a model point column rather than a product constant.
     """
-    return bool(model_point()["death_floor_flag"])
+    return tables.lookup_bool(prepared_model_point(), "death_floor_flag")
 
 
 def exit_form():
@@ -637,7 +637,7 @@ def exit_form():
     rights may be delivered no other way — and a model point that says otherwise raises
     here rather than projecting a settlement the contract cannot make.
     """
-    v = str(model_point()["exit_form"])
+    v = tables.lookup_str(prepared_model_point(), "exit_form")
     if v not in ("capital_single", "capital_staged", "annuity", "mixed"):
         raise ValueError("invalid exit_form")
     if compartment() == "c3" and v != "annuity":
@@ -654,7 +654,7 @@ def annuity_share():
     ``mixed`` election must be strictly between the two ends; at either end it is one of
     the pure forms and should say so.
     """
-    theta = float(model_point()["annuity_share"])
+    theta = tables.lookup_float(prepared_model_point(), "annuity_share")
     form = exit_form()
     if form == "mixed":
         if not 0.0 < theta < 1.0:
@@ -673,7 +673,7 @@ def capital_instalments():
     changes :func:`capital_instalment_pp` and nothing else — see the Space docstring on
     why staged capital is settled at the horizon.
     """
-    j = int(model_point()["capital_instalments"])
+    j = tables.lookup_int(prepared_model_point(), "capital_instalments")
     if j < 1:
         raise ValueError("capital_instalments must be at least 1")
     if j > 1 and exit_form() != "capital_staged":
@@ -690,7 +690,7 @@ def deduction_elected():
     the insurer pays.  It appears in no recursion in this Space and exists so a
     downstream tax layer can find it.
     """
-    return bool(model_point()["deduction_elected"])
+    return tables.lookup_bool(prepared_model_point(), "deduction_elected")
 
 
 def mort_basis():
@@ -705,7 +705,7 @@ def mort_basis():
     is set so that ``mort_be_factor x q(M, 52)`` is exactly 0.00500.  They diverge after
     that, because a table has a slope and a placeholder does not.
     """
-    v = str(model_point()["mort_basis"])
+    v = tables.lookup_str(prepared_model_point(), "mort_basis")
     if v not in ("flat", "table"):
         raise ValueError("invalid mort_basis")
     return v
@@ -718,12 +718,12 @@ def mort_rate_flat():
     basis, and the one published rate card in the sample is a *gross premium* scale on a
     no-underwriting death rider, which must not be read as one.
     """
-    return float(model_point()["mort_rate_flat"])
+    return tables.lookup_float(prepared_model_point(), "mort_rate_flat")
 
 
 def pols_if_init():
     """l-(0): the in-force probability carried in; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_years():
@@ -1307,8 +1307,7 @@ def mort_rate(t):
     if mort_basis() == "flat":
         return mort_rate_flat()
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, float(data.mort_table().loc[                     # noqa: F821
-        (sex(), x), "mort_rate"]) * mort_be_factor)                  # noqa: F821
+    return min(1.0, tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1548,8 +1547,7 @@ def annuity_factor():
     No sampled insurer publishes an annuity rate card and TGH05 / TGF05 are not shipped,
     so the ladder is a placeholder to be replaced before any quantitative use.
     """
-    return float(data.annuity_factor_table().loc[                    # noqa: F821
-        (sex(), retirement_age()), "annuity_factor"])
+    return tables.lookup_float(data.prepared_annuity_factor_table_loc(), (sex(), retirement_age()), 'annuity_factor')
 
 
 def capital_leg_pp():
@@ -2167,6 +2165,11 @@ def result_settlement():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2211,3 +2214,7 @@ inflation_rate = 0.018
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

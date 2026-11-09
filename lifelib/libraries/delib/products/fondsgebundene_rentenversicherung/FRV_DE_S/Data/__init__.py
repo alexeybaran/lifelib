@@ -202,6 +202,37 @@ def rentenfaktor_table():
         index_col=["factor_id", "annuity_age"])
 
 
+def prepared_fund_scenario_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(fund_scenario_table(),
+                        columns=('ter_ann',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('qx_tariff',),
+                        indexing='loc')
+
+
+
+def prepared_lapse_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(lapse_table(),
+                        columns=('lapse_rate',),
+                        indexing='loc')
+
+
+
+def prepared_rentenfaktor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(rentenfaktor_table(),
+                        columns=('rentenfaktor_guar', 'rentenfaktor_curr'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -218,3 +249,5 @@ fund_scenario_file = "fund_scenario_table.csv"
 rentenfaktor_file = "rentenfaktor_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

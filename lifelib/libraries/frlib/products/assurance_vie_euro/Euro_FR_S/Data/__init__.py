@@ -143,6 +143,13 @@ def fin_rate_table():
         index_col=["scenario_id", "y"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -155,3 +162,5 @@ lapse_table_file = "lapse_table.csv"
 fin_rate_file = "fin_rate_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

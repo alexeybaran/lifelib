@@ -322,7 +322,7 @@ def model_point():
 
 def sex():
     """The annuitant's sex, ``M`` or ``F``; a rating factor on both mortality tables."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -334,12 +334,12 @@ def issue_age():
     The basis 標準生命表2018 is built for.  A model ageing its points on 満年齢 must say so
     and say what it does about the half-year difference; this one does not.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def premium_term_y():
     """m: the 保険料払込期間 in years; at least ten under the 税制適格特約 [R10]."""
-    return int(model_point()["premium_term_y"])
+    return tables.lookup_int(prepared_model_point(), "premium_term_y")
 
 
 def defer_gap_y():
@@ -348,7 +348,7 @@ def defer_gap_y():
     Zero is a valid model point and a different product; 払込満了 and 年金支払開始日 are
     different dates and collapsing them moves the 年金原資 by several per cent.
     """
-    return int(model_point()["defer_gap_y"])
+    return tables.lookup_int(prepared_model_point(), "defer_gap_y")
 
 
 def annuity_start_age():
@@ -358,7 +358,7 @@ def annuity_start_age():
     point where it does not, because two spellings of one date is how a projection
     silently annuitises on the wrong year.
     """
-    v = int(model_point()["annuity_start_age"])
+    v = tables.lookup_int(prepared_model_point(), "annuity_start_age")
     if v != issue_age() + premium_term_y() + defer_gap_y():
         raise ValueError("annuity_start_age is not issue_age + m + d")
     return v
@@ -370,7 +370,7 @@ def premium_pp():
     There is no review right [S2] [S4] [S5] [S6], so the insurer has no unilateral
     repricing lever and all ``m`` premiums are inside the contract boundary.
     """
-    return float(model_point()["premium_pp"])
+    return tables.lookup_float(prepared_model_point(), "premium_pp")
 
 
 def payout_form():
@@ -381,7 +381,7 @@ def payout_form():
     force at the 年金支払開始日 [S2] [S9]; holding it at the issue basis is a **[std]**
     assumption and the reason base-run take-up is zero.
     """
-    v = model_point()["payout_form"]
+    v = tables.lookup_object(prepared_model_point(), "payout_form")
     if v not in ("certain", "life_guar"):
         raise ValueError("invalid payout_form")
     return v
@@ -389,12 +389,12 @@ def payout_form():
 
 def payout_term_y():
     """k: the 確定年金 payment period in years; 10 or 15 under the 税制適格特約 [R10] [R16]."""
-    return int(model_point()["payout_term_y"])
+    return tables.lookup_int(prepared_model_point(), "payout_term_y")
 
 
 def guar_term_y():
     """g: the guarantee period of the 保証期間付終身年金 form, in years [S4] [R16]."""
-    return int(model_point()["guar_term_y"])
+    return tables.lookup_int(prepared_model_point(), "guar_term_y")
 
 
 def db_ratio():
@@ -404,7 +404,7 @@ def db_ratio():
     on the model point rather than in a code branch because a tontine is the same chassis
     with a different death-benefit ratio under the same surrender ceiling.
     """
-    return float(model_point()["db_ratio"])
+    return tables.lookup_float(prepared_model_point(), "db_ratio")
 
 
 def tax_rider():
@@ -414,7 +414,7 @@ def tax_rider():
     start age of 60 or more, a payment period of ten years or more, no cash refund of a
     減額 — so it validates the model point and then does nothing else here.
     """
-    v = bool(model_point()["tax_rider"])
+    v = tables.lookup_bool(prepared_model_point(), "tax_rider")
     if v and (premium_term_y() < 10 or annuity_start_age() < 60
               or (payout_form() == "certain" and payout_term_y() < 10)
               or (payout_form() == "life_guar" and guar_term_y() < 10)):
@@ -424,12 +424,12 @@ def tax_rider():
 
 def apl_on():
     """Whether the 自動振替貸付 module is switched on; false in the base run [S4] [REG-R14]."""
-    return bool(model_point()["apl_on"])
+    return tables.lookup_bool(prepared_model_point(), "apl_on")
 
 
 def loan_on():
     """Whether the 契約者貸付 module is switched on; false in the base run [S4] [S11]."""
-    return bool(model_point()["loan_on"])
+    return tables.lookup_bool(prepared_model_point(), "loan_on")
 
 
 def commute_rate():
@@ -439,7 +439,7 @@ def commute_rate():
     offers the election at ``t = n`` only **[std]**, which is where the published factor
     table is richest and where the arithmetic against the 年金原資 is checkable.
     """
-    return float(model_point()["commute_rate"])
+    return tables.lookup_float(prepared_model_point(), "commute_rate")
 
 
 def div_rate():
@@ -449,7 +449,7 @@ def div_rate():
     the 税制適格特約 the accumulated dividend may never be withdrawn before annuitisation and
     must be applied as a single premium increasing the 基本年金額 [S1] [S2] [R10].
     """
-    return float(model_point()["div_rate"])
+    return tables.lookup_float(prepared_model_point(), "div_rate")
 
 
 def rate_new():
@@ -458,7 +458,7 @@ def rate_new():
     Flat over the projection on the shipped points.  Equal to :func:`int_rate_defer` in
     the base run, which makes :func:`lapse_dyn_factor` exactly 1.
     """
-    return float(model_point()["rate_new"])
+    return tables.lookup_float(prepared_model_point(), "rate_new")
 
 
 # --- Derived model point quantities ----------------------------------------
@@ -565,12 +565,12 @@ def pricing_basis(item):
     them carries a ``provenance`` tag in the CSV rather than sitting as an untagged
     constant in a formula.
     """
-    return float(data.pricing_table().loc[item, "value"])            # noqa: F821
+    return tables.lookup_float(data.prepared_pricing_table_loc(), item, 'value')            # noqa: F821
 
 
 def expense_basis(item):
     """One row of the best-estimate cash expense and commission table, as a float."""
-    return float(data.expense_table().loc[item, "value"])            # noqa: F821
+    return tables.lookup_float(data.prepared_expense_table_loc(), item, 'value')            # noqa: F821
 
 
 def int_rate_defer():
@@ -651,7 +651,7 @@ def mort_rate_at_age(table, x):
     """
     if x >= omega_age(table):
         return 1.0
-    return float(data.mort_table().loc[(table, sex(), x), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (table, sex(), x), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1856,6 +1856,11 @@ def lapse_rate_mean(weighting="count"):
     return num / den if den else 0.0
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1868,3 +1873,7 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

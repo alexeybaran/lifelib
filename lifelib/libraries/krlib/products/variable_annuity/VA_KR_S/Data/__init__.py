@@ -190,6 +190,37 @@ def crediting_table():
     return pd.read_csv(input_dir() / crediting_file)                 # noqa: F821
 
 
+def prepared_fund_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(fund_table(),
+                        columns=('alloc', 'mgmt_fee'),
+                        indexing='at')
+
+
+
+def prepared_return_scenario_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(return_scenario(),
+                        columns=('gross_return',),
+                        indexing='at')
+
+
+
+def prepared_charge_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(charge_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('ann_mort_rate', 'mort_rate'),
+                        indexing='at')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -210,3 +241,5 @@ return_scenario_file = "return_scenario.csv"
 crediting_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

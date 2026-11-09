@@ -319,7 +319,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point, for reporting."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def age_at_entry():
@@ -328,7 +328,7 @@ def age_at_entry():
     One insurer computes age by difference of calendar years and two set the rate by age
     at adhesion, so the annual step in :func:`age` is a pure convention **[std]**.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -339,7 +339,7 @@ def sex():
     retrieved, so a column the shipped tables cannot serve would produce model points
     that do not project.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -347,7 +347,7 @@ def sex():
 
 def capital_initial():
     """The original capital of the loan, in EUR."""
-    return float(model_point()["capital_initial"])
+    return tables.lookup_float(prepared_model_point(), "capital_initial")
 
 
 def loan_rate_annual():
@@ -357,7 +357,7 @@ def loan_rate_annual():
     ``(1 + nominal)^(1/12) - 1``.  Using the effective conversion changes the *echeance*,
     and therefore every benefit - see :func:`loan_rate_mth`.
     """
-    return float(model_point()["loan_rate_annual"])
+    return tables.lookup_float(prepared_model_point(), "loan_rate_annual")
 
 
 def loan_rate_mth():
@@ -372,7 +372,7 @@ def loan_rate_mth():
 
 def loan_term_months():
     """T: the contractual term of the loan in months, over the sourced 1-35 year band."""
-    return int(model_point()["loan_term_months"])
+    return tables.lookup_int(prepared_model_point(), "loan_term_months")
 
 
 def quotite():
@@ -381,7 +381,7 @@ def quotite():
     It scales the benefit **and** the premium, once each.  Applying it to the CRD and
     again to the benefit is invisible at 1.00, so model point 3 carries 0.60.
     """
-    v = float(model_point()["quotite"])
+    v = tables.lookup_float(prepared_model_point(), "quotite")
     if not 0.0 < v <= 1.0:
         raise ValueError("invalid quotite")
     return v
@@ -389,7 +389,7 @@ def quotite():
 
 def premium_basis():
     """``capital_initial`` (a level rate) or ``capital_restant_du`` (a rate on the CRD)."""
-    v = model_point()["premium_basis"]
+    v = tables.lookup_object(prepared_model_point(), "premium_basis")
     if v not in ("capital_initial", "capital_restant_du"):
         raise ValueError("invalid premium_basis")
     return v
@@ -403,12 +403,12 @@ def premium_rate_annual():
     the anchor's 9.8 % **[std]**.  It is ignored on the CRD basis, where
     :func:`crd_rate` supplies the rate instead.
     """
-    return float(model_point()["premium_rate_annual"])
+    return tables.lookup_float(prepared_model_point(), "premium_rate_annual")
 
 
 def indemnity_basis():
     """``forfaitaire`` (the *echeance* outright) or ``indemnitaire`` (capped at income loss)."""
-    v = model_point()["indemnity_basis"]
+    v = tables.lookup_object(prepared_model_point(), "indemnity_basis")
     if v not in ("forfaitaire", "indemnitaire"):
         raise ValueError("invalid indemnity_basis")
     return v
@@ -422,7 +422,7 @@ def income_loss_ratio():
     model exposes rather than a value it invents.  At 1.00 the *indemnitaire* cell equals
     the *forfaitaire* cell, which is the honest base.
     """
-    return float(model_point()["income_loss_ratio"])
+    return tables.lookup_float(prepared_model_point(), "income_loss_ratio")
 
 
 def indemnity_ratio():
@@ -442,7 +442,7 @@ def franchise_days():
     ``healthy`` and a life sick but not yet in payment keeps paying premiums.  The
     *franchise* enters through :func:`franchise_factor` and nowhere else.
     """
-    v = int(model_point()["franchise_days"])
+    v = tables.lookup_int(prepared_model_point(), "franchise_days")
     if v not in [int(d) for d in data.franchise_table().index]:      # noqa: F821
         raise ValueError("invalid franchise_days")
     return v
@@ -454,13 +454,12 @@ def franchise_factor():
     1.60 / 1.25 / 1.00 / 0.85 / 0.65 for 30 / 60 / 90 / 120 / 180 days **[std]**; the
     inception table itself is written on the 90-day column, where the factor is 1.00.
     """
-    return float(data.franchise_table().loc[                         # noqa: F821
-        franchise_days(), "franchise_factor"])
+    return tables.lookup_float(data.prepared_franchise_table_loc(), franchise_days(), 'franchise_factor')
 
 
 def itt_max_days():
     """The contractual ITT duration cap in days; 1 095 across the sampled market."""
-    return int(model_point()["itt_max_days"])
+    return tables.lookup_int(prepared_model_point(), "itt_max_days")
 
 
 def itt_max_months():
@@ -480,7 +479,7 @@ def ipt_benefit_basis():
     triggers one payment of ``crd(t + 1) x quotite`` and leaves the model, exactly as a death
     does, so :func:`pols_ipt_close` is zero throughout.
     """
-    v = model_point()["ipt_benefit_basis"]
+    v = tables.lookup_object(prepared_model_point(), "ipt_benefit_basis")
     if v not in ("echeance", "crd"):
         raise ValueError("invalid ipt_benefit_basis")
     return v
@@ -488,12 +487,12 @@ def ipt_benefit_basis():
 
 def deces_end_age():
     """The age at which the Décès guarantee ceases; 85 on the anchor cell."""
-    return int(model_point()["deces_end_age"])
+    return tables.lookup_int(prepared_model_point(), "deces_end_age")
 
 
 def ptia_end_age():
     """The age at which the PTIA guarantee ceases; 70 on the anchor cell."""
-    return int(model_point()["ptia_end_age"])
+    return tables.lookup_int(prepared_model_point(), "ptia_end_age")
 
 
 def itt_ipt_end_age():
@@ -503,7 +502,7 @@ def itt_ipt_end_age():
     on.  The published French claim-decline causes list "maximum cover age exceeded"
     among the commonest, which is this interaction seen from the claims register.
     """
-    return int(model_point()["itt_ipt_end_age"])
+    return tables.lookup_int(prepared_model_point(), "itt_ipt_end_age")
 
 
 def status():
@@ -514,7 +513,7 @@ def status():
     end of the loan is the disabled-life annuity a claims-in-payment reserve is quoted as,
     with the post-recovery active phase carried as well.
     """
-    v = model_point()["status"]
+    v = tables.lookup_object(prepared_model_point(), "status")
     if v not in ("healthy", "itt", "ipt"):
         raise ValueError("invalid status")
     return v
@@ -526,12 +525,12 @@ def claim_duration_months():
     The seeded population enters cohort ``z0 + 1``, since cohort 1 is a claim that has
     just started paying.  Ignored on ``healthy`` and ``ipt`` cells.
     """
-    return int(model_point()["claim_duration_months"])
+    return tables.lookup_int(prepared_model_point(), "claim_duration_months")
 
 
 def pols_if_init():
     """Initial number of policies; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -822,8 +821,7 @@ def itt_recovery_rate(z):
     claims mostly consolidate; the declining gradient is why the in-claim population needs
     a duration dimension at all.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_recovery_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_recovery_rate')
 
 
 def itt_recovery_rate_mth(z):
@@ -838,8 +836,7 @@ def itt_to_ipt_rate(z):
     claim runs the likelier the medical assessment clears the 66 % *bareme croise*
     threshold.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_to_ipt_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_to_ipt_rate')
 
 
 def itt_to_ipt_rate_mth(z):
@@ -853,8 +850,7 @@ def itt_mort_rate(z):
     0.02 / 0.03 / 0.04 by duration year **[std]**.  Claimant mortality above healthy-life
     mortality is universal in disability experience; these values have no French anchor.
     """
-    return float(data.itt_termination_table().loc[                   # noqa: F821
-        claim_dur_year(z), "itt_mort_rate"])
+    return tables.lookup_float(data.prepared_itt_termination_table_loc(), claim_dur_year(z), 'itt_mort_rate')
 
 
 def itt_mort_rate_mth(z):
@@ -1778,6 +1774,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1812,3 +1813,7 @@ inflation_rate = 0.018
 disc_rate = 0.025
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

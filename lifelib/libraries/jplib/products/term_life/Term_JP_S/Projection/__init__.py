@@ -406,7 +406,7 @@ def model_point():
 
 def sex():
     """The sex (M / F) of the insured, a rating factor of the premium scale [S2]."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -420,7 +420,7 @@ def age_at_entry():
     and understates mortality; ``mort_age_shift`` is the optional correction and the
     Space docstring states the direction.  The composite's envelope is 20-65 [S1][S2].
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def term_type():
@@ -431,7 +431,7 @@ def term_type():
     one premium and no repricing [S1], and applying the renewal machinery to it invents
     cover the contract does not have.
     """
-    v = model_point()["term_type"]
+    v = tables.lookup_object(prepared_model_point(), "term_type")
     if v not in ("nen", "sai"):
         raise ValueError("invalid term_type: expected nen or sai")
     return v
@@ -445,8 +445,8 @@ def policy_term():
     longer, because the contract renews.
     """
     if term_type() == "nen":
-        return int(model_point()["term_y"])
-    return int(model_point()["expiry_age"]) - age_at_entry()
+        return tables.lookup_int(prepared_model_point(), "term_y")
+    return tables.lookup_int(prepared_model_point(), "expiry_age") - age_at_entry()
 
 
 def renew_ceiling():
@@ -456,7 +456,7 @@ def renew_ceiling():
     more than the ceiling does, and the composite truncates into an 80歳満了 term rather
     than shortening to another expiry age or converting to another product [S4][S7][S12].
     """
-    return int(model_point()["renew_ceiling"])
+    return tables.lookup_int(prepared_model_point(), "renew_ceiling")
 
 
 def sum_assured():
@@ -466,7 +466,7 @@ def sum_assured():
     either terminates the contract and the other is then not paid [S1][S4][S8][S9][S12].
     The composite's envelope is ¥1,000,000-¥30,000,000 in ¥1,000,000 units [S2][S9][S13].
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mode():
@@ -478,7 +478,7 @@ def premium_mode():
     :func:`prem_due_pp`.  Model points 3 and 9 are 年払 and model point 7 半年払, so the
     difference is exercised by the shipped table rather than merely available.
     """
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def contract_boundary():
@@ -494,7 +494,7 @@ def contract_boundary():
     the base run **[std]** and carries the truncation as a switch.  Naming the convention
     is part of reporting the number.
     """
-    v = model_point()["contract_boundary"]
+    v = tables.lookup_object(prepared_model_point(), "contract_boundary")
     if v not in ("ceiling", "current_term"):
         raise ValueError("invalid contract_boundary")
     return v
@@ -502,12 +502,12 @@ def contract_boundary():
 
 def living_needs():
     """Whether the リビング・ニーズ特約 acceleration module is on; false in the base run."""
-    return bool(model_point()["living_needs"])
+    return tables.lookup_bool(prepared_model_point(), "living_needs")
 
 
 def wop():
     """Whether the 保険料の払込の免除 module is on; false in the base run [S1][S8]."""
-    return bool(model_point()["wop"])
+    return tables.lookup_bool(prepared_model_point(), "wop")
 
 
 def reinstatement():
@@ -523,7 +523,7 @@ def reinstatement():
     arrears at 年6% compound [S1], on evidence of health [S8] — which is why
     ``reinstate_window`` is sourced while the rate beside it is not.
     """
-    return bool(model_point()["reinstatement"])
+    return tables.lookup_bool(prepared_model_point(), "reinstatement")
 
 
 def horizon_ceiling():
@@ -653,7 +653,7 @@ def mort_rate_at_age(x):
     [REG-R20].  It is read directly by the premium scale and only through
     :func:`mort_rate_base` by the decrement.
     """
-    return float(data.mort_table().loc[(sex(), int(x)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), int(x)), 'mort_rate')  # noqa: F821
 
 
 def mort_table_mean(x, m):
@@ -821,7 +821,7 @@ def policy_fee_m():
     ``is_anchor`` row of the matching sex, which is where the decomposition of the
     published rate card is recorded.
     """
-    return float(data.prem_anchor_table().loc[sex(), "policy_fee_m"])  # noqa: F821
+    return tables.lookup_float(data.prepared_prem_anchor_table_loc(), sex(), 'policy_fee_m')  # noqa: F821
 
 
 def prem_rate_m(t):
@@ -1622,6 +1622,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1676,3 +1681,7 @@ roll_fwd_tol = 1e-12
 cash_tol = 1e-8
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

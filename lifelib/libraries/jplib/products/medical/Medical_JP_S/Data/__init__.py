@@ -186,6 +186,13 @@ def los_table():
         index_col=["band_start", "stay_days"])
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -200,3 +207,5 @@ incidence_table_file = "incidence_table.csv"
 los_table_file = "los_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

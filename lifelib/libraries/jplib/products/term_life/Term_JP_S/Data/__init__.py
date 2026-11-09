@@ -177,6 +177,21 @@ def prem_anchor_table():
     return tbl[tbl["is_anchor"] == 1].set_index("sex")
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_prem_anchor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(prem_anchor_table(),
+                        columns=('policy_fee_m',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -189,3 +204,5 @@ lapse_table_file = "lapse_table.csv"
 prem_rate_file = "prem_rate_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

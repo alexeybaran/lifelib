@@ -179,6 +179,13 @@ def hosp_stay_table():
         input_dir() / hosp_stay_file)                                # noqa: F821
 
 
+def prepared_survival_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(survival_table(),
+                        columns=('surv_5y',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -197,3 +204,5 @@ lapse_table_file = "lapse_table.csv"
 hosp_stay_file = "hosp_stay_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

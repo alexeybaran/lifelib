@@ -344,29 +344,29 @@ def age_at_entry(life):
     Basic and Period tables were developed ANB [R15][REG-R59].
     """
     if life == 1:
-        return int(model_point()["issue_age"])
+        return tables.lookup_int(prepared_model_point(), "issue_age")
     if life == 2:
-        return int(model_point()["joint_age"])
+        return tables.lookup_int(prepared_model_point(), "joint_age")
     raise ValueError("invalid life")
 
 
 def sex(life):
     """Sex (M / F) of the primary (life = 1) or joint (life = 2) annuitant."""
     if life == 1:
-        return model_point()["sex"]
+        return tables.lookup_object(prepared_model_point(), "sex")
     if life == 2:
-        return model_point()["joint_sex"]
+        return tables.lookup_object(prepared_model_point(), "joint_sex")
     raise ValueError("invalid life")
 
 
 def is_joint():
     """True when the contract covers two annuitants [S2][S4]."""
-    return bool(model_point()["joint"])
+    return tables.lookup_bool(prepared_model_point(), "joint")
 
 
 def survivor_pct():
     """delta: the survivor percentage, in {0.50, 2/3, 0.75, 1.00} [S1][S2][S4]."""
-    return float(model_point()["survivor_pct"])
+    return tables.lookup_float(prepared_model_point(), "survivor_pct")
 
 
 def reduction_trigger():
@@ -375,7 +375,7 @@ def reduction_trigger():
     A switch, not a parameter: the two conventions coincide on the primary's death and
     differ only on the secondary's [S1][S2][S4].
     """
-    v = model_point()["reduction_trigger"]
+    v = tables.lookup_object(prepared_model_point(), "reduction_trigger")
     if v not in ("either", "primary"):
         raise ValueError("invalid reduction_trigger")
     return v
@@ -383,7 +383,7 @@ def reduction_trigger():
 
 def market_type():
     """The tax wrapper: NQ, TradIRA, RothIRA or QLAC [S2][S4]."""
-    v = model_point()["market_type"]
+    v = tables.lookup_object(prepared_model_point(), "market_type")
     if v not in ("NQ", "TradIRA", "RothIRA", "QLAC"):
         raise ValueError("invalid market_type")
     return v
@@ -401,7 +401,7 @@ def income_form():
     benefit in deferral, the unbundled extended-case variant [S4]; ``CR`` life with cash
     refund; ``IR`` life with installment refund; ``PC`` life with period certain.
     """
-    v = model_point()["income_form"]
+    v = tables.lookup_object(prepared_model_point(), "income_form")
     if v not in ("LO", "LO_ROP", "CR", "IR", "PC"):
         raise ValueError("invalid income_form")
     return v
@@ -428,7 +428,7 @@ def db_form():
     pricing fork: setting it to ``NONE`` removes ``A_rop`` from the numerator of equation
     (4) and buys strictly more income for the same premium.
     """
-    v = model_point()["db_form"]
+    v = tables.lookup_object(prepared_model_point(), "db_form")
     if v not in ("ROP", "NONE"):
         raise ValueError("invalid db_form")
     return v
@@ -436,12 +436,12 @@ def db_form():
 
 def certain_period():
     """n: the elected certain period in years, 10-30 on PC forms [S2]; 0 otherwise."""
-    return int(model_point()["certain_period"])
+    return tables.lookup_int(prepared_model_point(), "certain_period")
 
 
 def payment_freq():
     """m: payments per year, in {12, 4, 2, 1}; fixed at issue [S1][S2]."""
-    v = int(model_point()["frequency"])
+    v = tables.lookup_int(prepared_model_point(), "frequency")
     if v not in (12, 4, 2, 1):
         raise ValueError("invalid frequency")
     return v
@@ -454,7 +454,7 @@ def payment_timing():
     ``products/immediate_annuity/product-spec.md`` so that one payout chassis serves
     both products.
     """
-    v = model_point()["timing"]
+    v = tables.lookup_object(prepared_model_point(), "timing")
     if v not in ("arrears", "advance"):
         raise ValueError("invalid timing")
     return v
@@ -467,7 +467,7 @@ def cola_rate():
     the income start date, **not** a CPI adjustment - the notes list treating it as
     index-linked among the product's pitfalls.
     """
-    return float(model_point()["cola_rate"])
+    return tables.lookup_float(prepared_model_point(), "cola_rate")
 
 
 def issue_year():
@@ -478,12 +478,12 @@ def issue_year():
     date; here the two are twenty years apart, so the generational anchor has to be
     named for the one that matters.
     """
-    return int(model_point()["issue_year"])
+    return tables.lookup_int(prepared_model_point(), "issue_year")
 
 
 def pols_if_init():
     """Initial number of contracts in force; 1.0 on a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def mort_basis():
@@ -496,7 +496,7 @@ def mort_basis():
     illustrative improvement scale.  Both are shipped because the notes prescribe the
     second and verify against the first.
     """
-    v = model_point()["mort_basis"]
+    v = tables.lookup_object(prepared_model_point(), "mort_basis")
     if v not in ("anchor", "generational"):
         raise ValueError("invalid mort_basis")
     return v
@@ -510,7 +510,7 @@ def factor_basis():
     reproduces the worked example, single-life only.  *formula*: both are computed from
     the shipped mortality table by equations (2) and (3).  See the Space docstring.
     """
-    v = model_point()["factor_basis"]
+    v = tables.lookup_object(prepared_model_point(), "factor_basis")
     if v not in ("table", "formula"):
         raise ValueError("invalid factor_basis")
     return v
@@ -524,7 +524,7 @@ def purchase_rate_dp():
     Blank on the model point returns -1, meaning no rounding: modelx forbids a cells
     returning ``None``, so every "not set" on this Space is a negative sentinel.
     """
-    v = model_point()["purchase_rate_dp"]
+    v = tables.lookup_object(prepared_model_point(), "purchase_rate_dp")
     return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
@@ -535,7 +535,7 @@ def other_qlac_premium():
     401(a), 403(a), 403(b), 408 or governmental 457(b) arrangement; the issuer may rely
     on the owner's written representation [R5 (h)(2)].
     """
-    return float(model_point()["other_qlac_premium"])
+    return tables.lookup_float(prepared_model_point(), "other_qlac_premium")
 
 
 def premium_schedule():
@@ -645,7 +645,7 @@ def income_start_mth_init():
     exactly ``T/12`` years after issue.  Under arrears the first instalment falls one
     payment period later - at ``m = 12``, at the end of month ``T``.
     """
-    return int(model_point()["income_start_mth"])
+    return tables.lookup_int(prepared_model_point(), "income_start_mth")
 
 
 def adjust_mth():
@@ -657,7 +657,7 @@ def adjust_mth():
     splitting behavioural construction and is **not implemented**; the exercise is
     named deterministically on the model point instead, and is off by default.
     """
-    v = model_point()["adjust_mth"]
+    v = tables.lookup_object(prepared_model_point(), "adjust_mth")
     return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
@@ -667,7 +667,7 @@ def adjust_start_mth():
     ``|T' - T| <= 60`` months, ``T'`` at least 13 months after the last premium, and
     inside the maximum deferral and the maximum income start age [S1][S2][S3][S4].
     """
-    v = model_point()["adjust_start_mth"]
+    v = tables.lookup_object(prepared_model_point(), "adjust_start_mth")
     return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
@@ -708,7 +708,7 @@ def accel_mth():
     cohort-splitting construction and is **not implemented**; the exercise is named
     deterministically on the model point and is off by default.
     """
-    v = model_point()["accel_mth"]
+    v = tables.lookup_object(prepared_model_point(), "accel_mth")
     return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
@@ -719,13 +719,13 @@ def commute_mth():
     the required beginning date [R1 (q)(1)(iv)].  The notes' 1.5% p.a. take-up is not
     implemented, for the same reason as the other two options.
     """
-    v = model_point()["commute_mth"]
+    v = tables.lookup_object(prepared_model_point(), "commute_mth")
     return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
 def commute_frac():
     """The fraction of the remaining guaranteed payments commuted; up to 100% [S4][R13]."""
-    v = model_point()["commute_frac"]
+    v = tables.lookup_object(prepared_model_point(), "commute_frac")
     return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
 
 
@@ -742,7 +742,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[(x, sex(life)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (x, sex(life)), 'mort_rate')  # noqa: F821
 
 
 def improvement_rate(t, life):
@@ -756,8 +756,7 @@ def improvement_rate(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 0.0
-    return float(                                                    # noqa: F821
-        data.improvement_scale().loc[(x, sex(life)), "improvement_rate"])
+    return tables.lookup_float(data.prepared_improvement_scale_loc(), (x, sex(life)), 'improvement_rate')
 
 
 def mort_rate(t, life):
@@ -1966,6 +1965,11 @@ def result_annual():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2004,3 +2008,7 @@ qlac_premium_limit = 210000.0
 qlac_max_start_age = 85
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

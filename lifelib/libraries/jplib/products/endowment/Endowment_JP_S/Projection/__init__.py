@@ -358,7 +358,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the model point, e.g. ``EN-JP-0001``."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def cell():
@@ -368,7 +368,7 @@ def cell():
     ``education`` is 学資保険, whose benefits are a staged 学資金 schedule plus a maturity
     payment, whose death payment is a return of premiums, and which carries the waiver.
     """
-    v = str(model_point()["cell"])
+    v = tables.lookup_str(prepared_model_point(), "cell")
     if v not in ("endowment", "education"):
         raise ValueError("invalid cell: " + v)
     return v
@@ -376,7 +376,7 @@ def cell():
 
 def sex():
     """The sex (M / F) of the 被保険者 (*hihokensha*), the insured life."""
-    return str(model_point()["sex"])
+    return tables.lookup_str(prepared_model_point(), "sex")
 
 
 def issue_age():
@@ -389,7 +389,7 @@ def issue_age():
     resulting understatement of up to half a year of age is named in the technical notes
     rather than hidden.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def ph_sex():
@@ -401,7 +401,7 @@ def ph_sex():
     """
     if cell() != "education":
         raise ValueError("the endowment cell has no 契約者 life")
-    return str(model_point()["ph_sex"])
+    return tables.lookup_str(prepared_model_point(), "ph_sex")
 
 
 def ph_issue_age():
@@ -412,7 +412,7 @@ def ph_issue_age():
     """
     if cell() != "education":
         raise ValueError("the endowment cell has no 契約者 life")
-    return int(model_point()["ph_issue_age"])
+    return tables.lookup_int(prepared_model_point(), "ph_issue_age")
 
 
 def sum_assured():
@@ -424,12 +424,12 @@ def sum_assured():
     premiums run to nearly twice it — which is why the acquisition deduction is re-based
     on one annual premium rather than on ``S``.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def policy_term():
     """n: the 保険期間 in years.  The projection is exactly this long."""
-    return int(model_point()["policy_term"])
+    return tables.lookup_int(prepared_model_point(), "policy_term")
 
 
 def prem_term():
@@ -439,7 +439,7 @@ def prem_term():
     retrieved 約款 carries a unilateral repricing right, so every year of premium and
     every year of benefit sits inside any defensible contract boundary.
     """
-    m = int(model_point()["prem_term"])
+    m = tables.lookup_int(prepared_model_point(), "prem_term")
     if m > policy_term():
         raise ValueError("prem_term exceeds policy_term")
     return m
@@ -455,7 +455,7 @@ def premium_pp():
     return ratio the product is sold on moves with it.  On the other model points the
     premium is the net premium grossed at the anchor cell's implied loading **[std]**.
     """
-    return float(model_point()["premium_annual"])
+    return tables.lookup_float(prepared_model_point(), "premium_annual")
 
 
 def schedule_id():
@@ -465,7 +465,7 @@ def schedule_id():
     be changed after issue, so this is a model point attribute and never a projected
     decision.
     """
-    return str(model_point()["schedule_id"])
+    return tables.lookup_str(prepared_model_point(), "schedule_id")
 
 
 def waiver():
@@ -475,7 +475,7 @@ def waiver():
     days, during 保険料払込期間.  The first two are inside the table rate already; the third
     is not, and :func:`wv_load` is the multiplier that would add it.
     """
-    v = bool(model_point()["waiver"])
+    v = tables.lookup_bool(prepared_model_point(), "waiver")
     if v and cell() != "education":
         raise ValueError("the waiver is written on the education cell only")
     return v
@@ -489,7 +489,7 @@ def apl_elected():
     of the six carriers in the source set do not offer the APL at all, so the off
     position is a product variant and not merely a switch.
     """
-    return bool(model_point()["apl_elected"])
+    return tables.lookup_bool(prepared_model_point(), "apl_elected")
 
 
 def apl_default_mult():
@@ -498,7 +498,7 @@ def apl_default_mult():
     The switch that turns the automatic premium loan module on.  Zero on every shipped
     model point but 8, which runs the table rates in full.
     """
-    return float(model_point()["apl_default_mult"])
+    return tables.lookup_float(prepared_model_point(), "apl_default_mult")
 
 
 def pol_loan_util():
@@ -508,7 +508,7 @@ def pol_loan_util():
     rolls up at ``i_loan``; it produces no cash flow of its own and nets off the death
     benefit and the surrender benefit instead.
     """
-    return float(model_point()["pol_loan_util"])
+    return tables.lookup_float(prepared_model_point(), "pol_loan_util")
 
 
 def dividend_type():
@@ -522,7 +522,7 @@ def dividend_type():
     :func:`net_cf` evaluates this, so the rejection reaches the projection rather than
     waiting for a caller who might never ask.
     """
-    v = str(model_point()["dividend_type"])
+    v = tables.lookup_str(prepared_model_point(), "dividend_type")
     if v == "five_year":
         raise ValueError(
             "dividend_type 'five_year' is out of scope: the ５年ごと利差配当 variant needs "
@@ -539,7 +539,7 @@ def dyn_lapse():
     cumulative premiums on either cell, so the multiplier never leaves 1.  That the
     module is inert is the finding, not a defect.
     """
-    return bool(model_point()["dyn_lapse"])
+    return tables.lookup_bool(prepared_model_point(), "dyn_lapse")
 
 
 def mort_be_factor():
@@ -550,7 +550,7 @@ def mort_be_factor():
     best-estimate basis is an adjustment of it.  It moves the projection decrement and
     **not** the policy value, which is a contractual quantity on the pricing basis.
     """
-    return float(model_point()["mort_adj"])
+    return tables.lookup_float(prepared_model_point(), "mort_adj")
 
 
 def wv_load():
@@ -563,7 +563,7 @@ def wv_load():
     ``wv_load`` at 1.00 therefore *understates* the waiver — the exact opposite of the
     ruling on 高度障害, and confusing the two is a pitfall.
     """
-    return float(model_point()["wv_load"])
+    return tables.lookup_float(prepared_model_point(), "wv_load")
 
 
 def wv_frac():
@@ -574,7 +574,7 @@ def wv_frac():
     責任準備金 paid to the 契約者's legal heirs.  That is what
     :func:`claims` ``(t, "PH_DEATH")`` pays, and it is identically zero while this is 1.
     """
-    return float(model_point()["wv_frac"])
+    return tables.lookup_float(prepared_model_point(), "wv_frac")
 
 
 def wv_lapse_mult():
@@ -584,7 +584,7 @@ def wv_lapse_mult():
     premium and has a strictly dominant reason to persist.  It is named so that it can be
     moved, and model point 5 halves it.
     """
-    return float(model_point()["wv_lapse_mult"])
+    return tables.lookup_float(prepared_model_point(), "wv_lapse_mult")
 
 
 # --- structure
@@ -706,7 +706,7 @@ def mort_rate_at_age(sx, z):
     contractual quantity on the pricing basis; :func:`mort_rate` and :func:`mort_rate_ph`
     apply the projection's own multipliers on top.
     """
-    return float(data.mort_table().loc[(sx, z), "mort_rate"])        # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (sx, z), 'mort_rate')        # noqa: F821
 
 
 def mort_rate(t):
@@ -1882,6 +1882,11 @@ def result_val():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1918,3 +1923,7 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-9
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

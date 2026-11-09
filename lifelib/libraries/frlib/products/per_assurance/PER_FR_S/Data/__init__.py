@@ -187,6 +187,21 @@ def annuity_factor_table():
         index_col=["sex", "age"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_annuity_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(annuity_factor_table(),
+                        columns=('annuity_factor',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -201,3 +216,5 @@ exit_table_file = "exit_table.csv"
 annuity_factor_file = "annuity_factor.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

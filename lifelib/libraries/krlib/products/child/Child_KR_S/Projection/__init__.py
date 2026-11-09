@@ -157,7 +157,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -169,7 +169,7 @@ def sex():
     longer reliable: on the current published tables four carriers price the female above
     the male and seven below, the spread running 62% to 114% of the male rate [S11].
     """
-    v = str(model_point()["sex"])
+    v = tables.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -185,7 +185,7 @@ def issue_age():
     the age itself [R1], so a 30-year-old issue is a documented historic variant and is
     shipped as one.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def foetal():
@@ -197,7 +197,7 @@ def foetal():
     in FY2007 were written in utero [R3] — and every current 상품요약서 offers it, with
     가입나이 written as 「태아」 at the head of the issue-age grid [S2] [S3] [S4] [S5] [S6].
     """
-    return bool(int(model_point()["foetal"]))
+    return bool(tables.lookup_int(prepared_model_point(), "foetal"))
 
 
 def birth_month():
@@ -210,7 +210,7 @@ def birth_month():
     「1~10월만기」 at one carrier [S1].  Five is between those two bounds and is a whole
     number of grid steps.
     """
-    return int(model_point()["birth_month"]) if foetal() else 0
+    return tables.lookup_int(prepared_model_point(), "birth_month") if foetal() else 0
 
 
 def issue_age_man():
@@ -235,7 +235,7 @@ def term_age():
     [S11] [S2] [S1], and the term whose arrival in 2011 made the product what it is [R5];
     110세 adds no mechanic and is shipped as a model point.
     """
-    return int(model_point()["term_age"])
+    return tables.lookup_int(prepared_model_point(), "term_age")
 
 
 def prem_period_years():
@@ -248,7 +248,7 @@ def prem_period_years():
     period, and the reason a child policy's measurement is dominated by what happens long
     after the premium stops.
     """
-    return int(model_point()["prem_period_years"])
+    return tables.lookup_int(prepared_model_point(), "prem_period_years")
 
 
 def prem_period_mths():
@@ -287,7 +287,7 @@ def premium_mth():
     the shipped basis actually implies, and where the two differ the computed figure
     governs.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_foetal_mth():
@@ -300,7 +300,7 @@ def premium_foetal_mth():
     추가로 부가합니다」 [S2], written elsewhere as a fixed 「1~10월만기 전기납 태아
     월납」 sub-term [S1].
     """
-    return float(model_point()["premium_foetal_mth"]) if foetal() else 0.0
+    return tables.lookup_float(prepared_model_point(), "premium_foetal_mth") if foetal() else 0.0
 
 
 def foetal_cover_end():
@@ -346,7 +346,7 @@ def cv_form():
         the two years after 납입완료 rising in 5-point steps every two years to 50%
         eighteen years after it [S1].
     """
-    v = str(model_point()["cv_form"])
+    v = tables.lookup_str(prepared_model_point(), "cv_form")
     if v not in ("std", "susp", "graded"):
         raise ValueError("invalid cv_form")
     return v
@@ -364,7 +364,7 @@ def cv_floor_ratio():
     itself, which is the whole reason that assumption became a supervisory matter
     [R11] [REG-R27].
     """
-    return float(model_point()["cv_floor_ratio"])
+    return tables.lookup_float(prepared_model_point(), "cv_floor_ratio")
 
 
 def waiver_child():
@@ -375,7 +375,7 @@ def waiver_child():
     limbs — or a **중대한특정상해수술**, 「상해로 뇌손상, 내장손상을 입고 사고일로부터 180일
     이내에 받은 개두·개흉·개복수술」 [S2].
     """
-    return bool(int(model_point()["waiver_child"]))
+    return bool(tables.lookup_int(prepared_model_point(), "waiver_child"))
 
 
 def waiver_payer():
@@ -389,7 +389,7 @@ def waiver_payer():
     [S5] [S11], which is a benefit and not a decrement, and modelling one as the other
     would be wrong in both level and shape.
     """
-    return bool(int(model_point()["waiver_payer"]))
+    return bool(tables.lookup_int(prepared_model_point(), "waiver_payer"))
 
 
 def payer_age():
@@ -402,7 +402,7 @@ def payer_age():
     or become severely disabled, and Korean mortality at those ages is low, which is why
     the module is cheap enough to be compulsory.
     """
-    return int(model_point()["payer_age"])
+    return tables.lookup_int(prepared_model_point(), "payer_age")
 
 
 def payer_sex():
@@ -414,7 +414,7 @@ def payer_sex():
     mid-projection; no retrieved wording states how the waiver responds, so the composite
     holds the 계약자 fixed and marks the point [unverified].
     """
-    v = str(model_point()["payer_sex"])
+    v = tables.lookup_str(prepared_model_point(), "payer_sex")
     if v not in ("M", "F"):
         raise ValueError("invalid payer_sex")
     return v
@@ -446,7 +446,7 @@ def hosp_daily():
     This is the cover a child policy actually pays on, an order of magnitude below the
     diagnosis benefits in amount and several orders above them in frequency.
     """
-    return float(model_point()["hosp_daily"])
+    return tables.lookup_float(prepared_model_point(), "hosp_daily")
 
 
 def broad_def():
@@ -460,7 +460,7 @@ def broad_def():
     the narrow ones would make the anchor cell internally inconsistent.  The switch
     multiplies both incidences by ``broad_def_factor`` **[std]**.
     """
-    return bool(int(model_point()["broad_def"]))
+    return bool(tables.lookup_int(prepared_model_point(), "broad_def"))
 
 
 def waiting_mths():
@@ -485,7 +485,7 @@ def waiting_mths():
     including the eighty-five years during which the insured is an adult.  A model that
     re-tests the rule at each anniversary is wrong.
     """
-    return int(model_point()["waiting_mths"])
+    return tables.lookup_int(prepared_model_point(), "waiting_mths")
 
 
 def reduction_mths():
@@ -499,7 +499,7 @@ def reduction_mths():
     56 products, on the reasoning that 「태아는 보험가입시 역선택 가능성이 거의 없는데도」
     [R2].  The disapplication is applied here rather than left to the model point.
     """
-    return 0 if foetal() else int(model_point()["reduction_mths"])
+    return 0 if foetal() else tables.lookup_int(prepared_model_point(), "reduction_mths")
 
 
 def prem_discount_rate():
@@ -514,12 +514,12 @@ def prem_discount_rate():
     보장보험료 is not stated and is [unverified]; the model applies it to the whole office
     premium.
     """
-    return float(model_point()["prem_discount_rate"])
+    return tables.lookup_float(prepared_model_point(), "prem_discount_rate")
 
 
 def prem_discount_mths():
     """The number of months over which the 2026 저출산 discount runs: 12 where on [R6]."""
-    return int(model_point()["prem_discount_mths"])
+    return tables.lookup_int(prepared_model_point(), "prem_discount_mths")
 
 
 def lapse_basis():
@@ -530,7 +530,7 @@ def lapse_basis():
     level comparison vector.  Shipping the first two side by side is exactly the comparison
     the guideline requires an insurer departing from the 원칙모형 to disclose.
     """
-    v = str(model_point()["lapse_basis"])
+    v = tables.lookup_str(prepared_model_point(), "lapse_basis")
     if v not in set(data.lapse_table().index):                       # noqa: F821
         raise ValueError("invalid lapse_basis")
     return v
@@ -544,7 +544,7 @@ def mort_be_factor():
     is carried so that a user replacing ``mort_table.csv`` with a company valuation table
     has the hook the sister libraries use, and one model point runs at 1.10.
     """
-    return float(model_point()["mort_be_factor"])
+    return tables.lookup_float(prepared_model_point(), "mort_be_factor")
 
 
 def pols_if_init():
@@ -648,7 +648,7 @@ def runoff(t):
 
 def basis_param(name):
     """One scalar [std] parameter of the benefit basis, from *basis_table.csv*."""
-    return float(data.basis_table().loc[name, "value"])              # noqa: F821
+    return tables.lookup_float(data.prepared_basis_table_loc(), name, 'value')              # noqa: F821
 
 
 # --- mortality, on two lives ---
@@ -2217,6 +2217,11 @@ def result_val():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2267,3 +2272,7 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-07
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

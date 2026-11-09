@@ -277,7 +277,7 @@ def premium_pp():
     premium income.  It enters the projection only through the refund forms, where the
     guarantee is measured against it.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def premium_tax_rate():
@@ -285,7 +285,7 @@ def premium_tax_rate():
 
     Zero in the base run; no source quantifies a rate [S6][S7][S11].
     """
-    return float(model_point()["premium_tax_rate"])
+    return tables.lookup_float(prepared_model_point(), "premium_tax_rate")
 
 
 def premium_net_pp():
@@ -300,7 +300,7 @@ def premium_net_pp():
 
 def pols_if_init():
     """Initial number of contracts in force; 1.0 on a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def form():
@@ -308,7 +308,7 @@ def form():
 
     life_only, life_certain, cash_refund, installment_refund, certain_only.
     """
-    v = model_point()["form"]
+    v = tables.lookup_object(prepared_model_point(), "form")
     if v not in ("life_only", "life_certain", "cash_refund",
                  "installment_refund", "certain_only"):
         raise ValueError("invalid form")
@@ -317,7 +317,7 @@ def form():
 
 def is_joint():
     """True when the contract covers two annuitants."""
-    return bool(model_point()["joint"])
+    return tables.lookup_bool(prepared_model_point(), "joint")
 
 
 def age_at_entry(life):
@@ -327,24 +327,24 @@ def age_at_entry(life):
     2012 IAM/IAR family is tabulated ANB [R2][R9].
     """
     if life == 1:
-        return int(model_point()["primary_age"])
+        return tables.lookup_int(prepared_model_point(), "primary_age")
     if life == 2:
-        return int(model_point()["joint_age"])
+        return tables.lookup_int(prepared_model_point(), "joint_age")
     raise ValueError("invalid life")
 
 
 def sex(life):
     """Sex (M / F) of the primary (life = 1) or joint (life = 2) annuitant."""
     if life == 1:
-        return model_point()["primary_sex"]
+        return tables.lookup_object(prepared_model_point(), "primary_sex")
     if life == 2:
-        return model_point()["joint_sex"]
+        return tables.lookup_object(prepared_model_point(), "joint_sex")
     raise ValueError("invalid life")
 
 
 def survivor_pct():
     """delta: the survivor percentage, in {0.50, 2/3, 0.75, 1.00} [S1][S2][S5][S6][S7]."""
-    return float(model_point()["survivor_pct"])
+    return tables.lookup_float(prepared_model_point(), "survivor_pct")
 
 
 def reduction_trigger():
@@ -353,7 +353,7 @@ def reduction_trigger():
     A switch, not a parameter: the two conventions coincide on the primary's death and
     differ only on the secondary's [S1][S2][S3][S7].
     """
-    v = model_point()["reduction_trigger"]
+    v = tables.lookup_object(prepared_model_point(), "reduction_trigger")
     if v not in ("either", "primary"):
         raise ValueError("invalid reduction_trigger")
     return v
@@ -361,12 +361,12 @@ def reduction_trigger():
 
 def certain_mths():
     """n: the elected certain period in months, 0 or 60-360 [S1][S2][S4][S5]."""
-    return int(model_point()["certain_months"])
+    return tables.lookup_int(prepared_model_point(), "certain_months")
 
 
 def payment_freq():
     """m: payments per year, in {12, 4, 2, 1} [S1][S2]."""
-    v = int(model_point()["frequency"])
+    v = tables.lookup_int(prepared_model_point(), "frequency")
     if v not in (12, 4, 2, 1):
         raise ValueError("invalid frequency")
     return v
@@ -378,7 +378,7 @@ def payment_timing():
     No product document states the convention; VM-V's prescribed weight-table cash flow
     model assumes payments at the end of each period, so arrears is the default [R1].
     """
-    v = model_point()["timing"]
+    v = tables.lookup_object(prepared_model_point(), "timing")
     if v not in ("arrears", "advance"):
         raise ValueError("invalid timing")
     return v
@@ -386,22 +386,22 @@ def payment_timing():
 
 def cola_rate():
     """g: the fixed compound COLA rate, in {0, .01, .02, .03, .04} [S1][S5]."""
-    return float(model_point()["cola_rate"])
+    return tables.lookup_float(prepared_model_point(), "cola_rate")
 
 
 def commutation_enabled():
     """Whether the contract carries the certain-portion commutation right [S1]."""
-    return bool(model_point()["commutation_enabled"])
+    return tables.lookup_bool(prepared_model_point(), "commutation_enabled")
 
 
 def issue_state_excludes_withdrawal():
     """True where the issue state bars the withdrawal feature (Oregon) [S1][S2]."""
-    return bool(model_point()["issue_state_excludes_withdrawal"])
+    return tables.lookup_bool(prepared_model_point(), "issue_state_excludes_withdrawal")
 
 
 def qualified():
     """True for qualified money.  Informational: the RMD overlay is not implemented."""
-    return bool(model_point()["qualified"])
+    return tables.lookup_bool(prepared_model_point(), "qualified")
 
 
 def rating_factor():
@@ -410,7 +410,7 @@ def rating_factor():
     ``q_rated = min(1, theta * q_be)``, the reference model's carrier for anti-selection
     at outset and for rated ages [S8][R1][REG-R41].
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def annuity_year():
@@ -419,7 +419,7 @@ def annuity_year():
     The improvement exponent is ``calendar_year(t) - mort_table_year``, so this is what
     makes the mortality basis generational rather than period.
     """
-    return int(model_point()["annuity_year"])
+    return tables.lookup_int(prepared_model_point(), "annuity_year")
 
 
 def mort_basis():
@@ -431,7 +431,7 @@ def mort_basis():
     notes' worked example, which is a scenario and not an expectation, reproduces
     exactly.  See the Space docstring.
     """
-    v = model_point()["mort_basis"]
+    v = tables.lookup_object(prepared_model_point(), "mort_basis")
     if v not in ("table", "scenario"):
         raise ValueError("invalid mort_basis")
     return v
@@ -574,7 +574,7 @@ def annual_income(y):
     model does not derive it from the premium.
     """
     if y <= 1:
-        return float(model_point()["annual_income"])
+        return tables.lookup_float(prepared_model_point(), "annual_income")
     return annual_income(y - 1) * (1.0 + cola_rate())
 
 
@@ -677,7 +677,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[(x, sex(life)), "mort_rate"])  # noqa: F821
+    return tables.lookup_float(data.prepared_mort_table_loc(), (x, sex(life)), 'mort_rate')  # noqa: F821
 
 
 def improvement_rate(t, life):
@@ -690,8 +690,7 @@ def improvement_rate(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 0.0
-    return float(                                                    # noqa: F821
-        data.improvement_scale().loc[(x, sex(life)), "improvement_rate"])
+    return tables.lookup_float(data.prepared_improvement_scale_loc(), (x, sex(life)), 'improvement_rate')
 
 
 def mort_rate(t, life):
@@ -1250,6 +1249,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1280,3 +1284,7 @@ commute_min_amount = 5000.0
 commute_min_payment = 100.0
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

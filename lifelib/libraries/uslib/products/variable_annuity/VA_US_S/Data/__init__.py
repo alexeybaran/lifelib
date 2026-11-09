@@ -160,6 +160,13 @@ def transaction_table():
         input_dir() / transaction_file, index_col=["txn_id", "t"])   # noqa: F821
 
 
+def prepared_fund_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(fund_table(),
+                        columns=('alloc', 'fund_expense'),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -180,3 +187,5 @@ cdsc_file = "cdsc_table.csv"
 transaction_file = "transaction_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

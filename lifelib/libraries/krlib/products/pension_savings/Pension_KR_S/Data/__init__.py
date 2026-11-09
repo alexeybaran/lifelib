@@ -236,6 +236,45 @@ def tax_table():
         input_dir() / tax_table_file, index_col="item")              # noqa: F821
 
 
+def prepared_pricing_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(pricing_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_expense_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(expense_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_tax_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(tax_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_anchor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_anchor_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -258,3 +297,5 @@ expense_table_file = "expense_table.csv"
 tax_table_file = "tax_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")

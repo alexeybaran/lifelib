@@ -473,17 +473,17 @@ def model_point():
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def age_at_entry():
     """x: the issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def tax_status():
@@ -493,17 +493,17 @@ def tax_status():
     implemented, though the notes make the RMD age a behavioural input through
     :func:`activation_rate` and the ``rmd_age`` Reference.
     """
-    return model_point()["tax_status"]
+    return tables.lookup_object(prepared_model_point(), "tax_status")
 
 
 def premium_pp():
     """P: the single premium per contract."""
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def pols_if_init():
     """l(0): in-force probability at entry, 1 for a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def entry_year():
@@ -519,7 +519,7 @@ def entry_year():
     from one, so deriving them would mean retuning assumptions to force a match.  Every
     recursion opens here.
     """
-    return int(model_point()["entry_year"])
+    return tables.lookup_int(prepared_model_point(), "entry_year")
 
 
 def entry_mth():
@@ -536,12 +536,12 @@ def entry_mth():
 
 def bonus_rate():
     """b: the premium bonus rate, 7% of the single premium [S5]."""
-    return float(model_point()["bonus_rate"])
+    return tables.lookup_float(prepared_model_point(), "bonus_rate")
 
 
 def alloc_indexed():
     """The share of the account value allocated to the indexed account; 100% **[std]**."""
-    return float(model_point()["alloc_indexed"])
+    return tables.lookup_float(prepared_model_point(), "alloc_indexed")
 
 
 def alloc_fixed():
@@ -551,7 +551,7 @@ def alloc_fixed():
 
 def glwb_elected():
     """Whether the GLWB rider is elected at issue [S5][S9][S11]."""
-    return bool(model_point()["glwb_elected"])
+    return tables.lookup_bool(prepared_model_point(), "glwb_elected")
 
 
 def glwb_basis():
@@ -561,12 +561,12 @@ def glwb_basis():
     younger covered person [S1][S3].  Joint-life *survivorship* is **not implemented**:
     the notes specify the joint payout percentage but no second-life mortality basis.
     """
-    return model_point()["glwb_basis"]
+    return tables.lookup_object(prepared_model_point(), "glwb_basis")
 
 
 def joint_age():
     """The issue age (ANB) of the joint covered person; the annuitant's own if blank."""
-    given = model_point()["joint_age"]
+    given = tables.lookup_object(prepared_model_point(), "joint_age")
     return age_at_entry() if pd.isna(given) else int(given)           # noqa: F821
 
 
@@ -577,7 +577,7 @@ def income_start_age():
     which the notes say clusters at the RMD age but which cannot be applied to a single
     deterministic cell; see :func:`activation_rate`.
     """
-    return int(model_point()["income_start_age"])
+    return tables.lookup_int(prepared_model_point(), "income_start_age")
 
 
 def utilization_intensity():
@@ -588,7 +588,7 @@ def utilization_intensity():
     proportional reduction of step 5, which is why efficiency and excess-withdrawal
     assumptions cannot be set independently.
     """
-    return float(model_point()["utilization_intensity"])
+    return tables.lookup_float(prepared_model_point(), "utilization_intensity")
 
 
 def credit_method():
@@ -599,7 +599,7 @@ def credit_method():
     which the notes exclude, and its floor convention is itself flagged as ambiguous
     [S4][R1].
     """
-    return model_point()["credit_method"]
+    return tables.lookup_object(prepared_model_point(), "credit_method")
 
 
 def cap_rate():
@@ -610,7 +610,7 @@ def cap_rate():
     re-declaration against the option budget is **not implemented** because the notes
     give the target but no option-pricing function.
     """
-    return float(model_point()["cap_rate"])
+    return tables.lookup_float(prepared_model_point(), "cap_rate")
 
 
 def stack_factor():
@@ -620,7 +620,7 @@ def stack_factor():
     stacking design (b), where one carrier's 250% election credits 250% to the benefit
     base [S3][S4].
     """
-    return float(model_point()["stack_factor"])
+    return tables.lookup_float(prepared_model_point(), "stack_factor")
 
 
 def av_int_factor():
@@ -631,27 +631,27 @@ def av_int_factor():
     value, deliberately starving the account value.  The stacking factor ``m`` applies to
     the **gross** index credit, not to ``kappa x IC``.
     """
-    return float(model_point()["av_int_factor"])
+    return tables.lookup_float(prepared_model_point(), "av_int_factor")
 
 
 def rollup_id():
     """The guaranteed rollup schedule, a key into *rollup_table.csv*."""
-    return model_point()["rollup_id"]
+    return tables.lookup_object(prepared_model_point(), "rollup_id")
 
 
 def mva_ref_yield_at_issue():
     """i0: the MVA reference index level locked at issue, 3.00% **[std]**."""
-    return float(model_point()["mva_ref_yield_at_issue"])
+    return tables.lookup_float(prepared_model_point(), "mva_ref_yield_at_issue")
 
 
 def scenario_id():
     """The index and reference-yield scenario, a key into *rate_scenario.csv*."""
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def wd_schedule_id():
     """The ad hoc withdrawal programme, a key into *withdrawal_table.csv*."""
-    return model_point()["wd_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "wd_schedule_id")
 
 
 def av_pp_init():
@@ -661,7 +661,7 @@ def av_pp_init():
     day one [S5]; it does **not** enter the benefit base [S9] or the nonforfeiture base
     [S10].
     """
-    given = model_point()["av_initial"]
+    given = tables.lookup_object(prepared_model_point(), "av_initial")
     if pd.isna(given):                                               # noqa: F821
         return premium_pp() * (1.0 + bonus_rate())
     return float(given)
@@ -676,7 +676,7 @@ def benefit_base_pp_init():
     """BB at entry: the stated in-force base, else ``P`` -- the bonus stays out [S9]."""
     if not glwb_elected():
         return 0.0
-    given = model_point()["bb_initial"]
+    given = tables.lookup_object(prepared_model_point(), "bb_initial")
     if pd.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
@@ -686,7 +686,7 @@ def rollup_base_pp_init():
     """RB at entry: the stated in-force rollup base, else ``P`` [S2][S9]."""
     if not glwb_elected():
         return 0.0
-    given = model_point()["rb_initial"]
+    given = tables.lookup_object(prepared_model_point(), "rb_initial")
     if pd.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
@@ -698,7 +698,7 @@ def mgsv_pp_init():
     87.5% of the single premium **excluding the bonus** [S10]; the worked example's
     ``93,811.84 = 87,500 x 1.01^7`` is that value rolled forward seven years.
     """
-    given = model_point()["mgv_initial"]
+    given = tables.lookup_object(prepared_model_point(), "mgv_initial")
     if pd.isna(given):                                               # noqa: F821
         return net_consideration_ratio * premium_pp()                # noqa: F821
     return float(given)
@@ -706,19 +706,19 @@ def mgsv_pp_init():
 
 def lw_pp_init():
     """LW at entry: zero before exercise, else the stated in-force income amount."""
-    given = model_point()["lw_initial"]
+    given = tables.lookup_object(prepared_model_point(), "lw_initial")
     return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
 
 
 def payout_rate_init():
     """The payout percentage already locked at entry; zero before exercise."""
-    given = model_point()["payout_rate_initial"]
+    given = tables.lookup_object(prepared_model_point(), "payout_rate_initial")
     return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
 
 
 def phase_init():
     """The phase at entry: ``ACCUM`` unless the model point enters in force in income."""
-    value = model_point()["phase_initial"]
+    value = tables.lookup_object(prepared_model_point(), "phase_initial")
     if value not in ("ACCUM", "INCOME", "DEPLETED", "TERMINATED"):
         raise ValueError("invalid phase_initial")
     return value
@@ -2138,7 +2138,7 @@ def mort_rate(t):
     [REG-R61]; the spelling is the library's shared one, so the A/E factor reads the same
     in every model that has one.
     """
-    base = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])  # noqa: F821
+    base = tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')  # noqa: F821
     return min(1.0, mort_ae_factor * base)                           # noqa: F821
 
 
@@ -2813,6 +2813,11 @@ def result_cf_annual():
 
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2925,3 +2930,7 @@ premium_tax_rate = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

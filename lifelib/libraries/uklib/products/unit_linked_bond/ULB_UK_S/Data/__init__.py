@@ -102,6 +102,13 @@ def surr_table():
         input_dir() / surr_table_file, index_col="policy_year")      # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return inputs.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -112,3 +119,5 @@ mort_table_file = "mort_table.csv"
 surr_table_file = "surr_table.csv"
 
 pd = ("Module", "pandas")
+
+inputs = ("Module", "lifelib.pandas_inputs")
