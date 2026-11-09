@@ -193,3 +193,21 @@ def test_row_snapshots_are_explicit_and_follow_selected_columns(native):
     assert type(row(selected, 0)['age']) is np.int64
     with pytest.raises(ValueError, match='leave at least'):
         inputs.table(frame.rename_axis('t'), groups=('t',), rows=True)
+
+
+@pytest.mark.parametrize('index', [pd.Index([1, 2]), pd.Index([False, True]),
+    pd.Index([False, True], dtype=object), pd.Index([False, 'a'], dtype=object)])
+@pytest.mark.parametrize('key', [False, True, np.bool_(False), np.bool_(True)])
+def test_boolean_row_key_error_matches_original_loc(native, index, key):
+    frame = pd.DataFrame({'rate': [0.1, 0.2]}, index=index)
+    source = inputs.table(frame, rows=True)
+    try:
+        expected = frame.loc[key]
+    except KeyError as error:
+        expected_args = error.args
+        for operation in [lambda: row(source, key), lambda: native.select(row, source, key)]:
+            with pytest.raises(KeyError) as actual:
+                operation()
+            assert actual.value.args == expected_args
+    else:
+        pd.testing.assert_series_equal(to_pandas(native.select(row, source, key)), expected, check_exact=True)

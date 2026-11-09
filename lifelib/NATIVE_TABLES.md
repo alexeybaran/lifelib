@@ -345,3 +345,9 @@ are checked, including cancellation/missing/infinite fixtures. A seven-pair
 same-VM prototype control over127 original annual frames measured median0.151x
 baseline materialization time (range0.141–0.224). This is output-only prototype
 evidence; product timing and full report/model/lifecycle gates remain separate.
+
+Row selection also retains pandas' separate boolean-label validation: Python
+bool on a non-boolean index raises the descriptive row-label KeyError; NumPy
+boolean scalars follow index lookup instead. This distinction is separate from
+scalar two-axis lookup. The row/index metadata and native guard pass46 focused
+cases; the initial overbroad NumPy-bool check failed6 cases and is retained.

@@ -24,6 +24,10 @@ def row(table, key):
         raise ValueError('row requires table(..., rows=True) with pandas row metadata')
     if metadata[4] is None:
         raise ValueError('row requires table(..., rows=True)')
+    if type(key) is bool and table._index_error is not None:
+        spec = table._index_error._index
+        if not spec.get('row_bool_labels', spec['boolean_modes'][0] == 1):
+            raise KeyError(f'{key}: boolean label can not be used without a boolean index')
     try:
         if table._index_error is not None and not _valid_index_key(key, table._index_error):
             raise KeyError(key)

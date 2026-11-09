@@ -1392,7 +1392,7 @@ cdef extern from "Python.h":
 cdef object row(object function, tuple keywords, object table, object key):
     cdef Py_ssize_t position
     cdef tuple metadata, values, columns, items
-    cdef object result
+    cdef object result, spec
     if function is not _row or type(table) is not Table:
         return forward_call(function, keywords, ('table', 'key'), (table, key), omitted_argument)
     metadata = table._metadata
@@ -1400,6 +1400,10 @@ cdef object row(object function, tuple keywords, object table, object key):
         raise ValueError('row requires table(..., rows=True) with pandas row metadata')
     if metadata[4] is None:
         raise ValueError('row requires table(..., rows=True)')
+    if type(key) is bool and table._index_error is not None:
+        spec = table._index_error._index
+        if not spec.get('row_bool_labels', spec['boolean_modes'][0] == 1):
+            raise KeyError(f'{key}: boolean label can not be used without a boolean index')
     position = indexed_position(table, key)
     if position < 0:
         return forward_call(function, keywords, ('table', 'key'), (table, key), omitted_argument)
@@ -1677,7 +1681,8 @@ cdef object _native_report_table(object frame, bint with_rows, bint encoded_erro
     values = tuple(copied)
     row_values = tuple(copied_rows) if with_rows else None
     # Scalar integer axes need no MultiIndex engine encoding or level tables.
-    items = (('multi', False), ('encoded_errors', encoded_errors), ('pandas_columns', True), ('levels', (keys,)),
+    items = (('multi', False), ('encoded_errors', encoded_errors), ('pandas_columns', True),
+             ('row_bool_labels', False), ('levels', (keys,)),
              ('level_tables', ()), ('offsets', (0,)), ('boolean_modes', (2,)), ('bias', 0))
     spec = _record_alloc(<PyTypeObject*>Record, 0)
     PyObject_GenericSetAttr(spec, '_items', items)

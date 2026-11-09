@@ -216,6 +216,7 @@ def _at_index_spec(index, *, encoded_errors=True):
                          for level in owned_levels)
     return Record({
         'multi': multi, 'encoded_errors': encoded_errors, 'pandas_columns': True,
+        'row_bool_labels': pd.api.types.is_bool_dtype(index.dtype),
         'levels': owned_levels, 'level_tables': level_tables,
         'offsets': tuple(map(int, index._engine.offsets)) if multi else (0,),
         'boolean_modes': tuple(modes), 'bias': bias})
