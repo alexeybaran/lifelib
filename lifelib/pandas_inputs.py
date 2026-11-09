@@ -196,3 +196,9 @@ def _at_index_spec(index, *, encoded_errors=True):
         'levels': owned_levels, 'level_tables': level_tables,
         'offsets': tuple(map(int, index._engine.offsets)) if multi else (0,),
         'boolean_modes': tuple(modes), 'bias': bias})
+
+
+table.__modelx_native_operation__ = 'table'
+table.__modelx_cython_helper__ = ('lifelib._native_inputs', 'table')
+table.__modelx_cython_call_layout__ = 'keywords'
+table.__modelx_cython_scalar_result__ = 'object'

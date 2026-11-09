@@ -966,7 +966,7 @@ cdef class KeyedView:
         cdef Py_ssize_t i, position
         for i in range(self.width):
             position = row * self.width + i
-            if self.at_levels and self.boolean_modes[i] and (
+            if self.boolean_modes.shape[0] and self.boolean_modes[i] and (
                     (parts[i].kind == _KEY_BOOL) != (self.kinds[position] == _KEY_BOOL)):
                 return False
             if parts[i].kind == _KEY_TEXT:
@@ -1572,3 +1572,124 @@ cdef object group_sum(object function, tuple keywords, object table, object labe
         ('labels', ordered_columns, metadata[9][1], metadata[9][0]),
         output_dtypes, None, (), metadata[6], metadata[7], (), metadata[9]))
     return result
+
+
+from pandas import DataFrame as _report_frame_type, Index as _report_index_type, RangeIndex as _report_range_type
+from pandas.core.arrays.string_ import StringArray as _report_string_array_type
+from pandas.core.flags import Flags as _report_flags_type
+from lifelib.pandas_inputs import table as _table_constructor
+cdef object _report_int64 = _group_numpy.dtype('int64')
+
+
+cdef object _native_report_table(object frame, bint with_rows, bint encoded_errors):
+    """Copy admitted physical report storage without pandas/Python operations."""
+    cdef object manager, block, data, index, column_axis, column_data, column_storage
+    cdef object index_data, index_spec, index_metadata, column_dtype, flags, result, spec
+    cdef object attrs, value, interval
+    cdef tuple columns, keys, row_names, values, row_values, items, metadata
+    cdef list copied, copied_rows
+    cdef Py_ssize_t i, j, height, width
+    cdef const double[:, :] numbers
+    if type(frame) is not _report_frame_type:
+        return None
+    attrs = frame._attrs
+    flags = frame._flags
+    if type(attrs) is not dict or attrs or type(flags) is not _report_flags_type:
+        return None
+    manager = frame._mgr
+    if len(manager.blocks) != 1:
+        return None
+    block = manager.blocks[0]
+    data = block.values
+    if type(data) is not _group_numpy.ndarray or data.dtype != _group_float64 or data.ndim != 2:
+        return None
+    numbers = data
+    width, height = numbers.shape[0], numbers.shape[1]
+    if not width:
+        return None
+    value = block._mgr_locs.as_array
+    for i in range(width):
+        if value[i] != i:
+            return None
+    column_axis, index = manager.axes[0], manager.axes[1]
+    if type(column_axis) is not _report_index_type:
+        return None
+    column_data = column_axis._data
+    if type(column_data) is _group_numpy.ndarray:
+        column_storage, column_dtype = column_data, column_data.dtype
+    elif type(column_data) is _report_string_array_type:
+        column_storage, column_dtype = column_data._ndarray, column_data._dtype
+    else:
+        return None
+    columns = tuple(column_storage)
+    if len(columns) != width or len(set(columns)) != width:
+        return None
+    for value in columns:
+        if type(value) is not str:
+            return None
+    if type(index) is _report_range_type:
+        interval = index._range
+        keys = tuple(interval)
+        row_names = keys
+        index_metadata = ('range', interval.start, interval.stop, interval.step, index._name)
+    elif type(index) is _report_index_type:
+        index_data = index._data
+        if (type(index_data) is not _group_numpy.ndarray
+                or height and index_data.dtype != _report_int64):
+            return None
+        keys = tuple(int(value) for value in index_data)
+        row_names = tuple(index_data)
+        index_metadata = ('labels', keys, index._name, index_data.dtype)
+    else:
+        return None
+    if len(keys) != height:
+        return None
+    if len(set(keys)) != height:
+        raise ValueError('duplicate table key')
+    copied, copied_rows = [], []
+    for i in range(height):
+        copied.append(tuple(numbers[j, i] for j in range(width)))
+        if with_rows:
+            copied_rows.append(tuple(data[j, i] for j in range(width)))
+    values = tuple(copied)
+    row_values = tuple(copied_rows) if with_rows else None
+    # Scalar integer axes need no MultiIndex engine encoding or level tables.
+    items = (('multi', False), ('encoded_errors', encoded_errors), ('levels', (keys,)),
+             ('level_tables', ()), ('offsets', (0,)), ('boolean_modes', (2,)), ('bias', 0))
+    spec = _record_alloc(<PyTypeObject*>Record, 0)
+    PyObject_GenericSetAttr(spec, '_items', items)
+    PyObject_GenericSetAttr(spec, '_index', MappingProxyType(dict(items)))
+    PyObject_GenericSetAttr(spec, '_native_groups', {})
+    PyObject_GenericSetAttr(spec, '_metadata', None)
+    metadata = ('frame', index_metadata, ('labels', columns, column_axis._name, column_dtype),
+                (_group_float64,) * width, row_values,
+                (_group_float64,) * height if with_rows else (), {},
+                flags._allows_duplicate_labels, row_names if with_rows else (),
+                (column_dtype, column_axis._name))
+    result = _record_alloc(<PyTypeObject*>Table, 0)
+    PyObject_GenericSetAttr(result, '_keys', keys)
+    PyObject_GenericSetAttr(result, '_values', values)
+    PyObject_GenericSetAttr(result, '_columns', columns)
+    PyObject_GenericSetAttr(result, '_positions', MappingProxyType({key: i for i, key in enumerate(keys)}))
+    PyObject_GenericSetAttr(result, '_ordered', tuple(sorted(keys)))
+    PyObject_GenericSetAttr(result, '_native_cache', {})
+    PyObject_GenericSetAttr(result, '_index_error', spec)
+    PyObject_GenericSetAttr(result, '_metadata', metadata)
+    return result
+
+
+cdef object table(object function, tuple keywords, object frame, object columns=_missing,
+                  object groups=_missing, object indexing=_missing, object rows=_missing,
+                  object report=_missing):
+    cdef object prepared
+    if (function is _table_constructor and (rows is True or report is True)
+            and (rows is _missing or rows is True or rows is False)
+            and (report is _missing or report is True or report is False)
+            and (columns is _missing or columns is None)
+            and (groups is _missing or type(groups) is tuple and not groups)
+            and (indexing is _missing or type(indexing) is str and indexing in ('loc', 'at'))):
+        prepared = _native_report_table(frame, rows is True, indexing == 'at')
+        if prepared is not None:
+            return prepared
+    return forward_call(function, keywords, ('frame', 'columns', 'groups', 'indexing', 'rows', 'report'),
+                        (frame, columns, groups, indexing, rows, report), omitted_argument)
