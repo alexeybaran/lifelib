@@ -315,7 +315,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -328,7 +328,7 @@ def sex():
     후반부터 남자의 암발생률이 더 높아지는」 [R1] -- and the published reference rate crosses
     in the same place.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -345,7 +345,7 @@ def issue_age():
     간편심사 products reach, because [R4] names the 61-75 band as the one carrying
     수준리스크 from an absence of experience.
     """
-    v = int(model_point()["issue_age"])
+    v = tables.lookup_int(prepared_model_point(), "issue_age")
     if not 15 <= v <= 65:
         raise ValueError("issue_age outside the composite's 15-65 range")
     return v
@@ -360,7 +360,7 @@ def expiry_age():
     종신 and because a terminal age lets the projection end at a stated 계약해당일 rather than
     at the terminal age of a **[std]** mortality table.
     """
-    return int(model_point()["expiry_age"])
+    return tables.lookup_int(prepared_model_point(), "expiry_age")
 
 
 def sum_assured():
@@ -373,7 +373,7 @@ def sum_assured():
     supervisor's own illustration at 「예: 5천만 원」 [R3]. The event modules' own amounts
     scale with it off the 3,000만원 reference; see :func:`hosp_daily`.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mth_pp():
@@ -392,7 +392,7 @@ def premium_mth_pp():
     library depends on its being a market rate; ``technical-notes.md`` performs the
     equivalence calculation on the shipped basis and its figure governs.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def chassis():
@@ -405,7 +405,7 @@ def chassis():
     sixty-year projection, and are invisible thereafter. The 비갱신형 form is also the only one
     on which a level premium, a 계약자적립액 and a 해약환급금 curve exist over the whole term.
     """
-    v = model_point()["chassis"]
+    v = tables.lookup_object(prepared_model_point(), "chassis")
     if v not in ("bi_gaengsin", "gaengsin"):
         raise ValueError("invalid chassis")
     return v
@@ -421,7 +421,7 @@ def pay_term():
     rather than a curve [S3], and it leaves 40 years of paid-up cover on the anchor cell, so
     the projection exercises both halves of every recursion.
     """
-    return int(model_point()["pay_term_y"])
+    return tables.lookup_int(prepared_model_point(), "pay_term_y")
 
 
 def wait_months():
@@ -440,7 +440,7 @@ def wait_months():
     inverts [S2] [R3] [R6]. This value is the model point's; each tier's own waiting period is
     :func:`tier_wait_months`, and the two are combined by taking the shorter.
     """
-    return int(model_point()["wait_months"])
+    return tables.lookup_int(prepared_model_point(), "wait_months")
 
 
 def reduction_months():
@@ -456,7 +456,7 @@ def reduction_months():
     recording removals from 2019 [R3] and a carrier confirming in 2025 that 「일반암에 대한
     감액 기간이 축소되는 등」 [S10].
     """
-    return int(model_point()["reduction_months"])
+    return tables.lookup_int(prepared_model_point(), "reduction_months")
 
 
 def similar_ratio():
@@ -472,7 +472,7 @@ def similar_ratio():
     at the two 2024-25 life contracts against 70% in 2021 -- and not the instrument. Model
     point 10 carries the 70% design so that the difference can be priced.
     """
-    return float(model_point()["similar_ratio"])
+    return tables.lookup_float(prepared_model_point(), "similar_ratio")
 
 
 def diag_module():
@@ -483,22 +483,22 @@ def diag_module():
     diagnosis lump sum at all**. The state transitions and the premium waiver still run, so
     the switch removes four benefit lines and nothing else.
     """
-    return int(model_point()["diag_module"])
+    return tables.lookup_int(prepared_model_point(), "diag_module")
 
 
 def hosp_module():
     """Whether the 암 직접치료 입원급여금 module is attached; 1 on the composite."""
-    return int(model_point()["hosp_module"])
+    return tables.lookup_int(prepared_model_point(), "hosp_module")
 
 
 def surg_module():
     """Whether the 암 수술급여금 module is attached; 1 on the composite."""
-    return int(model_point()["surg_module"])
+    return tables.lookup_int(prepared_model_point(), "surg_module")
 
 
 def treat_module():
     """Whether the 항암약물.방사선 치료급여금 module is attached; 1 on the composite."""
-    return int(model_point()["treat_module"])
+    return tables.lookup_int(prepared_model_point(), "treat_module")
 
 
 def waiver_trigger():
@@ -513,7 +513,7 @@ def waiver_trigger():
     rather than through the 약관 at all [S2], so its presence cannot always be read off the
     policy conditions.
     """
-    v = model_point()["waiver_trigger"]
+    v = tables.lookup_object(prepared_model_point(), "waiver_trigger")
     if v not in ("cancer_diag", "none"):
         raise ValueError("invalid waiver_trigger")
     return v
@@ -531,7 +531,7 @@ def cv_form():
     안내만을 위한 상품으로 가입이 불가능하며」, and its own 해약환급금 「해지율을 적용하지
     않고」 [S3 제41조].
     """
-    v = model_point()["cv_form"]
+    v = tables.lookup_object(prepared_model_point(), "cv_form")
     if v not in ("mijigeup", "pyojun"):
         raise ValueError("invalid cv_form")
     return v
@@ -2124,6 +2124,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2196,3 +2201,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -357,7 +357,7 @@ def model_point():
 
 def product():
     """The product code: WL_PAR, WL_FE_LEVEL or WL_FE_GRADED."""
-    return model_point()["product"]
+    return tables.lookup_object(prepared_model_point(), "product")
 
 
 def is_par():
@@ -367,32 +367,32 @@ def is_par():
 
 def premium_period():
     """The premium period code: TO_100, PAY_10, PAY_20 or TO_65."""
-    return model_point()["premium_period"]
+    return tables.lookup_object(prepared_model_point(), "premium_period")
 
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
     """The sex of the selected model point; rates are sex-distinct throughout."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def risk_class():
     """The underwriting class of the selected model point (PREF_NT / STD_NT / TOB)."""
-    return model_point()["risk_class"]
+    return tables.lookup_object(prepared_model_point(), "risk_class")
 
 
 def sum_assured():
     """The base face amount F of the selected model point."""
-    return float(model_point()["face_amount"])
+    return tables.lookup_float(prepared_model_point(), "face_amount")
 
 
 def dividend_option():
     """The elected dividend option: PUA, CASH, ACCUM, REDUCE_PREM, or NONE for non-par."""
-    return model_point()["dividend_option"]
+    return tables.lookup_object(prepared_model_point(), "dividend_option")
 
 
 def premium_mode():
@@ -403,12 +403,12 @@ def premium_mode():
     [S1] [S7]. On the monthly grid the mode is a model point attribute, and the shipped
     table exercises both ends of it.
     """
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def pols_if_init():
     """Initial number of policies in force, l at proj_start()."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration_inforce():
@@ -417,17 +417,17 @@ def duration_inforce():
     The contract states elapsed time in policy years and so does the model point table;
     :func:`proj_start` turns it into the month the frame opens at.
     """
-    return int(model_point()["duration_inforce"])
+    return tables.lookup_int(prepared_model_point(), "duration_inforce")
 
 
 def puaf_inforce():
     """PUAF at t0: paid-up additions face already in force at the valuation date."""
-    return float(model_point()["puaf_inforce"])
+    return tables.lookup_float(prepared_model_point(), "puaf_inforce")
 
 
 def loan_inforce():
     """L at t0: policy loan balance already outstanding at the valuation date."""
-    return float(model_point()["loan_inforce"])
+    return tables.lookup_float(prepared_model_point(), "loan_inforce")
 
 
 def loan_utilization():
@@ -436,12 +436,12 @@ def loan_utilization():
     0 in the base run; the notes' variant is 0.20, maintained by borrowing and
     repaying as the cash value moves.
     """
-    return float(model_point()["loan_utilization"])
+    return tables.lookup_float(prepared_model_point(), "loan_utilization")
 
 
 def term_blend_target():
     """TF: the term-blend rider's target face amount; 0 switches the rider off."""
-    return float(model_point()["term_blend_target"])
+    return tables.lookup_float(prepared_model_point(), "term_blend_target")
 
 
 def is_blended():
@@ -571,7 +571,7 @@ def mec_flag():
     silently projecting them **[std]**. Limited-pay designs sit near the 7-pay limit
     and paid-up-additions rider payments consume 7-pay room, so both raise the flag.
     """
-    return premium_period() != "TO_100" or float(model_point()["pua_rider_premium"]) > 0.0
+    return premium_period() != "TO_100" or tables.lookup_float(prepared_model_point(), "pua_rider_premium") > 0.0
 
 
 def premium_rate():
@@ -638,7 +638,7 @@ def premium_pp_ann(t):
     if t < 0 or duration(t) >= policy_term():
         return 0.0
     elif is_par():
-        return float(model_point()["annual_premium"])
+        return tables.lookup_float(prepared_model_point(), "annual_premium")
     else:
         return sum_assured() / 1000.0 * premium_rate() + fe_policy_fee  # noqa: F821
 
@@ -693,7 +693,7 @@ def rider_premium_pp_ann(t):
     """
     if not is_par() or t < proj_start() or duration(t) >= policy_term():
         return 0.0
-    return float(model_point()["pua_rider_premium"])
+    return tables.lookup_float(prepared_model_point(), "pua_rider_premium")
 
 
 def rider_premium_pp(t):
@@ -1560,6 +1560,11 @@ def check_pua_roll_fwd():
                for t in range(proj_start(), proj_len()))
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1630,3 +1635,5 @@ prem_offset_share = 0.5
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

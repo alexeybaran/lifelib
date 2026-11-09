@@ -432,12 +432,12 @@ def model_point():
 
 def policy_id():
     """The model point's policy identifier, for reporting."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
     """The sex (M / F) of the model point; the mortality table is sex-distinct."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -450,7 +450,7 @@ def issue_age():
     mortality drives the *timing* of the `dénouement`, not the benefit amount, because
     the death benefit is the `épargne acquise` itself.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def duration_init():
@@ -460,7 +460,7 @@ def duration_init():
     threshold that drives the surrender step - falls inside the projection, in the twelve
     months ``t = 24 ... 35``.
     """
-    return int(model_point()["duration_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_init")
 
 
 def pols_if_init():
@@ -470,12 +470,12 @@ def pols_if_init():
     anchor cell: every per-policy amount is identical and every cash flow is 250 times
     as large.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def av_pp_init():
     """AV(0): the `épargne acquise` per policy at the valuation date."""
-    return float(model_point()["av_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "av_pp_init")
 
 
 def ppb_pp_init():
@@ -486,7 +486,7 @@ def ppb_pp_init():
     contracts in law; attributing a per-policy share is the device that makes the
     eight-year clock visible at model-point level **[std]**.
     """
-    return float(model_point()["ppb_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "ppb_pp_init")
 
 
 def ppb_vintages_init():
@@ -498,7 +498,7 @@ def ppb_vintages_init():
     therefore no forced release before ``y = 4``.  **[std]**: no insurer publishes its own
     vintage profile, and this is the assumption that decides *when* the clock bites.
     """
-    n = int(model_point()["ppb_vintages_init"])
+    n = tables.lookup_int(prepared_model_point(), "ppb_vintages_init")
     if n < 1:
         raise ValueError("ppb_vintages_init must be at least 1")
     return n
@@ -510,7 +510,7 @@ def prem_charge_rate():
     0.00% on the composite, which is what the bank-distributed and direct contracts
     charge; 0.50% on model point 9, the observed association-contract level.
     """
-    return float(model_point()["prem_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "prem_charge_rate")
 
 
 def wd_prog_pp():
@@ -522,7 +522,7 @@ def wd_prog_pp():
     a year - nil before ``wd_start_year`` and capped at the balance it comes out of - and
     :func:`withdrawals_mth_pp` is the month's twelfth of it.
     """
-    return float(model_point()["wd_pp"])
+    return tables.lookup_float(prepared_model_point(), "wd_pp")
 
 
 def wd_start_year():
@@ -533,7 +533,7 @@ def wd_start_year():
     is the "never" sentinel a paid-up cell carries.  It is compared against
     ``proj_year(t)``, never against ``t``.
     """
-    return int(model_point()["wd_start_year"])
+    return tables.lookup_int(prepared_model_point(), "wd_start_year")
 
 
 def fee_rate():
@@ -545,7 +545,7 @@ def fee_rate():
     **[std]**; the charge itself and its 31 December pro rata temporis timing are
     sourced.
     """
-    return float(model_point()["fee_rate"])
+    return tables.lookup_float(prepared_model_point(), "fee_rate")
 
 
 def tmg_rate():
@@ -558,7 +558,7 @@ def tmg_rate():
     docstring for why no positive-TMG cell is shipped, and for what a positive TMG would
     have to do inside the year.
     """
-    return float(model_point()["tmg_rate"])
+    return tables.lookup_float(prepared_model_point(), "tmg_rate")
 
 
 def ts_target():
@@ -571,12 +571,12 @@ def ts_target():
     drains its PPB in a handful of years trying to pay it.  **[std]**: no insurer's
     forward crediting policy is public.
     """
-    return float(model_point()["ts_target"])
+    return tables.lookup_float(prepared_model_point(), "ts_target")
 
 
 def soc_levy_rate():
     """The `prélèvements sociaux` rate, 17.2%, withheld as interest is credited."""
-    return float(model_point()["soc_levy_rate"])
+    return tables.lookup_float(prepared_model_point(), "soc_levy_rate")
 
 
 def guarantee_form():
@@ -589,7 +589,7 @@ def guarantee_form():
     both designs run inside one insurer and even inside one notice, so the model carries
     the choice on the model point rather than fixing it.
     """
-    v = model_point()["guarantee_form"]
+    v = tables.lookup_object(prepared_model_point(), "guarantee_form")
     if v not in ("net", "gross"):
         raise ValueError("invalid guarantee_form")
     return v
@@ -602,7 +602,7 @@ def avance_on():
     duration - into a separate document that was not retrieved, so a model point electing
     one would have to invent them.  This validates rather than guessing.
     """
-    v = int(model_point()["avance_on"])
+    v = tables.lookup_int(prepared_model_point(), "avance_on")
     if v != 0:
         raise ValueError("avance terms are unpublished; no avance cell is supported")
     return False
@@ -610,7 +610,7 @@ def avance_on():
 
 def scenario_id():
     """The financial scenario the model point runs on: ``base``, ``low`` or ``high``."""
-    v = str(model_point()["scenario_id"])
+    v = tables.lookup_str(prepared_model_point(), "scenario_id")
     if v not in tuple(data.fin_rate_table().index.levels[0]):        # noqa: F821
         raise ValueError("unknown scenario_id")
     return v
@@ -741,7 +741,7 @@ def prem_gross_pp(y):
     credit different rates on identical funds.  :func:`prem_to_av_mth_pp` is what reaches
     the account in a month.
     """
-    return float(model_point()["prem_gross_pp"])
+    return tables.lookup_float(prepared_model_point(), "prem_gross_pp")
 
 
 def prem_to_av_pp(y):
@@ -1884,6 +1884,11 @@ def result_pb():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1912,3 +1917,5 @@ lapse_cap = 0.3
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

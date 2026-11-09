@@ -288,17 +288,17 @@ def model_point():
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def tax_status():
@@ -306,12 +306,12 @@ def tax_status():
 
     Reported only. The base run is non-qualified **[std]**; no RMD module is implemented.
     """
-    return model_point()["tax_status"]
+    return tables.lookup_object(prepared_model_point(), "tax_status")
 
 
 def premium_pp():
     """P: the single purchase payment per contract."""
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def pols_if_init():
@@ -320,22 +320,22 @@ def pols_if_init():
     The notes' ``l(t-1)`` at ``t = 0``, the in-force probability at issue; their
     end-of-month ``l(0)`` is ``pols_if_at(0, "AFT_DECR")``.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def guar_period():
     """n: the guarantee period in years; the surrender charge and MVA periods equal it."""
-    return int(model_point()["guar_period"])
+    return tables.lookup_int(prepared_model_point(), "guar_period")
 
 
 def declared_rate_initial():
     """The declared credited rate guaranteed for the initial term, 4.45% p.a. [S11]."""
-    return float(model_point()["declared_rate_initial"])
+    return tables.lookup_float(prepared_model_point(), "declared_rate_initial")
 
 
 def gmir():
     """The guaranteed minimum interest rate, 0.25% p.a. [S11]; a floor on any declared rate."""
-    return float(model_point()["gmir"])
+    return tables.lookup_float(prepared_model_point(), "gmir")
 
 
 def mgsv_rate():
@@ -345,7 +345,7 @@ def mgsv_rate():
     rate :func:`mgsv_rate_statutory`; crediting the floor at more is permitted and simply
     produces a higher floor [R1 4.B].
     """
-    return float(model_point()["mgsv_rate"])
+    return tables.lookup_float(prepared_model_point(), "mgsv_rate")
 
 
 def mgsv_annual_charge():
@@ -353,7 +353,7 @@ def mgsv_annual_charge():
 
     $0 representative [S11]; the statutory maximum is $50 p.a. [R1 4.A].
     """
-    return float(model_point()["mgsv_annual_charge"])
+    return tables.lookup_float(prepared_model_point(), "mgsv_annual_charge")
 
 
 def mgsv_wd_convention():
@@ -363,7 +363,7 @@ def mgsv_wd_convention():
     paid, W(t) + M(t) - C(t), keeping the floor higher. Both are live in the market and
     the difference compounds at i_nf for the rest of the contract.
     """
-    return model_point()["mgsv_wd_convention"]
+    return tables.lookup_object(prepared_model_point(), "mgsv_wd_convention")
 
 
 def renewal_architecture():
@@ -374,7 +374,7 @@ def renewal_architecture():
     ``annual_redeclare`` redeclares the rate each anniversary with no further surrender
     charge and no MVA [S13], so the shock happens once.
     """
-    return model_point()["renewal_architecture"]
+    return tables.lookup_object(prepared_model_point(), "renewal_architecture")
 
 
 def free_wd_rule():
@@ -384,12 +384,12 @@ def free_wd_rule():
     [S5][S6] is the prior contract year's credited interest. The notes' third value,
     ``greatest_of`` [S13], is **not implemented**: no formula is given for it.
     """
-    return model_point()["free_wd_rule"]
+    return tables.lookup_object(prepared_model_point(), "free_wd_rule")
 
 
 def free_wd_rate():
     """The free-withdrawal percentage under ``pct_av``, 10% [S10]."""
-    return float(model_point()["free_wd_rate"])
+    return tables.lookup_float(prepared_model_point(), "free_wd_rate")
 
 
 def free_wd_mva_exempt():
@@ -401,12 +401,12 @@ def free_wd_mva_exempt():
     ``max(AV(t) x (1 + mu(t) - sc(y)), MGSV(t))``. The notes apply the flag to both the
     charge and the adjustment; in the market it strictly concerns the adjustment.
     """
-    return bool(model_point()["free_wd_mva_exempt"])
+    return tables.lookup_bool(prepared_model_point(), "free_wd_mva_exempt")
 
 
 def mva_family():
     """``linear_duration``, ``geometric`` or ``declared_differential``. All implemented."""
-    return model_point()["mva_family"]
+    return tables.lookup_object(prepared_model_point(), "mva_family")
 
 
 def mva_cap_rule():
@@ -415,17 +415,17 @@ def mva_cap_rule():
     The cap, not the formula family, is the largest cross-carrier divergence in the source
     set, so it is a first-class model parameter. See :func:`mva_pp_on`.
     """
-    return model_point()["mva_cap_rule"]
+    return tables.lookup_object(prepared_model_point(), "mva_cap_rule")
 
 
 def mva_ref_yield_at_issue():
     """i0 at issue: the MVA reference yield locked for the initial period, 5.00% **[std]**."""
-    return float(model_point()["mva_ref_yield_at_issue"])
+    return tables.lookup_float(prepared_model_point(), "mva_ref_yield_at_issue")
 
 
 def premium_tax_rate():
     """Premium tax deducted from the contract, 0% **[std]** [S3][S16]."""
-    return float(model_point()["premium_tax_rate"])
+    return tables.lookup_float(prepared_model_point(), "premium_tax_rate")
 
 
 def tax_basis_pp_init():
@@ -434,17 +434,17 @@ def tax_basis_pp_init():
     The notes' ``basis(t)`` is the end-of-month value, so this is ``basis(t-1)`` at
     ``t = 0``, not ``tax_basis_pp(0)``.
     """
-    return float(model_point()["tax_basis_initial"])
+    return tables.lookup_float(prepared_model_point(), "tax_basis_initial")
 
 
 def scenario_id():
     """The rate scenario the model point runs on, a key into *rate_scenario.csv*."""
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def wd_schedule_id():
     """The withdrawal programme, a key into *withdrawal_table.csv*."""
-    return model_point()["wd_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "wd_schedule_id")
 
 
 def policy_term():
@@ -1653,6 +1653,11 @@ def result_av():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1737,3 +1742,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -281,7 +281,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point, ``PFL-0000NN``."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -296,7 +296,7 @@ def sex():
     endogenous to the price.  Model points 1 and 2 are the same contract on the two sexes:
     equal ``premium_mth_pp()``, unequal projected annuity.
     """
-    v = str(model_point()["sex"])
+    v = tables.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -311,7 +311,7 @@ def age_at_entry():
     permits — predominantly between 45 and 60, when the buyer has seen a parent go into
     care.  Model points 13 and 14 sit at the two ends.
     """
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def duration_mth_init():
@@ -323,7 +323,7 @@ def duration_mth_init():
     terminal age alone, so a point opening at ``t = 240`` simply publishes a shorter frame
     ending at the same index.  Reading it as a shift of the horizon is a listed pitfall.
     """
-    return int(model_point()["duration_mth_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_mth_init")
 
 
 def status_init():
@@ -334,7 +334,7 @@ def status_init():
     valuation date has served whatever deferral its contract carried.  Model point 12 is
     the in-claim case.
     """
-    v = str(model_point()["status"])
+    v = tables.lookup_str(prepared_model_point(), "status")
     if v not in ("aktiv", "pg1", "pg2", "pg3", "pg4", "pg5"):
         raise ValueError("invalid status")
     return v
@@ -349,7 +349,7 @@ def rente_mth():
     contribution and an average pension; the shipped 1 000 € is the round number at the
     lower end of that band and is a **[std]** choice, not an observation.
     """
-    return float(model_point()["rente_mth"])
+    return tables.lookup_float(prepared_model_point(), "rente_mth")
 
 
 def staffel_id():
@@ -360,7 +360,7 @@ def staffel_id():
     level: on ``bahr`` *Pflegegrad* 1 is insured, so a grade-1 life is **waived** there and
     **pays** on ``delib_std``.
     """
-    return str(model_point()["staffel_id"])
+    return tables.lookup_str(prepared_model_point(), "staffel_id")
 
 
 def prem_end_age():
@@ -372,12 +372,12 @@ def prem_end_age():
     buyer's earning life; model point 4 carries it.  Once the term has ended the contract
     is paid up: no premium, no lapse, and the cover runs on.
     """
-    return int(model_point()["prem_end_age"])
+    return tables.lookup_int(prepared_model_point(), "prem_end_age")
 
 
 def prem_mode():
     """The instalment frequency: monthly, quarterly, half_yearly, annual or single."""
-    v = str(model_point()["prem_mode"])
+    v = tables.lookup_str(prepared_model_point(), "prem_mode")
     if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
         raise ValueError("invalid prem_mode")
     return v
@@ -408,7 +408,7 @@ def premium_mth():
     A positive value is taken as the contractual premium and the engine is not consulted —
     which is how an in-force model point carries the premium it was actually sold at.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def rating_factor():
@@ -419,7 +419,7 @@ def rating_factor():
     *Risikozuschlag* scale for this product was established; model point 13 carries 1.50
     as a **[std]** illustration.
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def wartezeit_months():
@@ -432,7 +432,7 @@ def wartezeit_months():
     deterministic: no underwriting implies a long *Wartezeit*, underwriting implies none.
     Model point 7 carries 36 months.
     """
-    return int(model_point()["wartezeit_months"])
+    return tables.lookup_int(prepared_model_point(), "wartezeit_months")
 
 
 def karenz_months():
@@ -447,7 +447,7 @@ def karenz_months():
     disproportionately more claims than its length suggests.  Model point 7 carries six
     months.
     """
-    return int(model_point()["karenz_months"])
+    return tables.lookup_int(prepared_model_point(), "karenz_months")
 
 
 def leistungsdynamik():
@@ -461,7 +461,7 @@ def leistungsdynamik():
     mortality, so the escalation compounds over three to five years, not fifteen.  Model
     point 8 carries 2 % a year.
     """
-    return float(model_point()["leistungsdynamik"])
+    return tables.lookup_float(prepared_model_point(), "leistungsdynamik")
 
 
 def beitragsrueckgewaehr():
@@ -482,7 +482,7 @@ def beitragsrueckgewaehr():
     consequence — the option overstates the death benefit relative to the market-standard
     form — is stated rather than hidden.
     """
-    return bool(model_point()["beitragsrueckgewaehr"])
+    return tables.lookup_bool(prepared_model_point(), "beitragsrueckgewaehr")
 
 
 def stornoabzug_rate():
@@ -500,7 +500,7 @@ def stornoabzug_rate():
     ``FRV_DE_S``'s *euro amount* retained from surrenders and one of its ``result_cf()``
     columns — a different quantity, which is why the two do not share a name.
     """
-    return float(model_point()["stornoabzug_rate"])
+    return tables.lookup_float(prepared_model_point(), "stornoabzug_rate")
 
 
 def pols_if_init():
@@ -510,7 +510,7 @@ def pols_if_init():
     library-wide assertion that ``pols_if`` is a start-of-period count: no decrement has
     been applied when a period opens.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def omega_age():
@@ -2142,6 +2142,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2154,3 +2159,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -365,7 +365,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -377,7 +377,7 @@ def sex():
     reports it and because a reserving basis may still be sex-specific even where the
     tariff may not be.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -390,7 +390,7 @@ def entry_age():
     policy_year(t) - 1 = entry_age() + t // 12`` and the attained age in the last projected
     month, ``t = proj_len() - 1``, is ``annuity_age() - 1``.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def duration_init_m():
@@ -403,7 +403,7 @@ def duration_init_m():
     what that costs an insurer: nothing, because the charge and the commission it funded
     are both behind it.
     """
-    return int(model_point()["duration_init_m"])
+    return tables.lookup_int(prepared_model_point(), "duration_init_m")
 
 
 def pols_if_init():
@@ -412,7 +412,7 @@ def pols_if_init():
     ``pols_if(proj_start()) == pols_if_init()`` exactly, which is the library's
     start-of-period convention asserted in the conventions suite.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def annuity_age():
@@ -422,7 +422,7 @@ def annuity_age():
     **not** ``age(proj_len() - 1)``, which is one lower because the annuity begins at the
     end of the last projected month.
     """
-    return int(model_point()["annuity_age"])
+    return tables.lookup_int(prepared_model_point(), "annuity_age")
 
 
 def prem_form():
@@ -433,7 +433,7 @@ def prem_form():
     acquisition charge is the *Zuzahlungskosten* rate levied once on receipt, which is
     what :func:`charge_acq_total` returns for it.
     """
-    v = model_point()["prem_form"]
+    v = tables.lookup_object(prepared_model_point(), "prem_form")
     if v not in ("laufend", "einmal"):
         raise ValueError("invalid prem_form")
     return v
@@ -448,7 +448,7 @@ def prem_pp_base():
     a given month, after the frequency, the premium term, any *Beitragsfreistellung* and
     any *Beitragsdynamik*.
     """
-    return float(model_point()["prem_pp"])
+    return tables.lookup_float(prepared_model_point(), "prem_pp")
 
 
 def prem_mode_months():
@@ -457,7 +457,7 @@ def prem_mode_months():
     It decides both which months carry a premium and how many acquisition instalments the
     sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.
     """
-    v = int(model_point()["prem_mode_months"])
+    v = tables.lookup_int(prepared_model_point(), "prem_mode_months")
     if v not in (1, 3, 6, 12):
         raise ValueError("invalid prem_mode_months")
     return v
@@ -469,7 +469,7 @@ def prem_term_y():
     It caps both the premium stream and the acquisition window: a two-year premium term
     spreads the acquisition charge over 24 months, not 60.
     """
-    return int(model_point()["prem_term_y"])
+    return tables.lookup_int(prepared_model_point(), "prem_term_y")
 
 
 def dynamik_rate():
@@ -480,7 +480,7 @@ def dynamik_rate():
     **not** raise :func:`beitragssumme`, because a real tariff re-zillmers each accepted
     increment over its own sixty months and an increment cannot be assumed at inception.
     """
-    return float(model_point()["dynamik_rate"])
+    return tables.lookup_float(prepared_model_point(), "dynamik_rate")
 
 
 def pup_month():
@@ -497,7 +497,7 @@ def pup_month():
     and the *Risikobeitrag* continue by unit cancellation — which is why a paid-up
     unit-linked contract decays.
     """
-    return int(model_point()["pup_month"])
+    return tables.lookup_int(prepared_model_point(), "pup_month")
 
 
 def db_form():
@@ -508,7 +508,7 @@ def db_form():
     (the composite, and the only shape with any corroboration in this library's corpus), a
     percentage of the fund, and a fixed *garantierte Mindesttodesfallleistung*.
     """
-    v = model_point()["db_form"]
+    v = tables.lookup_object(prepared_model_point(), "db_form")
     if v not in ("fund", "prem_return", "pct_fund", "sum_assured"):
         raise ValueError("invalid db_form")
     return v
@@ -522,7 +522,7 @@ def db_pct():
     *Beitragsrückgewähr* one does.  Commonly quoted market values are 100 %, 105 % and
     110 %; none was established.
     """
-    return float(model_point()["db_pct"])
+    return tables.lookup_float(prepared_model_point(), "db_pct")
 
 
 def sum_assured():
@@ -533,22 +533,22 @@ def sum_assured():
     shape that turns the contract into a savings-plus-term-cover package and the one whose
     risk charge grows without limit as the fund falls.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def charge_id():
     """The key into ``charge_table.csv`` naming this policy's charge scale."""
-    return model_point()["charge_id"]
+    return tables.lookup_object(prepared_model_point(), "charge_id")
 
 
 def scenario_id():
     """The key into ``fund_scenario_table.csv`` naming this policy's return path."""
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def rentenfaktor_id():
     """The key into ``rentenfaktor_table.csv`` naming this policy's conversion factors."""
-    return model_point()["rentenfaktor_id"]
+    return tables.lookup_object(prepared_model_point(), "rentenfaktor_id")
 
 
 def unit_price_init():
@@ -557,7 +557,7 @@ def unit_price_init():
     100.00 EUR on every new-business cell, which makes the unit counts readable; 118.40 on
     the in-force cell, where it is the price a *Standmitteilung* would report.
     """
-    return float(model_point()["unit_price_init"])
+    return tables.lookup_float(prepared_model_point(), "unit_price_init")
 
 
 def units_init():
@@ -567,7 +567,7 @@ def units_init():
     *Fondsguthaben* of 22 496,00 EUR against 24 000,00 EUR of premiums paid, so the cell
     opens with a positive net amount at risk and a live *Risikobeitrag*.
     """
-    return float(model_point()["units_init"])
+    return tables.lookup_float(prepared_model_point(), "units_init")
 
 
 def cum_prem_init():
@@ -576,7 +576,7 @@ def cum_prem_init():
     Seeds :func:`cum_prem_pp`.  Nonzero only on the in-force cell, where getting it wrong
     would silently mis-state the death benefit for the whole remaining term.
     """
-    return float(model_point()["cum_prem_init"])
+    return tables.lookup_float(prepared_model_point(), "cum_prem_init")
 
 
 def topup_month():
@@ -586,7 +586,7 @@ def topup_month():
     ``t = 120``.  **Zero is the "none" sentinel** rather than the inception month, a
     *Zuzahlung* at inception being indistinguishable from a larger first *Beitrag*.
     """
-    return int(model_point()["topup_month"])
+    return tables.lookup_int(prepared_model_point(), "topup_month")
 
 
 def topup_amount():
@@ -597,7 +597,7 @@ def topup_amount():
     raise :func:`beitragssumme`, for the same reason a *Beitragsdynamik* increment does
     not.
     """
-    return float(model_point()["topup_amount"])
+    return tables.lookup_float(prepared_model_point(), "topup_amount")
 
 
 def wd_month():
@@ -606,7 +606,7 @@ def wd_month():
     A point on the frame's time axis, so it moved with the frame: model point 9 withdraws
     at ``t = 240``.  **Zero is the "none" sentinel** rather than the inception month.
     """
-    return int(model_point()["wd_month"])
+    return tables.lookup_int(prepared_model_point(), "wd_month")
 
 
 def wd_amount():
@@ -616,7 +616,7 @@ def wd_amount():
     ``claims_wd``.  It is a partial surrender with a partial surrender's tax consequences,
     and it is settled by cancelling units at the closing *Anteilspreis*.
     """
-    return float(model_point()["wd_amount"])
+    return tables.lookup_float(prepared_model_point(), "wd_amount")
 
 
 def ablauf_flag():
@@ -627,7 +627,7 @@ def ablauf_flag():
     arithmetically the same thing as a reallocation, and it is the honest representation
     of what is known: no ramp length, destination or opt-in rule was established.
     """
-    return bool(model_point()["ablauf_flag"])
+    return tables.lookup_bool(prepared_model_point(), "ablauf_flag")
 
 
 def kapitalwahl():
@@ -640,7 +640,7 @@ def kapitalwahl():
     take-up rate was established**, so the base run annuitises and this is an election
     rather than an assumption.
     """
-    return bool(model_point()["kapitalwahl"])
+    return tables.lookup_bool(prepared_model_point(), "kapitalwahl")
 
 
 # ----------------------------------------  the frame
@@ -2113,6 +2113,11 @@ def result_fund():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2153,3 +2158,5 @@ val_tol = 1e-10
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

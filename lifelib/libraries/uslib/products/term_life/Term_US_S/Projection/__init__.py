@@ -196,37 +196,37 @@ def model_point():
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def rate_class():
     """The underwriting class of the selected model point."""
-    return model_point()["rate_class"]
+    return tables.lookup_object(prepared_model_point(), "rate_class")
 
 
 def plan():
     """The plan code of the selected model point (T10 / T20 / T30)."""
-    return model_point()["plan"]
+    return tables.lookup_object(prepared_model_point(), "plan")
 
 
 def sum_assured():
     """The face amount of the selected model point."""
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def pols_if_init():
     """Initial number of policies in-force."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def premium_mode():
     """The premium mode of the selected model point: A, SA, Q or M [S6]."""
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def band():
@@ -366,7 +366,7 @@ def plt_mort_factor_init_formula():
 
 def plt_mort_factor_init():
     """M(1) actually used: the model point's override if given, else the formula."""
-    o = model_point()["plt_mort_factor_override"]
+    o = tables.lookup_object(prepared_model_point(), "plt_mort_factor_override")
     return plt_mort_factor_init_formula() if pd.isna(o) else float(o)  # noqa: F821
 
 
@@ -652,6 +652,11 @@ def result_cf_annual():
     return out
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -684,3 +689,5 @@ conv_rate_final = 0.0
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

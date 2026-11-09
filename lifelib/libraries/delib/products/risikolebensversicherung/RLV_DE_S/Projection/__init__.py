@@ -394,7 +394,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def issue_age():
@@ -406,7 +406,7 @@ def issue_age():
     the rating age steps on 1 January irrespective of birth month; on a real-date
     implementation the offset here is at most a few months **[std]**.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
@@ -423,7 +423,7 @@ def sex():
     ``sex_mix_male`` is the model's **[std]** 50/50 stand-in for it, and it is one of the
     largest single sources of unexplained rate spread between German carriers.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -439,7 +439,7 @@ def smoker():
     are aggregate-rated.  It enters both mortality bases, so a smoker pays more *and* is
     expected to claim more.
     """
-    v = model_point()["smoker"]
+    v = tables.lookup_object(prepared_model_point(), "smoker")
     if v not in ("N", "R"):
         raise ValueError("invalid smoker")
     return v
@@ -451,12 +451,12 @@ def sum_assured():
     The sum actually at risk in period ``t`` is :func:`benefit_pp`, which applies the
     schedule and any *Nachversicherungsgarantie* uplift on top of this.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def policy_term():
     """The *Versicherungsdauer* in whole years; equals :func:`proj_len`."""
-    return int(model_point()["policy_term"])
+    return tables.lookup_int(prepared_model_point(), "policy_term")
 
 
 def prem_term():
@@ -468,7 +468,7 @@ def prem_term():
     has in mind when it requires a provision for future administration costs where the
     paying period is shorter than the cover period.
     """
-    k = int(model_point()["prem_term"])
+    k = tables.lookup_int(prepared_model_point(), "prem_term")
     if k < 1 or k > policy_term():
         raise ValueError("prem_term outside 1 .. policy_term")
     return k
@@ -484,7 +484,7 @@ def premium_form():
     exercises the premium engine at a boundary rather than adding a second engine.  The
     cells is a stated consistency gate: ``einmal`` requires ``prem_term = 1``.
     """
-    v = model_point()["premium_form"]
+    v = tables.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("laufend", "einmal"):
         raise ValueError("invalid premium_form")
     if v == "einmal" and prem_term() != 1:
@@ -502,17 +502,17 @@ def prem_freq():
     monthly-paying contract is terminable monthly and its exits are not concentrated at
     policy anniversaries.  This model books them at anniversaries and says so.
     """
-    return model_point()["prem_freq"]
+    return tables.lookup_object(prepared_model_point(), "prem_freq")
 
 
 def benefit_schedule_id():
     """The key into *benefit_schedule.csv* naming this policy's *Versicherungssumme* shape."""
-    return model_point()["benefit_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "benefit_schedule_id")
 
 
 def nvg_schedule_id():
     """The key into *nvg_schedule.csv* naming this policy's *Nachversicherungsgarantie*."""
-    return model_point()["nvg_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "nvg_schedule_id")
 
 
 def surplus_form():
@@ -526,7 +526,7 @@ def surplus_form():
     one, which is model point 12 and the cleanest available control on the whole surplus
     mechanic.
     """
-    v = model_point()["surplus_form"]
+    v = tables.lookup_object(prepared_model_point(), "surplus_form")
     if v not in ("beitragsverrechnung", "keine"):
         raise ValueError("invalid surplus_form")
     return v
@@ -539,7 +539,7 @@ def lives():
     underwritten and both give the § 150 VVG *schriftliche Einwilligung*; one payment is
     ever made and the contract then ends.
     """
-    n = int(model_point()["lives"])
+    n = tables.lookup_int(prepared_model_point(), "lives")
     if n not in (1, 2):
         raise ValueError("lives must be 1 or 2")
     return n
@@ -547,12 +547,12 @@ def lives():
 
 def issue_age2():
     """The *Eintrittsalter* of the second life; 0 where ``lives = 1``."""
-    return int(model_point()["issue_age2"])
+    return tables.lookup_int(prepared_model_point(), "issue_age2")
 
 
 def smoker2():
     """The second life's smoker status, R or N; ``-`` where ``lives = 1``."""
-    v = model_point()["smoker2"]
+    v = tables.lookup_object(prepared_model_point(), "smoker2")
     if v not in ("N", "R", "-"):
         raise ValueError("invalid smoker2")
     if lives() == 2 and v == "-":
@@ -574,12 +574,12 @@ def rating_factor():
     publishes a *Risikozuschlag* scale**, so the levels in the model point table are
     **[std]**.
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def mort_table_id():
     """The key into *mort_table.csv*; one table ships, ``dav2008t_proxy``."""
-    return model_point()["mort_table_id"]
+    return tables.lookup_object(prepared_model_point(), "mort_table_id")
 
 
 def duration_y():
@@ -593,12 +593,12 @@ def duration_y():
     the acquisition cost and the initial commission are **sunk** and are not incurred at
     all, which is why the switch tests ``duration_y = 0`` and not merely ``t = 0``.
     """
-    return int(model_point()["duration_y"])
+    return tables.lookup_int(prepared_model_point(), "duration_y")
 
 
 def issue_date():
     """The issue date, for reporting only; the model runs on integer durations."""
-    return model_point()["issue_date"]
+    return tables.lookup_object(prepared_model_point(), "issue_date")
 
 
 def cover_end_age():
@@ -2084,6 +2084,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2138,3 +2143,5 @@ val_tol = 1e-09
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -410,7 +410,7 @@ def model_point():
 
 def sex():
     """The sex (M / F) of the 피보험자, a rating factor of every Korean rate card [S4]."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -425,7 +425,7 @@ def age_at_entry():
     [S1] [S6] [S9] [S11] [S12]; the mixed basis in that sentence is the documents' own,
     a minimum written 만19세 being 만나이 and a maximum written 65세 being 보험나이.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def renewal_type():
@@ -438,7 +438,7 @@ def renewal_type():
     비갱신형 is the base because it is the market: only three of the 45 disclosed
     products renew and only two carriers sell a renewable term at all [S4].
     """
-    v = model_point()["renewal_type"]
+    v = tables.lookup_object(prepared_model_point(), "renewal_type")
     if v not in ("gaengsin", "bi_gaengsin"):
         raise ValueError("invalid renewal_type: expected gaengsin or bi_gaengsin")
     return v
@@ -458,7 +458,7 @@ def rate_class():
     smoking status for the life of the policy and moves in both directions [S2
     건강체서비스특약Ⅱ 제4조].  This model does not carry the transition.
     """
-    v = model_point()["rate_class"]
+    v = tables.lookup_object(prepared_model_point(), "rate_class")
     if v not in ("standard", "nonsmoker", "preferred", "super_preferred"):
         raise ValueError("invalid rate_class")
     return v
@@ -475,7 +475,7 @@ def maturity_form():
     10.90x at female 40 [S12], which is what a savings contract with a small amount of
     insurance stapled to it looks like.
     """
-    v = model_point()["maturity_form"]
+    v = tables.lookup_object(prepared_model_point(), "maturity_form")
     if v not in ("pure", "rop"):
         raise ValueError("invalid maturity_form: expected pure or rop")
     return v
@@ -489,10 +489,10 @@ def policy_term():
     from 80세 to 90세 and 100세 [S1] [S9] [S12] [S17].  On a 갱신형 contract this is the
     length of one **cycle** and the horizon is :func:`horizon_ceiling`, which is longer.
     """
-    v = int(model_point()["term_y"])
+    v = tables.lookup_int(prepared_model_point(), "term_y")
     if v > 0:
         return v
-    return int(model_point()["expiry_age"]) - age_at_entry()
+    return tables.lookup_int(prepared_model_point(), "expiry_age") - age_at_entry()
 
 
 def pay_term():
@@ -505,7 +505,7 @@ def pay_term():
     Shortened pay is carried because **it is the only way the 무해지 form's post-완납
     step-up can arise at all**, and with it the 0.8% ultimate lapse rate [REG-R27].
     """
-    v = int(model_point()["pay_term_y"])
+    v = tables.lookup_int(prepared_model_point(), "pay_term_y")
     return proj_years() if v <= 0 else v
 
 
@@ -516,7 +516,7 @@ def renew_ceiling():
     contract's expiry [S9]; the composite takes 흥국생명's, which is the only one that
     supports a multi-cycle projection.  Inert on a 비갱신형 point.
     """
-    return int(model_point()["renew_ceiling"])
+    return tables.lookup_int(prepared_model_point(), "renew_ceiling")
 
 
 def sum_assured():
@@ -528,7 +528,7 @@ def sum_assured():
     corporate-only and 체감형 (decreasing) is a disclosure category with no retail
     product in it [S4] [S18].
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mode():
@@ -542,7 +542,7 @@ def premium_mode():
     ``prem_mode_months`` schedule and is not shipped, every retrieved rate card being
     quoted monthly.
     """
-    return model_point()["premium_mode"]
+    return tables.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def contract_boundary():
@@ -558,7 +558,7 @@ def contract_boundary():
     projects to the ceiling in the base run **[std]** and carries the truncation as a
     switch.  Naming the convention is part of reporting the number.
     """
-    v = model_point()["contract_boundary"]
+    v = tables.lookup_object(prepared_model_point(), "contract_boundary")
     if v not in ("ceiling", "current_term"):
         raise ValueError("invalid contract_boundary")
     return v
@@ -576,7 +576,7 @@ def acc_death():
     does not sell its 기본형 to women at all, so a female life there must buy the
     보장추가형 and the disclosure prints 0 won in the 기본형 female column [S4] [S6].
     """
-    return bool(model_point()["acc_death"])
+    return tables.lookup_bool(prepared_model_point(), "acc_death")
 
 
 def waiver():
@@ -591,7 +591,7 @@ def waiver():
     3].  On for model points 3 and 4, which are 갱신형, so that the waiver not surviving
     a renewal is exercised [S6].
     """
-    return bool(model_point()["waiver"])
+    return tables.lookup_bool(prepared_model_point(), "waiver")
 
 
 def accel():
@@ -605,7 +605,7 @@ def accel():
     **half the sum assured to 50,000,000 won** rather than the whole benefit, and there
     is **no bar on payment near expiry at all**.
     """
-    return bool(model_point()["accel"])
+    return tables.lookup_bool(prepared_model_point(), "accel")
 
 
 def reinstatement():
@@ -620,7 +620,7 @@ def reinstatement():
     Korean document publishes a reinstatement rate.  What *is* published, and is
     therefore not [std], is the window.
     """
-    return bool(model_point()["reinstatement"])
+    return tables.lookup_bool(prepared_model_point(), "reinstatement")
 
 
 def horizon_ceiling():
@@ -1875,6 +1875,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1935,3 +1940,5 @@ cash_tol = 1e-06
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

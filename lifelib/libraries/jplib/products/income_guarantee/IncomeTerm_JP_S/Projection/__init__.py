@@ -292,7 +292,7 @@ def model_point():
 
 def sex():
     """The sex of the insured, ``M`` or ``F``; a rating factor and a table key."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -308,7 +308,7 @@ def issue_age():
     mortality.  The bias is stated rather than corrected in the base run; the optional
     ``sqrt(q_x q_{x+1})`` shift belongs to the protection chassis and moves ``q`` **up**.
     """
-    v = int(model_point()["issue_age"])
+    v = tables.lookup_int(prepared_model_point(), "issue_age")
     if not 20 <= v <= 70:
         raise ValueError("issue_age outside the composite envelope 20-70")
     return v
@@ -322,7 +322,7 @@ def expiry_age():
     product the composite does not have, and :func:`term_m` is derived from this rather
     than read.
     """
-    v = int(model_point()["expiry_age"])
+    v = tables.lookup_int(prepared_model_point(), "expiry_age")
     if not 45 <= v <= 90:
         raise ValueError("expiry_age outside the composite envelope 45-90")
     if v <= issue_age():
@@ -345,7 +345,7 @@ def guar_m():
     Elected at issue and not changeable.  It is quoted in years and binds in months,
     which is one of the reasons this product cannot be run on an annual grid.
     """
-    v = int(model_point()["guar_m"])
+    v = tables.lookup_int(prepared_model_point(), "guar_m")
     if v not in (24, 60):
         raise ValueError("guar_m outside the composite menu {24, 60}")
     return v
@@ -353,7 +353,7 @@ def guar_m():
 
 def annuity_mth():
     """A: the 年金月額, JPY per month; ¥50,000 minimum in ¥10,000 steps."""
-    v = float(model_point()["annuity_mth"])
+    v = tables.lookup_float(prepared_model_point(), "annuity_mth")
     if v < 50000.0 or round(v) % 10000 != 0:
         raise ValueError("annuity_mth below the ¥50,000 floor or off the ¥10,000 step")
     return v
@@ -370,7 +370,7 @@ def rate_class():
     at issue and cannot be changed later, which is what gives the selective-lapsation
     module its mechanism.
     """
-    v = model_point()["rate_class"]
+    v = tables.lookup_object(prepared_model_point(), "rate_class")
     if v not in data.rate_class_table().index:                       # noqa: F821
         raise ValueError("unknown rate_class " + str(v))
     return v
@@ -399,7 +399,7 @@ def premium_mth_pp():
     model points the rate is likewise published.  Where no published cell exists the
     value is **[std]**; ``model.md`` says which is which.
     """
-    return float(model_point()["premium_monthly"])
+    return tables.lookup_float(prepared_model_point(), "premium_monthly")
 
 
 def premium_mode():
@@ -411,7 +411,7 @@ def premium_mode():
     payment period.  No 前納 or frequency discount is applied, because the discount is
     insurer-set and unpublished **[std scope]**.
     """
-    v = model_point()["premium_mode"]
+    v = tables.lookup_object(prepared_model_point(), "premium_mode")
     if v not in ("monthly", "semiannual", "annual"):
         raise ValueError("invalid premium_mode")
     return v
@@ -424,7 +424,7 @@ def prem_mode_months():
 
 def commutation():
     """Whether claims are settled by a full 一括受取 lump sum; false in the base run."""
-    return bool(model_point()["commutation"])
+    return tables.lookup_bool(prepared_model_point(), "commutation")
 
 
 def living_needs():
@@ -434,7 +434,7 @@ def living_needs():
     is a product fact; what is switched off in the base run is the **[std]**
     acceleration incidence, which no retrieved document gives.
     """
-    return bool(model_point()["living_needs"])
+    return tables.lookup_bool(prepared_model_point(), "living_needs")
 
 
 def wop():
@@ -445,7 +445,7 @@ def wop():
     180 days to a 別表4 身体障害の状態.  Disease-based waiver is a rider only and is out of
     scope.
     """
-    return bool(model_point()["wop"])
+    return tables.lookup_bool(prepared_model_point(), "wop")
 
 
 def reinstatement():
@@ -455,7 +455,7 @@ def reinstatement():
     interest.  Japanese policies really do come back, which is a genuine difference from
     the UK composite in ``uklib``, where a lapsed policy terminates finally.
     """
-    return bool(model_point()["reinstatement"])
+    return tables.lookup_bool(prepared_model_point(), "reinstatement")
 
 
 def pols_if_init():
@@ -1313,6 +1313,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1367,3 +1372,5 @@ cash_tol = 1e-06
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

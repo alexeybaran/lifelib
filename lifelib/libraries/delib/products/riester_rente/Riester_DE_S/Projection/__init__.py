@@ -340,7 +340,7 @@ def sex():
     *Rentenfaktor* may read this cells.  It is carried because the administration records
     it and because its *absence* from every formula is the assertion worth making.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -353,7 +353,7 @@ def issue_age():
     attained age at the valuation date.  It does not otherwise enter the projection: no
     rate in this model is struck at issue.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def duration_init():
@@ -366,7 +366,7 @@ def duration_init():
     acquisition expense and initial commission fall only where ``duration_init() == 0``,
     because on an in-force point they are in the past.
     """
-    return int(model_point()["duration_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_init")
 
 
 def pols_if_init():
@@ -375,7 +375,7 @@ def pols_if_init():
     ``result_cf()``'s first ``pols_if`` value equals this exactly, because no decrement has
     been applied when the first period opens.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def rentenbeginn_age():
@@ -385,7 +385,7 @@ def rentenbeginn_age():
     (the completed 60th before that), which is a certification condition of the AltZertG
     rather than a tariff term.  Model point 13 sits at the floor.
     """
-    return int(model_point()["rentenbeginn_age"])
+    return tables.lookup_int(prepared_model_point(), "rentenbeginn_age")
 
 
 def rechnungszins():
@@ -398,7 +398,7 @@ def rechnungszins():
     *Beitragsgarantie* cheapest.  It is a **model point** attribute rather than a library
     constant because the *Zinszusatzreserve* on the older Riester vintages turns on it.
     """
-    return float(model_point()["rechnungszins"])
+    return tables.lookup_float(prepared_model_point(), "rechnungszins")
 
 
 def beitragssumme():
@@ -408,7 +408,7 @@ def beitragssumme():
     On the ``mindest`` contribution form it is a contractual figure rather than the sum
     the projection actually collects, because the § 86 minimum moves with income.
     """
-    return float(model_point()["beitragssumme"])
+    return tables.lookup_float(prepared_model_point(), "beitragssumme")
 
 
 def contrib_form():
@@ -420,7 +420,7 @@ def contrib_form():
     *mittelbar* eligible spouse paying the 60 € *Sockelbeitrag* has, and what a saver
     contributing at the § 10a ceiling has.
     """
-    v = model_point()["contrib_form"]
+    v = tables.lookup_object(prepared_model_point(), "contrib_form")
     if v not in ("mindest", "fixed"):
         raise ValueError("invalid contrib_form")
     return v
@@ -428,7 +428,7 @@ def contrib_form():
 
 def contrib_fixed_pp():
     """The level own contribution under the ``fixed`` form, per policy per year; 0 otherwise."""
-    return float(model_point()["contrib_fixed_pp"])
+    return tables.lookup_float(prepared_model_point(), "contrib_fixed_pp")
 
 
 def contrib_ratio():
@@ -438,7 +438,7 @@ def contrib_ratio():
     reduces the **subsidy** in the same proportion — it is not a lapse, not a premium
     holiday and not a cliff edge.  Model point 7 sits at 0.50 and draws exactly half.
     """
-    return float(model_point()["contrib_ratio"])
+    return tables.lookup_float(prepared_model_point(), "contrib_ratio")
 
 
 def contrib_extra_pp():
@@ -450,7 +450,7 @@ def contrib_extra_pp():
     therefore carry two tax regimes at once, which is why
     :func:`pool_gefoerdert_pp` and :func:`pool_ungefoerdert_pp` are tracked separately.
     """
-    return float(model_point()["contrib_extra_pp"])
+    return tables.lookup_float(prepared_model_point(), "contrib_extra_pp")
 
 
 def rider_prem_pp():
@@ -462,12 +462,12 @@ def rider_prem_pp():
     reason a Riester contract can carry a *Berufsunfähigkeits-Zusatzversicherung* without
     the *Beitragsgarantie* having to reproduce its premiums.
     """
-    return float(model_point()["rider_prem_pp"])
+    return tables.lookup_float(prepared_model_point(), "rider_prem_pp")
 
 
 def income_id():
     """The key into *income_schedule.csv* naming this policy's earnings path."""
-    return model_point()["income_id"]
+    return tables.lookup_object(prepared_model_point(), "income_id")
 
 
 def income_init():
@@ -477,12 +477,12 @@ def income_init():
     earnings.  Zero for a *mittelbar zulageberechtigt* spouse, whose *Mindesteigenbeitrag*
     is then the 60 € *Sockelbeitrag* floor.
     """
-    return float(model_point()["income_init"])
+    return tables.lookup_float(prepared_model_point(), "income_init")
 
 
 def zulage_id():
     """The key into *zulage_schedule.csv* naming this policy's entitlement drivers."""
-    return model_point()["zulage_id"]
+    return tables.lookup_object(prepared_model_point(), "zulage_id")
 
 
 def zulage_init_pp():
@@ -493,12 +493,12 @@ def zulage_init_pp():
     *Berufseinsteiger-Bonus* alongside the *Grundzulage*; on a point projected from its own
     inception it is zero, because there is no earlier contribution year.
     """
-    return float(model_point()["zulage_init_pp"])
+    return tables.lookup_float(prepared_model_point(), "zulage_init_pp")
 
 
 def prem_freq():
     """The payment frequency: annual, half_yearly, quarterly or monthly."""
-    v = model_point()["prem_freq"]
+    v = tables.lookup_object(prepared_model_point(), "prem_freq")
     if v not in ("annual", "half_yearly", "quarterly", "monthly"):
         raise ValueError("invalid prem_freq")
     return v
@@ -527,17 +527,17 @@ def bfs_year():
     the acquisition charge keeps biting for its five contract years — which is what drives
     :func:`prem_to_av_pp` negative on model point 10.
     """
-    return int(model_point()["bfs_year"])
+    return tables.lookup_int(prepared_model_point(), "bfs_year")
 
 
 def dk_pp_init():
     """D(0): the *Deckungskapital* per policy at the valuation date, in euros."""
-    return float(model_point()["dk_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "dk_pp_init")
 
 
 def surplus_pp_init():
     """U(0): the *Überschussguthaben* per policy at the valuation date, in euros."""
-    return float(model_point()["surplus_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "surplus_pp_init")
 
 
 def guar_pp_init():
@@ -549,7 +549,7 @@ def guar_pp_init():
     :func:`garantieluecke_pp`, which is the normal state of a charged contract in its early
     durations and affects no benefit.
     """
-    return float(model_point()["guar_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "guar_pp_init")
 
 
 def teilkapital_share():
@@ -560,7 +560,7 @@ def teilkapital_share():
     contract term and the model point table stays inside it.  There is **no** lump sum on a
     commuted contract: a *Kleinbetragsrenten-Abfindung* is the whole capital in one payment.
     """
-    return float(model_point()["teilkapital_share"])
+    return tables.lookup_float(prepared_model_point(), "teilkapital_share")
 
 
 def rentenfaktor_guar():
@@ -570,7 +570,7 @@ def rentenfaktor_guar():
     rather than a function of the model's own annuity basis, so it and
     :func:`rentenfaktor_curr` can disagree; :func:`rentenfaktor_applied` says which wins.
     """
-    return float(model_point()["rentenfaktor_guar"])
+    return tables.lookup_float(prepared_model_point(), "rentenfaktor_guar")
 
 
 def rentengarantie_years():
@@ -579,12 +579,12 @@ def rentengarantie_years():
     It changes **who is paid** — payments continue to beneficiaries — and never **how
     much**.  :func:`annuity_pp` does not read it.
     """
-    return int(model_point()["rentengarantie_years"])
+    return tables.lookup_int(prepared_model_point(), "rentengarantie_years")
 
 
 def scenario_id():
     """The key into *surplus_scenario.csv* naming this policy's declared-rate path."""
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 # === the time axis and the two phases
@@ -2270,6 +2270,11 @@ def result_acct():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2352,3 +2357,5 @@ roll_fwd_tol = 1e-09
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

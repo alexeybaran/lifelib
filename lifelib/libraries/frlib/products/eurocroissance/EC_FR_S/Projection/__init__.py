@@ -514,7 +514,7 @@ def chassis():
     them its own provision structure, surrender value and maturity amount.  A value
     outside the pair is a data error and raises rather than defaulting to one of them.
     """
-    v = model_point()["engagement_modality"]
+    v = tables.lookup_object(prepared_model_point(), "engagement_modality")
     if v not in ("euro_and_parts", "parts_only"):
         raise ValueError("invalid engagement_modality: " + str(v))
     return v
@@ -535,7 +535,7 @@ def issue_age():
     A. 335-1 applies the homologated tables with the annexed *décalages d'âge* rather than
     fixing a model age basis, so the basis is a standardization.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
@@ -544,7 +544,7 @@ def sex():
     A. 132-18 requires the mortality basis to be by sex, so the decrement table is
     sex-distinct even though the tariff itself may not be.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex: " + str(v))
     return v
@@ -555,7 +555,7 @@ def policy_term():
 
     The retrieved market range is 8 to 40 years; the worked example uses 10.
     """
-    return int(model_point()["policy_term"])
+    return tables.lookup_int(prepared_model_point(), "policy_term")
 
 
 def duration_inforce():
@@ -564,7 +564,7 @@ def duration_inforce():
     An in-force cell is seeded from its extract's assets, parts and guaranteed amount and
     carries no accumulated *provision mathématique* — see :func:`pm_init`.
     """
-    return int(model_point()["duration_ifo"])
+    return tables.lookup_int(prepared_model_point(), "duration_ifo")
 
 
 def guarantee_rate():
@@ -574,12 +574,12 @@ def guarantee_rate():
     saver.  This is the product's single largest dial: it sets how much of the account is
     locked into the guaranteed leg and therefore how much of it can bear risk.
     """
-    return float(model_point()["guarantee_rate"])
+    return tables.lookup_float(prepared_model_point(), "guarantee_rate")
 
 
 def premium_gross_init():
     """The initial gross *versement* paid at issue; nil on an in-force cell."""
-    return float(model_point()["premium_gross"])
+    return tables.lookup_float(prepared_model_point(), "premium_gross")
 
 
 def premium_regular_pp():
@@ -587,12 +587,12 @@ def premium_regular_pp():
 
     Zero on a single-*versement* cell, which is the ordinary eurocroissance shape.
     """
-    return float(model_point()["premium_regular"])
+    return tables.lookup_float(prepared_model_point(), "premium_regular")
 
 
 def premium_regular_years():
     """The number of policy years over which the scheduled *versement* is paid."""
-    return int(model_point()["premium_regular_years"])
+    return tables.lookup_int(prepared_model_point(), "premium_regular_years")
 
 
 def premium_top_up_pp():
@@ -603,12 +603,12 @@ def premium_top_up_pp():
     buys parts at the part value just struck and raises the guaranteed amount by ``g``
     times its net amount.
     """
-    return float(model_point()["premium_top_up"])
+    return tables.lookup_float(prepared_model_point(), "premium_top_up")
 
 
 def premium_top_up_year():
     """The policy year at whose end the free additional *versement* is paid; 0 if none."""
-    return int(model_point()["premium_top_up_t"])
+    return tables.lookup_int(prepared_model_point(), "premium_top_up_t")
 
 
 def entry_charge_rate():
@@ -618,7 +618,7 @@ def entry_charge_rate():
     for any eurocroissance support.  It is deducted **before** rights are created, which
     is why the guarantee is a percentage of *net* *versements* — see :func:`mg`.
     """
-    return float(model_point()["entry_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "entry_charge_rate")
 
 
 def parts_charge_rate():
@@ -629,7 +629,7 @@ def parts_charge_rate():
     levy only in an auxiliary account holding no 1° engagements, and no base permits any
     levy on the *provision mathématique*.
     """
-    return float(model_point()["parts_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "parts_charge_rate")
 
 
 def perf_charge_rate():
@@ -639,7 +639,7 @@ def perf_charge_rate():
     anniversary, and nothing at all on a negative one — which is why the worked example's
     policy-year-6 performance levy, at month ``t`` = 71, is zero.
     """
-    return float(model_point()["perf_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "perf_charge_rate")
 
 
 def exit_charge_rate():
@@ -648,7 +648,7 @@ def exit_charge_rate():
     Zero in the reference configuration — the code permits it and neither retrieved
     insurer shows one.
     """
-    return float(model_point()["exit_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "exit_charge_rate")
 
 
 def surrender_indemnity_rate():
@@ -659,7 +659,7 @@ def surrender_indemnity_rate():
     been in force more than ten years — a permission, not a prohibition.
     :func:`surrender_indemnity` takes that permission up unconditionally **[std]**.
     """
-    return float(model_point()["surrender_indemnity_rate"])
+    return tables.lookup_float(prepared_model_point(), "surrender_indemnity_rate")
 
 
 def part_value_init():
@@ -669,7 +669,7 @@ def part_value_init():
     assumption: what matters is the ratio of the part value to its floor, since that is
     how far the diversification provision can fall before the floor binds.
     """
-    return float(model_point()["part_value_init"])
+    return tables.lookup_float(prepared_model_point(), "part_value_init")
 
 
 def min_part_value():
@@ -682,7 +682,7 @@ def min_part_value():
     the insurer must start contributing assets.  Without it the worked example's Chassis A
     ``prov_div`` would go to **-1,095.35** at the anniversary of policy year 6, ``t`` = 71.
     """
-    return float(model_point()["min_part_value"])
+    return tables.lookup_float(prepared_model_point(), "min_part_value")
 
 
 def lock_up_years():
@@ -691,7 +691,7 @@ def lock_up_years():
     Zero in the reference configuration.  The L. 132-23 hardship exits are not separately
     modelled **[std]**.
     """
-    v = int(model_point()["lock_up_years"])
+    v = tables.lookup_int(prepared_model_point(), "lock_up_years")
     if v > min(policy_term(), lock_up_cap):                          # noqa: F821
         raise ValueError("lock_up_years exceeds the R. 134-5 cap")
     return v
@@ -704,7 +704,7 @@ def death_floor_flag():
     floored at cumulative net *versements*.  It is not the maturity guarantee and does not
     become payable because the saver died before the *échéance*.
     """
-    return bool(model_point()["death_floor_flag"])
+    return tables.lookup_bool(prepared_model_point(), "death_floor_flag")
 
 
 def annuity_option_flag():
@@ -715,7 +715,7 @@ def annuity_option_flag():
     projection that continues past the *échéance*.  No shipped model point elects it, and
     a cell that did raises rather than being paid a lump sum in silence.
     """
-    v = bool(model_point()["annuity_option_flag"])
+    v = tables.lookup_bool(prepared_model_point(), "annuity_option_flag")
     if v:
         raise ValueError("the rente viagère option at the échéance is out of scope")
     return v
@@ -727,7 +727,7 @@ def wd_factor():
     The worked example takes none, which is what lets its provision path be read as the
     cash flow path.
     """
-    return float(model_point()["wd_factor"])
+    return tables.lookup_float(prepared_model_point(), "wd_factor")
 
 
 def apport_rate():
@@ -737,12 +737,12 @@ def apport_rate():
     and **endows the PCDD**; it is never credited to the savers' diversification
     provision, and switching it on changes no policyholder value by one cent.
     """
-    return float(model_point()["apport_rate"])
+    return tables.lookup_float(prepared_model_point(), "apport_rate")
 
 
 def apport_year():
     """The policy year at whose end the *apport d'actifs* is made; 0 if none."""
-    return int(model_point()["apport_t"])
+    return tables.lookup_int(prepared_model_point(), "apport_t")
 
 
 def decrement_basis():
@@ -753,7 +753,7 @@ def decrement_basis():
     the per-policy provision path **is** the cash flow path, which is what makes the
     notes' two tables readable as provisions rather than as expected values.
     """
-    v = model_point()["decrement_basis"]
+    v = tables.lookup_object(prepared_model_point(), "decrement_basis")
     if v not in ("table", "none"):
         raise ValueError("invalid decrement_basis: " + str(v))
     return v
@@ -768,7 +768,7 @@ def scenario():
     visible, and pairing an equity fall with an unchanged curve would understate the
     *provision mathématique* by the whole rate effect.
     """
-    return model_point()["scenario"]
+    return tables.lookup_object(prepared_model_point(), "scenario")
 
 
 def own_assets_init():
@@ -778,17 +778,17 @@ def own_assets_init():
     contribution, which is not the savers' money.  Zero on a new-business cell, where
     :func:`own_assets` seeds from the initial net *versement* instead.
     """
-    return float(model_point()["own_assets_ifo"])
+    return tables.lookup_float(prepared_model_point(), "own_assets_ifo")
 
 
 def parts_init():
     """N: the number of *parts de provision de diversification* at the valuation date."""
-    return float(model_point()["parts_ifo"])
+    return tables.lookup_float(prepared_model_point(), "parts_ifo")
 
 
 def mg_init():
     """mg: the guaranteed amount payable at the *échéance*, at the valuation date."""
-    return float(model_point()["mg_ifo"])
+    return tables.lookup_float(prepared_model_point(), "mg_ifo")
 
 
 def pm_init():
@@ -799,17 +799,17 @@ def pm_init():
     a projection cannot roll it forward — it is re-derived every year, and comparing the
     two is how a reader discovers an extract built by accumulation.
     """
-    return float(model_point()["pm_ifo"])
+    return tables.lookup_float(prepared_model_point(), "pm_ifo")
 
 
 def cum_prem_net_init():
     """The cumulative net *versements* at the valuation date: the death-floor base."""
-    return float(model_point()["cum_prem_net_ifo"])
+    return tables.lookup_float(prepared_model_point(), "cum_prem_net_ifo")
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_start():
@@ -2653,6 +2653,11 @@ def result_provisions():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2705,3 +2710,5 @@ inforce_tol = 0.005
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

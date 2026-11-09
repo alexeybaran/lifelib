@@ -316,7 +316,7 @@ def status():
     price the contract: that always runs from inception as an active life, because the
     *Bruttobeitrag* was struck there.
     """
-    v = model_point()["status"]
+    v = tables.lookup_object(prepared_model_point(), "status")
     if v not in ("aktiv", "leistung"):
         raise ValueError("invalid status")
     return v
@@ -330,7 +330,7 @@ def entry_age():
     here.  An implementation on real dates carries a fractional offset of at most one
     year.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -343,7 +343,7 @@ def sex():
     tariff embeds a mix assumption the insurer bears the risk of.  Model points 1 and 2
     differ in this attribute alone, and their frames are identical.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -351,7 +351,7 @@ def sex():
 
 def berufsgruppe():
     """The occupational rating class, BG1 - BG5; the key into *occupation_table.csv*."""
-    return model_point()["berufsgruppe"]
+    return tables.lookup_object(prepared_model_point(), "berufsgruppe")
 
 
 def occ_factor():
@@ -374,7 +374,7 @@ def bu_rente_mth():
     *Angemessenheitsgrenze* capping it at 60-70 % of gross income, which is a
     underwriting rule rather than a projection parameter and is not modelled.
     """
-    return float(model_point()["bu_rente_mth"])
+    return tables.lookup_float(prepared_model_point(), "bu_rente_mth")
 
 
 def cover_end_age():
@@ -385,7 +385,7 @@ def cover_end_age():
     inception rate accelerates from the mid-forties and cutting the *Endalter* removes
     the most expensive years of cover.
     """
-    return int(model_point()["cover_end_age"])
+    return tables.lookup_int(prepared_model_point(), "cover_end_age")
 
 
 def benefit_end_age():
@@ -397,7 +397,7 @@ def benefit_end_age():
     claim-maintenance cost are zero and **the disabled mass is held rather than deleted**,
     so both state identities still close.
     """
-    return int(model_point()["benefit_end_age"])
+    return tables.lookup_int(prepared_model_point(), "benefit_end_age")
 
 
 def karenz_months():
@@ -408,7 +408,7 @@ def karenz_months():
     Cohorts at duration ``z <= K`` are *berufsunfaehig*, are **not** paid, and **still
     pay premium**, because the *Beitragsbefreiung* runs with the benefit **[std]**.
     """
-    return int(model_point()["karenz_months"])
+    return tables.lookup_int(prepared_model_point(), "karenz_months")
 
 
 def leistungsdyn_rate():
@@ -417,7 +417,7 @@ def leistungsdyn_rate():
     Steps on each anniversary of the **onset**, not of the policy.  Compounding 2 % over
     a claim that can run thirty years raises the final payment to about 1.70x the first.
     """
-    return float(model_point()["leistungsdyn_rate"])
+    return tables.lookup_float(prepared_model_point(), "leistungsdyn_rate")
 
 
 def premium_form():
@@ -431,7 +431,7 @@ def premium_form():
     reached, so a given increase buys less than proportional cover; the direction is
     recorded rather than corrected.
     """
-    v = model_point()["premium_form"]
+    v = tables.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("level", "dynamik"):
         raise ValueError("invalid premium_form")
     return v
@@ -447,7 +447,7 @@ def beitragsdyn_rate():
     """
     if premium_form() == "level":
         return 0.0
-    return float(model_point()["beitragsdyn_rate"])
+    return tables.lookup_float(prepared_model_point(), "beitragsdyn_rate")
 
 
 def prem_mode():
@@ -456,7 +456,7 @@ def prem_mode():
     The key into *freq_loading_table.csv*, which supplies both the months between
     instalments and the *Ratenzahlungszuschlag*.
     """
-    v = model_point()["prem_mode"]
+    v = tables.lookup_object(prepared_model_point(), "prem_mode")
     if v not in ("annual", "half_yearly", "quarterly", "monthly"):
         raise ValueError("invalid prem_mode")
     return v
@@ -492,7 +492,7 @@ def gross_prem_ann():
     card; no German BU rate card of any kind was obtained for this library, so the
     derivation is the default and the override is the exception.
     """
-    return float(model_point()["gross_prem_ann"])
+    return tables.lookup_float(prepared_model_point(), "gross_prem_ann")
 
 
 def beitragsverrechnung():
@@ -506,7 +506,7 @@ def beitragsverrechnung():
     *Bruttobeitrag* and no further, and across the recalled range collected premium moves
     by more than 40 % either way.
     """
-    return float(model_point()["beitragsverrechnung"])
+    return tables.lookup_float(prepared_model_point(), "beitragsverrechnung")
 
 
 def risk_factor():
@@ -517,7 +517,7 @@ def risk_factor():
     projected above its own modelled cost.  Contrast :func:`occ_factor`, which loads the
     inception rate and so moves every claim and every decrement.
     """
-    return float(model_point()["risk_factor"])
+    return tables.lookup_float(prepared_model_point(), "risk_factor")
 
 
 def au_klausel():
@@ -528,7 +528,7 @@ def au_klausel():
     :func:`au_uplift`, which ships at 1.00 everywhere, so the switch is demonstrably inert
     until a user supplies a number.
     """
-    return bool(model_point()["au_klausel"])
+    return tables.lookup_bool(prepared_model_point(), "au_klausel")
 
 
 def au_uplift():
@@ -541,7 +541,7 @@ def au_uplift():
     """
     if not au_klausel():
         return 1.0
-    return float(model_point()["au_uplift"])
+    return tables.lookup_float(prepared_model_point(), "au_uplift")
 
 
 def wiedereingliederung_months():
@@ -551,7 +551,7 @@ def wiedereingliederung_months():
     never returns to work and is paid nothing.  Paying it on every recovery instead
     overstates it, and the difference is exactly the run-off's own mortality.
     """
-    return int(model_point()["wiedereingliederung_months"])
+    return tables.lookup_int(prepared_model_point(), "wiedereingliederung_months")
 
 
 def duration_init_months():
@@ -563,7 +563,7 @@ def duration_init_months():
     date is a numbered pitfall.  It does *not* touch the first-order shadow, which always
     runs from inception.
     """
-    return int(model_point()["duration_init_months"])
+    return tables.lookup_int(prepared_model_point(), "duration_init_months")
 
 
 def claim_duration_init():
@@ -571,7 +571,7 @@ def claim_duration_init():
 
     Zero on every ``aktiv`` point.  See :func:`seed_claim_dur` for the cohort it seeds.
     """
-    return int(model_point()["claim_duration_init"])
+    return tables.lookup_int(prepared_model_point(), "claim_duration_init")
 
 
 def pols_if_init():
@@ -2131,6 +2131,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2167,3 +2172,5 @@ roll_fwd_tol = 1e-10
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

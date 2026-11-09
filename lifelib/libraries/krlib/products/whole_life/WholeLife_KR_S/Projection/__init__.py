@@ -332,7 +332,7 @@ def sex():
     female issue-age ceiling is 3 to 8 years higher at the same payment term everywhere it
     is stated.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -349,7 +349,7 @@ def age_at_entry():
     is much lower than Japan's 80, and the minimum of 15 is statutory: 상법 제732조 voids a
     contract on the death of a person under 15.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -361,7 +361,7 @@ def sum_assured():
     decrement.  The 체증형, 체감형, 전환나이-step and max(가입금액, premiums x ratio)
     shapes are all real in the market and all excluded from the composite.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def prem_term():
@@ -374,7 +374,7 @@ def prem_term():
     the suppressed period runs for life and the cliff never occurs; use :func:`prem_period`
     for the effective number of years.
     """
-    return int(model_point()["prem_term"])
+    return tables.lookup_int(prepared_model_point(), "prem_term")
 
 
 def prem_period():
@@ -441,7 +441,7 @@ def premium_pp():
     at the anchor because 1억원 is well above the 3,000만원 threshold [S1]; a model applying
     the discount again would double-count it.
     """
-    return float(model_point()["premium_annual"])
+    return tables.lookup_float(prepared_model_point(), "premium_annual")
 
 
 def prem_susp_ratio():
@@ -456,7 +456,7 @@ def prem_susp_ratio():
     product, and is best read as an illustration of returning the whole give-up as premium
     rather than as a market observation.
     """
-    return float(model_point()["prem_susp_ratio"])
+    return tables.lookup_float(prepared_model_point(), "prem_susp_ratio")
 
 
 def cv_floor_ratio():
@@ -470,7 +470,7 @@ def cv_floor_ratio():
     design at exactly 50% sits at the threshold rather than under it [REG-R19].  The 0.30
     and 0.00 columns are shipped so the cliff can be seen at all three depths.
     """
-    k = float(model_point()["cv_floor_ratio"])
+    k = tables.lookup_float(prepared_model_point(), "cv_floor_ratio")
     if not 0.0 <= k <= 1.0:
         raise ValueError("cv_floor_ratio must lie in [0, 1]")
     return k
@@ -483,7 +483,7 @@ def int_basis():
     complete cash values are 금리확정형 [S8], and the one full 약관 retrieved is a 유니버셜
     contract whose account mechanics belong to ``Pension_KR_S`` and ``VA_KR_S`` [S5].
     """
-    v = model_point()["int_basis"]
+    v = tables.lookup_object(prepared_model_point(), "int_basis")
     if v not in ("fixed", "linked"):
         raise ValueError("invalid int_basis")
     return v
@@ -500,7 +500,7 @@ def decl_rate():
     function of a yield curve.  The shipped value on the 금리연동형 point is 2.75%, the
     평균공시이율 in force before its 2026 fall to 2.50% [S10] [REG-R48].
     """
-    return float(model_point()["decl_rate"])
+    return tables.lookup_float(prepared_model_point(), "decl_rate")
 
 
 def acc_int_rate():
@@ -520,7 +520,7 @@ def acc_int_rate():
 
 def lapse_basis():
     """The lapse basis in force: ``loglinear`` (the FSS 원칙모형) or ``flat``."""
-    v = model_point()["lapse_basis"]
+    v = tables.lookup_object(prepared_model_point(), "lapse_basis")
     if v not in tuple(data.lapse_table().index):                     # noqa: F821
         raise ValueError("invalid lapse_basis")
     return v
@@ -537,7 +537,7 @@ def mort_be_factor():
     cells and not at all at female 20 - which brackets the
     level rather than fixing it.  A production basis would move claims proportionately.
     """
-    return float(model_point()["mort_be_factor"])
+    return tables.lookup_float(prepared_model_point(), "mort_be_factor")
 
 
 def waiver_rate(t):
@@ -553,7 +553,7 @@ def waiver_rate(t):
     """
     if t < 0 or policy_year(t) > prem_end():
         return 0.0
-    return float(model_point()["waiver_rate"])
+    return tables.lookup_float(prepared_model_point(), "waiver_rate")
 
 
 def waiver_rate_mth(t):
@@ -574,7 +574,7 @@ def loan_util():
     so both this and :func:`loan_year` are **[std]** model point inputs; the limit and the
     rate are sourced.
     """
-    return float(model_point()["loan_util"])
+    return tables.lookup_float(prepared_model_point(), "loan_util")
 
 
 def loan_year():
@@ -590,7 +590,7 @@ def loan_year():
     year 1 is rejected: the draw is made off the value at the anniversary it falls on, and at
     ``d = 0`` there is none.
     """
-    v = int(model_point()["loan_year"])
+    v = tables.lookup_int(prepared_model_point(), "loan_year")
     if v == 1:
         raise ValueError("loan_year must be 0 or at least 2")
     return v
@@ -607,7 +607,7 @@ def bonus_rate():
     it, because the supervisor requires an additional lapse of at least 30% at the bonus
     date [REG-R27].
     """
-    return float(model_point()["bonus_rate"])
+    return tables.lookup_float(prepared_model_point(), "bonus_rate")
 
 
 def reduce_year():
@@ -624,7 +624,7 @@ def reduce_year():
     contract that is not a caveat but the main event — a reduction made during 납입기간 pays
     at ``k W(t)``, and on a 무해지 contract it pays nothing.
     """
-    v = int(model_point()["reduce_year"])
+    v = tables.lookup_int(prepared_model_point(), "reduce_year")
     if v < 0:
         raise ValueError("reduce_year must be 0 or positive")
     return v
@@ -638,7 +638,7 @@ def reduce_frac():
     보험가입금액.  The 약관's own worked example restates 이미 납입한 보험료 by the ratio of
     the post- to the pre-reduction 계약자적립금 [S5 제20조].
     """
-    f = float(model_point()["reduce_frac"])
+    f = tables.lookup_float(prepared_model_point(), "reduce_frac")
     if not 0.0 <= f < 1.0:
         raise ValueError("reduce_frac must lie in [0, 1)")
     return f
@@ -659,7 +659,7 @@ def reinstate_rate():
     module exists to produce is a lapse that is **not** paid a surrender value, which is the
     substantive effect.
     """
-    return float(model_point()["reinstate_rate"])
+    return tables.lookup_float(prepared_model_point(), "reinstate_rate")
 
 
 def pols_if_init():
@@ -2012,6 +2012,11 @@ def result_val():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2066,3 +2071,5 @@ val_tol = 1e-07
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

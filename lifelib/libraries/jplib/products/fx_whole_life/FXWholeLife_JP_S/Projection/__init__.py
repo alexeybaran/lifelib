@@ -336,7 +336,7 @@ def shape():
     to US dollars each month, is a different cash-flow object and is out of scope; a
     model point naming it is rejected here.
     """
-    v = model_point()["shape"]
+    v = tables.lookup_object(prepared_model_point(), "shape")
     if v not in ("LEVEL", "SINGLE"):
         raise ValueError("invalid shape: " + str(v))
     return v
@@ -344,7 +344,7 @@ def shape():
 
 def sex():
     """The sex (M / F) of the insured; the two are rated separately [S2]."""
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex: " + str(v))
     return v
@@ -358,7 +358,7 @@ def issue_age():
     (nearest-birthday) basis and is read here at the 満年齢 attained age with no
     adjustment **[std]**, as the savings chassis does.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def currency():
@@ -368,7 +368,7 @@ def currency():
     the composite is built on are USD tables, so the reference implementation writes
     USD and rejects anything else by name rather than silently pricing it.
     """
-    v = model_point()["currency"]
+    v = tables.lookup_object(prepared_model_point(), "currency")
     if v != "USD":
         raise ValueError("only USD is in scope: " + str(v))
     return v
@@ -380,7 +380,7 @@ def sum_assured():
     On the SINGLE shape it equals the 一時払保険料 at issue and never binds, because that
     shape's death benefit is ``max(積立金, 解約返戻金)`` with no sum assured above the fund.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mth_pp():
@@ -392,12 +392,12 @@ def premium_mth_pp():
     exactly that cell, and the same booklet publishes 225.00 for the 低解約返戻金特則 form.
     Zero on the SINGLE shape.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def single_premium():
     """The 一時払保険料 in US dollars on the SINGLE shape; zero on the LEVEL shape."""
-    return float(model_point()["single_premium"])
+    return tables.lookup_float(prepared_model_point(), "single_premium")
 
 
 def prem_months():
@@ -406,7 +406,7 @@ def prem_months():
     ``0`` denotes 終身払, for which no 払込満了 exists; :func:`prem_months_eff` resolves it
     against the projection horizon.  ``240`` on the anchor cell is 60歳払込満了.
     """
-    return int(model_point()["prem_months"])
+    return tables.lookup_int(prepared_model_point(), "prem_months")
 
 
 def credit_rate():
@@ -418,7 +418,7 @@ def credit_rate():
     the declared-rate history is not machine-fetchable.  On the SINGLE shape it is a
     rate actually declared in the market and fixed for the whole 積立利率適用期間.
     """
-    return float(model_point()["credit_rate"])
+    return tables.lookup_float(prepared_model_point(), "credit_rate")
 
 
 def guar_floor():
@@ -428,7 +428,7 @@ def guar_floor():
     also defines the 増加死亡保険金額 benchmark; 0.01% on the SINGLE shape, which is a floor
     in name only because that shape resets its rate every 積立利率適用期間.
     """
-    return float(model_point()["guar_floor"])
+    return tables.lookup_float(prepared_model_point(), "guar_floor")
 
 
 def rate_period_y():
@@ -438,7 +438,7 @@ def rate_period_y():
     rate table is published, and the reconstruction in :func:`mva_rate` is anchored on
     that table.
     """
-    return int(model_point()["rate_period_y"])
+    return tables.lookup_int(prepared_model_point(), "rate_period_y")
 
 
 def mva_delta(t):
@@ -450,7 +450,7 @@ def mva_delta(t):
     charges a small positive adjustment.  Model point 4 runs it at -1.0%, where the
     adjustment turns negative and *raises* the surrender value.
     """
-    return float(model_point()["mva_delta"])
+    return tables.lookup_float(prepared_model_point(), "mva_delta")
 
 
 def low_cv():
@@ -460,7 +460,7 @@ def low_cv():
     contract, which has no 払込満了 — a model point combining the two is rejected here
     rather than given an arbitrary release date.
     """
-    v = bool(model_point()["low_cv"])
+    v = tables.lookup_bool(prepared_model_point(), "low_cv")
     if v and shape() == "LEVEL" and prem_months() == 0:
         raise ValueError("低解約返戻金特則 has no 払込満了 to release at on a 終身払 contract")
     return v
@@ -473,7 +473,7 @@ def idb_ratchet():
     is **[unverified]** and carried as a switch.  It is on in the base run and makes no
     difference there, because the uplift is identically zero at the floor.
     """
-    return bool(model_point()["idb_ratchet"])
+    return tables.lookup_bool(prepared_model_point(), "idb_ratchet")
 
 
 def idb_basis():
@@ -490,7 +490,7 @@ def idb_basis():
         premiums, on the same charge basis: :func:`av0_pro_pp`.  See the Space
         docstring for why this is the switch and not the base.
     """
-    v = model_point()["idb_basis"]
+    v = tables.lookup_object(prepared_model_point(), "idb_basis")
     if v not in ("fund", "prospective"):
         raise ValueError("invalid idb_basis: " + str(v))
     return v
@@ -509,7 +509,7 @@ def target_on():
     whose documents carry it could not be fetched at all.  The *mechanic* is verified;
     only the name is not.
     """
-    v = bool(model_point()["target_on"])
+    v = tables.lookup_bool(prepared_model_point(), "target_on")
     if v and shape() != "SINGLE":
         raise ValueError("the target-value rider is a SINGLE-shape option")
     return v
@@ -522,7 +522,7 @@ def target_g():
     two-and-a-half-year average holding period can actually reach.  The target is
     measured against the yen-converted premium, so a weaker yen alone can trigger it.
     """
-    return float(model_point()["target_g"])
+    return tables.lookup_float(prepared_model_point(), "target_g")
 
 
 def target_action():
@@ -533,7 +533,7 @@ def target_action():
     the hit and the same product immediately re-sold to the same customer.  The
     contract and the evidence disagree and the choice is the user's.
     """
-    v = model_point()["target_action"]
+    v = tables.lookup_object(prepared_model_point(), "target_action")
     if v not in ("convert", "surrender", "none"):
         raise ValueError("invalid target_action: " + str(v))
     if target_on() and v == "none":
@@ -547,7 +547,7 @@ def dyn_lapse():
     SINGLE shape only, because the yen profit it keys on is measured against a single
     premium actually paid at a known rate.
     """
-    v = bool(model_point()["dyn_lapse"])
+    v = tables.lookup_bool(prepared_model_point(), "dyn_lapse")
     if v and shape() != "SINGLE":
         raise ValueError("dynamic surrender is specified on the SINGLE shape only")
     return v
@@ -561,7 +561,7 @@ def apl_on():
     model point carrying a premium-default decrement is modelling a contract that does
     not exist, and is rejected here.
     """
-    v = bool(model_point()["apl_on"])
+    v = tables.lookup_bool(prepared_model_point(), "apl_on")
     if v and shape() == "SINGLE":
         raise ValueError("the APL is structurally absent on the SINGLE shape")
     return v
@@ -569,12 +569,12 @@ def apl_on():
 
 def yen_in():
     """Whether the 円入金特約 is attached, so premiums are paid in yen at ``e + s``."""
-    return bool(model_point()["yen_in"])
+    return tables.lookup_bool(prepared_model_point(), "yen_in")
 
 
 def yen_out():
     """Whether the 円支払特約 is attached, so benefits are paid in yen at ``e - s``."""
-    return bool(model_point()["yen_out"])
+    return tables.lookup_bool(prepared_model_point(), "yen_out")
 
 
 def fx_ttm():
@@ -584,7 +584,7 @@ def fx_ttm():
     this library models contractual cash flows, not an FX view, and a projected
     currency path would be an economic assumption dressed as a product feature.
     """
-    return float(model_point()["fx_ttm"])
+    return tables.lookup_float(prepared_model_point(), "fx_ttm")
 
 
 def fx_spread():
@@ -595,12 +595,12 @@ def fx_spread():
     carrier warns that a loss can arise with no exchange-rate movement at all.  Zero
     where neither yen rider is attached.
     """
-    return float(model_point()["fx_spread"])
+    return tables.lookup_float(prepared_model_point(), "fx_spread")
 
 
 def fx_path():
     """Whether :func:`fx_rate` reads the path table instead of holding ``fx_ttm`` flat."""
-    return bool(model_point()["fx_path"])
+    return tables.lookup_bool(prepared_model_point(), "fx_path")
 
 
 def mort_be_factor():
@@ -610,7 +610,7 @@ def mort_be_factor():
     best-estimate basis is a **[std]** adjustment of it.  This lever moves
     :func:`mort_rate` and must never move :func:`coi_rate`; see the Space docstring.
     """
-    return float(model_point()["mort_adj"])
+    return tables.lookup_float(prepared_model_point(), "mort_adj")
 
 
 def omega_age():
@@ -1759,6 +1759,11 @@ def result_av():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1805,3 +1810,5 @@ comm_trail_years = 7
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

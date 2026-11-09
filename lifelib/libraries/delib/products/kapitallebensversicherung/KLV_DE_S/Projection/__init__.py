@@ -410,7 +410,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point, e.g. ``DE-KLV-0001``."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -423,7 +423,7 @@ def sex():
     prices every point on its own ``sex`` row only through the *decrements*, which is what
     model points 1 and 7 exist to make visible.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -437,7 +437,7 @@ def smoker():
     through a formula: DAV 2008 T R / NR exist for smoker-differentiated pricing but are not
     public, and no German insurer publishes a loading scale.
     """
-    v = model_point()["smoker"]
+    v = tables.lookup_object(prepared_model_point(), "smoker")
     if v not in ("N", "S"):
         raise ValueError("invalid smoker")
     return v
@@ -451,7 +451,7 @@ def issue_year():
     4,00 % guarantee on a 2026 issue year is not a stress, it is a data error - which is why
     :func:`check_rechnungszins_cap` is a model invariant rather than a build script.
     """
-    return int(model_point()["issue_year"])
+    return tables.lookup_int(prepared_model_point(), "issue_year")
 
 
 def issue_age():
@@ -461,7 +461,7 @@ def issue_age():
     standardization.  On this annual grid an implementation on real dates carries a
     fractional offset of at most one year.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def duration_init():
@@ -473,7 +473,7 @@ def duration_init():
     both long ago.  Model point 10 carries 14, and its frame therefore opens at ``t = 14``,
     the fifteenth policy year.
     """
-    return int(model_point()["duration_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_init")
 
 
 def pols_if_init():
@@ -483,7 +483,7 @@ def pols_if_init():
     written as a literal because it is the scale of the roll-forward tolerances and because
     ``result_cf()``'s first ``pols_if`` must equal it exactly.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def policy_term():
@@ -492,7 +492,7 @@ def policy_term():
     The *Ablauf* falls at the end of the last policy year, index ``n - 1`` on the frame, and
     the *Erlebensfallleistung* is paid there to the survivors of that year's mortality.
     """
-    return int(model_point()["policy_term"])
+    return tables.lookup_int(prepared_model_point(), "policy_term")
 
 
 def prem_term():
@@ -504,7 +504,7 @@ def prem_term():
     Beitragszahlungsdauer*: premiums stop while cover runs on, and the reserve then rolls
     forward with no premium at all.
     """
-    return int(model_point()["prem_term"])
+    return tables.lookup_int(prepared_model_point(), "prem_term")
 
 
 def sum_assured():
@@ -514,7 +514,7 @@ def sum_assured():
     sum insured and the accrued *Schlussüberschussanteil*.  It is **not** what a paid-up
     contract receives; see :func:`bfz_si_pp`.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def death_ratio():
@@ -526,7 +526,7 @@ def death_ratio():
     the death sum must be at least 50 % of the *Beitragssumme*, which is a **model point
     design constraint** checked when the table is built and not a model formula.
     """
-    return float(model_point()["death_ratio"])
+    return tables.lookup_float(prepared_model_point(), "death_ratio")
 
 
 def prem_freq():
@@ -535,7 +535,7 @@ def prem_freq():
     ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``.  The frequency buys a
     *Ratenzahlungszuschlag* only where :func:`unterjaehrig_form` is ``unecht``.
     """
-    v = model_point()["prem_freq"]
+    v = tables.lookup_object(prepared_model_point(), "prem_freq")
     if v not in data.freq_loading_table().index:                     # noqa: F821
         raise ValueError("no frequency loading for prem_freq " + str(v))
     return v
@@ -550,7 +550,7 @@ def unterjaehrig_form():
     applies**.  Model points 4 and 5 are the same monthly contract under the two readings, and
     the distinction is entirely lost on a model that treats frequency as a single multiplier.
     """
-    v = model_point()["unterjaehrig_form"]
+    v = tables.lookup_object(prepared_model_point(), "unterjaehrig_form")
     if v not in ("echt", "unecht"):
         raise ValueError("invalid unterjaehrig_form")
     return v
@@ -564,7 +564,7 @@ def rechnungszins():
     model point carries 1,75 % while new business carries 1,00 %.  It must not exceed the
     cohort's :func:`hrz_max`; :func:`check_rechnungszins_cap` asserts it.
     """
-    return float(model_point()["rechnungszins"])
+    return tables.lookup_float(prepared_model_point(), "rechnungszins")
 
 
 def zillmer_on():
@@ -575,12 +575,12 @@ def zillmer_on():
     invariant of German practice.  It enters :func:`alpha_cost` and therefore the *reserve*;
     it does **not** enter the pricing equation, so the two editions cost the same.
     """
-    return int(model_point()["zillmer_on"])
+    return tables.lookup_int(prepared_model_point(), "zillmer_on")
 
 
 def cost_id():
     """The key into *cost_table.csv* naming this policy's loadings and expense basis."""
-    return model_point()["cost_id"]
+    return tables.lookup_object(prepared_model_point(), "cost_id")
 
 
 def surplus_use():
@@ -592,7 +592,7 @@ def surplus_use():
     ``ans_rate > rechnungszins``, the first pays more at maturity and the second more on an
     early death - the asymmetry the corpus records and pitfall 15 asserts.
     """
-    v = model_point()["surplus_use"]
+    v = tables.lookup_object(prepared_model_point(), "surplus_use")
     if v not in ("ansammlung", "bonus", "beitragsverrechnung"):
         raise ValueError("invalid surplus_use")
     return v
@@ -605,7 +605,7 @@ def scenario_id():
     annually and capable of being zero**, so it is a scenario rather than an assumption; the
     ``nil`` path is the sourced statement that the surplus may be zero euros, made runnable.
     """
-    return model_point()["scenario_id"]
+    return tables.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def rating_factor():
@@ -617,7 +617,7 @@ def rating_factor():
     :func:`mort_rate` are both invariant to it.  No German scale is public; model point 14
     carries 1.50 **[std]**.
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def av_sur_pp_init():
@@ -628,7 +628,7 @@ def av_sur_pp_init():
     provision *excluding verzinslich angesammelte Überschussanteile*, and the separation is
     the reason this balance is a cells of its own rather than part of :func:`res_pp`.
     """
-    return float(model_point()["av_sur_pp_init"])
+    return tables.lookup_float(prepared_model_point(), "av_sur_pp_init")
 
 
 def bonus_si_init():
@@ -638,7 +638,7 @@ def bonus_si_init():
     bought.  The column exists so that an in-force contract on that system can be projected
     without a formula change.
     """
-    return float(model_point()["bonus_si_init"])
+    return tables.lookup_float(prepared_model_point(), "bonus_si_init")
 
 
 def bfz_year():
@@ -661,7 +661,7 @@ def bfz_year():
     duration-dependent share to *beitragsfrei*, and this model shows that path only where a
     model point elects it.
     """
-    return int(model_point()["bfz_year"])
+    return tables.lookup_int(prepared_model_point(), "bfz_year")
 
 
 # --- the projection frame --------------------------------------------------
@@ -2565,6 +2565,11 @@ def result_surplus():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2595,3 +2600,5 @@ roll_fwd_tol = 1e-10
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

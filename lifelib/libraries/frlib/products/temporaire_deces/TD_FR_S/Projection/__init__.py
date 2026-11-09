@@ -454,7 +454,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return tables.lookup_object(prepared_model_point(), "policy_id")
 
 
 def premium_form():
@@ -467,7 +467,7 @@ def premium_form():
     structural lever in the model and the reason a *provision mathématique* exists on one
     form and not the other.
     """
-    v = model_point()["premium_form"]
+    v = tables.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("revisable", "constante"):
         raise ValueError("invalid premium_form")
     return v
@@ -483,7 +483,7 @@ def benefit_shape():
     :func:`benefit_factor`, which is the honest failure: the schedule is missing, not the
     formula.
     """
-    v = model_point()["benefit_shape"]
+    v = tables.lookup_object(prepared_model_point(), "benefit_shape")
     if v not in ("constant", "decreasing"):
         raise ValueError("invalid benefit_shape")
     return v
@@ -491,7 +491,7 @@ def benefit_shape():
 
 def benefit_schedule_id():
     """The key into *benefit_schedule.csv* naming this policy's benefit schedule."""
-    return model_point()["benefit_schedule_id"]
+    return tables.lookup_object(prepared_model_point(), "benefit_schedule_id")
 
 
 def sex():
@@ -504,7 +504,7 @@ def sex():
     basis is sex-dependent while the tariff may not be; ``products/rente_viagere/`` meets
     the same tension from the other side.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -518,7 +518,7 @@ def smoker():
     a formula: no French insurer publishes a smoker loading, or any *surprime* scale at
     all, so there is nothing to look up.
     """
-    v = model_point()["smoker"]
+    v = tables.lookup_object(prepared_model_point(), "smoker")
     if v not in ("N", "S"):
         raise ValueError("invalid smoker")
     return v
@@ -535,7 +535,7 @@ def issue_age():
     policy anniversary instead, so an implementation on real dates carries a fractional
     offset of at most one year **[std]**.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -547,7 +547,7 @@ def sum_assured():
     210 € against 250 € of acquisition expense **[std]** — on small capitals the expense
     assumption, not mortality, decides whether the cell is viable.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def cover_end_age():
@@ -555,7 +555,7 @@ def cover_end_age():
 
     Nothing is payable at that boundary: no maturity value, no renewal, no conversion.
     """
-    return int(model_point()["cover_end_age"])
+    return tables.lookup_int(prepared_model_point(), "cover_end_age")
 
 
 def ptia_end_age():
@@ -564,12 +564,12 @@ def ptia_end_age():
     Earlier in five of the eight retrieved carriers, and the model treats it as a hard
     gate on the attained age rather than a taper; see :func:`ptia_rate`.
     """
-    return int(model_point()["ptia_end_age"])
+    return tables.lookup_int(prepared_model_point(), "ptia_end_age")
 
 
 def premium_rate_id():
     """The key into *premium_rate_table.csv* naming this policy's rate card."""
-    return model_point()["premium_rate_id"]
+    return tables.lookup_object(prepared_model_point(), "premium_rate_id")
 
 
 def rating_factor():
@@ -581,7 +581,7 @@ def rating_factor():
     on borrower cover, which bounds a standard rate from above rather than giving one.
     Model point 5 carries 1.50 **[std]**.
     """
-    return float(model_point()["rating_factor"])
+    return tables.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def prem_freq():
@@ -591,7 +591,7 @@ def prem_freq():
     a percentage loading and a fixed euro fee — and they must not be conflated; see
     :func:`prem_pp`.
     """
-    v = model_point()["prem_freq"]
+    v = tables.lookup_object(prepared_model_point(), "prem_freq")
     if v not in data.freq_loading_table().index:                     # noqa: F821
         raise ValueError("no fractionation loading for prem_freq " + str(v))
     return v
@@ -604,7 +604,7 @@ def level_premium():
     ``P_lev`` by equivalence and model point 3 supplies 3 900,00 € directly, so both
     branches of :func:`prem_level_pp` are exercised.
     """
-    return float(model_point()["level_premium"])
+    return tables.lookup_float(prepared_model_point(), "level_premium")
 
 
 def waiting_period_y():
@@ -614,7 +614,7 @@ def waiting_period_y():
     pays nothing.  See the Space docstring for the arithmetic, which is **[std]**, and
     model point 9, which switches it on for one year.
     """
-    return int(model_point()["waiting_period_y"])
+    return tables.lookup_int(prepared_model_point(), "waiting_period_y")
 
 
 def accident_multiplier():
@@ -625,7 +625,7 @@ def accident_multiplier():
     another — not a uniform uplift on every claim.  With ``acc_share = 0`` in the base run
     it has **no effect on any cash flow**, which is the invariance model point 6 asserts.
     """
-    return float(model_point()["accident_multiplier"])
+    return tables.lookup_float(prepared_model_point(), "accident_multiplier")
 
 
 def issue_date():
@@ -636,7 +636,7 @@ def issue_date():
     :func:`issue_age` and nothing else.  A real-dates implementation would need this cells
     and would carry the fractional offset :func:`issue_age` describes.
     """
-    return model_point()["issue_date"]
+    return tables.lookup_object(prepared_model_point(), "issue_date")
 
 
 def pols_if_init():
@@ -1748,6 +1748,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1790,3 +1795,5 @@ roll_fwd_tol = 1e-10
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

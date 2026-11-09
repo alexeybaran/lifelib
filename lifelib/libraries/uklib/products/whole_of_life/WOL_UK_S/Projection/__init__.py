@@ -239,7 +239,7 @@ def cell():
     The two cells share this engine and not their mortality basis, their lapse table,
     their expense levels or their benefit rules.  See the Space docstring.
     """
-    v = model_point()["cell"]
+    v = tables.lookup_object(prepared_model_point(), "cell")
     if v not in ("O50", "UW"):
         raise ValueError("invalid cell")
     return v
@@ -253,7 +253,7 @@ def age_at_entry():
     birthday", which is ALB, and the over-50s documents price on "age at outset" without
     stating a basis **[std]**.  All age lookups here are on that one basis.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -263,7 +263,7 @@ def sex():
     the rate factors and do not rate by sex, so on that cell this drives the shipped
     **[std]** proxy table and nothing contractual.
     """
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def smoker():
@@ -272,7 +272,7 @@ def smoker():
     The underwritten specimen distinguishes three smoking states; they are collapsed to
     two here **[std]**.
     """
-    return model_point()["smoker"]
+    return tables.lookup_object(prepared_model_point(), "smoker")
 
 
 def sum_assured():
@@ -281,7 +281,7 @@ def sum_assured():
     :func:`cover_pp` is the amount in force in a given month, which differs from this on
     the escalating variants.
     """
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mth():
@@ -291,7 +291,7 @@ def premium_mth():
     premium rate tables, so any shipped scale would be a **[std]** snapshot calibrated
     to the handful of public quote anchors.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def escalation():
@@ -301,7 +301,7 @@ def escalation():
     premium for each one percent of cover - and the over-50s RPI variant raises the cash
     sum by RPI capped at 10% and the premium by 1.5 x RPI capped at 15%.
     """
-    v = model_point()["escalation"]
+    v = tables.lookup_object(prepared_model_point(), "escalation")
     if v not in ("level", "fixed_5pct", "rpi"):
         raise ValueError("invalid escalation")
     return v
@@ -315,7 +315,7 @@ def cessation_mths():
     anniversary on or after the 90th birthday **[std]** and cover continues; the
     underwritten cell has no cessation at all.
     """
-    return int(model_point()["cessation_months"])
+    return tables.lookup_int(prepared_model_point(), "cessation_months")
 
 
 def moratorium_mths():
@@ -325,7 +325,7 @@ def moratorium_mths():
     The underwritten cell has a suicide clause over the same window instead, which is a
     different rule with a different denominator - see :func:`benefit_pp`.
     """
-    return int(model_point()["moratorium_months"])
+    return tables.lookup_int(prepared_model_point(), "moratorium_months")
 
 
 def adb_multiplier():
@@ -336,7 +336,7 @@ def adb_multiplier():
     already the full cash sum, so doubling it there - or applying the multiplier to all
     deaths - overstates outgo.
     """
-    return 2.0 if bool(model_point()["variant_adb_2x"]) else 1.0
+    return 2.0 if tables.lookup_bool(prepared_model_point(), "variant_adb_2x") else 1.0
 
 
 def pu_variant():
@@ -347,7 +347,7 @@ def pu_variant():
     since ``N_expected`` is measured to it; the underwritten cell has none, so the
     combination raises rather than dividing by zero.
     """
-    v = bool(model_point()["variant_paid_up"])
+    v = tables.lookup_bool(prepared_model_point(), "variant_paid_up")
     if v and cessation_mths() <= 0:
         raise ValueError("the pro-rata paid-up value needs a premium cessation date")
     return v
@@ -355,7 +355,7 @@ def pu_variant():
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -992,6 +992,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1044,3 +1049,5 @@ comm_init_rate = 0.25
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

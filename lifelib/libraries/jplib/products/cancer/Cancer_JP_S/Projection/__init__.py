@@ -328,7 +328,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def chassis():
@@ -340,7 +340,7 @@ def chassis():
     continuous across the renewal, so the projection horizon is unchanged; what the
     renewal really does is reprice, and that is the ``renew_reprice_rate`` switch.
     """
-    v = model_point()["chassis"]
+    v = tables.lookup_object(prepared_model_point(), "chassis")
     if v not in ("shushin", "teiki"):
         raise ValueError("invalid chassis")
     return v
@@ -355,7 +355,7 @@ def issue_age():
     half a year; the base run accepts the offset **[std]** and ``mort_age_offset`` is the
     switch that removes it.
     """
-    v = int(model_point()["issue_age"])
+    v = tables.lookup_int(prepared_model_point(), "issue_age")
     if not 20 <= v <= 75:
         raise ValueError("issue_age outside the composite's 20-75 range")
     return v
@@ -368,7 +368,7 @@ def sex():
     male and female incidence curves cross: female incidence is nearly three times male at
     35-39 and half of it at 70-74.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -381,7 +381,7 @@ def base_amount():
     because it is the amount at which the published multiples and the published ¥1,000,000
     headline diagnosis benefit are mutually consistent.
     """
-    return float(model_point()["base_amount"])
+    return tables.lookup_float(prepared_model_point(), "base_amount")
 
 
 def diag_benefit():
@@ -391,7 +391,7 @@ def diag_benefit():
     fresh 再発 / 転移 / 新生 once the cycle has expired, with **no lifetime cap** and no
     termination on payment.
     """
-    return float(model_point()["diag_benefit"])
+    return tables.lookup_float(prepared_model_point(), "diag_benefit")
 
 
 def cycle_months():
@@ -402,7 +402,7 @@ def cycle_months():
     the previous payment, and from the start date of the last hospitalisation; only the
     first needs no second date carried alongside, and it is the one modelled.
     """
-    return int(model_point()["cycle_months"])
+    return tables.lookup_int(prepared_model_point(), "cycle_months")
 
 
 def insitu_pct():
@@ -413,7 +413,7 @@ def insitu_pct():
     on its own cap, is not payable after a full-rate benefit, and does not trigger the
     premium waiver.
     """
-    return float(model_point()["insitu_pct"])
+    return tables.lookup_float(prepared_model_point(), "insitu_pct")
 
 
 def daily_amount():
@@ -423,7 +423,7 @@ def daily_amount():
     no 通算 lifetime limit** — the structural difference from the medical chassis, whose 60
     or 120-day and 1,095-day ledgers dominate its model.
     """
-    return float(model_point()["daily_amount"])
+    return tables.lookup_float(prepared_model_point(), "daily_amount")
 
 
 def surg_mult():
@@ -432,7 +432,7 @@ def surg_mult():
     Unlimited count; simultaneous procedures count as one.  Payable in full on 上皮内新生物 as
     well, which is why :func:`claims` ``(t, "SURGERY")`` has two limbs.
     """
-    return float(model_point()["surg_mult"])
+    return tables.lookup_float(prepared_model_point(), "surg_mult")
 
 
 def treat_benefit():
@@ -442,7 +442,7 @@ def treat_benefit():
     months pays one month, and two triggers in one month pay once.  Any formula in which a
     day count reaches this benefit is wrong by construction.
     """
-    return float(model_point()["treat_benefit"])
+    return tables.lookup_float(prepared_model_point(), "treat_benefit")
 
 
 def treat_cap():
@@ -454,7 +454,7 @@ def treat_cap():
     long-course minority — which is what a 60-month cap is for, and why
     :func:`treat_months` cannot be dropped as immaterial.
     """
-    return int(model_point()["treat_cap"])
+    return tables.lookup_int(prepared_model_point(), "treat_cap")
 
 
 def outp_daily():
@@ -464,7 +464,7 @@ def outp_daily():
     chemotherapy, not attendance for follow-up — and with no day limit.  Not payable for a
     day of attendance during a stay for which the inpatient benefit is paid.
     """
-    return float(model_point()["outp_daily"])
+    return tables.lookup_float(prepared_model_point(), "outp_daily")
 
 
 def wait_months():
@@ -474,7 +474,7 @@ def wait_months():
     calendar months instead.  On a monthly grid these are the same boundary **[std]** and
     the model does not claim a precision it does not have.
     """
-    return int(model_point()["wait_months"])
+    return tables.lookup_int(prepared_model_point(), "wait_months")
 
 
 def prem_period_type():
@@ -488,7 +488,7 @@ def prem_period_type():
     arises** on any retrieved contract; the 短期払 variant is the only route by which this
     chassis acquires a surrender value at all, which the model does not carry either way.
     """
-    v = model_point()["prem_period"]
+    v = tables.lookup_object(prepared_model_point(), "prem_period")
     if v not in ("whole_life", "to_65"):
         raise ValueError("invalid prem_period")
     return v
@@ -510,7 +510,7 @@ def premium_mth_pp():
     the anchor's ¥3,000 is a round modelling figure in that neighbourhood and no result in
     this library depends on its being a market rate.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def prem_mode():
@@ -520,7 +520,7 @@ def prem_mode():
     a monthly grid whose step *is* the payment interval.  It is also why the 90-day waiting
     period lands exactly on a grid boundary.
     """
-    return model_point()["prem_mode"]
+    return tables.lookup_object(prepared_model_point(), "prem_mode")
 
 
 def waiver_trigger():
@@ -534,7 +534,7 @@ def waiver_trigger():
     :func:`lapse_rate_canc_mth`.  The disability incidence itself is out of scope
     **[std scope]**: no basis for it appears in this product's source set.
     """
-    v = model_point()["waiver_trigger"]
+    v = tables.lookup_object(prepared_model_point(), "waiver_trigger")
     if v not in ("cancer_diag", "disability", "none"):
         raise ValueError("invalid waiver_trigger")
     return v
@@ -547,7 +547,7 @@ def adv_rider():
     top-up capped at ¥500,000 per 療養; the rider terminates when the cap is reached, which
     :func:`adv_pay` implements as a draw against :func:`adv_paid`.
     """
-    return bool(model_point()["adv_rider"])
+    return tables.lookup_bool(prepared_model_point(), "adv_rider")
 
 
 def disch_rider():
@@ -557,7 +557,7 @@ def disch_rider():
     technical notes carry the flag but not a formula for it, so the benefit is a **[std]**
     construction here; see the Space docstring and ``model.md``.
     """
-    return bool(model_point()["disch_rider"])
+    return tables.lookup_bool(prepared_model_point(), "disch_rider")
 
 
 def repeat_conditioned():
@@ -568,7 +568,7 @@ def repeat_conditioned():
     hospitalised at another — and the switch multiplies the relapse hazard by
     ``treat_prob``, so the two designs differ by an order of magnitude.
     """
-    return bool(model_point()["repeat_conditioned"])
+    return tables.lookup_bool(prepared_model_point(), "repeat_conditioned")
 
 
 # ===== Cells: the projection frame =====
@@ -1742,6 +1742,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1826,3 +1831,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

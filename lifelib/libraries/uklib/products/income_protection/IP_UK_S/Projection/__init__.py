@@ -298,7 +298,7 @@ def age_at_entry():
     anniversary.  The worked example is level cover, where the distinction does not
     arise.
     """
-    return int(model_point()["entry_age"])
+    return tables.lookup_int(prepared_model_point(), "entry_age")
 
 
 def sex():
@@ -307,12 +307,12 @@ def sex():
     Not a smoker split: the IP11 rate structure is sex, deferred period and occupation
     class, and any smoker differentiation sits in insurer pricing, which is not public.
     """
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def occ_class():
     """The CMI occupation class, OC1 to OC4 [R1]; 1 is the lightest."""
-    v = int(model_point()["occ_class"])
+    v = tables.lookup_int(prepared_model_point(), "occ_class")
     if v not in (1, 2, 3, 4):
         raise ValueError("invalid occ_class")
     return v
@@ -325,7 +325,7 @@ def deferred_weeks():
     the deferred period enters through :func:`inception_rate` and nowhere else.  See the
     Space docstring.
     """
-    v = int(model_point()["deferred_weeks"])
+    v = tables.lookup_int(prepared_model_point(), "deferred_weeks")
     if v not in (4, 8, 13, 26, 52):
         raise ValueError("invalid deferred_weeks")
     return v
@@ -337,22 +337,22 @@ def benefit_mth():
     ``B(y)`` is indexed by the contractual policy year ``y = policy_year(t)``, which is
     1-based; this is its value at ``t = 0``.
     """
-    return float(model_point()["benefit_mth"])
+    return tables.lookup_float(prepared_model_point(), "benefit_mth")
 
 
 def earnings_annual():
     """The annual earnings on the underwriting record, which cap the benefit."""
-    return float(model_point()["earnings_annual"])
+    return tables.lookup_float(prepared_model_point(), "earnings_annual")
 
 
 def expiry_age():
     """The age at which all cover and any claim in payment cease, 50-70 [S1][S3][S5]."""
-    return int(model_point()["expiry_age"])
+    return tables.lookup_int(prepared_model_point(), "expiry_age")
 
 
 def escalation():
     """``RPI`` or ``none``: whether the escalation option is elected [S1][S2]."""
-    v = model_point()["escalation"]
+    v = tables.lookup_object(prepared_model_point(), "escalation")
     if v not in ("RPI", "none"):
         raise ValueError("invalid escalation")
     return v
@@ -366,7 +366,7 @@ def premium_mth():
     [S1][S3][S5][S7].  Its value at ``t = 0``; ``P(y)`` is indexed by the 1-based
     contractual policy year.
     """
-    return float(model_point()["premium_mth"])
+    return tables.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_basis():
@@ -376,7 +376,7 @@ def premium_basis():
     contractual cap - but the review formulas are insurer-discretionary and undisclosed,
     so any reviewable model would need a **[std]** review rule that no source supports.
     """
-    v = model_point()["premium_basis"]
+    v = tables.lookup_object(prepared_model_point(), "premium_basis")
     if v != "guaranteed":
         raise ValueError("invalid premium_basis")
     return v
@@ -388,7 +388,7 @@ def status():
     An in-force portfolio needs both kinds of cell: active lives, and claims already in
     payment carrying their claim duration as an attribute.
     """
-    v = model_point()["status"]
+    v = tables.lookup_object(prepared_model_point(), "status")
     if v not in ("active", "in_claim"):
         raise ValueError("invalid status")
     return v
@@ -412,7 +412,7 @@ def recovery_basis():
     full contract-boundary best estimate for the same policy carries the post-recovery
     active phase too.  See the Space docstring.
     """
-    v = model_point()["recovery_basis"]
+    v = tables.lookup_object(prepared_model_point(), "recovery_basis")
     if v not in ("return_to_h", "exit"):
         raise ValueError("invalid recovery_basis")
     return v
@@ -425,12 +425,12 @@ def claim_duration_months():
     seeded population enters cohort ``z0 + 1`` at ``t = 0``, since cohort 1 is a claim
     that has just started paying.
     """
-    return int(model_point()["claim_duration_months"])
+    return tables.lookup_int(prepared_model_point(), "claim_duration_months")
 
 
 def pols_if_init():
     """Initial number of policies; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -1160,6 +1160,11 @@ def result_states():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1208,3 +1213,5 @@ disc_rate = 0.03
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -277,7 +277,7 @@ def shape():
     election is irrevocable, is priced into the basis and is a model point column rather
     than a rider, because the three are three different liabilities.
     """
-    v = str(model_point()["shape"])
+    v = tables.lookup_str(prepared_model_point(), "shape")
     if v not in ("life", "inheritance", "certain"):
         raise ValueError("unknown payout shape: %s" % v)
     return v
@@ -290,7 +290,7 @@ def sex():
     annuity reads a mortality table at all.  The other two shapes still carry the sex,
     because their death benefit is projected on the same table.
     """
-    v = str(model_point()["sex"])
+    v = tables.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("unknown sex: %s" % v)
     return v
@@ -302,7 +302,7 @@ def age_at_entry():
     The representative issue-age band is 45 to 80.  There is no deferral on an 즉시연금, so
     the 연금개시나이 equals the 가입나이 and no separate attribute is carried for it.
     """
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def age(t):
@@ -342,7 +342,7 @@ def prem_pp():
     of the commission and — on the inheritance shape — of the 만기보험금, so a change to it
     moves every quantity in the model.
     """
-    return float(model_point()["prem_pp"])
+    return tables.lookup_float(prepared_model_point(), "prem_pp")
 
 
 def annuity_term():
@@ -355,7 +355,7 @@ def annuity_term():
     shapes, and it is what 97.3% of life-shape buyers and 77.6% of certain-shape buyers
     actually chose.
     """
-    v = int(model_point()["annuity_term"])
+    v = tables.lookup_int(prepared_model_point(), "annuity_term")
     if v < 1:
         raise ValueError("annuity_term must be at least one year")
     return v
@@ -372,7 +372,7 @@ def retention_basis():
     resources.  The switch is meaningful on the inheritance shape only and is ignored
     elsewhere.
     """
-    v = str(model_point()["retention_basis"])
+    v = tables.lookup_str(prepared_model_point(), "retention_basis")
     if v not in ("as_designed", "as_ordered"):
         raise ValueError("unknown retention basis: %s" % v)
     return v
@@ -387,7 +387,7 @@ def crediting_basis():
     duration; it is not a product a carrier sells, but it is the basis on which the anchor
     carrier publishes its 해약환급금 run, and it is what exercises the duration stepping.
     """
-    return str(model_point()["crediting_basis"])
+    return tables.lookup_str(prepared_model_point(), "crediting_basis")
 
 
 def lapse_rate(t):
@@ -410,7 +410,7 @@ def lapse_rate(t):
         return 0.0
     if t >= proj_len() - 12:
         return 0.0
-    return float(model_point()["lapse_rate"])
+    return tables.lookup_float(prepared_model_point(), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -434,7 +434,7 @@ def pols_if_init():
     monetary cells is per policy.  It is carried explicitly so that a model point standing
     for a cohort can be scaled without touching a formula.
     """
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def charge_basis():
@@ -1501,6 +1501,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1517,3 +1522,5 @@ val_tol = 1e-12
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

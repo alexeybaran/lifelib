@@ -165,7 +165,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def issue_age():
@@ -175,7 +175,7 @@ def issue_age():
     itself rather than of the chassis carrying it **[std]**.  The contract ages on 보험나이;
     see the Space docstring for why this model does not convert.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
@@ -184,7 +184,7 @@ def sex():
     It is the only rating factor besides age.  No smoker class, occupation class or amount
     band was disclosed on any long-term-care cover in any retrieved document.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -199,7 +199,7 @@ def term_age():
     rising — so the choice is materially conservative on claim cost, and 95 and 100 are
     shipped as model points.
     """
-    return int(model_point()["term_age"])
+    return tables.lookup_int(prepared_model_point(), "term_age")
 
 
 def prem_period_years():
@@ -210,7 +210,7 @@ def prem_period_years():
     a step at **납입완료**, and a 전기납 contract has no step because it has no 납입완료
     before maturity.
     """
-    return int(model_point()["prem_period_years"])
+    return tables.lookup_int(prepared_model_point(), "prem_period_years")
 
 
 def prem_period_mths():
@@ -226,7 +226,7 @@ def prem_mode():
     「연납보험료를 기준으로」 [REG-R18], which is how a Korean monthly-premium product
     reconciles a monthly grid with an annually-recursed account.
     """
-    v = str(model_point()["prem_mode"])
+    v = tables.lookup_str(prepared_model_point(), "prem_mode")
     if v != "monthly":
         raise ValueError("only 월납 is in scope")
     return v
@@ -241,7 +241,7 @@ def benefit_grade():
     not a re-scaling: at 1~5등급 the benefit is exposed to a population about 7.5 times
     larger and arriving materially earlier, which the market prices at about 4.5 : 1.
     """
-    v = str(model_point()["benefit_grade"])
+    v = tables.lookup_str(prepared_model_point(), "benefit_grade")
     if v not in ("g1", "g2", "g3", "g4", "g5", "g6"):
         raise ValueError("invalid benefit_grade")
     return v
@@ -256,12 +256,12 @@ def lump_amount():
     third of the cancer chassis's ₩30,000,000 because a long-term-care benefit sits on top of
     a public scheme that already meets most of the direct service cost.
     """
-    return float(model_point()["lump_amount"])
+    return tables.lookup_float(prepared_model_point(), "lump_amount")
 
 
 def annuity_on():
     """True where the 간병연금 rider is attached.  On in the base run."""
-    return bool(model_point()["annuity_on"])
+    return tables.lookup_bool(prepared_model_point(), "annuity_on")
 
 
 def annuity_high():
@@ -271,7 +271,7 @@ def annuity_high():
     않습니다」 — so a life entering at 2등급 and deteriorating to 1등급 keeps the lower rate
     for all ten years.
     """
-    return float(model_point()["annuity_high"])
+    return tables.lookup_float(prepared_model_point(), "annuity_high")
 
 
 def annuity_low():
@@ -280,7 +280,7 @@ def annuity_low():
     The one carrier that grades its annuity by grade grades it in two steps only, so every
     grade below 1등급 inside the threshold is carried at the lower amount **[std]**.
     """
-    return float(model_point()["annuity_low"])
+    return tables.lookup_float(prepared_model_point(), "annuity_low")
 
 
 def annuity_max_mths():
@@ -292,7 +292,7 @@ def annuity_max_mths():
     the cap and the 보험기간, which is the conservative reading of a question no retrieved
     document resolves **[std]**.
     """
-    return int(model_point()["annuity_max_mths"])
+    return tables.lookup_int(prepared_model_point(), "annuity_max_mths")
 
 
 def annuity_guar_mths():
@@ -302,7 +302,7 @@ def annuity_guar_mths():
     each block of twelve is released only by the annual survival test on the anniversary of
     the 진단확정일, evidenced by a 주민등록등본.
     """
-    return int(model_point()["annuity_guar_mths"])
+    return tables.lookup_int(prepared_model_point(), "annuity_guar_mths")
 
 
 def dementia_rider():
@@ -314,7 +314,7 @@ def dementia_rider():
     into the public grade and a private trigger, so the rider's incidence is driven off the
     same underlying certification model.
     """
-    return bool(model_point()["dementia_rider"])
+    return tables.lookup_bool(prepared_model_point(), "dementia_rider")
 
 
 def dementia_amount():
@@ -324,7 +324,7 @@ def dementia_amount():
     definition of the state itself, a **90-day persistence** test — together deferring a
     mild-dementia claim by at least fifteen months from inception.
     """
-    return float(model_point()["dementia_amount"])
+    return tables.lookup_float(prepared_model_point(), "dementia_amount")
 
 
 def wait_mths():
@@ -338,7 +338,7 @@ def wait_mths():
     it makes the benefit **무효** and the premiums paid for it come back — see
     :func:`pols_void`.
     """
-    return int(model_point()["wait_mths"])
+    return tables.lookup_int(prepared_model_point(), "wait_mths")
 
 
 def red_mths():
@@ -351,7 +351,7 @@ def red_mths():
     inside the window stays halved for all ten years — which is the single most easily
     mis-modelled rule in the product.
     """
-    return int(model_point()["red_mths"])
+    return tables.lookup_int(prepared_model_point(), "red_mths")
 
 
 def cv_form():
@@ -366,7 +366,7 @@ def cv_form():
     **during** and 100% after.  ``pyojun`` (표준형) pays the full 계약자적립액 less the
     해약공제액 from year 1.
     """
-    v = str(model_point()["cv_form"])
+    v = tables.lookup_str(prepared_model_point(), "cv_form")
     if v not in ("mijigeup", "half_during", "pyojun"):
         raise ValueError("invalid cv_form")
     return v
@@ -384,7 +384,7 @@ def lapse_form():
     vector, carried so the two can be compared — which is the comparison the guidance
     requires an insurer to disclose.
     """
-    v = str(model_point()["lapse_form"])
+    v = tables.lookup_str(prepared_model_point(), "lapse_form")
     if v not in ("mujihae", "pyojun"):
         raise ValueError("invalid lapse_form")
     return v
@@ -401,7 +401,7 @@ def uw_loading():
     its 장기요양 riders to a simplified chassis at all, which is itself a statement about
     anti-selection on this trigger.
     """
-    return float(model_point()["uw_loading"])
+    return tables.lookup_float(prepared_model_point(), "uw_loading")
 
 
 def premium_mth_pp():
@@ -419,7 +419,7 @@ def premium_mth_pp():
     model point 8, whose 1.40 loading is pure margin here because no retrieved source gives the
     simplified pool's own incidence.  :func:`uw_loading` multiplies it.
     """
-    return uw_loading() * float(model_point()["premium"])
+    return uw_loading() * tables.lookup_float(prepared_model_point(), "premium")
 
 
 def pols_if_init():
@@ -1972,6 +1972,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2024,3 +2029,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

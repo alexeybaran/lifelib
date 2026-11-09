@@ -479,7 +479,7 @@ def proj_len_y():
     silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
     whose last policy year ends at attained age 121.
     """
-    return omega_age() - int(model_point()["issue_age"])
+    return omega_age() - tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def proj_len():
@@ -511,7 +511,7 @@ def k_start():
     — the premium, the charges, both accounts, the § 169 floor, the surrender value and the
     death benefit — is defined from here.
     """
-    return int(model_point()["duration_init"])
+    return tables.lookup_int(prepared_model_point(), "duration_init")
 
 
 def duration_mth(t):
@@ -557,7 +557,7 @@ def policy_year(t):
 
 def age_y(k):
     """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
-    return int(model_point()["issue_age"]) + k
+    return tables.lookup_int(prepared_model_point(), "issue_age") + k
 
 
 def age(t):
@@ -582,7 +582,7 @@ def calendar_year_y(k):
     policy-year grid and a calendar-year grid coincide only for contracts written on
     1 January, and reconciling the two is a valuation-date question this model does not pose.
     """
-    return int(model_point()["issue_year"]) + k
+    return tables.lookup_int(prepared_model_point(), "issue_year") + k
 
 
 def calendar_year(t):
@@ -592,7 +592,7 @@ def calendar_year(t):
 
 def pols_if_init():
     """The number of policies the model point represents; ``pols_if`` at the frame's start."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def int_rate_guar():
@@ -603,7 +603,7 @@ def int_rate_guar():
     life book is a layered stack of guarantee vintages: 1,00 % on the 2026 points, 2,75 % on
     point 6 and 0,90 % on point 14, in one run from one set of tables.
     """
-    return float(model_point()["int_rate_guar"])
+    return tables.lookup_float(prepared_model_point(), "int_rate_guar")
 
 
 def mort_be_factor():
@@ -648,7 +648,7 @@ def freq_load():
     makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
     else, which is what justifies the instalment stream.
     """
-    return tables.lookup_float(data.prepared_freq_load_table_at(), model_point()['prem_freq'], 'freq_load')
+    return tables.lookup_float(data.prepared_freq_load_table_at(), tables.lookup_object(prepared_model_point(), 'prem_freq'), 'freq_load')
 
 
 def prem_pp_sched(k):
@@ -703,7 +703,7 @@ def alpha_total_pp():
     model uses the cap itself **[std]**, which is what makes the year-one *Sparbeitrag* small
     and the § 169 Abs. 3 floor bite.  1 275,00 € on the anchor cell.
     """
-    return (tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'alpha_rate'), 'value')
+    return (tables.lookup_float(data.prepared_charge_table_at(), (tables.lookup_object(prepared_model_point(), 'charge_id'), 'alpha_rate'), 'value')
         * beitragssumme_pp())
 
 
@@ -715,7 +715,7 @@ def alpha_cum_pp(k):
     ``max(0, .)`` in :func:`charge_acq_pp` guarantees.
     """
     if k <= k_start():
-        return float(model_point()["alpha_amort_pp_init"])
+        return tables.lookup_float(prepared_model_point(), "alpha_amort_pp_init")
     return alpha_cum_pp(k - 1) + charge_acq_pp(k - 1)
 
 
@@ -728,7 +728,7 @@ def prem_cum_pp(k):
     the year's premium fell due at the start of it.
     """
     if k <= k_start():
-        return float(model_point()["prem_cum_pp_init"])
+        return tables.lookup_float(prepared_model_point(), "prem_cum_pp_init")
     return prem_cum_pp(k - 1) + prem_pp(k - 1)
 
 
@@ -778,7 +778,7 @@ def charge_acq_spread_pp(k):
     statutory surrender floor.  255,00 € on the anchor cell.
     """
     years = int(data.charge_table().at[                              # noqa: F821
-        (model_point()["charge_id"], "alpha_spread_years"), "value"])
+        (tables.lookup_object(prepared_model_point(), "charge_id"), "alpha_spread_years"), "value"])
     return alpha_total_pp() / years if 0 <= k < years else 0.0
 
 
@@ -788,7 +788,7 @@ def charge_prem_pp(k):
     4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the
     *Sparbeitrag* and produces no cash flow.
     """
-    return tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'beta_rate'), 'value') * prem_pp(k)
+    return tables.lookup_float(data.prepared_charge_table_at(), (tables.lookup_object(prepared_model_point(), 'charge_id'), 'beta_rate'), 'value') * prem_pp(k)
 
 
 def charge_admin_pp(k):
@@ -801,7 +801,7 @@ def charge_admin_pp(k):
     balance so the recursion stays acyclic.
     """
     item = "gamma_pup_rate" if paid_up(k) else "gamma_rate"
-    return tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], item), 'value') * av_pp(k)
+    return tables.lookup_float(data.prepared_charge_table_at(), (tables.lookup_object(prepared_model_point(), 'charge_id'), item), 'value') * av_pp(k)
 
 
 def nar_pp(k):
@@ -830,7 +830,7 @@ def charge_risk_pp(k):
     **year's** rate at every month of that year, so the argument selects the year and not a
     month, and the charge is the annual one the tariff strikes.
     """
-    if k >= int(model_point()["aufschub_y"]):
+    if k >= tables.lookup_int(prepared_model_point(), "aufschub_y"):
         return 0.0
     return mort_rate_guar(12 * k) * nar_pp(k)
 
@@ -983,7 +983,7 @@ def av_release(k):
     with a premium payable in advance for the whole period: the policy paid for the period and
     is credited with it.
     """
-    n = int(model_point()["aufschub_y"])
+    n = tables.lookup_int(prepared_model_point(), "aufschub_y")
     if k >= n:
         return 0.0
     if k == n - 1:
@@ -1038,7 +1038,7 @@ def bonus_credited_pp(k):
     and never more.  On a 2,75 % vintage against a 2,55 % declaration the term is zero at
     every k, and that is the correct answer rather than a missing credit.
     """
-    if k >= int(model_point()["aufschub_y"]):
+    if k >= tables.lookup_int(prepared_model_point(), "aufschub_y"):
         return 0.0
     return bonus_rate(k) * av_pp_at(k, "AFT_PREM") + decl_rate(k) * av_sur_pp(k)
 
@@ -1064,7 +1064,7 @@ def av_sur_release(k):
     The same shape as :func:`av_release`: the balance carried out by the policies that leave,
     and the whole balance at ``k = n - 1``.  Read by :func:`check_av_sur_roll_fwd` alone.
     """
-    n = int(model_point()["aufschub_y"])
+    n = tables.lookup_int(prepared_model_point(), "aufschub_y")
     if k >= n:
         return 0.0
     if k == n - 1:
@@ -1141,7 +1141,7 @@ def mort_rate_at_age(x):
     ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
     """
-    return tables.lookup_float(data.prepared_mort_table_at(), (model_point()['sex'], int(x)), 'q_base')
+    return tables.lookup_float(data.prepared_mort_table_at(), (tables.lookup_object(prepared_model_point(), 'sex'), int(x)), 'q_base')
 
 
 def improve_rate(x):
@@ -1151,7 +1151,7 @@ def improve_rate(x):
     deliberate simplification of the *Starttrend* / *Zieltrend* structure the German
     construction uses, documented as one rather than presented as a replication.
     """
-    return tables.lookup_float(data.prepared_mort_table_at(), (model_point()['sex'], int(x)), 'improve')
+    return tables.lookup_float(data.prepared_mort_table_at(), (tables.lookup_object(prepared_model_point(), 'sex'), int(x)), 'improve')
 
 
 def mort_rate_guar(t):
@@ -1228,7 +1228,7 @@ def decl_rate(k):
     *laufende Zinsüberschussbeteiligung*, never a surplus on top of the guarantee.
     """
     tbl = data.decl_rate_table()                                     # noqa: F821
-    scen = model_point()["decl_scenario_id"]
+    scen = tables.lookup_object(prepared_model_point(), "decl_scenario_id")
     years = tbl.loc[scen].index
     y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))
     return float(tbl.at[(scen, y), "decl_rate"])
@@ -1361,7 +1361,7 @@ def surr_charge_pp(k):
     years would be exactly the void kind.  2,0 % on ``zillmer_25`` and nil on ``zillmer_40``
     **[std]**; whatever it is set to, :func:`cv_pp` cannot fall below :func:`cv_floor_pp`.
     """
-    return (tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'stornoabzug_rate'), 'value')
+    return (tables.lookup_float(data.prepared_charge_table_at(), (tables.lookup_object(prepared_model_point(), 'charge_id'), 'stornoabzug_rate'), 'value')
         * (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")))
 
 
@@ -1407,7 +1407,7 @@ def paid_up(k):
     no source establishes a rate.  A portfolio model needs the sub-population split this one
     does not have.
     """
-    pup = int(model_point()["pup_year"])
+    pup = tables.lookup_int(prepared_model_point(), "pup_year")
     return bool(pup > 0 and k >= pup - 1)
 
 
@@ -1420,7 +1420,7 @@ def pup_value_pp():
     is taken on this route **[std]**: Abs. 5 is drafted for a payout on *Kündigung*, and here
     the contract continues.
     """
-    pup = int(model_point()["pup_year"])
+    pup = tables.lookup_int(prepared_model_point(), "pup_year")
     if pup <= 0:
         return 0.0
     return max(av_pp_at(pup - 2, "AFT_INT"), av_spread_pp_at(pup - 2, "AFT_INT"))
@@ -1436,10 +1436,10 @@ def pup_cashout():
     the paid-up value would buy at the **guaranteed** factor, against a 30,00 € threshold
     **[std]**.  True on model point 8, whose paid-up value at duration 2 buys 5,45 € a month.
     """
-    pup = int(model_point()["pup_year"])
+    pup = tables.lookup_int(prepared_model_point(), "pup_year")
     if pup <= 0:
         return False
-    threshold = tables.lookup_float(data.prepared_charge_table_at(), (model_point()['charge_id'], 'min_annuity_mth'), 'value')
+    threshold = tables.lookup_float(data.prepared_charge_table_at(), (tables.lookup_object(prepared_model_point(), 'charge_id'), 'min_annuity_mth'), 'value')
     return bool(pup_value_pp() / 10000.0 * annuity_rate_guar() < threshold)
 
 
@@ -1457,7 +1457,7 @@ def pup_uplift(k):
     whose roll-forward needs it; the technical notes describe the same amount from the
     receiving row's point of view.
     """
-    pup = int(model_point()["pup_year"])
+    pup = tables.lookup_int(prepared_model_point(), "pup_year")
     if pup <= 0 or k != pup - 2 or pup_cashout():
         return 0.0
     return (pup_value_pp() - av_pp_at(k, "AFT_INT")) * pols_if(12 * (k + 1))
@@ -1551,7 +1551,7 @@ def pols_surv_rb():
     **month** ``t = 12n - 1``, after that month's decrements and before the commutation — the
     same instant as the annual-step model's end of row ``n - 1``, and the same number.
     """
-    t_rb = 12 * int(model_point()["aufschub_y"]) - 1
+    t_rb = 12 * tables.lookup_int(prepared_model_point(), "aufschub_y") - 1
     return pols_if(t_rb) - pols_death(t_rb) - pols_lapse(t_rb)
 
 
@@ -1564,9 +1564,9 @@ def pols_commutation(t):
     each instalment against half the *Unterschiedsbetrag* taxed once — and this model computes
     no tax, so the rate stands in for a calculation it does not perform.
     """
-    if t != 12 * int(model_point()["aufschub_y"]) - 1:
+    if t != 12 * tables.lookup_int(prepared_model_point(), "aufschub_y") - 1:
         return 0.0
-    return float(model_point()["kapitalwahl_rate"]) * pols_surv_rb()
+    return tables.lookup_float(prepared_model_point(), "kapitalwahl_rate") * pols_surv_rb()
 
 
 def pols_annuitization(t):
@@ -1576,9 +1576,9 @@ def pols_annuitization(t):
     and zero elsewhere.  It is ``pols_if(12n)`` by construction, and it is the count the
     *Rentengarantiezeit* instalments are paid on however many annuitants are still alive.
     """
-    if t != 12 * int(model_point()["aufschub_y"]) - 1:
+    if t != 12 * tables.lookup_int(prepared_model_point(), "aufschub_y") - 1:
         return 0.0
-    return (1.0 - float(model_point()["kapitalwahl_rate"])) * pols_surv_rb()
+    return (1.0 - tables.lookup_float(prepared_model_point(), "kapitalwahl_rate")) * pols_surv_rb()
 
 
 def pols_annuity(t):
@@ -1616,7 +1616,7 @@ def capital_gross_pp():
     by the conversion: the *Rentenbeginn* is an anniversary — month ``12n`` — and both accounts
     are annual constructions struck there.
     """
-    k_rb = int(model_point()["aufschub_y"]) - 1
+    k_rb = tables.lookup_int(prepared_model_point(), "aufschub_y") - 1
     return av_pp_at(k_rb, "AFT_INT") + av_sur_pp_at(k_rb, "AFT_INT")
 
 
@@ -1646,7 +1646,7 @@ def capital_conv_pp():
     them less than the annuitants convert, and inventing one would be a charge no source
     supports.
     """
-    return max(float(model_point()["guar_capital_pp"]),
+    return max(tables.lookup_float(prepared_model_point(), "guar_capital_pp"),
                capital_gross_pp() + val_reserve_pp())
 
 
@@ -1658,7 +1658,7 @@ def annuity_rate_guar():
     then-current *Höchstrechnungszins*.  A model-point attribute, because it is a property of
     the contract's vintage and not of the projection.  It is a floor, not the applied factor.
     """
-    return float(model_point()["annuity_rate_guar"])
+    return tables.lookup_float(prepared_model_point(), "annuity_rate_guar")
 
 
 def annuity_rate_curr():
@@ -1763,7 +1763,7 @@ def annuity_pp(t):
     1,5 % and is **not applied**: the *Rentenfaktor* is exogenous here and already carries the
     tariff's payout loading, so deducting again would charge it twice.
     """
-    if duration(t) < int(model_point()["aufschub_y"]):
+    if duration(t) < tables.lookup_int(prepared_model_point(), "aufschub_y"):
         return 0.0
     return annuity_guar_mth_pp() + annuity_sur_mth_pp(duration(t))
 
@@ -1797,7 +1797,7 @@ def annuity_due_factor():
     rather than hidden.  Anyone substituting a real DAV 2004 R must re-strike the
     *Rentenfaktoren* with it or accept an inconsistency the model will not flag.
     """
-    n_mth = 12 * int(model_point()["aufschub_y"])
+    n_mth = 12 * tables.lookup_int(prepared_model_point(), "aufschub_y")
     disc = (1.0 / (1.0 + int_rate_guar())) ** (1.0 / 12.0)
     surv = 1.0
     total = 0.0
@@ -1887,7 +1887,7 @@ def expenses_pp(t):
     leaves mid-year is now borne only for the months it was there, which is the refinement the
     finer grid buys here.
     """
-    level = (expense_maint_pp() if duration(t) < int(model_point()["aufschub_y"])
+    level = (expense_maint_pp() if duration(t) < tables.lookup_int(prepared_model_point(), "aufschub_y")
              else expense_annuity_pp())
     return level / 12.0 * (1.0 + expense_infl()) ** duration(t)
 
@@ -2159,7 +2159,7 @@ def check_annuity_conv():
         return False
     if annuity_rate_appl() < annuity_rate_guar() - roll_fwd_tol():
         return False
-    if capital_conv_pp() < float(model_point()["guar_capital_pp"]) - roll_fwd_tol() * scale:
+    if capital_conv_pp() < tables.lookup_float(prepared_model_point(), "guar_capital_pp") - roll_fwd_tol() * scale:
         return False
     return True
 
@@ -2295,6 +2295,11 @@ def result_pols():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2305,3 +2310,5 @@ point_id = 1
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -294,7 +294,7 @@ def model_point():
 
 def policy_id():
     """The policy identifier of the selected model point, for reporting."""
-    return str(model_point()["policy_id"])
+    return tables.lookup_str(prepared_model_point(), "policy_id")
 
 
 def issue_age():
@@ -304,7 +304,7 @@ def issue_age():
     attained age at the calculation date [S4 Annexe I] and are read at :func:`age`, so the
     tariff steps at each policy anniversary rather than on the insured's birthday.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sex():
@@ -315,7 +315,7 @@ def sex():
     insurer's expected strain and never the price it charges - which is one half of the
     reason the sign of the rider's margin at any age is genuinely unknown.
     """
-    return str(model_point()["sex"])
+    return tables.lookup_str(prepared_model_point(), "sex")
 
 
 def premium():
@@ -326,7 +326,7 @@ def premium():
     :func:`cum_prem_net` and to :func:`uc_cost_basis` on the same date and changes no
     recursion.
     """
-    return float(model_point()["premium"])
+    return tables.lookup_float(prepared_model_point(), "premium")
 
 
 def prem_charge_rate():
@@ -337,12 +337,12 @@ def prem_charge_rate():
     the net-premium and gross-premium floor bases indistinguishable and hides the question
     the plancher definition turns on.
     """
-    return float(model_point()["prem_charge_rate"])
+    return tables.lookup_float(prepared_model_point(), "prem_charge_rate")
 
 
 def uc_alloc():
     """alpha: the share of the net premium allocated to the UC leg, 0.70 **[std]**."""
-    return float(model_point()["uc_alloc"])
+    return tables.lookup_float(prepared_model_point(), "uc_alloc")
 
 
 def euro_alloc():
@@ -359,7 +359,7 @@ def unit_price_init():
     A scaling convention, not a fact: the unit count and the liquidation value are
     reciprocal, and only their product enters the liability.
     """
-    return float(model_point()["unit_price_init"])
+    return tables.lookup_float(prepared_model_point(), "unit_price_init")
 
 
 def mgmt_fee_rate_uc():
@@ -372,7 +372,7 @@ def mgmt_fee_rate_uc():
     factor of three on the dominant income line, and **no statutory ceiling on any French
     life charge appears in the retrieved texts**.
     """
-    return float(model_point()["mgmt_fee_rate_uc"])
+    return tables.lookup_float(prepared_model_point(), "mgmt_fee_rate_uc")
 
 
 def euro_credit_rate():
@@ -383,7 +383,7 @@ def euro_credit_rate():
     are specified and implemented in ``Euro_FR_S``, and the euro leg therefore produces no
     margin line here at all.
     """
-    return float(model_point()["euro_credit_rate"])
+    return tables.lookup_float(prepared_model_point(), "euro_credit_rate")
 
 
 def arbitrage_fee_rate():
@@ -393,7 +393,7 @@ def arbitrage_fee_rate():
     number of free arbitrages a year.  Flat-fee minima - 30 EUR by post, 15 EUR online -
     are administrative and do not scale, so they are not modeled.
     """
-    return float(model_point()["arbitrage_fee_rate"])
+    return tables.lookup_float(prepared_model_point(), "arbitrage_fee_rate")
 
 
 def plancher_flag():
@@ -404,7 +404,7 @@ def plancher_flag():
     deduction from an existing account and not a new premium, which matters for contract
     boundaries.
     """
-    return bool(model_point()["plancher_flag"])
+    return tables.lookup_bool(prepared_model_point(), "plancher_flag")
 
 
 def plancher_basis():
@@ -416,7 +416,7 @@ def plancher_basis():
     is carried so the model holds the three-way column and so the proportional-versus-
     nominal surrender adjustment can be asserted.
     """
-    v = str(model_point()["plancher_basis"])
+    v = tables.lookup_str(prepared_model_point(), "plancher_basis")
     if v not in ("simple", "indexee", "cliquet"):
         raise ValueError("invalid plancher_basis")
     return v
@@ -429,7 +429,7 @@ def plancher_index_rate():
     insurer's discretion, which makes it a class-(b) element the model holds as a
     snapshot.
     """
-    return float(model_point()["plancher_index_rate"])
+    return tables.lookup_float(prepared_model_point(), "plancher_index_rate")
 
 
 def plancher_ratchet_months():
@@ -438,7 +438,7 @@ def plancher_ratchet_months():
     A one-month ratchet is the same recursion observed twelve times as often, and on the
     anchor path it locks in the pre-fall high: 98,476.25 against 94,216.29 at ``t = 11``.
     """
-    return int(model_point()["plancher_ratchet_months"])
+    return tables.lookup_int(prepared_model_point(), "plancher_ratchet_months")
 
 
 def plancher_gross_basis():
@@ -450,7 +450,7 @@ def plancher_gross_basis():
     of the premium charge; on
     the gross basis the rider starts 1,000 EUR in the money on a 100,000 EUR premium.
     """
-    return bool(model_point()["plancher_gross_basis"])
+    return tables.lookup_bool(prepared_model_point(), "plancher_gross_basis")
 
 
 def plancher_end_age():
@@ -462,7 +462,7 @@ def plancher_end_age():
     cessation age to 80 runs past the last published age, which is why
     :func:`plancher_rate` raises rather than extrapolates.
     """
-    return int(model_point()["plancher_end_age"])
+    return tables.lookup_int(prepared_model_point(), "plancher_end_age")
 
 
 def plancher_cap():
@@ -472,7 +472,7 @@ def plancher_cap():
     instead is a different and much cruder contract.  It never binds on the anchor cell and
     binds precisely in the deep drawdowns where the guarantee is worth something.
     """
-    return float(model_point()["plancher_cap"])
+    return tables.lookup_float(prepared_model_point(), "plancher_cap")
 
 
 def plancher_levy_source():
@@ -483,7 +483,7 @@ def plancher_levy_source():
     rider.  Where the euro balance cannot cover the premium the remainder cancels units
     whatever the election, which is the branch a 100%-UC allocation runs down.
     """
-    v = str(model_point()["plancher_levy_source"])
+    v = tables.lookup_str(prepared_model_point(), "plancher_levy_source")
     if v not in ("euro_first", "uc_units"):
         raise ValueError("invalid plancher_levy_source")
     return v
@@ -498,7 +498,7 @@ def wd_pattern():
     eight-year tax design encourages, and it keeps the floor base falling in step with the
     account.
     """
-    v = str(model_point()["wd_pattern"])
+    v = tables.lookup_str(prepared_model_point(), "wd_pattern")
     if v not in ("none", "one_off", "programmed"):
         raise ValueError("invalid wd_pattern")
     return v
@@ -513,7 +513,7 @@ def arb_pattern():
     implemented: they matter because they systematically move value out of UC after a
     rise, shrinking the management-charge base and the plancher exposure at the same time.
     """
-    v = str(model_point()["arb_pattern"])
+    v = tables.lookup_str(prepared_model_point(), "arb_pattern")
     if v not in ("none", "one_off", "progressive"):
         raise ValueError("invalid arb_pattern")
     return v
@@ -528,7 +528,7 @@ def lapse_dynamic():
     multipliers are **[std]** inventions with no evidence behind them, and a user
     replacing them should be able to see the base run underneath.
     """
-    v = str(model_point()["lapse_dynamic"])
+    v = tables.lookup_str(prepared_model_point(), "lapse_dynamic")
     if v not in ("none", "full"):
         raise ValueError("invalid lapse_dynamic")
     return v
@@ -536,12 +536,12 @@ def lapse_dynamic():
 
 def uc_return_scenario():
     """The id of the UC return path in *uc_scenario_table.csv* this model point runs on."""
-    return str(model_point()["uc_return_scenario"])
+    return tables.lookup_str(prepared_model_point(), "uc_return_scenario")
 
 
 def pols_if_init():
     """l(0): the in-force probability at issue; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -552,7 +552,7 @@ def proj_len():
     The contract is written `viagere` and has no maturity date, so the horizon is a
     modelling choice rather than a contractual one and it is a per-policy column.
     """
-    return int(model_point()["proj_len"])
+    return tables.lookup_int(prepared_model_point(), "proj_len")
 
 
 def duration(t):
@@ -738,9 +738,9 @@ def arb_sched_pp(t):
     if p == "none":
         return 0.0
     if p == "one_off":
-        return (float(model_point()["arb_amount"])
-                if t == int(model_point()["arb_month"]) else 0.0)
-    return float(model_point()["arb_amount"])
+        return (tables.lookup_float(prepared_model_point(), "arb_amount")
+                if t == tables.lookup_int(prepared_model_point(), "arb_month") else 0.0)
+    return tables.lookup_float(prepared_model_point(), "arb_amount")
 
 
 def arb_amount_pp(t):
@@ -811,9 +811,9 @@ def wd_sched_pp(t):
     if p == "none":
         return 0.0
     if p == "one_off":
-        return (float(model_point()["wd_amount"])
-                if t == int(model_point()["wd_month"]) else 0.0)
-    return av_pp_at(t, "BEF_WD") * float(model_point()["wd_rate"]) / 12.0
+        return (tables.lookup_float(prepared_model_point(), "wd_amount")
+                if t == tables.lookup_int(prepared_model_point(), "wd_month") else 0.0)
+    return av_pp_at(t, "BEF_WD") * tables.lookup_float(prepared_model_point(), "wd_rate") / 12.0
 
 
 def wd_amount_pp(t):
@@ -1719,6 +1719,11 @@ def result_av():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1753,3 +1758,5 @@ pols_tol = 1e-12
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

@@ -394,7 +394,7 @@ def chassis():
     fires between two monthly points is invisible to this projection.  See the Space
     docstring.
     """
-    v = model_point()["chassis"]
+    v = tables.lookup_object(prepared_model_point(), "chassis")
     if v not in ("UWP_bond", "CWP_endowment"):
         raise ValueError(
             "invalid chassis; SF_prufund is out of scope on a monthly grid")
@@ -408,12 +408,12 @@ def is_unitised():
 
 def age_at_entry():
     """x: the entry age of the model point, age nearest birthday **[std]**."""
-    return int(model_point()["age_at_entry"])
+    return tables.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex (M / F) of the model point."""
-    return model_point()["sex"]
+    return tables.lookup_object(prepared_model_point(), "sex")
 
 
 def duration_inforce():
@@ -425,37 +425,37 @@ def duration_inforce():
     of its sixth policy year - with the carried-in state as that month's opening
     balances.
     """
-    return int(model_point()["duration_inforce"])
+    return tables.lookup_int(prepared_model_point(), "duration_inforce")
 
 
 def premium_single_pp():
     """The single premium of the bond chassis; a pricing input on an in-force cell."""
-    return float(model_point()["premium_single"])
+    return tables.lookup_float(prepared_model_point(), "premium_single")
 
 
 def premium_regular_pp():
     """The regular annual premium of the endowment chassis."""
-    return float(model_point()["premium_regular"])
+    return tables.lookup_float(prepared_model_point(), "premium_regular")
 
 
 def sum_assured():
     """The basic sum assured of the endowment chassis; the guarantee floor at outset."""
-    return float(model_point()["sum_assured"])
+    return tables.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def attaching_bonus():
     """Reversionary bonuses already attaching at the valuation date (endowment chassis)."""
-    return float(model_point()["attaching_bonus"])
+    return tables.lookup_float(prepared_model_point(), "attaching_bonus")
 
 
 def policy_term():
     """n: the endowment term in years; 0 on the whole-of-life bond chassis."""
-    return int(model_point()["policy_term"])
+    return tables.lookup_int(prepared_model_point(), "policy_term")
 
 
 def units_init():
     """U: the units held at the valuation date (bond chassis)."""
-    return float(model_point()["units"])
+    return tables.lookup_float(prepared_model_point(), "units")
 
 
 def unit_price_init():
@@ -464,7 +464,7 @@ def unit_price_init():
     On the anchor cell it is ``1.02^5 = 1.104081`` - five declarations at 2% on a unit
     seeded at £1.0000.
     """
-    return float(model_point()["unit_price_init"])
+    return tables.lookup_float(prepared_model_point(), "unit_price_init")
 
 
 def asset_share_init():
@@ -473,7 +473,7 @@ def asset_share_init():
     A retrospective accumulation, and the model point's most important number: it is
     what the payout machinery is measured against, and nobody is ever paid it.
     """
-    return float(model_point()["asset_share_init"])
+    return tables.lookup_float(prepared_model_point(), "asset_share_init")
 
 
 def smoothed_payout_init():
@@ -483,7 +483,7 @@ def smoothed_payout_init():
     already a little below the asset share, which is what the smoothing cap does after a
     good year.
     """
-    return float(model_point()["smoothed_payout_init"])
+    return tables.lookup_float(prepared_model_point(), "smoothed_payout_init")
 
 
 def guarantee_years():
@@ -491,7 +491,7 @@ def guarantee_years():
 
     Read from a semicolon-separated model point column, empty on the endowment chassis.
     """
-    v = model_point()["guarantee_dates"]
+    v = tables.lookup_object(prepared_model_point(), "guarantee_dates")
     if pd.isna(v):                                                   # noqa: F821
         return ()
     return tuple(int(float(s)) for s in str(v).split(";") if str(s).strip())
@@ -503,7 +503,7 @@ def wd_rate():
     Zero in the base run; the MVR-free allowance is 5% a year, and a withdrawing cell
     takes the whole of it.
     """
-    return float(model_point()["wd_rate"])
+    return tables.lookup_float(prepared_model_point(), "wd_rate")
 
 
 def tax_basis():
@@ -514,7 +514,7 @@ def tax_basis():
     The distinction is carried on the model point and is applied by supplying the return
     already on the right basis, rather than by grossing up inside the model.
     """
-    v = model_point()["tax_basis"]
+    v = tables.lookup_object(prepared_model_point(), "tax_basis")
     if v not in ("life_net", "pension_gross"):
         raise ValueError("invalid tax_basis")
     return v
@@ -537,7 +537,7 @@ def fund_return():
     That end of the projection is a demonstration of the machinery under stress, not a
     result.
     """
-    return float(model_point()["fund_return"])
+    return tables.lookup_float(prepared_model_point(), "fund_return")
 
 
 def bonus_rate_init():
@@ -546,12 +546,12 @@ def bonus_rate_init():
     2.00% on the bond chassis and 1.50% compound on the endowment, both **[std]**:
     declarations are not published in firms' principles and practices documents.
     """
-    return float(model_point()["bonus_rate"])
+    return tables.lookup_float(prepared_model_point(), "bonus_rate")
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return tables.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_start():
@@ -1763,6 +1763,11 @@ def result_payout():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1819,3 +1824,5 @@ inflation_rate = 0.03
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")

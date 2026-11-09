@@ -322,7 +322,7 @@ def sex():
     contract carries no mortality risk, so sex changes the factor struck at the 연금개시일
     and the speed at which the in-force runs off, and no benefit amount anywhere.
     """
-    v = model_point()["sex"]
+    v = tables.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -334,7 +334,7 @@ def issue_age():
     The observed envelope is 0 to (연금개시나이 - 납입기간) at most carriers and 만19세 at
     one; the shipped model points run from 25 to 50.
     """
-    return int(model_point()["issue_age"])
+    return tables.lookup_int(prepared_model_point(), "issue_age")
 
 
 def premium_term_y():
@@ -343,7 +343,7 @@ def premium_term_y():
     Menus of 5 / 10 / 15 / 20년 / 전기납 are observed; at least five years is what clears the
     statutory account-age limb of the 연금수령 test, 소득세법 시행령 제40조의2제3항제2호.
     """
-    v = int(model_point()["premium_term_y"])
+    v = tables.lookup_int(prepared_model_point(), "premium_term_y")
     if v < 5:
         raise ValueError("premium_term_y below the five-year statutory minimum")
     return v
@@ -356,7 +356,7 @@ def defer_gap_y():
     composite is a real contractual state in which premiums have stopped, the maintenance
     charge has not, and the fund is still accumulating.
     """
-    return int(model_point()["defer_gap_y"])
+    return tables.lookup_int(prepared_model_point(), "defer_gap_y")
 
 
 def annuity_start_age():
@@ -367,7 +367,7 @@ def annuity_start_age():
     annuitises on the wrong year.  A 납입유예 defers the *actual* start date beyond it; see
     :func:`annuity_age_eff`.
     """
-    v = int(model_point()["annuity_start_age"])
+    v = tables.lookup_int(prepared_model_point(), "annuity_start_age")
     if v != issue_age() + premium_term_y() + defer_gap_y():
         raise ValueError("annuity_start_age is not issue_age + m + d")
     if v < 55 or v > 80:
@@ -382,7 +382,7 @@ def prem_pp():
     세액공제 ceiling, so the anchor saver sits on the corner of the tax schedule.  There is
     no review right on this chassis, so every premium is inside the contract boundary.
     """
-    return float(model_point()["premium_pp"])
+    return tables.lookup_float(prepared_model_point(), "premium_pp")
 
 
 def addl_prem_pp():
@@ -394,7 +394,7 @@ def addl_prem_pp():
     field rather than an addition to :func:`prem_pp`: merging the two would misstate the
     expense recovery.
     """
-    v = float(model_point()["addl_prem_pp"])
+    v = tables.lookup_float(prepared_model_point(), "addl_prem_pp")
     if v > pricing_basis("addl_prem_cap_ratio") * prem_pp():
         raise ValueError("addl_prem_pp above the 200% cap")
     if v + prem_pp() > tax_basis("contribution_ceiling"):
@@ -411,7 +411,7 @@ def payout_form():
     takes the life form with a ten-year guarantee as the base, the only guarantee period
     every retrieved life carrier offers.
     """
-    v = model_point()["payout_form"]
+    v = tables.lookup_object(prepared_model_point(), "payout_form")
     if v not in ("life_guar", "certain"):
         raise ValueError("invalid payout_form")
     return v
@@ -419,7 +419,7 @@ def payout_form():
 
 def payout_term_y():
     """k: the 확정기간연금형 term in years; 10 / 15 / 20 on the composite's menu."""
-    return int(model_point()["payout_term_y"])
+    return tables.lookup_int(prepared_model_point(), "payout_term_y")
 
 
 def guar_term_y():
@@ -428,7 +428,7 @@ def guar_term_y():
     Lengthening it is cheap and readable: 10 to 20 years costs about 1.8% of the annuity for
     a 65-year-old male on the published illustration.
     """
-    return int(model_point()["guar_term_y"])
+    return tables.lookup_int(prepared_model_point(), "guar_term_y")
 
 
 def mort_vintage():
@@ -451,7 +451,7 @@ def mort_vintage():
     retrieved document; it follows from the ratchet being one-way and from the two carriers
     that publish the 연금사망률 doing so in the 상품요약서 handed over at inception.
     """
-    v = model_point()["mort_vintage"]
+    v = tables.lookup_object(prepared_model_point(), "mort_vintage")
     if v not in ("issue", "commencement", "ratchet"):
         raise ValueError("invalid mort_vintage")
     return v
@@ -464,7 +464,7 @@ def min_fund_on():
     payment holiday or a one-instalment reinstatement caused the shortfall, which is why it
     is a flag rather than a constant.
     """
-    return bool(model_point()["min_fund_on"])
+    return tables.lookup_bool(prepared_model_point(), "min_fund_on")
 
 
 def surr_chg_rate():
@@ -475,7 +475,7 @@ def surr_chg_rate():
     on a ₩1,200,000 annual premium, 8.67%, running off to zero over four years — is a model
     point value, not a rewrite.
     """
-    return float(model_point()["surr_chg_rate"])
+    return tables.lookup_float(prepared_model_point(), "surr_chg_rate")
 
 
 def holiday_years():
@@ -485,7 +485,7 @@ def holiday_years():
     premium stops, the charges are still taken from the fund, and both the premium due dates
     and the annuity date are deferred by ``h``.
     """
-    v = int(model_point()["holiday_years"])
+    v = tables.lookup_int(prepared_model_point(), "holiday_years")
     if v > pricing_basis("holiday_max_years"):
         raise ValueError("holiday_years above the observed maximum")
     return v
@@ -498,7 +498,7 @@ def loan_on():
     연금저축보험**, so a base-run rate would be invented.  Switching it on switches on a
     [std] rate, and the model says so.
     """
-    return bool(model_point()["loan_on"])
+    return tables.lookup_bool(prepared_model_point(), "loan_on")
 
 
 def par():
@@ -508,7 +508,7 @@ def par():
     표준해약공제액 coefficient of 4% of the 연납순보험료 and a 무배당 one 3%, so a 무배당
     composite states the **tighter** constraint, and :func:`surr_chg_cap_pp` reads this.
     """
-    return bool(model_point()["par"])
+    return tables.lookup_bool(prepared_model_point(), "par")
 
 
 def div_rate():
@@ -518,7 +518,7 @@ def div_rate():
     arises it is applied as an 증액연금 at the 연금개시일 rather than paid in cash, which is
     what :func:`div_acc_pp` does.
     """
-    v = float(model_point()["div_rate"])
+    v = tables.lookup_float(prepared_model_point(), "div_rate")
     if v and not par():
         raise ValueError("a dividend declared on a 무배당 contract")
     return v
@@ -533,7 +533,7 @@ def lapse_basis():
     계좌이체 to a 연금저축펀드 rather than a withdrawal.  The ``savings`` vector is carried
     so the two can be run side by side, not because it is this product's basis.
     """
-    v = model_point()["lapse_basis"]
+    v = tables.lookup_object(prepared_model_point(), "lapse_basis")
     if v not in ("pension", "savings"):
         raise ValueError("invalid lapse_basis")
     return v
@@ -546,7 +546,7 @@ def rate_scenario():
     guarantee at every duration, which reproduces the second column of a published
     illustration; ``hybrid`` is the one retrieved design paying a fixed 3.5% for five years.
     """
-    v = model_point()["rate_scenario"]
+    v = tables.lookup_object(prepared_model_point(), "rate_scenario")
     if v not in ("base", "floor", "hybrid"):
         raise ValueError("invalid rate_scenario")
     return v
@@ -2086,6 +2086,11 @@ def result_tax():
     )
 
 
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return inputs.record(model_point(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2100,3 +2105,5 @@ math = ("Module", "math")
 pd = ("Module", "pandas")
 
 tables = ("Module", "lifelib.typed_inputs")
+
+inputs = ("Module", "lifelib.pandas_inputs")
