@@ -362,6 +362,17 @@ def _stream_generator(Stream cursor):
 
 
 
+def _identity_generator(Stream cursor, object where):
+    try:
+        while cursor.prepare_next():
+            if where(cursor.pending):
+                yield cursor.take_pending()
+            else:
+                cursor.take_pending()
+    finally:
+        cursor.close()
+
+
 cdef class ProtocolGenerator:
     def __init__(self, generator):
         self.generator = generator
@@ -433,7 +444,7 @@ cdef object periods(object current_callable, tuple keywords, object start, objec
     return range(start)
 
 
-cdef object over(object current_callable, tuple keywords, object source, object function, object where=_missing, object unpack=_missing):
+cdef object over(object current_callable, tuple keywords, object source, object function=_missing, object where=_missing, object unpack=_missing):
     cdef Stream result
     if current_callable is not _OVER:
         return _replacement(current_callable, keywords, ('source', 'function', 'where', 'unpack'),
@@ -444,10 +455,18 @@ cdef object over(object current_callable, tuple keywords, object source, object 
         unpack = None
     if unpack is not None and (type(unpack) is not int or unpack < 0):
         raise ValueError('unpack must be None or a nonnegative integer')
+    if function is _NO_CALLBACK:
+        function = _missing
+    if function is _missing and unpack is not None:
+        raise TypeError('unpack requires a mapping function')
     result = Stream()
     result.identity = True
     result.unpack = unpack
     _capture(result, source)
+    if function is _missing:
+        if where is None:
+            return ProtocolGenerator(_stream_generator(result))
+        return ProtocolGenerator(_identity_generator(result, where))
     return ProtocolGenerator(_mapped_generator(result, function, where, unpack))
 
 
@@ -483,7 +502,7 @@ cdef object sum_values(object current_callable, tuple keywords, object source):
 
 
 def provider_version():
-    return 1
+    return 2
 
 
 

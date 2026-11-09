@@ -2,6 +2,7 @@
 
 
 _DOMAIN_MISSING = object()
+_NO_CALLBACK = object()
 
 
 def periods(start, stop=_DOMAIN_MISSING, step=_DOMAIN_MISSING):
@@ -164,8 +165,36 @@ def _mapped_generator(cursor, function, where, unpack):
     return (function(*arguments) for arguments in cursor if where is None or where(*arguments))
 
 
-def over(source, function, where=None, *, unpack=None):
-    """Map lazily, optionally filtering inputs before evaluating the payload."""
+def _identity_generator(cursor, where):
+    try:
+        while True:
+            try:
+                cursor.pending = next(cursor)
+            except StopIteration:
+                return
+            if where(cursor.pending):
+                yield _take_pending(cursor)
+            else:
+                _take_pending(cursor)
+    finally:
+        cursor.close()
+
+
+def over(source, function=_NO_CALLBACK, where=None, *, unpack=None):
+    """Traverse lazily, optionally filtering and mapping each source value.
+
+    Omitting function retains source values, including their identities. The
+    stream owns its fresh generator protocol; it does not forward send, throw
+    or close to an externally retained source. Unpacking requires a mapper.
+    """
+    if function is _NO_CALLBACK:
+        _validate_unpack(unpack)
+        if unpack is not None:
+            raise TypeError('unpack requires a mapping function')
+        cursor = _InputCursor(source, None)
+        generator = (_stream_generator(cursor) if where is None else
+                     _identity_generator(cursor, where))
+        return _ProtocolGenerator(generator)
     return _ProtocolGenerator(_mapped_generator(_InputCursor(source, unpack), function, where, unpack))
 
 
@@ -231,8 +260,6 @@ def _FloatTerms(source):
     converter = _FLOAT
     return (converter(value) for value in source)
 
-
-_NO_CALLBACK = object()
 
 
 def sum_float(source, function=_NO_CALLBACK, where=None) -> float:
