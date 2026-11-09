@@ -151,15 +151,7 @@ the existing object ABI, preserving ordinary sums' empty integer zero and strict
 report dtypes. That fix does not establish arbitrary object replacement support
 for every traced numeric Cell; provider tests alone do not qualify that boundary.
 
-Regional adjustments retain all original generator/comprehension and consumer
-syntax. Seventeen generation-scope power operators use standard builtin
-`pow(base, exponent)` to retain Python numeric/error behavior; the source/hash
-receipt is `GENERATOR_SOURCE_ADJUSTMENTS.json`. No multiline formatting
-workaround is needed with compiler c8b0371's CST pipeline.
-
-These limited adjusted-source power spellings require the standard builtin
-`pow` binding. No adjusted namespace currently defines a Cell/Reference named
-`pow`. Replacing or introducing that name can change a function call, while the
-original `**` operator ignores it; this is an explicit new authoring binding,
-not a universally equivalent rewrite under arbitrary global replacement. The
-original model checkout retains its original operators and is separate.
+Regional formulas retain their original power operators. The compiler preserves
+Python result/error semantics outside its proved real-power domain, so no new
+public `pow` binding or power-spelling source workaround is required. The retired
+adjustment receipt remains in Git for reproducibility.

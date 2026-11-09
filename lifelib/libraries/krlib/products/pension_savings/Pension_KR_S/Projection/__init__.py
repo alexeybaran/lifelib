@@ -1108,7 +1108,7 @@ def surr_chg_cap_pp():
     yrs = int(min(m, pricing_basis("acq_charge_years")))
     i = avg_decl_rate()
     acq = prem_pp() * pricing_basis("acq_charge_rate")
-    deduct = sum(acq / pow((1.0 + i), s) for s in range(yrs))
+    deduct = sum(acq / (1.0 + i) ** s for s in range(yrs))
     return max(0.0, gross - deduct)
 
 

@@ -1249,7 +1249,7 @@ def pols_lapse_pool(t):
     reinstate.
     """
     rho = reinstate_rate_eff()
-    return sum(pols_lapse(s) * pow((1.0 - rho), (t - 1 - s))
+    return sum(pols_lapse(s) * (1.0 - rho) ** (t - 1 - s)
                for s in range(max(0, t - reinstate_window), t))      # noqa: F821
 
 
