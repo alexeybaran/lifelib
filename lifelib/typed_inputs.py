@@ -248,3 +248,12 @@ def is_missing(predicate, value) -> bool:
 is_missing.__modelx_native_operation__ = 'is_missing'
 is_missing.__modelx_cython_helper__ = ('lifelib._native_inputs', 'is_missing')
 _native_operations['is_missing'] = is_missing
+
+# Shared declared-call ABI, owned by the generic compiler helper registry.
+# Physical results describe these .pxd dispatchers, including the existing
+# type-compatible replacement contract; they do not infer callback bodies.
+for _operation, _result in ((lookup_float, 'float64'), (lookup_int, 'int64'),
+                           (lookup_bool, 'bool'), (lookup_str, 'unicode'),
+                           (lookup_object, 'object'), (is_missing, 'bool')):
+    _operation.__modelx_cython_call_layout__ = 'keywords'
+    _operation.__modelx_cython_scalar_result__ = _result
