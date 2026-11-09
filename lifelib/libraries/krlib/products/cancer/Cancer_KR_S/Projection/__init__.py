@@ -2029,8 +2029,8 @@ def check_hosp_cap_resid(t):
     model of the same product it would bind on the tail, and the difference is a property of
     the model rather than of the contract.
     """
-    tbl = data.care_table()                                          # noqa: F821
-    return max(0.0, max(float(tbl.loc[k, "hosp_days_adm"])
+    tbl = data.prepared_care_table_loc()                                          # noqa: F821
+    return max(0.0, max(tables.lookup_float(tbl, k, "hosp_days_adm")
                         for k in range(1, 7)) - hosp_day_cap()) * in_force(t)
 
 
