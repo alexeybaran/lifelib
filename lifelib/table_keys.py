@@ -3,7 +3,7 @@ from .immutable_inputs import Record
 
 
 def keys(table):
-    """Return keys in input order, preserving the existing sequence identity.
+    """Return keys in input order; Table/Index owners retain tuple identity.
 
     Tables return row keys; ordinary Records return field names. Explicit owned
     Index Records return labels, preserving duplicates without confusing a real

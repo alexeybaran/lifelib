@@ -159,14 +159,16 @@ evidence and matched performance remain separate gates.
 `lifelib.table_operations` provides two more directly registered selectors:
 
 ```python
-prepared = inputs.table(result_cf())
+prepared = inputs.table(result_cf(), rows=True)
 selected = operations.row(prepared, t)
 claims = sum(tables.lookup_float(selected, name)
              for name in keys(selected) if name.startswith('claims_'))
 rates = operations.column(prepared, 'rate')
 ```
 
-`row(table, key)` selects one unique row into the existing Record. Preparation
+`row(table, key)` selects one unique row into the existing Record from an
+ungrouped Table prepared with `rows=True`. Row coercion follows the selected
+columns, so pruning columns can change a row dtype. Preparation
 owns the actual pandas row scalar coercion separately from column values:
 an int64 column beside a float64 column stays integral for column lookup,
 while the selected pandas-style numeric row contains float64 scalars. Nullable
@@ -194,10 +196,12 @@ those fallback executions do not establish native coverage.
 metadata. `to_pandas(selected_row)` constructs its Series. The boundary restores
 axis classes/names, column order, dtypes, missing entries, attrs and duplicate-label
 flags and returns independent public objects. `index_name=` explicitly renames the
-axis (including `None`); omission preserves its name. Untagged Records and Tables
+axis (`None` clears a single-level name; a MultiIndex requires a sequence of
+names, following pandas rename); omission preserves its names. Untagged Records and Tables
 without report metadata are rejected instead of guessed into report schemas.
 
-Preparation now explicitly owns row-coercion metadata; it still uses Python and
+Preparation with `rows=True` explicitly owns a second row-scalar matrix;
+lookup-only preparation omits this cost. Preparation still uses Python and
 pandas, as does final public materialization. Their costs/storage must be included
 in lifecycle measurements. Native preparation, primitive column consumers,
 grouping, arbitrary selection/alignment, and complete regional source migration

@@ -27,7 +27,7 @@ def _key(value):
     return _scalar(value)
 
 
-def table(frame, *, columns=None, groups=(), indexing='loc'):
+def table(frame, *, columns=None, groups=(), indexing='loc', rows=False):
     """Build an existing Table, optionally nested in explicit group Records.
 
     ``groups`` names index levels to group, in the authored nesting order. The
@@ -42,6 +42,10 @@ def table(frame, *, columns=None, groups=(), indexing='loc'):
     The normal Table contract requires unique leaf keys and nonempty unique
     string columns. Unsupported scalar values raise rather than silently lose
     their dtype/missing semantics. Public DataFrames are not modified.
+
+    ``rows=True`` additionally owns pandas-style row scalar coercion for row()
+    selection. Lookup-only tables omit this second matrix. Row coercion follows
+    the selected columns, and row snapshots currently require ungrouped tables.
     """
     if not isinstance(frame, pd.DataFrame):
         raise TypeError('table requires a pandas DataFrame')
@@ -49,6 +53,8 @@ def table(frame, *, columns=None, groups=(), indexing='loc'):
         raise ValueError('indexing must be loc or at')
     if indexing == 'at' and groups:
         raise ValueError('at preparation requires complete keys')
+    if rows and groups:
+        raise ValueError('row snapshots require ungrouped tables')
     index_error = _at_index_spec(frame.index, encoded_errors=indexing == 'at') if not groups else None
     selected = list(frame.columns) if columns is None else list(columns)
     if not selected or any(type(name) is not str for name in selected):
@@ -93,15 +99,16 @@ def table(frame, *, columns=None, groups=(), indexing='loc'):
         # lookup. Own it at preparation, rather than guessing a common dtype in
         # the financial kernel. Public axes and attrs are independent copies.
         row_values, row_dtypes, row_names = [], [], []
-        for position in range(len(selected_frame)):
-            public_row = selected_frame.iloc[position]
-            row_values.append(tuple(freeze(public_row[name]) for name in selected))
-            row_dtypes.append(public_row.dtype)
-            row_names.append(public_row.name)
+        if rows:
+            for position in range(len(selected_frame)):
+                public_row = selected_frame.iloc[position]
+                row_values.append(tuple(freeze(public_row[name]) for name in selected))
+                row_dtypes.append(public_row.dtype)
+                row_names.append(public_row.name)
         object.__setattr__(result, '_metadata', (
             'frame', selected_frame.index.copy(deep=True),
             selected_frame.columns.copy(deep=True), tuple(selected_frame.dtypes),
-            tuple(row_values), tuple(row_dtypes), deepcopy(selected_frame.attrs),
+            tuple(row_values) if rows else None, tuple(row_dtypes), deepcopy(selected_frame.attrs),
             selected_frame.flags.allows_duplicate_labels, tuple(row_names)))
     return result
 

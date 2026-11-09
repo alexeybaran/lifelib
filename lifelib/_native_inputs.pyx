@@ -1395,6 +1395,8 @@ cdef object row(object function, tuple keywords, object table, object key):
     metadata = table._metadata
     if metadata is None or metadata[0] != 'frame':
         raise ValueError('row requires a table prepared with pandas row metadata')
+    if metadata[4] is None:
+        raise ValueError('row requires table(..., rows=True)')
     position = indexed_position(table, key)
     if position < 0:
         return forward_call(function, keywords, ('table', 'key'), (table, key), omitted_argument)

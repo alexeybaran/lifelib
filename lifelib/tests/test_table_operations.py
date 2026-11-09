@@ -68,7 +68,7 @@ def test_exact_output_rows_values_and_pickle(native, frame):
     frame.attrs = {'scenario': ['original']}
     frame.columns.name = 'cashflow'
     frame.flags.allows_duplicate_labels = False
-    owned = inputs.table(frame)
+    owned = inputs.table(frame, rows=True)
     for source in [owned, pickle.loads(pickle.dumps(owned))]:
         pd.testing.assert_frame_equal(to_pandas(source), frame, check_exact=True)
         assert to_pandas(source).attrs == frame.attrs
@@ -98,7 +98,7 @@ def test_exact_output_rows_values_and_pickle(native, frame):
 
 
 def test_compiled_selection_has_no_python_helper_pandas_or_owner_calls(native):
-    source = inputs.table(pd.DataFrame({'age': [42, 43], 'rate': [0.1, 0.2]}))
+    source = inputs.table(pd.DataFrame({'age': [42, 43], 'rate': [0.1, 0.2]}), rows=True)
     forbidden = {row.__code__, column.__code__, Table.lookup.__code__,
                  Table.__getitem__.__code__, Record.__init__.__code__, Record.__getitem__.__code__}
     calls = []
@@ -118,7 +118,7 @@ def test_compiled_selection_has_no_python_helper_pandas_or_owner_calls(native):
 
 
 def test_replacement_layout_and_errors(native):
-    source = inputs.table(pd.DataFrame({'rate': [0.1]}, index=[3]))
+    source = inputs.table(pd.DataFrame({'rate': [0.1]}, index=[3]), rows=True)
     observed = []
     def current(*, key, table):
         observed.append((key, table))
@@ -144,3 +144,18 @@ def test_output_mutation_does_not_change_owned_snapshot():
     assert to_pandas(source).iloc[0, 0] == 1.0
     assert to_pandas(source).index.name == 't'
     assert to_pandas(source, index_name=None).index.name is None
+
+
+def test_row_snapshots_are_explicit_and_follow_selected_columns(native):
+    frame = pd.DataFrame({'age': [42], 'rate': [0.1]})
+    lookup_only = inputs.table(frame)
+    assert lookup_only._metadata[4] is None
+    pd.testing.assert_frame_equal(to_pandas(lookup_only), frame, check_exact=True)
+    for operation in [row, lambda table, key: native.select(row, table, key)]:
+        with pytest.raises(ValueError, match='rows=True'): operation(lookup_only, 0)
+    selected = inputs.table(frame, columns=('age',), rows=True)
+    expected = frame[['age']].loc[0]
+    pd.testing.assert_series_equal(to_pandas(native.select(row, selected, 0)), expected, check_exact=True)
+    assert type(row(selected, 0)['age']) is np.int64
+    with pytest.raises(ValueError, match='ungrouped'):
+        inputs.table(frame.rename_axis('t'), groups=('t',), rows=True)
