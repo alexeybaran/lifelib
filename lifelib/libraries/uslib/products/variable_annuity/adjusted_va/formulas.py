@@ -277,7 +277,12 @@ def stepup_base_pp(t):
         return av_pp(t)
     if basis != StepupBasis.highest_quarterly_CV or t < 0:
         raise ValueError('invalid step-up basis or month')
-    return max_value(av_pp(month) for month in range(t, max(-1, t - 12), -3))
+    best = av_pp(t)
+    for quarter in range(1, 4):
+        month = t - 3 * quarter
+        if month >= 0:
+            best = max(best, av_pp(month))
+    return best
 
 
 def gawa_pp_at(t, timing):
