@@ -267,7 +267,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def premium_pp():
@@ -448,7 +448,7 @@ def death_mth(life):
     table's ``death_mth_1`` / ``death_mth_2`` are month indices on this 0-based grid: the
     notes' "dies during month 14" is ``death_mth = 13``.
     """
-    v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
+    v = tables.lookup_object(prepared_model_point(), "death_mth_1" if life == 1 else "death_mth_2")
     return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
@@ -932,7 +932,7 @@ def commuted_value(t):
     j = commute_disc_rate(t)
     conv = commute_disc_convention                                   # noqa: F821
     total = 0.0
-    for s in range(t + 1, n_eff):
+    for s in expressions.periods(t + 1, n_eff):
         inst = annuity_pp_sched(s)
         if inst == 0.0:
             continue
@@ -963,7 +963,7 @@ def commute_amount(t):
         return 0.0
     th = commute_frac_cum(t)
     n_eff = certain_mths_eff()
-    insts = [annuity_pp_sched(s) for s in range(t + 1, n_eff)]
+    insts = [annuity_pp_sched(s) for s in expressions.periods(t + 1, n_eff)]
     insts = [i for i in insts if i > 0.0]
     if not insts:
         return 0.0
@@ -1012,8 +1012,8 @@ def surr_charge_rate(y):
     is never reached through :func:`commute_amount`.
     """
     tbl = data.surr_charge_table()                                   # noqa: F821
-    lo, hi = int(tbl.index.min()), int(tbl.index.max())
-    return float(tbl.loc[min(max(int(y), lo), hi), "surr_charge_rate"])
+    lo, hi = int(min(expressions.keys(data.prepared_surr_charge_table_index_selection()))), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection())))
+    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), min(max(int(y), lo), hi), "surr_charge_rate")
 
 
 def surr_charge(t):
@@ -1158,7 +1158,7 @@ def check_lives_roll_fwd_resid(k):
             built = 0.0 if (d >= 0 and k > d) else 1.0
         else:
             built = 1.0
-            for s in range(k):
+            for s in expressions.periods(k):
                 built *= 1.0 - mort_rate_mth(s, i)
         res += built - lives_if(k, i)
     if is_joint():
@@ -1182,7 +1182,7 @@ def check_lives_roll_fwd():
     probabilities that is zero when the model is right, and ``math.isclose(x, 0.0)``
     is False for every nonzero ``x`` at the default relative tolerance.
     """
-    return all((abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
+    return expressions.all_true((abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
 
 
 def check_payment_factor_resid(t):
@@ -1203,12 +1203,12 @@ def check_payment_factor():
     See :func:`check_payment_factor_resid` for what the residual catches and why a
     quantity that is zero by construction is checked at all.
     """
-    return all((abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
 
 
 def result_cf():
     """Result table of cashflows, indexed by month t = 0 ... proj_len() - 1."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1231,7 +1231,7 @@ def result_pols():
     reports the state the month closes in - which is the state the arrears instalment of
     that month is paid on, and the one the maintenance expense is carried on.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t + 1, 1) for t in ts],
@@ -1283,8 +1283,8 @@ commute_min_payment = 100.0
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

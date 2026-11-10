@@ -323,7 +323,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -645,13 +645,13 @@ def mort_rate_at_age(a):
     ``mort_age_offset`` needs.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    top = int(tbl.loc[sex()].index.max())
+    top = int(tables.last_key(tables.subtable(data.prepared_mort_table_groups_1(), sex())))
     lo = min(int(a), top)
-    q0 = float(tbl.loc[(sex(), lo), "mort_rate"])
+    q0 = tables.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo), "mort_rate")
     frac = a - lo
     if frac <= 0.0 or lo >= top:
         return q0
-    q1 = float(tbl.loc[(sex(), lo + 1), "mort_rate"])
+    q1 = tables.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo + 1), "mort_rate")
     return q0 + frac * (q1 - q0)
 
 
@@ -730,7 +730,7 @@ def lapse_rate(t):
     years against it.  Policy years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -794,7 +794,7 @@ def inc_band_at_age(a):
     """
     tbl = data.incidence_table()                                     # noqa: F821
     b = 5 * (int(a) // 5)
-    return min(max(b, int(tbl.index.min())), int(tbl.index.max()))
+    return min(max(b, int(min(expressions.keys(data.prepared_incidence_table_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_incidence_table_index_selection()))))
 
 
 def inc_rate_both(t):
@@ -805,7 +805,7 @@ def inc_rate_both(t):
     assumption in the model that is genuinely sourced.
     """
     tbl = data.incidence_table()                                     # noqa: F821
-    return float(tbl.loc[inc_band_at_age(age(t)), "rate_per_100k"]) / 100000.0
+    return tables.lookup_float(data.prepared_incidence_table_scalar_loc(), inc_band_at_age(age(t)), "rate_per_100k") / 100000.0
 
 
 def sex_factor(a):
@@ -830,9 +830,9 @@ def sex_factor(a):
     by-sex grid from the same workbook replaces the construction.
     """
     tbl = data.sex_factor_table()                                    # noqa: F821
-    a0, a1 = float(tbl.index.min()), float(tbl.index.max())
-    f0 = float(tbl.loc[a0, "f_male"])
-    f1 = float(tbl.loc[a1, "f_male"])
+    a0, a1 = float(min(expressions.keys(data.prepared_sex_factor_table_index_selection()))), float(expressions.max_value(expressions.keys(data.prepared_sex_factor_table_index_selection())))
+    f0 = tables.lookup_float(data.prepared_sex_factor_table_scalar_loc(), a0, "f_male")
+    f1 = tables.lookup_float(data.prepared_sex_factor_table_scalar_loc(), a1, "f_male")
     return min(2.0, max(0.0, f0 + (f1 - f0) * (a - a0) / (a1 - a0)))
 
 
@@ -965,7 +965,7 @@ def unlock(t):
     if cohort == 0.0:
         return 0.0
     factor = 1.0
-    for v in range(s, t):
+    for v in expressions.periods(s, t):
         factor = factor * surv_canc(v)
     return cohort * factor
 
@@ -1164,10 +1164,16 @@ def hosp_stay_days(t):
     because the gradient is published on four broad bands and the incidence on twenty-one
     narrow ones.
     """
-    tbl = data.hosp_stay_table()                                     # noqa: F821
-    basis = "age_band" if hosp_age_gradient else "all_ages"          # noqa: F821
-    rows = tbl[(tbl["basis"] == basis) & (tbl["age_from"] <= age(t))]
-    return float(rows.sort_values("age_from")["days"].iloc[-1])
+    groups = data.prepared_hosp_stay_table_calculation()
+    basis = "age_band" if hosp_age_gradient else "all_ages"
+    if not tables.has_group(groups, basis):
+        raise IndexError("single positional indexer is out-of-bounds")
+    table = tables.subtable(groups, basis)
+    attained_age = age(t)
+    eligible = [cutoff for cutoff in expressions.keys(table) if cutoff <= attained_age]
+    if not eligible:
+        raise IndexError("single positional indexer is out-of-bounds")
+    return tables.lookup_float(table, eligible[-1], "days")
 
 
 def hosp_rate_mth(t):
@@ -1376,7 +1382,7 @@ def claims(t, kind=None):
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
     if kind is None:
-        return sum((claims(t, k) for k in (
+        return expressions.sum_values((claims(t, k) for k in (
             "DIAG", "INSITU", "HOSP", "SURGERY", "TREAT", "OUTPATIENT",
             "ADVANCED", "DISCHARGE", "LAPSE")))
     if kind == "DIAG":
@@ -1519,7 +1525,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1537,7 +1543,7 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all((abs(check_cancer_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_cancer_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cycle_ledger_resid(t):
@@ -1551,7 +1557,7 @@ def check_cycle_ledger_resid(t):
     """
     built = 0.0
     factor = 1.0
-    for s in range(t - 1, max(t - cycle_months(), -1), -1):
+    for s in expressions.periods(t - 1, max(t - cycle_months(), -1), -1):
         factor = factor * surv_canc(s)
         built = built + trig(s) * factor
     return pols_locked(t) - built
@@ -1560,7 +1566,7 @@ def check_cycle_ledger_resid(t):
 def check_cycle_ledger():
     """True when the two-year cycle ledger closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return all((abs(check_cycle_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_cycle_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_insitu_ledger_resid(t):
@@ -1584,7 +1590,7 @@ def check_insitu_ledger():
     — keeps running against nobody.  Those months carry no information and are excluded
     rather than papered over.
     """
-    return all((abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len()) if pols_healthy(t) > 0.0))
+    return expressions.all_true((abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len()) if pols_healthy(t) > 0.0))
 
 
 def check_treat_cap_resid(t):
@@ -1602,7 +1608,7 @@ def check_treat_cap_resid(t):
 
 def check_treat_cap():
     """True when the treatment-month ledger stays inside its cap in every month."""
-    return all((abs(check_treat_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_treat_cap_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_adv_cap_resid(t):
@@ -1618,7 +1624,7 @@ def check_adv_cap_resid(t):
 
 def check_adv_cap():
     """True when the 先進医療 ledger stays inside its cap in every month."""
-    return all((abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t) -> object:
@@ -1636,7 +1642,7 @@ def check_net_cf_resid(t) -> object:
     table and not to :func:`net_cf` is caught by the same sweep.
     """
     row = expressions.row(prepared_result_cf_rows(), t)
-    outgo = sum((expressions.lookup_object(row, c) for c in expressions.keys(row) if str(c).startswith("claims_")))
+    outgo = expressions.sum_values((expressions.lookup_object(row, c) for c in expressions.keys(row) if str(c).startswith("claims_")))
     return (expressions.lookup_object(row, "premiums") - outgo - expressions.lookup_object(row, "expenses") - expressions.lookup_object(row, "claim_expenses")
             - expressions.lookup_object(row, "commissions") - expressions.lookup_object(row, "net_cf"))
 
@@ -1644,7 +1650,7 @@ def check_net_cf_resid(t) -> object:
 def check_net_cf():
     """True when the published cash-flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(premium_mth_pp(), 1.0)                      # noqa: F821
-    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 # ===== Cells: result tables =====
@@ -1680,7 +1686,7 @@ def result_cf():
     it is the *column* that is not published.  :func:`check_net_cf` asserts the identity
     off this table in every projected month.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1711,7 +1717,7 @@ def result_pols():
     The same 0-based frame as :func:`result_cf`: ``proj_len()`` rows indexed
     ``t = 0, 1, ..., proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1830,8 +1836,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

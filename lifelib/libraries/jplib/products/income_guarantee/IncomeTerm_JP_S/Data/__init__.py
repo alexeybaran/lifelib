@@ -170,6 +170,27 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_rate_class_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(rate_class_table().index)
+
+
+def prepared_rate_class_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(rate_class_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -183,4 +204,4 @@ rate_class_file = "rate_class_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

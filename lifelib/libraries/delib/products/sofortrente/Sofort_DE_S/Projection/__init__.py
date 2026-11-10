@@ -231,7 +231,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -584,9 +584,9 @@ def mort_rate_at_age(x, table_sex, basis):
         return (mix_male * mort_rate_at_age(x, "M", basis)           # noqa: F821
                 + (1.0 - mix_male) * mort_rate_at_age(x, "F", basis))   # noqa: F821
     tab = data.mort_table()                                          # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+    ages = expressions.keys(data.prepared_mort_table_index_selection_level_age())
+    xx = min(max(int(x), int(min(ages))), int(expressions.max_value(ages)))
+    return tables.lookup_float(data.prepared_mort_table_scalar_loc(), (basis, table_sex, xx), "mort_rate")
 
 
 def improve_rate_at_age(x, basis):
@@ -599,9 +599,9 @@ def improve_rate_at_age(x, basis):
     forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
     """
     tab = data.improvement_table()                                   # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, xx), "improve_rate"])
+    ages = expressions.keys(data.prepared_improvement_table_index_selection_level_age())
+    xx = min(max(int(x), int(min(ages))), int(expressions.max_value(ages)))
+    return tables.lookup_float(data.prepared_improvement_table_scalar_loc(), (basis, xx), "improve_rate")
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
@@ -792,7 +792,7 @@ def annuity_factor():
     v = 1.0 / (1.0 + tariff_int_rate())
     d = surv_pct()
     total = 0.0
-    for k in range(0, proj_len()):
+    for k in expressions.periods(0, proj_len()):
         if not is_payment_mth(k):
             continue
         g = certain_floor(k)
@@ -836,7 +836,7 @@ def annuity_pp_derived():
     disc = []
     dens = []
     paid = []
-    for t in range(0, proj_len()):
+    for t in expressions.periods(0, proj_len()):
         d = tariff_lives(t, 1) - tariff_lives(t + 1, 1)
         if d <= 0.0:
             continue
@@ -845,10 +845,10 @@ def annuity_pp_derived():
         paid.append(0 if t < fp else (t - fp) // p + 1)
     lo = 0.0
     hi = r_max
-    for it in range(solve_max_iter):                                 # noqa: F821
+    for it in expressions.periods(solve_max_iter):                                 # noqa: F821
         mid = 0.5 * (lo + hi)
         g = mid * a * load
-        for j in range(len(dens)):
+        for j in expressions.periods(len(dens)):
             g += disc[j] * dens[j] * max(sp - paid[j] * mid, 0.0)
         if g > target:
             hi = mid
@@ -876,7 +876,7 @@ def refund_pv():
     sp = single_prem()
     r = annuity_pp_derived()
     total = 0.0
-    for t in range(0, proj_len()):
+    for t in expressions.periods(0, proj_len()):
         d = tariff_lives(t, 1) - tariff_lives(t + 1, 1)
         if d <= 0.0:
             continue
@@ -897,9 +897,9 @@ def max_tariff_int_rate():
     """
     tab = data.hoechstrechnungszins_table()                          # noqa: F821
     y = entry_year()
-    for year_from in tab.index:
-        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
-            return float(tab.loc[year_from, "max_rate"])
+    for year_from in expressions.keys(data.prepared_hoechstrechnungszins_table_index_selection()):
+        if int(year_from) <= y <= tables.lookup_int(data.prepared_hoechstrechnungszins_table_scalar_loc(), year_from, "year_to"):
+            return tables.lookup_float(data.prepared_hoechstrechnungszins_table_scalar_loc(), year_from, "max_rate")
     raise ValueError("no Hoechstrechnungszins band covers entry_year")
 
 
@@ -1096,7 +1096,7 @@ def annuity_payments(t, kind=None):
     rather than in a total.
     """
     if kind is None:
-        return sum((annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR")))
+        return expressions.sum_values((annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR")))
     if not is_payment_mth(t):
         return 0.0
     if kind == "ANNUITANT":
@@ -1127,7 +1127,7 @@ def claims(t, kind=None):
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("GUARANTEE", "REFUND")))
+        return expressions.sum_values((claims(t, k) for k in ("GUARANTEE", "REFUND")))
     if kind == "GUARANTEE":
         if not is_payment_mth(t):
             return 0.0
@@ -1232,7 +1232,7 @@ def check_net_cf():
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
+    return bool(expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1265,13 +1265,13 @@ def check_lives_roll_fwd():
     a life that leaves and reappears fails here rather than in a cash flow.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    if not all((abs(check_lives_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
+    if not expressions.all_true((abs(check_lives_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
         return False
     lives = [1]
     if surv_pct() > 0.0:
         lives.append(2)
     for life in lives:
-        deaths = sum((lives_death(t, life) for t in expressions.periods(t_start(), proj_len())))
+        deaths = expressions.sum_values((lives_death(t, life) for t in expressions.periods(t_start(), proj_len())))
         closure = (deaths + lives_if(proj_len(), life)
                    - lives_if(t_start(), life))
         if abs(closure) > tol:
@@ -1303,8 +1303,8 @@ def check_annuity_roll_fwd():
     *Überschussverwendung* ratchet rather than fluctuate.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    stepped = all((abs(check_annuity_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
-    ratchet = all((annuity_pp(t) >= annuity_pp(t - 1) - tol for t in expressions.periods(t_start() + 1, proj_len())))
+    stepped = expressions.all_true((abs(check_annuity_roll_fwd_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len())))
+    ratchet = expressions.all_true((annuity_pp(t) >= annuity_pp(t - 1) - tol for t in expressions.periods(t_start() + 1, proj_len())))
     return bool(stepped and ratchet)
 
 
@@ -1335,10 +1335,10 @@ def check_refund_run_off():
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
     if refund_form() == "none":
-        return bool(all((refund_pp(t) == 0.0 for t in expressions.periods(t_start(), proj_len()))))
-    if not all((abs(check_refund_run_off_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
+        return bool(expressions.all_true((refund_pp(t) == 0.0 for t in expressions.periods(t_start(), proj_len()))))
+    if not expressions.all_true((abs(check_refund_run_off_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))):
         return False
-    if not all((refund_pp(t) <= refund_pp(t - 1) + tol for t in expressions.periods(t_start() + 1, proj_len()))):
+    if not expressions.all_true((refund_pp(t) <= refund_pp(t - 1) + tol for t in expressions.periods(t_start() + 1, proj_len()))):
         return False
     if refund_pp(proj_len() - 1) > tol:
         return False
@@ -1377,7 +1377,7 @@ def check_payment_factor_resid(t):
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all((abs(check_payment_factor_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
+    return bool(expressions.all_true((abs(check_payment_factor_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_guarantee_certain_resid(t):
@@ -1401,7 +1401,7 @@ def check_guarantee_certain():
     there is nothing to be certain about.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return bool(all((abs(check_guarantee_certain_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
+    return bool(expressions.all_true((abs(check_guarantee_certain_resid(t)) <= tol for t in expressions.periods(t_start(), proj_len()))))
 
 
 def check_equivalence_resid():
@@ -1483,7 +1483,7 @@ def result_cf():
     and no tail state: the annuitant's survival has reached zero and the guarantee has
     expired, so nothing remains to be paid.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(expressions.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1507,7 +1507,7 @@ def result_pols():
     and surplus parts, and the refund's run-off against the cumulative guaranteed
     instalments.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(expressions.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t, 1) for t in ts],
@@ -1565,8 +1565,8 @@ solve_max_iter = 200
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

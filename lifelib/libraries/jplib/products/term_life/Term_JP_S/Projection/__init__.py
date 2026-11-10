@@ -401,7 +401,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -641,7 +641,7 @@ def omega_age():
     Used only to keep the optional age-basis shift from reading past the end of the
     table; no shipped model point comes near it.
     """
-    return int(data.mort_table().loc[sex()].index.max())             # noqa: F821
+    return int(tables.last_key(tables.subtable(data.prepared_mort_table_groups_1(), sex())))             # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -664,7 +664,7 @@ def mort_table_mean(x, m):
     quantity, and feeding the best-estimate factor in would move a published rate card by
     an assumption that has nothing to do with pricing.
     """
-    return sum((mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
+    return expressions.sum_values((mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
 
 
 def mort_rate_base(t):
@@ -760,7 +760,7 @@ def lapse_rate(t):
     A lapse pays nothing: there is no 解約返戻金 at any duration [S1][S4][S8].
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -843,12 +843,12 @@ def prem_rate_m(t):
     x_k, m_k = term_start_age(k), term_len(k)
     tbl = data.prem_rate_table()                                     # noqa: F821
     key = (sex(), int(x_k), int(m_k))
-    if key in tbl.index:
-        return float(tbl.loc[key, "rate_per_5m"])
-    anchor = data.prem_anchor_table().loc[sex()]                     # noqa: F821
-    return (float(anchor["rate_per_5m"])
+    if key in expressions.keys(data.prepared_prem_rate_table_index_selection()):
+        return tables.lookup_float(data.prepared_prem_rate_table_scalar_loc(), key, "rate_per_5m")
+    anchor = expressions.row(data.prepared_prem_anchor_table_rows(), sex())                     # noqa: F821
+    return (tables.lookup_float(anchor, "rate_per_5m")
             * mort_table_mean(x_k, m_k)
-            / mort_table_mean(int(anchor["issue_age"]), int(anchor["term_y"])))
+            / mort_table_mean(tables.lookup_int(anchor, "issue_age"), tables.lookup_int(anchor, "term_y")))
 
 
 def premium_mth_pp(t):
@@ -1072,7 +1072,7 @@ def pols_lapse_pool(t):
     41, and no blanket balance indexed by projection year can say that.
     """
     rho = reinstate_rate_mth()
-    return sum((pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window_m()), t)))
+    return expressions.sum_values((pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window_m()), t)))
 
 
 def reinstate_rate_mth():
@@ -1311,7 +1311,7 @@ def claims(t, kind=None):
         is a fact about the composite and not about the product class.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LIVING_NEEDS", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LIVING_NEEDS", "LAPSE")))
     if kind == "DEATH":
         return sum_assured() * (1.0 - ln_share(t)) * pols_death(t)
     if kind == "LIVING_NEEDS":
@@ -1456,7 +1456,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_lapse_pool_resid(t):
@@ -1475,7 +1475,7 @@ def check_lapse_pool_resid(t):
 
 def check_lapse_pool():
     """True when the 復活 pool ledger closes in every projected policy month."""
-    return all((abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pols_payer_resid(t):
@@ -1490,7 +1490,7 @@ def check_pols_payer_resid(t):
 
 def check_pols_payer():
     """True when payers and waived lives partition the in-force in every projected month."""
-    return all((abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_prem_level_resid(t):
@@ -1517,7 +1517,7 @@ def check_prem_level():
     months by design, and a level-premium check over that series would be asserting the
     payment mode rather than the repricing rule.
     """
-    return all((abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1528,11 +1528,11 @@ def check_net_cf_resid(t):
     benefit kind that exists in :func:`claims` but was never given a column — which would
     leave the statement silently short of outgo it is charging.
     """
-    row = result_cf().loc[t]
-    return float(row["net_cf"] - (
-        row["premiums"] - row["claims_death"] - row["claims_living_needs"]
-        - row["claims_lapse"] - row["claim_expenses"] - row["expenses"]
-        - row["commissions"]))
+    row = expressions.row(prepared_result_cf_rows(), t)
+    return float(tables.lookup_object(row, "net_cf") - (
+        tables.lookup_object(row, "premiums") - tables.lookup_object(row, "claims_death") - tables.lookup_object(row, "claims_living_needs")
+        - tables.lookup_object(row, "claims_lapse") - tables.lookup_object(row, "claim_expenses") - tables.lookup_object(row, "expenses")
+        - tables.lookup_object(row, "commissions")))
 
 
 def check_net_cf():
@@ -1547,7 +1547,7 @@ def check_net_cf():
     ``cash_tol = 1e-8`` is well above that noise and far below one yen, which is the
     smallest error a reader adding up the printed statement could observe.
     """
-    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1563,7 +1563,7 @@ def result_cf():
     reproduces the annual statement, with the one difference that matters — premium and
     claims are now weighted by the population of each month rather than of each year.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1593,7 +1593,7 @@ def result_pols():
     stated on, ``mort_rate_mth`` and ``lapse_rate_mth`` the rates actually applied to the
     month.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1619,6 +1619,11 @@ def result_pols():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_result_cf_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(result_cf(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1676,8 +1681,8 @@ cash_tol = 1e-8
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

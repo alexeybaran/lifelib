@@ -333,7 +333,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry(life):
@@ -545,8 +545,9 @@ def premium_schedule():
     period" [S2][S3][S4][R13] - so the schedule is a separate long table rather than a
     fixed set of model point columns.
     """
-    tbl = data.premium_schedule_table()                              # noqa: F821
-    return tbl[tbl["point_id"] == point_id].sort_values("premium_mth")  # noqa: F821
+    groups = data.prepared_premium_schedule_groups()
+    selected = tables.subtable(groups, point_id) if tables.has_group(groups, point_id) else data.prepared_empty_premium_schedule()
+    return expressions.to_pandas(selected)
 
 
 def premium_by_mth():
@@ -556,9 +557,11 @@ def premium_by_mth():
     than a DataFrame filter in every one of the projected months.
     """
     out = {}
-    for _, r in premium_schedule().iterrows():
-        k = int(r["premium_mth"])
-        out[k] = out.get(k, 0.0) + float(r["premium_amt"])
+    tbl = prepared_premium_schedule_rows()
+    for key in expressions.keys(tbl):
+        r = expressions.row(tbl, key)
+        k = tables.lookup_int(r, "premium_mth")
+        out[k] = out.get(k, 0.0) + tables.lookup_float(r, "premium_amt")
     return out
 
 
@@ -966,9 +969,9 @@ def guarantee_mths_pricing():
         return float(12 * certain_period())
     if f == "LO":
         return 0.0
-    cp = sum(premium_by_mth().values())
+    cp = expressions.sum_values(premium_by_mth().values())
     n = 0.0
-    for _ in range(pricing_iters):                                   # noqa: F821
+    for _ in expressions.periods(pricing_iters):                                   # noqa: F821
         inc = 0.0
         for tk, pk in premium_by_mth().items():
             a = annuity_factor(income_start_mth_at(tk), n, pricing_rate, tk)  # noqa: F821
@@ -998,7 +1001,7 @@ def payout_factor():
     if factor_basis() == "formula":
         return payout_factor_calc()
     key = (age(income_start_mth(), 1), sex(1), payout_form())
-    return float(data.payout_factor_table().loc[key, "payout_factor"])  # noqa: F821
+    return tables.lookup_float(data.prepared_payout_factor_table_scalar_loc(), key, "payout_factor")  # noqa: F821
 
 
 def rop_factor_calc(t):
@@ -1056,7 +1059,7 @@ def rop_factor(t):
     if factor_basis() == "formula":
         return rop_factor_calc(t)
     key = (age(t, 1), sex(1), int(round(deferral_yrs(t))))
-    return float(data.rop_factor_table().loc[key, "rop_factor"])     # noqa: F821
+    return tables.lookup_float(data.prepared_rop_factor_table_scalar_loc(), key, "rop_factor")     # noqa: F821
 
 
 def annuity_factor_def(t):
@@ -1406,7 +1409,7 @@ def accel_cost():
         return 0.0
     inst = annual_income(a) / payment_freq() * cola_factor(a)
     total = 0.0
-    for j in range(1, accel_months):                                 # noqa: F821
+    for j in expressions.periods(1, accel_months):                                 # noqa: F821
         sp = lives_if(a + j, 1) / base
         total += 1.0 - pricing_disc_factor(j / 12.0) * sp
     return inst * total
@@ -1507,7 +1510,7 @@ def commuted_value(t):
     end = income_start_mth() + n_eff
     i = commute_disc_rate(t)
     total = 0.0
-    for s in range(max(t, income_start_mth()), end):
+    for s in expressions.periods(max(t, income_start_mth()), end):
         inst = annuity_pp_sched(s)
         if inst:
             total += inst * (1.0 + i) ** (-(s - t) / 12.0)
@@ -1577,7 +1580,7 @@ def annuity_payments(t):
                               + annuity_pp_paid(t) * w)
     a = accel_mth()
     if a >= 0 and t == a:
-        for j in range(1, accel_months):                             # noqa: F821
+        for j in expressions.periods(1, accel_months):                             # noqa: F821
             total += (pols_if_init() * annuity_pp_sched(a + j)
                       * accel_payment_factor(a + j))
     return total
@@ -1759,7 +1762,7 @@ def check_lives_roll_fwd():
     Mortality is the only decrement here, so a failure means the last-survivor
     construction and the per-life recursion have come apart.
     """
-    return all((abs(check_lives_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_lives_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len())))
 
 
 def check_income_roll_fwd_resid(t):
@@ -1787,7 +1790,7 @@ def check_income_roll_fwd():
     tolerance is absolute rather than relative because ``B`` is a currency amount that
     only ever steps, never accrues.
     """
-    return all((abs(check_income_roll_fwd_resid(t)) < 1e-9 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_income_roll_fwd_resid(t)) < 1e-9 for t in expressions.periods(proj_len())))
 
 
 def check_payment_factor_resid(t):
@@ -1808,7 +1811,7 @@ def check_payment_factor():
     rather than tolerant: the identity is arithmetical, so any residual at all is a
     defect and not a rounding artefact.
     """
-    return all((check_payment_factor_resid(t) == 0.0 for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_payment_factor_resid(t) == 0.0 for t in expressions.periods(proj_len())))
 
 
 def check_commutation_value_resid(t):
@@ -1835,10 +1838,10 @@ def check_commutation_value_resid(t):
     a = accel_mth()
     i = commute_disc_rate(t)
     total = 0.0
-    for s in range(t, income_start_mth() + certain_mths_eff()):
+    for s in expressions.periods(t, income_start_mth() + certain_mths_eff()):
         paid = annuity_payments(s)
         if s == a:
-            for j in range(1, accel_months):                          # noqa: F821
+            for j in expressions.periods(1, accel_months):                          # noqa: F821
                 paid -= (pols_if_init() * annuity_pp_sched(s + j)
                          * accel_payment_factor(s + j))
         supp = pols_if_init() * annuity_pp(s) * payment_factor(s) - paid
@@ -1854,7 +1857,7 @@ def check_commutation_value():
     Trivially ``True`` on a contract that never commutes, which is the base run - the
     residual is identically zero away from the exercise month.
     """
-    return all((abs(check_commutation_value_resid(t)) < 1e-6 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_commutation_value_resid(t)) < 1e-6 for t in expressions.periods(proj_len())))
 
 
 def lives_if_ann(y):
@@ -1875,7 +1878,7 @@ def claims_ann(y, kind=None):
     ``(l(y-1) - l(y)) * CP(y)`` on the annual grid - which is exactly how the worked
     example computes it.
     """
-    return sum((claims(t, kind) for t in expressions.periods(12 * (y - 1), 12 * y)))
+    return expressions.sum_values((claims(t, kind) for t in expressions.periods(12 * (y - 1), 12 * y)))
 
 
 def annuity_payments_ann(y):
@@ -1896,7 +1899,7 @@ def annuity_payments_ann(y):
 
 def result_cf():
     """Result table of monthly cashflows, indexed by policy month ``t = 0 .. proj_len() - 1``."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1917,7 +1920,7 @@ def result_pols():
 
     The same frame as :func:`result_cf`: ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t, 1) for t in ts],
@@ -1944,11 +1947,11 @@ def result_annual():
     ``policy_year = t // 12 + 1`` maps the monthly frame onto it - one row per complete
     policy year inside the ``proj_len()`` projected months, 60 on the anchor cell.
     """
-    ys = list(range(1, proj_len() // 12 + 1))
+    ys = list(expressions.periods(1, proj_len() // 12 + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "age": [age(12 * (y - 1), 1) for y in ys],
-            "premium_pp": [sum((premium_pp(t) for t in expressions.periods(12 * (y - 1), 12 * y)))
+            "premium_pp": [expressions.sum_values((premium_pp(t) for t in expressions.periods(12 * (y - 1), 12 * y)))
                            for y in ys],
             "cum_premium_pp": [cum_premium_pp(12 * y - 1) for y in ys],
             "annual_income": [annual_income(12 * y - 1) for y in ys],
@@ -1964,6 +1967,11 @@ def result_annual():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_premium_schedule_rows():
+    """Own original input values for calculation operations."""
+    return inputs.table(premium_schedule(), rows=True, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2005,8 +2013,8 @@ qlac_max_start_age = 85
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

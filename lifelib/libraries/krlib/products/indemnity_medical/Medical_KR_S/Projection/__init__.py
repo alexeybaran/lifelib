@@ -351,7 +351,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -643,8 +643,7 @@ def mort_rate(t):
     prudence is the reverse of every protection product in this library and an
     over-statement of mortality is *anti*-conservative.
     """
-    x = min(age(t), int(data.mort_table().index.get_level_values(   # noqa: F821
-        "age").max()))
+    x = min(age(t), int(expressions.max_value(expressions.keys(data.prepared_mort_table_index_selection_level_age()))))
     return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
@@ -668,8 +667,8 @@ def lapse_rate(t):
     lending anyway.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -833,8 +832,7 @@ def util_band(y):
     NHIS coverage-ratio series comes at.
     """
     x = issue_age() + y - 1
-    top = int(data.utilisation_table().index.get_level_values(       # noqa: F821
-        "age_start").max())
+    top = int(expressions.max_value(expressions.keys(data.prepared_utilisation_table_index_selection_level_age_start())))
     return min(5 * (x // 5), top)
 
 
@@ -845,8 +843,7 @@ def util_value(y, column):
     not, because a longer stay is not a more frequent one and the room-differential cap
     is applied against the stay length itself.
     """
-    v = float(data.utilisation_table().loc[                          # noqa: F821
-        (sex(), util_band(y)), column])
+    v = tables.lookup_float(data.prepared_utilisation_table_scalar_loc(), (sex(), util_band(y)), column)
     if column == "los_days":
         return v
     return v * util_mult()
@@ -986,13 +983,13 @@ def sev_points(stream):
     cap truncates the top: the payment is a kinked function of cost, and applying the
     rule to a mean removes both kinks.
     """
-    sub = data.severity_table().loc[stream]                          # noqa: F821
-    return list(zip(sub["cost"].tolist(), sub["prob"].tolist()))
+    sub = tables.subtable(data.prepared_severity_table_calculation_groups_1(), stream)
+    return list(zip(expressions.column(sub, "cost"), expressions.column(sub, "prob")))
 
 
 def sev_mean(stream):
     """The expected cost of one event in a severity stream, KRW, before any trend."""
-    return sum((c * p for (c, p) in sev_points(stream)))
+    return expressions.sum_values((c * p for (c, p) in sev_points(stream)))
 
 
 # --- 급여 reimbursement — the main contract ---------------------------------
@@ -1323,7 +1320,7 @@ def claims_ann_pp(y, kind=None):
     With no ``kind`` the sum over all five.
     """
     if kind is None:
-        return sum((claims_ann_pp(y, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
+        return expressions.sum_values((claims_ann_pp(y, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     if kind == "GE_IN":
         return claims_ge_in_pp(y) * ge_limit_factor(y)
     if kind == "GE_OUT":
@@ -1393,7 +1390,7 @@ def claims_np_rated_pp(y):
 
 def shape_buckets():
     """The bucket ids of the annual rated 비급여 claim distribution."""
-    return list(data.claim_shape_table().index)                      # noqa: F821
+    return list(expressions.keys(data.prepared_claim_shape_table_index_selection()))                      # noqa: F821
 
 
 def shape_share(bucket):
@@ -1412,8 +1409,9 @@ def shape_mean():
     a **shape** and rescales it, so this is the divisor that turns a tabulated amount
     into a multiple of the mean.
     """
-    tbl = data.claim_shape_table()                                   # noqa: F821
-    return float((tbl["share"] * tbl["claim_amount"]).sum())
+    tbl = data.prepared_claim_shape_table_calculation()
+    products = [a * b for a, b in zip(expressions.column(tbl, "share"), expressions.column(tbl, "claim_amount"))]                                   # noqa: F821
+    return float(expressions.sum_f64(v for v in products if not tables.is_missing(pd.isna, v)))
 
 
 def shape_rel(bucket):
@@ -1496,7 +1494,7 @@ def reld_surcharge(y):
 
     This is the revenue the wording requires be distributed to the 1단계 contracts.
     """
-    return sum((band_share(y, b) * band_relativity(b) for b in (2, 3, 4, 5)))
+    return expressions.sum_values((band_share(y, b) * band_relativity(b) for b in (2, 3, 4, 5)))
 
 
 def reld_solved(y):
@@ -1702,7 +1700,7 @@ def claims(t, kind=None):
     an annual quantity rather than a unit of account.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
+        return expressions.sum_values((claims(t, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     return pols_if(t) * claims_ann_pp(policy_year(t), kind) / 12.0
 
 
@@ -1797,7 +1795,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1815,7 +1813,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def check_claim_shape_resid():
@@ -1827,9 +1825,9 @@ def check_claim_shape_resid():
     would pass both sums and is caught separately.
     """
     ks = shape_buckets()
-    s = sum((shape_share(k) for k in ks))
-    m = sum((shape_share(k) * shape_rel(k) for k in ks))
-    neg = sum((max(0.0, -shape_share(k)) for k in ks))
+    s = expressions.sum_values((shape_share(k) for k in ks))
+    m = expressions.sum_values((shape_share(k) * shape_rel(k) for k in ks))
+    neg = expressions.sum_values((max(0.0, -shape_share(k)) for k in ks))
     return abs(s - 1.0) + abs(m - 1.0) + neg
 
 
@@ -1845,14 +1843,14 @@ def check_band_shares_resid(y):
     negative.  A bucket that fell through :func:`band_of` — an amount that matched no
     band — would show here as a shortfall.
     """
-    s = sum((band_share(y, b) for b in (1, 2, 3, 4, 5)))
-    neg = sum((max(0.0, -band_share(y, b)) for b in (1, 2, 3, 4, 5)))
+    s = expressions.sum_values((band_share(y, b) for b in (1, 2, 3, 4, 5)))
+    neg = expressions.sum_values((max(0.0, -band_share(y, b)) for b in (1, 2, 3, 4, 5)))
     return (s - 1.0) + neg
 
 
 def check_band_shares():
     """True when the band shares partition the contracts in every policy year."""
-    return all((abs(check_band_shares_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((abs(check_band_shares_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_relativity_neutral_resid(y):
@@ -1875,7 +1873,7 @@ def check_relativity_neutral_resid(y):
 
 def check_relativity_neutral():
     """True when the experience relativity is self-financing in every policy year."""
-    return all((abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_renewal_corridor_resid(y):
@@ -1903,7 +1901,7 @@ def check_renewal_corridor_resid(y):
 
 def check_renewal_corridor():
     """True when neither priced unit moves more than 25% in a year, age effect excluded."""
-    return all((check_renewal_corridor_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((check_renewal_corridor_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_annual_limits_resid(y):
@@ -1943,7 +1941,7 @@ def check_annual_limits_resid(y):
 
 def check_annual_limits():
     """True when no contractual money or count limit is exceeded in any policy year."""
-    return all((check_annual_limits_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((check_annual_limits_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_indemnity_resid(y):
@@ -1961,7 +1959,7 @@ def check_indemnity_resid(y):
 
 def check_indemnity():
     """True when the claim never exceeds the incurred covered loss in any policy year."""
-    return all((check_indemnity_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((check_indemnity_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_oop_ceiling_resid(y):
@@ -1980,7 +1978,7 @@ def check_oop_ceiling_resid(y):
 
 def check_oop_ceiling():
     """True when the truncated 급여 covered loss stays inside the public annual ceiling."""
-    return all((check_oop_ceiling_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return expressions.all_true((check_oop_ceiling_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_expense_split_resid():
@@ -2013,7 +2011,7 @@ def result_cf():
     3대비급여 classes with their own sub-limits — and they sum to the whole benefit
     outgo; there is deliberately no ``claims`` subtotal column beside them.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2034,7 +2032,7 @@ def result_cf():
 
 def result_pols():
     """Result table of in-force movements and decrement rates, indexed by policy month t."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2059,7 +2057,7 @@ def result_prem():
     that the loop can be read off a single frame rather than reconstructed from the cash
     flow statement.
     """
-    ys = list(range(1, policy_year(proj_len() - 1) + 1))
+    ys = list(expressions.periods(1, policy_year(proj_len() - 1) + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "claims_np_rated_pp": [claims_np_rated_pp(y) for y in ys],
@@ -2183,8 +2181,8 @@ shape_tol = 1e-09
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

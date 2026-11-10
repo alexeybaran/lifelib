@@ -312,7 +312,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -707,7 +707,7 @@ def decl_rate(t):
     """
     tbl = expressions.lookup_object(data.prepared_decl_rate_table_generators(), rate_scenario())                # noqa: F821
     y = t // 12
-    return expressions.lookup_float(tbl, max((k for k in expressions.keys(tbl) if k <= y)), "decl_rate")
+    return expressions.lookup_float(tbl, expressions.max_value((k for k in expressions.keys(tbl) if k <= y)), "decl_rate")
 
 
 def min_guar_rate(t):
@@ -721,7 +721,7 @@ def min_guar_rate(t):
     """
     tbl = data.prepared_guar_rate_table_generators()                                     # noqa: F821
     y = t // 12
-    return expressions.lookup_float(tbl, max((k for k in expressions.keys(tbl) if k <= y)), "min_guar_rate")
+    return expressions.lookup_float(tbl, expressions.max_value((k for k in expressions.keys(tbl) if k <= y)), "min_guar_rate")
 
 
 def credit_rate(t):
@@ -812,8 +812,7 @@ def omega_age(table):
     no Korean industry table publishes a terminal age, because no Korean industry table is
     published at all.  ``q`` is truncated to 1 there.
     """
-    return int(data.mort_anchor_table().loc[                         # noqa: F821
-        (table, sex(), "omega_age"), "value"])
+    return tables.lookup_int(data.prepared_mort_anchor_table_scalar_loc(), (table, sex(), "omega_age"), "value")
 
 
 def mort_anchor(table, item):
@@ -924,7 +923,7 @@ def lapse_rate(t):
         return expressions.lookup_float(tbl, (lapse_basis(), "paid_up", 0), "lapse_rate")
     seg = expressions.lookup_object(expressions.lookup_object(data.prepared_lapse_table_generators(), lapse_basis()), "premium_paying")
     y = t // 12
-    return expressions.lookup_float(seg, max((k for k in expressions.keys(seg) if k <= y)), "lapse_rate")
+    return expressions.lookup_float(seg, expressions.max_value((k for k in expressions.keys(seg) if k <= y)), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -1099,7 +1098,7 @@ def surr_chg_cap_pp():
     """
     m = premium_term_y()
     lvl_years = min(m, pricing_basis("surr_chg_cap_level_years"))
-    loading = sum((prem_mth_pp() * (acq_charge_rate(s) + maint_charge_rate(s)) for s in expressions.periods(12 * m)))
+    loading = expressions.sum_values((prem_mth_pp() * (acq_charge_rate(s) + maint_charge_rate(s)) for s in expressions.periods(12 * m)))
     net_prem = prem_pp() - loading / lvl_years
     coeff = (pricing_basis("surr_chg_cap_rate_par") if par()
              else pricing_basis("surr_chg_cap_rate"))
@@ -1107,7 +1106,7 @@ def surr_chg_cap_pp():
     yrs = int(min(m, pricing_basis("acq_charge_years")))
     i = avg_decl_rate()
     acq = prem_pp() * pricing_basis("acq_charge_rate")
-    deduct = sum((acq / (1.0 + i) ** s for s in expressions.periods(yrs)))
+    deduct = expressions.sum_values((acq / (1.0 + i) ** s for s in expressions.periods(yrs)))
     return max(0.0, gross - deduct)
 
 
@@ -1540,7 +1539,7 @@ def claims(t, kind=None):
         payment**.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE")))
     if kind == "ANNUITY":
         return annuity_pp(t) * pols_if(t)
     if kind == "DEATH":
@@ -1789,7 +1788,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1809,7 +1808,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the 계약자적립액 recursion closes in every deferral month."""
     scale = max(1.0, annuity_fund_pp())
-    return all((abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
 
 
 def check_cv_floor_resid(t):
@@ -1832,7 +1831,7 @@ def check_cv_floor():
     value **is** the fund, so death and surrender pay the same amount at every duration.
     """
     scale = max(1.0, annuity_fund_pp())
-    return all((abs(check_cv_floor_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_cv_floor_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
 
 
 def check_surr_chg_cap_resid(t):
@@ -1854,7 +1853,7 @@ def check_surr_chg_cap():
     denied.  The composite sits far inside it, and so does the model point carrying the
     postal insurer's front-end charge.
     """
-    return all((check_surr_chg_cap_resid(t) >= -roll_fwd_tol * max(    # noqa: F821
+    return expressions.all_true((check_surr_chg_cap_resid(t) >= -roll_fwd_tol * max(    # noqa: F821
         1.0, prem_pp()) for t in expressions.periods(proj_len())))
 
 
@@ -1876,7 +1875,7 @@ def check_min_fund():
     **survival** guarantee: a death claim in deferral is not floored at premiums paid on this
     composite, so the floor is payable only to a policy that reaches the 연금개시일 in force.
     """
-    return all((check_min_fund_resid(t) >= -roll_fwd_tol * max(        # noqa: F821
+    return expressions.all_true((check_min_fund_resid(t) >= -roll_fwd_tol * max(        # noqa: F821
         1.0, cum_prem_pp(annuitisation_t())) for t in expressions.periods(proj_len())))
 
 
@@ -1904,9 +1903,9 @@ def check_annuity_total():
     """
     n = annuitisation_t()
     years = (payout_term_y() if payout_form() == "certain" else guar_term_y())
-    total = sum((annuity_pp(t) for t in expressions.periods(n, n + 12 * years)))
+    total = expressions.sum_values((annuity_pp(t) for t in expressions.periods(n, n + 12 * years)))
     scale = max(1.0, annuity_amount_pp())
-    return (all((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
+    return (expressions.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
             and abs(total - years * annuity_amount_pp())
             <= roll_fwd_tol * scale * years * 12)
 
@@ -1924,7 +1923,7 @@ def check_annuity_limit_resid(t):
     """
     if t < annuitisation_t() or t % 12 != annuitisation_t() % 12:
         return 0.0
-    drawn = sum((annuity_pp(u) for u in expressions.periods(t, min(t + 12, proj_len()))))
+    drawn = expressions.sum_values((annuity_pp(u) for u in expressions.periods(t, min(t + 12, proj_len()))))
     return annuity_limit_pp(t) - drawn
 
 
@@ -1938,7 +1937,7 @@ def check_annuity_limit():
     the model, it is a contract that has stopped being 연금수령 and started being 연금외수령
     at 16.5%, which is why it is worth a check rather than a comment.
     """
-    return all((check_annuity_limit_resid(t) >= -roll_fwd_tol * max(   # noqa: F821
+    return expressions.all_true((check_annuity_limit_resid(t) >= -roll_fwd_tol * max(   # noqa: F821
         1.0, annuity_amount_pp()) for t in expressions.periods(proj_len())))
 
 
@@ -1965,7 +1964,7 @@ def check_mort_law():
     live in ``mort_anchor_table.csv``, and a rate that no longer follows from them is either
     a hand edit or a real table.
     """
-    return all((abs(check_mort_law_resid(t)) <= 1e-15 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_mort_law_resid(t)) <= 1e-15 for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1983,7 +1982,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow columns add up to :func:`net_cf` in every month."""
     scale = max(1.0, prem_pp())
-    return all((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(proj_len())))
 
 
 # --- Results ---------------------------------------------------------------
@@ -2002,7 +2001,7 @@ def result_cf():
     split so its columns sum to ``net_cf``, and the ``claims(t, kind)`` cells stays.  There is
     no tax column either — see :func:`result_tax`, and :func:`net_cf` for why.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2032,7 +2031,7 @@ def result_pols():
     ``av_pp``, ``cv_pp`` and ``cum_prem_pp`` in one table is the quickest way to see the
     환급률 a Korean illustration quotes and the duration at which it passes 100%.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2062,7 +2061,7 @@ def result_tax():
     would make its columns stop summing to :func:`net_cf`, and would put money that never
     passes through the insurer's account into the liability.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "tax_credit_pp": [tax_credit_pp(t) for t in ts],
@@ -2096,8 +2095,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

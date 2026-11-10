@@ -353,7 +353,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -767,7 +767,7 @@ def lapse_rate_base(t):
     sanity ceiling and nothing more.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def dyn_lapse_factor(t):
@@ -833,7 +833,7 @@ def default_rate(t):
     if not apl_elected() or t % 12 != 0 or t >= prem_period_months():
         return 0.0
     tbl = data.lapse_table()                                         # noqa: F821
-    rate = float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "default_rate"])
+    rate = tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "default_rate")
     return min(1.0, rate * apl_default_mult())
 
 
@@ -853,12 +853,9 @@ def benefit_schedule():
     both cells and is held separately, so that a schedule with no rows still matures.
     """
     sid = schedule_id()
-    tbl = data.benefit_schedule_table()                              # noqa: F821
-    if sid not in tbl.index:
-        return {}
-    sub = tbl.loc[[sid]]
-    return {int(a): float(b)
-            for a, b in zip(sub["k"], sub["benefit_pct"])}
+    tbl = data.prepared_benefit_schedule_table_calculation()
+    return {tables.lookup_int(tbl, key, "k"): tables.lookup_float(tbl, key, "benefit_pct")
+            for key in expressions.keys(tbl) if tables.lookup_object(tbl, key, "schedule_id") == sid}
 
 
 def benefit_pct(k):
@@ -875,7 +872,7 @@ def benefit_pct(k):
 
 def benefit_pct_cum(k):
     """G(k): the cumulative staged fraction paid to and including anniversary k."""
-    return sum((v for (s, v) in benefit_schedule().items() if s <= k))
+    return expressions.sum_values((v for (s, v) in benefit_schedule().items() if s <= k))
 
 
 # --- the cash-value construction
@@ -903,7 +900,7 @@ def endow_epv(z, k, i):
         return 1.0
     v = 1.0 / (1.0 + i)
     total = 0.0
-    for j in range(k):
+    for j in expressions.periods(k):
         total += (v ** (j + 1)) * surv_prob(z, j) * mort_rate_at_age(sex(), z + j)
     return total + (v ** k) * surv_prob(z, k)
 
@@ -914,7 +911,7 @@ def annuity_due(z, k, i):
     In years of premium, so ``S x A / a-due`` is yen per year.  ``k = 0`` returns 0.
     """
     v = 1.0 / (1.0 + i)
-    return sum(((v ** j) * surv_prob(z, j) for j in expressions.periods(k)))
+    return expressions.sum_values(((v ** j) * surv_prob(z, j) for j in expressions.periods(k)))
 
 
 def edu_epv(k, i):
@@ -933,7 +930,7 @@ def edu_epv(k, i):
     v = 1.0 / (1.0 + i)
     z = issue_age() + k
     n = policy_term()
-    total = sum((g * (v ** (s - k)) * surv_prob(z, s - k) for (s, g) in benefit_schedule().items() if s > k))
+    total = expressions.sum_values((g * (v ** (s - k)) * surv_prob(z, s - k) for (s, g) in benefit_schedule().items() if s > k))
     return sum_assured() * (total + (v ** (n - k)) * surv_prob(z, n - k))
 
 
@@ -976,7 +973,7 @@ def implied_rate():
     """
     lo, hi = -0.20, 0.50
     target = premium_pp()
-    for _ in range(80):
+    for _ in expressions.periods(80):
         mid = 0.5 * (lo + hi)
         if prem_net_level_at(mid) > target:
             lo = mid
@@ -1481,7 +1478,7 @@ def claims(t, kind=None):
         base run, and published as a column of zeros because the zero is the product fact.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "STAGED", "MATURITY", "LAPSE", "PH_DEATH")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "STAGED", "MATURITY", "LAPSE", "PH_DEATH")))
     if kind == "DEATH":
         return max(0.0, death_ben_pp(t)) * pols_death(t)
     if kind == "STAGED":
@@ -1611,7 +1608,7 @@ def henreiritsu():
     payment frequency and volume band, so a ratio computed from a 月払 premium is a lower
     bound on a carrier's own published figure.
     """
-    total = sum_assured() * (sum(benefit_schedule().values()) + 1.0)
+    total = sum_assured() * (expressions.sum_values(benefit_schedule().values()) + 1.0)
     return total / (premium_pp() * prem_term())
 
 
@@ -1639,7 +1636,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pol_val_roll_fwd_resid(k):
@@ -1676,7 +1673,7 @@ def check_pol_val_roll_fwd():
     since the residual accumulates rounding on an amount of that size.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all((abs(check_pol_val_roll_fwd_resid(k)) <= tol for k in expressions.periods(proj_years())))
+    return expressions.all_true((abs(check_pol_val_roll_fwd_resid(k)) <= tol for k in expressions.periods(proj_years())))
 
 
 def check_pol_val_terminal_resid(k):
@@ -1700,7 +1697,7 @@ def check_pol_val_terminal():
     signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all((abs(check_pol_val_terminal_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
+    return expressions.all_true((abs(check_pol_val_terminal_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
 
 
 def check_surr_charge_resid(k):
@@ -1724,7 +1721,7 @@ def check_surr_charge():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all((abs(check_surr_charge_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
+    return expressions.all_true((abs(check_surr_charge_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
 
 
 def check_staged_value_resid(k):
@@ -1746,7 +1743,7 @@ def check_staged_value():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all((abs(check_staged_value_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
+    return expressions.all_true((abs(check_staged_value_resid(k)) <= tol for k in expressions.periods(proj_years() + 1)))
 
 
 def check_net_cf_resid(t):
@@ -1770,7 +1767,7 @@ def check_net_cf():
     residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 # --- result tables
@@ -1791,7 +1788,7 @@ def result_cf():
     ``claims_ph_death`` is a column of zeros in the base run by product design and is
     published rather than dropped; see the Space docstring.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1819,7 +1816,7 @@ def result_pols():
     are the annual rates the assumption tables are stated on and the notes quote, and the
     ``*_mth`` columns the rates actually applied to the month.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1858,7 +1855,7 @@ def result_val():
     or a death **between** anniversaries is settled on is :func:`cv_at_m` and
     :func:`pol_val_pre_at_m`, which interpolate these columns.
     """
-    ks = list(range(proj_years() + 1))
+    ks = list(expressions.periods(proj_years() + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pol_val_pre_pp": [pol_val_pre_pp(k) for k in ks],
@@ -1916,8 +1913,8 @@ val_tol = 1e-9
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

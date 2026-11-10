@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from lifelib.typed_inputs import max_value
+from modelx_helpers.typed_inputs import max_value
 
 from .formulas import FeeResetRule, GmdbOption, RollupRule, StepupBasis
 

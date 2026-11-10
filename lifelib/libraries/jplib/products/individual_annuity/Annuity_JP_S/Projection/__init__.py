@@ -317,7 +317,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -639,8 +639,11 @@ def omega_age(table):
     table rather than a property of the construction [REG-R18] [R3] [REG-R19].  ``q`` is
     truncated to 1 there.
     """
-    return int(data.mort_anchor_table().loc[                         # noqa: F821
-        (table, sex()), "omega_age"].iloc[0])
+    rows = data.prepared_mort_anchor_table_calculation()
+    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    if not keys:
+        raise KeyError((table, sex()))
+    return tables.lookup_int(rows, keys[0], "omega_age")
 
 
 def mort_rate_at_age(table, x):
@@ -716,7 +719,7 @@ def lapse_rate_base(t):
     if d >= premium_term_y():
         return expressions.lookup_float(tbl, ("defer_gap", 0), "lapse_rate")
     seg = expressions.lookup_object(data.prepared_lapse_table_generators(), "premium_paying")
-    return expressions.lookup_float(seg, max((y for y in expressions.keys(seg) if y <= d)), "lapse_rate")
+    return expressions.lookup_float(seg, expressions.max_value((y for y in expressions.keys(seg) if y <= d)), "lapse_rate")
 
 
 def lapse_dyn_factor(t):
@@ -1205,8 +1208,8 @@ def commute_factor(j):
     if j <= 0:
         return 0.0
     tbl = data.commute_factor_table()                                # noqa: F821
-    if j <= int(tbl.index.max()):
-        return float(tbl.loc[j, "factor"])
+    if j <= int(expressions.max_value(expressions.keys(data.prepared_commute_factor_table_index_selection()))):
+        return tables.lookup_float(data.prepared_commute_factor_table_scalar_loc(), j, "factor")
     i = pricing_basis("commute_int_rate")
     return (1.0 - (1.0 + i) ** (-j)) / i * (1.0 + i)
 
@@ -1414,7 +1417,7 @@ def claims(t, kind=None):
         the 年金の一括払 lump sums at the 年金支払開始日; zero in the base run.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE", "COMMUTATION")))
+        return expressions.sum_values((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE", "COMMUTATION")))
     if kind == "ANNUITY":
         return annuity_pp(t) * (pols_if(t) - pols_commute(t))
     if kind == "DEATH":
@@ -1522,7 +1525,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1537,7 +1540,7 @@ def check_lives_roll_fwd_resid(t):
 
 def check_lives_roll_fwd():
     """True when the survivorship roll-forward closes in every projected month."""
-    return all((abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_fund_resid(s):
@@ -1567,7 +1570,7 @@ def check_fund():
     here rather than silently misstate the 年金原資.
     """
     scale = max(1.0, annuity_fund_pp())
-    return all((abs(check_fund_resid(s)) <= roll_fwd_tol * scale for s in expressions.periods(0, proj_years())))
+    return expressions.all_true((abs(check_fund_resid(s)) <= roll_fwd_tol * scale for s in expressions.periods(0, proj_years())))
 
 
 def check_cv_cap_resid(t):
@@ -1595,7 +1598,7 @@ def check_cv_cap():
     that is allowed past the ceiling: clipping :func:`av_pp` instead of :func:`cv_pp` would
     pass this check and destroy the 年金原資.
     """
-    return all((check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
+    return expressions.all_true((check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
         1.0, db_pp(annuitisation_y())) for t in expressions.periods(0, proj_len())))
 
 
@@ -1623,9 +1626,9 @@ def check_annuity_total():
     """
     n = annuitisation_t()
     guaranteed = (payout_term_y() if payout_form() == "certain" else guar_term_y())
-    total = sum((annuity_pp(t) for t in expressions.periods(n, n + 12 * guaranteed)))
+    total = expressions.sum_values((annuity_pp(t) for t in expressions.periods(n, n + 12 * guaranteed)))
     scale = max(1.0, annuity_amount_pp())
-    return (all((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
+    return (expressions.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
             and abs(total - guaranteed * annuity_amount_pp())
             <= roll_fwd_tol * scale)
 
@@ -1645,7 +1648,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow columns add up to :func:`net_cf` in every month."""
     scale = max(1.0, premium_pp())
-    return all((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
 
 
 def mort_anchor_ages(table):
@@ -1655,8 +1658,11 @@ def mort_anchor_ages(table):
     canonical library-wide table; on 年金開始後用 they are the three spot rates the Makeham
     construction is fitted to.
     """
-    rows = data.mort_anchor_table().loc[(table, sex())]               # noqa: F821
-    return [int(a) for a in sorted(rows["age"])]
+    rows = data.prepared_mort_anchor_table_calculation()
+    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    if not keys:
+        raise KeyError((table, sex()))
+    return [int(a) for a in sorted(tables.lookup_object(rows, key, "age") for key in keys)]
 
 
 def makeham_coeff(table):
@@ -1667,10 +1673,14 @@ def makeham_coeff(table):
     anchors are therefore reproduced exactly by construction.  Used for 年金開始後用 only —
     死亡保険用 is graduated log-linearly instead; see :func:`mort_rate_graduated`.
     """
-    rows = data.mort_anchor_table().loc[(table, sex())]               # noqa: F821
-    rows = rows.sort_values("age")
-    ages = [int(a) for a in rows["age"]]
-    mus = [-math.log(1.0 - float(q)) for q in rows["mort_rate"]]      # noqa: F821
+    rows = data.prepared_mort_anchor_table_calculation()
+    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    if not keys:
+        raise KeyError((table, sex()))
+    
+    keys = [key for age_value, key in sorted((tables.lookup_object(rows, key, "age"), key) for key in keys)]
+    ages = [tables.lookup_int(rows, key, "age") for key in keys]
+    mus = [-math.log(1.0 - tables.lookup_float(rows, key, "mort_rate")) for key in keys]
     h = ages[1] - ages[0]
     ch = (mus[2] - mus[1]) / (mus[1] - mus[0])
     c = ch ** (1.0 / h)
@@ -1697,7 +1707,7 @@ def mort_rate_graduated(table, x):
     ages = mort_anchor_ages(table)
     if x in ages:
         return mort_rate_at_age(table, x)
-    lo = max((a for a in ages if a < x))
+    lo = expressions.max_value((a for a in ages if a < x))
     hi = min((a for a in ages if a > x))
     q_lo = math.log(mort_rate_at_age(table, lo))                     # noqa: F821
     q_hi = math.log(mort_rate_at_age(table, hi))                     # noqa: F821
@@ -1727,7 +1737,7 @@ def check_mort_graduation():
     ``mort_table.csv`` and ``mort_anchor_table.csv`` still agree with each other — the
     死亡保険用 rates log-linear between their anchors, the 年金開始後用 rates on the Makeham law.
     """
-    return all((abs(check_mort_graduation_resid(t)) <= 1e-15 for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_mort_graduation_resid(t)) <= 1e-15 for t in expressions.periods(0, proj_len())))
 
 
 # --- Results ---------------------------------------------------------------
@@ -1758,7 +1768,7 @@ def result_cf():
     contingency is a product fact and is stated rather than inferred.  The death
     contingency has its own column here, ``claims_death``, carrying the 死亡給付金.
     """
-    ts = list(range(0, proj_len()))
+    ts = list(expressions.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1796,7 +1806,7 @@ def result_pols():
     on this grid happens at a **month**, the elapsed month 149 on the anchor cell, and not
     merely somewhere inside a policy year.
     """
-    ts = list(range(0, proj_len()))
+    ts = list(expressions.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1838,15 +1848,15 @@ def lapse_rate_mean(weighting="count"):
     count [R15] [REG-R31].  Calibrating a count model directly against the published number
     without saying which weighting is meant mis-states the deferral decrement.
     """
-    ys = range(0, annuitisation_y())
+    ys = expressions.periods(0, annuitisation_y())
     if weighting == "count":
         w = [pols_if(12 * y) for y in ys]
     elif weighting == "fund":
         w = [av_pp(y) for y in ys]
     else:
         raise ValueError("invalid weighting")
-    num = sum((wt * lapse_rate(12 * y) for (wt, y) in expressions.zip_values((w, ys))))
-    den = sum(w)
+    num = expressions.sum_values((wt * lapse_rate(12 * y) for (wt, y) in expressions.zip_values((w, ys))))
+    den = expressions.sum_values(w)
     return num / den if den else 0.0
 
 
@@ -1868,8 +1878,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

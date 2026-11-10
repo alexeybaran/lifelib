@@ -341,7 +341,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -921,8 +921,8 @@ def corridor_factor(t):
     if qual_test() != "GPT":
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[a, "corridor_factor"])
+    a = min(max(age(t), int(min(expressions.keys(data.prepared_corridor_factors_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_corridor_factors_index_selection()))))
+    return tables.lookup_float(data.prepared_corridor_factors_scalar_loc(), a, "corridor_factor")
 
 
 def db_pp(t):
@@ -970,8 +970,14 @@ def coi_rate_scale():
     shipped table covers the notes' anchor cell M / NT / 45 only; a model point on any
     other cell needs the table extended first.
     """
-    return data.coi_rates().loc[                                     # noqa: F821
-        (sex(), rate_class(), age_at_entry())]["coi_rate_guar"]
+    try:
+        _selected_group = tables.subtable(tables.subtable(tables.subtable(data.prepared_coi_rates_groups_3(), sex()), rate_class()), age_at_entry())
+    except KeyError:
+        # Let the original selector produce its exact pandas error.
+        data.coi_rates().loc[                                     # noqa: F821
+        (sex(), rate_class(), age_at_entry())]
+        raise
+    return expressions.to_pandas(expressions.column(_selected_group, "coi_rate_guar", report=True))
 
 
 def coi_rate_guar(t):
@@ -983,9 +989,9 @@ def coi_rate_guar(t):
     swapped by replacing *coi_rates.csv*.  Policy years beyond the table take its last
     row.
     """
-    scale = coi_rate_scale()
-    y = min(policy_year(t), int(scale.index.max()))
-    return float(scale[y])
+    scale = prepared_coi_rate_scale_values()
+    y = min(policy_year(t), int(tables.last_key(scale)))
+    return float(tables.lookup_object(scale, y, "value"))
 
 
 def coi_rate(t):
@@ -1166,7 +1172,7 @@ def seg_bal_active_pp(t):
     before ``t = 0``, so the pool is empty in the first month.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum((seg_bal_pp(t - 1, m) for m in expressions.periods(lo, t)))
+    return expressions.sum_values((seg_bal_pp(t - 1, m) for m in expressions.periods(lo, t)))
 
 
 def seg_share(t, m):
@@ -1258,7 +1264,7 @@ def seg_bal_tot_pp(t):
     The segments born at ``max(0, t - 11) ... t``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum((seg_bal_pp(t, m) for m in expressions.periods(lo, t + 1)))
+    return expressions.sum_values((seg_bal_pp(t, m) for m in expressions.periods(lo, t + 1)))
 
 
 def seg_count(t):
@@ -1268,7 +1274,7 @@ def seg_count(t):
     for a model point with ``index_alloc_rate() == 0``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum((1 for m in expressions.periods(lo, t + 1) if seg_bal_pp(t, m) > 0))
+    return expressions.sum_values((1 for m in expressions.periods(lo, t + 1) if seg_bal_pp(t, m) > 0))
 
 
 def seg_return(t):
@@ -1538,9 +1544,9 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
-    init = float(row["sc_per_1000_init"])
-    yrs = float(row["runoff_years"])
+    row = expressions.row(data.prepared_surr_charge_table_rows(), surr_charge_id())             # noqa: F821
+    init = tables.lookup_float(row, "sc_per_1000_init")
+    yrs = tables.lookup_float(row, "runoff_years")
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1725,8 +1731,8 @@ def mort_rate(t):
     Ages beyond the table take its last row, where the rate is 1.0.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[a, "mort_rate"]) * class_factor() * mort_ae_factor  # noqa: F821
+    a = min(max(age(t), int(min(expressions.keys(data.prepared_mort_table_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_mort_table_index_selection()))))
+    return tables.lookup_float(data.prepared_mort_table_scalar_loc(), a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1743,8 +1749,8 @@ def lapse_rate_base(t):
     behind a paid package.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate_ann"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate_ann")
 
 
 def lapse_shock_year():
@@ -1758,7 +1764,7 @@ def lapse_shock_year():
     """
     if not has_surr_charge():
         return 0
-    return int(data.surr_charge_table().loc[surr_charge_id(), "runoff_years"]) + 1  # noqa: F821
+    return tables.lookup_int(data.prepared_surr_charge_table_scalar_loc(), surr_charge_id(), "runoff_years") + 1  # noqa: F821
 
 
 def lapse_rate_sc_mult(t):
@@ -1955,7 +1961,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
     else:
         raise ValueError("invalid kind")
 
@@ -2072,11 +2078,11 @@ def check_av_components():
     segment bookkeeping.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         parts = fa_pp(t) + seg_bal_tot_pp(t) + lca_pp(t)
         res.append(math.isclose(av_pp(t), parts,                     # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-8))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def check_av_roll_fwd():
@@ -2101,7 +2107,7 @@ def check_av_roll_fwd():
     withdrawal itself.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         av = (av_at(t, "BEF_PREM")
               + prem_to_av(t)
               + index_credits(t)
@@ -2113,7 +2119,7 @@ def check_av_roll_fwd():
               - claims_from_av(t, "LAPSE"))
         res.append(math.isclose(av_at(t + 1, "BEF_PREM"), av,        # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-8))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def check_seg_ladder():
@@ -2136,11 +2142,11 @@ def check_seg_ladder():
     without any check firing -- see :func:`mth_deduction_from_seg_pp`.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         res.append(seg_count(t) <= seg_term_mth)                     # noqa: F821
         res.append(index_credit_pp(t) >= -1e-8)
         lo = max(0, t - seg_term_mth + 1)                            # noqa: F821
-        for k in range(lo, t + 1):
+        for k in expressions.periods(lo, t + 1):
             res.append(seg_bal_pp(t, k) >= -1e-8)
         m = t - seg_term_mth                                         # noqa: F821
         if m >= 0:
@@ -2148,7 +2154,7 @@ def check_seg_ladder():
                       + seg_wd_cum_pp(t - 1, m))
             res.append(math.isclose(seg_new_pp(m), closed,           # noqa: F821
                                     rel_tol=1e-9, abs_tol=1e-8))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def check_margin():
@@ -2170,14 +2176,14 @@ def check_margin():
     :func:`csv_pp` nor the :func:`ncsv_pp` floor binds against a policy loan.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         rhs = (margin_expense(t) + margin_mortality(t)
                + av_change(t) - inv_income(t) - index_credits(t)
                + loan_bal_pp(t) * pols_lapse(t)
                + net_loan_cf(t))
         res.append(math.isclose(net_cf(t), rhs,                      # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-8))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def result_cf():
@@ -2192,7 +2198,7 @@ def result_cf():
     the ``"LAPSE"`` kind that produces it, and withdrawals are their own column because
     they are not claims.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2214,7 +2220,7 @@ def result_pols():
 
     One row per projected month, ``t = 0 ... proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2239,7 +2245,7 @@ def result_av():
     month, ``t = 0 ... proj_len() - 1``; ``av_pp_bef_prem`` on row ``t`` is the
     opening balance and ``av_pp`` the closing one.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp_bef_prem": [av_pp_at(t, "BEF_PREM") for t in ts],
@@ -2269,7 +2275,7 @@ def result_seg():
     maturing this month and the return that produced it (0 in ``t = 0 ... 11``, when
     nothing can mature yet).  One row per projected month, ``t = 0 ... proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "index_level": [index_level(t) for t in ts],
@@ -2289,6 +2295,11 @@ def result_seg():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_coi_rate_scale_values():
+    """Own public Series values; retain normal public Cell overrides."""
+    return inputs.table(coi_rate_scale().to_frame(name="value"), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2380,8 +2391,8 @@ pd = ("Module", "pandas")
 
 math = ("Module", "math")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

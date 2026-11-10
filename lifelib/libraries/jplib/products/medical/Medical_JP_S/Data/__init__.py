@@ -210,6 +210,26 @@ def prepared_incidence_index_generators():
     return inputs.index(incidence_table().index)
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_incidence_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(incidence_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -225,4 +245,4 @@ los_table_file = "los_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

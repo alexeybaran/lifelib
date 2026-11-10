@@ -113,6 +113,11 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -124,4 +129,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

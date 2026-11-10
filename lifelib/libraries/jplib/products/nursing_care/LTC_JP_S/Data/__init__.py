@@ -207,6 +207,16 @@ def prepared_mort_index_generators():
     return inputs.index(mort_table().index)
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -222,4 +232,4 @@ grade_share_file = "grade_share_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

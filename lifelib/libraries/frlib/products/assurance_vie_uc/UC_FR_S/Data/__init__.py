@@ -170,6 +170,33 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_plancher_rate_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(plancher_rate_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_uc_scenario_table_calculation_rows():
+    """Own original input values for calculation operations."""
+    return inputs.table(uc_scenario_table().reset_index(), groups=(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_plancher_rate_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(plancher_rate_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -185,4 +212,4 @@ uc_scenario_table_file = "uc_scenario_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

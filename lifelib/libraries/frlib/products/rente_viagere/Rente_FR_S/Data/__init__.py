@@ -122,6 +122,11 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_reversion_coeff_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(reversion_coeff_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -133,4 +138,4 @@ reversion_coeff_file = "reversion_coeff_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

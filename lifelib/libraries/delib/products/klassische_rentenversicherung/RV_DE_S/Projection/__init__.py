@@ -459,7 +459,7 @@ def model_point():
     Thirty columns; the projection reads them through this one cells so that a model point
     is fetched once per ItemSpace.  Point 1 is the technical notes' worked-example anchor.
     """
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def omega_age():
@@ -468,7 +468,7 @@ def omega_age():
     121 **[std]**.  ``mort_rate`` is 1 at ``omega_age - 1``, so the projection ends with no
     survivors and :func:`check_decrement_closure` closes on ``pols_if_init()`` exactly.
     """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
+    return tables.lookup_int(data.prepared_param_table_scalar_at(), "omega_age", "value")          # noqa: F821
 
 
 def proj_len_y():
@@ -663,13 +663,13 @@ def prem_pp_sched(k):
     does not retrospectively shrink that base — which is why :func:`beitragssumme_pp` sums
     this cells and not :func:`prem_pp`.
     """
-    mp = model_point()
-    if k < 0 or k >= int(mp["aufschub_y"]) or k >= int(mp["prem_term_y"]):
+    mp = prepared_model_point()
+    if k < 0 or k >= int(tables.lookup_object(mp, "aufschub_y")) or k >= int(tables.lookup_object(mp, "prem_term_y")):
         return 0.0
-    if mp["premium_form"] == "einmal":
-        return float(mp["premium_single_pp"]) if k == 0 else 0.0
-    return (float(mp["prem_gross_pp"]) * freq_load()
-            * (1.0 + float(mp["dynamik_rate"])) ** k)
+    if tables.lookup_object(mp, "premium_form") == "einmal":
+        return float(tables.lookup_object(mp, "premium_single_pp")) if k == 0 else 0.0
+    return (float(tables.lookup_object(mp, "prem_gross_pp")) * freq_load()
+            * (1.0 + float(tables.lookup_object(mp, "dynamik_rate"))) ** k)
 
 
 def prem_pp(k):
@@ -690,9 +690,9 @@ def beitragssumme_pp():
     acquisition charge is struck, and it is fixed at inception: a later
     *Beitragsfreistellung* does not shrink it.
     """
-    mp = model_point()
-    last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
-    return sum((prem_pp_sched(u) for u in expressions.periods(last)))
+    mp = prepared_model_point()
+    last = min(int(tables.lookup_object(mp, "prem_term_y")), int(tables.lookup_object(mp, "aufschub_y")))
+    return expressions.sum_values((prem_pp_sched(u) for u in expressions.periods(last)))
 
 
 def alpha_total_pp():
@@ -777,8 +777,7 @@ def charge_acq_spread_pp(k):
     :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the
     statutory surrender floor.  255,00 € on the anchor cell.
     """
-    years = int(data.charge_table().at[                              # noqa: F821
-        (tables.lookup_object(prepared_model_point(), "charge_id"), "alpha_spread_years"), "value"])
+    years = tables.lookup_int(data.prepared_charge_table_scalar_at(), (tables.lookup_object(prepared_model_point(), "charge_id"), "alpha_spread_years"), "value")
     return alpha_total_pp() / years if 0 <= k < years else 0.0
 
 
@@ -898,12 +897,12 @@ def av_pp(k):
     *Rentenbeginn* the whole balance is converted into the annuity or paid out as the
     *Kapitalabfindung*.
     """
-    mp = model_point()
+    mp = prepared_model_point()
     if k <= k_start():
-        return float(mp["av_pp_init"])
-    if k >= int(mp["aufschub_y"]):
+        return float(tables.lookup_object(mp, "av_pp_init"))
+    if k >= int(tables.lookup_object(mp, "aufschub_y")):
         return 0.0
-    if int(mp["pup_year"]) > 0 and k == int(mp["pup_year"]) - 1 and not pup_cashout():
+    if int(tables.lookup_object(mp, "pup_year")) > 0 and k == int(tables.lookup_object(mp, "pup_year")) - 1 and not pup_cashout():
         return pup_value_pp()
     return av_pp_at(k - 1, "AFT_INT")
 
@@ -1003,10 +1002,10 @@ def av_sur_pp(k):
     from ``k = n``, the balance having gone into the conversion capital.  It is untouched
     by a *Beitragsfreistellung*.
     """
-    mp = model_point()
+    mp = prepared_model_point()
     if k <= k_start():
-        return float(mp["av_sur_pp_init"])
-    if k >= int(mp["aufschub_y"]):
+        return float(tables.lookup_object(mp, "av_sur_pp_init"))
+    if k >= int(tables.lookup_object(mp, "aufschub_y")):
         return 0.0
     return av_sur_pp_at(k - 1, "AFT_INT")
 
@@ -1090,12 +1089,12 @@ def spread_diff_pp(k):
     treatments.  Zero again from the paid-up row ``k = pup_year - 1`` on a converting
     contract, the two accounts having merged at the paid-up value.
     """
-    mp = model_point()
+    mp = prepared_model_point()
     if k <= k_start():
         return 0.0
-    if k >= int(mp["aufschub_y"]):
+    if k >= int(tables.lookup_object(mp, "aufschub_y")):
         return 0.0
-    if int(mp["pup_year"]) > 0 and k == int(mp["pup_year"]) - 1 and not pup_cashout():
+    if int(tables.lookup_object(mp, "pup_year")) > 0 and k == int(tables.lookup_object(mp, "pup_year")) - 1 and not pup_cashout():
         return 0.0
     return spread_diff_pp_at(k - 1, "AFT_INT")
 
@@ -1176,7 +1175,7 @@ def mort_rate_guar(t):
     anniversary.
     """
     x = age(t)
-    base_year = int(data.param_table().at["mort_base_year", "value"])  # noqa: F821
+    base_year = tables.lookup_int(data.prepared_param_table_scalar_at(), "mort_base_year", "value")  # noqa: F821
     return min(1.0, mort_rate_at_age(x)
                * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
 
@@ -1229,9 +1228,9 @@ def decl_rate(k):
     """
     tbl = data.decl_rate_table()                                     # noqa: F821
     scen = tables.lookup_object(prepared_model_point(), "decl_scenario_id")
-    years = tbl.loc[scen].index
-    y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))
-    return float(tbl.at[(scen, y), "decl_rate"])
+    years = expressions.keys(tables.subtable(data.prepared_decl_rate_table_groups_1(), scen))
+    y = min(max(calendar_year_y(k), int(tables.first_key(tables.subtable(data.prepared_decl_rate_table_groups_1(), scen)))), int(tables.last_key(tables.subtable(data.prepared_decl_rate_table_groups_1(), scen))))
+    return tables.lookup_float(data.prepared_decl_rate_table_scalar_at(), (scen, y), "decl_rate")
 
 
 def bonus_rate(k):
@@ -1267,14 +1266,14 @@ def lapse_rate(t):
     This is the **annual** rate, flat across a policy year; :func:`lapse_rate_mth` is what the
     recursion applies.
     """
-    mp = model_point()
-    if duration(t) >= int(mp["aufschub_y"]):
+    mp = prepared_model_point()
+    if duration(t) >= int(tables.lookup_object(mp, "aufschub_y")):
         return 0.0
-    pup = int(mp["pup_year"])
+    pup = int(tables.lookup_object(mp, "pup_year"))
     if pup > 0 and duration(t) == pup - 2 and pup_cashout():
         return 1.0
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.at[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_at(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -1309,8 +1308,8 @@ def db_base_pp(k):
     a claim actually pays and reads end-of-year balances: the two are different quantities
     with deliberately similar names.
     """
-    mp = model_point()
-    form = mp["death_benefit_form"]
+    mp = prepared_model_point()
+    form = tables.lookup_object(mp, "death_benefit_form")
     paid = prem_cum_pp(k) + prem_pp(k)
     if form == "prem_refund":
         return paid
@@ -1333,10 +1332,10 @@ def db_pp(k):
     does establish for post-*Rentenbeginn* death is the *Rentengarantiezeit*, which is
     modelled in :func:`pols_annuity`.
     """
-    mp = model_point()
-    if k >= int(mp["aufschub_y"]):
+    mp = prepared_model_point()
+    if k >= int(tables.lookup_object(mp, "aufschub_y")):
         return 0.0
-    form = mp["death_benefit_form"]
+    form = tables.lookup_object(mp, "death_benefit_form")
     paid = prem_cum_pp(k) + prem_pp(k)
     if form == "prem_refund":
         base = paid
@@ -1346,7 +1345,7 @@ def db_pp(k):
         base = max(paid, av_pp_at(k, "AFT_INT"))
     else:
         raise ValueError("invalid death_benefit_form")
-    if int(mp["db_incl_surplus"]):
+    if int(tables.lookup_object(mp, "db_incl_surplus")):
         base = base + av_sur_pp_at(k, "AFT_INT")
     return base
 
@@ -1594,11 +1593,11 @@ def pols_annuity(t):
     guaranteed years are 120 guaranteed monthly instalments, and the annual grid could only
     state them as ten annual lumps.
     """
-    mp = model_point()
-    n_mth = 12 * int(mp["aufschub_y"])
+    mp = prepared_model_point()
+    n_mth = 12 * int(tables.lookup_object(mp, "aufschub_y"))
     if t < n_mth:
         return 0.0
-    if t < n_mth + 12 * int(mp["rgz_years"]):
+    if t < n_mth + 12 * int(tables.lookup_object(mp, "rgz_years")):
         return pols_annuitization(n_mth - 1)
     return pols_if(t)
 
@@ -1670,8 +1669,8 @@ def annuity_rate_curr():
     document is the direct evidence for the deferred contract's conversion basis.  Every level
     here is **[std]**: no market factor was established for any carrier in any year.
     """
-    mp = model_point()
-    return tables.lookup_float(data.prepared_rentenfaktor_table_at(), (mp['rf_scenario_id'], int(mp['issue_age']) + int(mp['aufschub_y'])), 'annuity_rate_curr')
+    mp = prepared_model_point()
+    return tables.lookup_float(data.prepared_rentenfaktor_table_at(), (tables.lookup_object(mp, 'rf_scenario_id'), int(tables.lookup_object(mp, 'issue_age')) + int(tables.lookup_object(mp, 'aufschub_y'))), 'annuity_rate_curr')
 
 
 def annuity_rate_appl():
@@ -1722,16 +1721,16 @@ def annuity_sur_mth_pp(k):
     The three systems and their *directions* are established; **no level, rate or split was
     established for any of them**, so all three parameters are **[std]**.
     """
-    mp = model_point()
-    n = int(mp["aufschub_y"])
+    mp = prepared_model_point()
+    n = int(tables.lookup_object(mp, "aufschub_y"))
     if k < n:
         return 0.0
     par = data.param_table()                                         # noqa: F821
-    rate = float(par.at["sur_ann_rate", "value"])
-    growth = float(par.at["sur_ann_growth", "value"])
-    theta = float(par.at["sur_ann_theta", "value"])
+    rate = tables.lookup_float(data.prepared_param_table_scalar_at(), "sur_ann_rate", "value")
+    growth = tables.lookup_float(data.prepared_param_table_scalar_at(), "sur_ann_growth", "value")
+    theta = tables.lookup_float(data.prepared_param_table_scalar_at(), "sur_ann_theta", "value")
     j = k - n
-    system = mp["payout_system"]
+    system = tables.lookup_object(mp, "payout_system")
     guar = annuity_guar_mth_pp()
     if system == "konstant":
         return rate * guar
@@ -1801,7 +1800,7 @@ def annuity_due_factor():
     disc = (1.0 / (1.0 + int_rate_guar())) ** (1.0 / 12.0)
     surv = 1.0
     total = 0.0
-    for s in range(n_mth, proj_len()):
+    for s in expressions.periods(n_mth, proj_len()):
         total = total + surv * disc ** (s - n_mth)
         surv = surv * (1.0 - mort_rate_mth(s))
     return total
@@ -1838,7 +1837,7 @@ def claims(t, kind=None):
     weighting rule and is published as :func:`annuity_payments`.
     """
     if kind is None:
-        return sum((claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION")))
+        return expressions.sum_values((claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION")))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1908,8 +1907,8 @@ def expenses(t):
     outgo by the whole charge load and is the commonest way to make a German model look
     conservative.
     """
-    mp = model_point()
-    n_mth = 12 * int(mp["aufschub_y"])
+    mp = prepared_model_point()
+    n_mth = 12 * int(tables.lookup_object(mp, "aufschub_y"))
     out = 0.0
     if t == t_start() and k_start() == 0:
         out = out + expense_acq_pp() * pols_if(t)
@@ -1959,11 +1958,11 @@ def check_net_cf_resid(t):
     published column and the headline number ever stop being the same arithmetic — which is
     the failure the identity exists to catch.
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
-               - row["claims_commutation"] - row["annuity_payments"]
-               - row["expenses"])
-    return float(row["net_cf"]) - float(rebuilt)
+    row = expressions.row(prepared_result_cf_rows(), t)
+    rebuilt = (tables.lookup_object(row, "premiums") - tables.lookup_object(row, "claims_death") - tables.lookup_object(row, "claims_lapse")
+               - tables.lookup_object(row, "claims_commutation") - tables.lookup_object(row, "annuity_payments")
+               - tables.lookup_object(row, "expenses"))
+    return float(tables.lookup_object(row, "net_cf")) - float(rebuilt)
 
 
 def check_net_cf():
@@ -1974,7 +1973,7 @@ def check_net_cf():
     the one quantity nothing checks.  It also asserts ``liability_cf(t) == -net_cf(t)``
     exactly, which is the library-wide sign convention.
     """
-    for t in result_cf().index:
+    for t in expressions.keys(prepared_result_cf_index_selection()):
         scale = max(1.0, abs(premiums(t)) + abs(claims(t))
                     + abs(annuity_payments(t)) + abs(expenses(t)))
         if abs(check_net_cf_resid(t)) > roll_fwd_tol() * scale:
@@ -2000,7 +1999,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes and ``pols_if`` stays non-negative."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    for t in result_cf().index:
+    for t in expressions.keys(prepared_result_cf_index_selection()):
         if abs(check_pols_roll_fwd_resid(t)) > tol:
             return False
         if pols_if(t) < -tol:
@@ -2023,14 +2022,14 @@ def check_decrement_closure_resid(t):
     ``omega_age() - 1``.  A projection truncated before then would fail here rather than
     silently drop the annuity tail.
     """
-    exits = sum((pols_death(s) + pols_lapse(s) + pols_commutation(s) for s in expressions.periods(t_start(), t + 1)))
+    exits = expressions.sum_values((pols_death(s) + pols_lapse(s) + pols_commutation(s) for s in expressions.periods(t_start(), t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
 def check_decrement_closure():
     """True when exits and survivors account for the whole cohort at every projected t."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all((abs(check_decrement_closure_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
+    return expressions.all_true((abs(check_decrement_closure_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 def check_av_roll_fwd_resid(k):
@@ -2058,7 +2057,7 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the *Deckungskapital* rolls forward exactly in every projected policy year."""
-    for k in range(k_start(), proj_len_y()):
+    for k in expressions.periods(k_start(), proj_len_y()):
         scale = max(1.0, abs(av(k)), abs(av(k + 1)), abs(prem_pp(k)))
         if abs(check_av_roll_fwd_resid(k)) > roll_fwd_tol() * scale:
             return False
@@ -2079,7 +2078,7 @@ def check_av_sur_roll_fwd_resid(k):
 
 def check_av_sur_roll_fwd():
     """True when the *Ansammlungsguthaben* rolls forward exactly in every projected year."""
-    for k in range(k_start(), proj_len_y()):
+    for k in expressions.periods(k_start(), proj_len_y()):
         scale = max(1.0, abs(av_sur(k)), abs(av_sur(k + 1)), abs(av(k)))
         if abs(check_av_sur_roll_fwd_resid(k)) > roll_fwd_tol() * scale:
             return False
@@ -2102,7 +2101,7 @@ def check_prem_split_resid(k):
 
 def check_prem_split():
     """True when the premium and the charge both decompose exactly in every projected year."""
-    for k in range(k_start(), proj_len_y()):
+    for k in expressions.periods(k_start(), proj_len_y()):
         scale = max(1.0, abs(prem_pp(k)), abs(charge_due_pp(k)))
         if abs(check_prem_split_resid(k)) > roll_fwd_tol() * scale:
             return False
@@ -2122,7 +2121,7 @@ def check_cv_floor_resid(k):
 
 def check_cv_floor():
     """True when the surrender value is the floored tariff value in every projected year."""
-    for k in range(k_start(), proj_len_y()):
+    for k in expressions.periods(k_start(), proj_len_y()):
         scale = max(1.0, abs(cv_pp(k)))
         if abs(check_cv_floor_resid(k)) > roll_fwd_tol() * scale:
             return False
@@ -2153,7 +2152,7 @@ def check_annuity_conv():
     """
     scale = max(1.0, abs(capital_conv_pp()))
     tol = roll_fwd_tol() * scale * 10000.0
-    if abs(check_annuity_conv_resid(result_cf().index[0])) > tol:
+    if abs(check_annuity_conv_resid(expressions.keys(prepared_result_cf_index_selection())[0])) > tol:
         return False
     if annuity_rate_appl() < annuity_rate_guar() - roll_fwd_tol():
         return False
@@ -2173,19 +2172,19 @@ def check_annuity_guarantee_resid(t):
     weighted the guaranteed months by survivors would fail here at every ``t`` inside the
     window where a death has occurred.
     """
-    mp = model_point()
-    n_mth = 12 * int(mp["aufschub_y"])
+    mp = prepared_model_point()
+    n_mth = 12 * int(tables.lookup_object(mp, "aufschub_y"))
     if t < n_mth:
         return pols_annuity(t)
     guaranteed = (pols_annuitization(n_mth - 1)
-                  if t < n_mth + 12 * int(mp["rgz_years"]) else 0.0)
+                  if t < n_mth + 12 * int(tables.lookup_object(mp, "rgz_years")) else 0.0)
     return pols_annuity(t) - max(pols_if(t), guaranteed)
 
 
 def check_annuity_guarantee():
     """True when the annuity is weighted by the annuitised count inside the guarantee period."""
     tol = roll_fwd_tol() * max(pols_if_init(), 1.0)
-    return all((abs(check_annuity_guarantee_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
+    return expressions.all_true((abs(check_annuity_guarantee_resid(t)) <= tol for t in expressions.keys(prepared_result_cf_index())))
 
 
 # ----------------------------------------
@@ -2213,7 +2212,7 @@ def result_cf():
     sum to its bottom line is one a reader has to know which columns to skip.
     :func:`result_cf_annual` sums this frame into policy years.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(expressions.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2260,7 +2259,7 @@ def result_pols():
     recursion applies are ``mort_rate_mth`` and ``lapse_rate_mth``, which belong to the monthly
     frame and are not printed here.
     """
-    ks = list(range(k_start(), proj_len_y()))
+    ks = list(expressions.periods(k_start(), proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(12 * k) for k in ks],
@@ -2300,6 +2299,16 @@ def prepared_result_cf_index():
     return inputs.index(result_cf().index)
 
 
+def prepared_result_cf_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(result_cf(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_result_cf_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(result_cf().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -2309,8 +2318,8 @@ point_id = 1
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

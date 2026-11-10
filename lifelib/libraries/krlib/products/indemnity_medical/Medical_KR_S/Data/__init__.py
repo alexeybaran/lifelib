@@ -271,6 +271,50 @@ def prepared_claim_shape_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_utilisation_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(utilisation_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_severity_table_calculation_groups_1():
+    """Own original input values for calculation operations."""
+    return inputs.table(severity_table(), groups=('stream',), rows=False, preserve_scalar_types=False)
+
+
+def prepared_claim_shape_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(claim_shape_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_mort_table_index_selection_level_age():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(mort_table().index.get_level_values("age"))
+
+
+
+def prepared_utilisation_table_index_selection_level_age_start():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(utilisation_table().index.get_level_values("age_start"))
+
+
+def prepared_claim_shape_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(claim_shape_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -290,4 +334,4 @@ oop_ceiling_file = "oop_ceiling_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

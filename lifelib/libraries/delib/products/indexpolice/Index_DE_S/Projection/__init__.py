@@ -255,7 +255,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -811,12 +811,12 @@ def pols_surv_year_end(k):
 
 def pols_death_year(k):
     """The deaths of policy year k, summed over its twelve months."""
-    return sum((pols_death(t) for t in expressions.periods(12 * k, 12 * k + 12)))
+    return expressions.sum_values((pols_death(t) for t in expressions.periods(12 * k, 12 * k + 12)))
 
 
 def pols_lapse_year(k):
     """The surrenders of policy year k, summed over its twelve months."""
-    return sum((pols_lapse(t) for t in expressions.periods(12 * k, 12 * k + 12)))
+    return expressions.sum_values((pols_lapse(t) for t in expressions.periods(12 * k, 12 * k + 12)))
 
 
 def surplus_credit(k):
@@ -839,8 +839,7 @@ def index_return(k, m):
     *Indexstichtag* need not fall on the policy anniversary, no carrier's convention was
     established, and an annual-grid model has no other defensible alignment.
     """
-    return float(data.index_return_table().loc[                      # noqa: F821
-        (index_id(), k), "m%02d" % m])
+    return tables.lookup_float(data.prepared_index_return_table_scalar_loc(), (index_id(), k), "m%02d" % m)
 
 
 def index_return_mth(t):
@@ -915,7 +914,7 @@ def index_sum(k):
     same twelve gives 8.9599 %, an error small enough to look like rounding and large
     enough to be wrong at every duration.
     """
-    return sum((index_return_capped(k, m) for m in expressions.periods(1, 13)))
+    return expressions.sum_values((index_return_capped(k, m) for m in expressions.periods(1, 13)))
 
 
 def index_return_year(k):
@@ -928,7 +927,7 @@ def index_return_year(k):
     feature the product is most criticised for and the one most often misdescribed.
     """
     out = 1.0
-    for m in range(1, 13):
+    for m in expressions.periods(1, 13):
         out = out * (1.0 + index_return(k, m))
     return out - 1.0
 
@@ -995,10 +994,10 @@ def index_budget_ratio():
     Returns 0.0 where nothing was elected to the index arm, there being no budget to
     compare against.
     """
-    budget = sum((opt_budget_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
+    budget = expressions.sum_values((opt_budget_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
     if budget <= 0.0:
         return 0.0
-    credits = sum((index_credit_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
+    credits = expressions.sum_values((index_credit_pp(t) for t in expressions.periods(k_start(), proj_len_y())))
     return credits / budget
 
 
@@ -1505,7 +1504,7 @@ def claims(t, kind=None):
     not — and that is the product's own rule.
     """
     if kind is None:
-        return sum((claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY")))
+        return expressions.sum_values((claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY")))
     if kind == "DEATH":
         return db_pp(duration(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1647,7 +1646,7 @@ def check_net_cf():
     The library-wide form: no argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return bool(all((abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
+    return bool(expressions.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
                     * max(abs(premiums(t)), abs(claims(t)),
                           abs(expenses(t)), 1.0) for t in expressions.periods(t_start(), proj_len()))))
 
@@ -1685,7 +1684,7 @@ def check_av_roll_fwd():
     Tolerance is relative to the balance, the account running to five figures while the
     residual should be zero to machine precision.
     """
-    return bool(all((abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
+    return bool(expressions.all_true((abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
                     * max(abs(av(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
@@ -1718,11 +1717,11 @@ def check_pols_roll_fwd():
     reference to the recursion that produced ``pols_if`` — and it is what catches a life
     that leaves twice or never leaves at all.
     """
-    ts = range(t_start(), proj_len())
-    closure = sum((pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in ts)) - pols_if_init()
+    ts = expressions.periods(t_start(), proj_len())
+    closure = expressions.sum_values((pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in ts)) - pols_if_init()
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
     return bool(abs(closure) <= tol
-                and all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in ts)))
+                and expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in ts)))
 
 
 def check_surplus_alloc_resid(k):
@@ -1742,7 +1741,7 @@ def check_surplus_alloc_resid(k):
 
 def check_surplus_alloc():
     """True when the declared surplus is allocated exactly once in every policy year."""
-    return bool(all((abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
+    return bool(expressions.all_true((abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
                     * max(abs(index_base_pp(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
@@ -1767,7 +1766,7 @@ def check_lock_in_resid(k):
 
 def check_lock_in():
     """True when the guaranteed capital is monotone and no credit is negative."""
-    return bool(all((abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
+    return bool(expressions.all_true((abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
                     * max(abs(guar_cap_pp(k)), 1.0) for k in expressions.periods(k_start(), proj_len_y()))))
 
 
@@ -1796,7 +1795,7 @@ def check_index_credit_resid(k):
 
 def check_index_credit():
     """True when the *Indexrendite* is inside its contractual bounds in every policy year."""
-    return bool(all((abs(check_index_credit_resid(k)) <= roll_fwd_tol for k in expressions.periods(k_start(), proj_len_y()))))
+    return bool(expressions.all_true((abs(check_index_credit_resid(k)) <= roll_fwd_tol for k in expressions.periods(k_start(), proj_len_y()))))
 
 
 # --- the result table --------------------------------------------------------
@@ -1822,7 +1821,7 @@ def result_cf():
     pitfall that :func:`check_net_cf` catches.  :func:`result_cf_annual` sums this frame
     into policy years.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(expressions.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1867,7 +1866,7 @@ def result_index():
     readable off the monthly frame through :func:`index_return_mth` and
     :func:`index_return_capped_mth`.
     """
-    ks = list(range(k_start(), proj_len_y()))
+    ks = list(expressions.periods(k_start(), proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(12 * k) for k in ks],
@@ -1930,8 +1929,8 @@ roll_fwd_tol = 1e-08
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -150,6 +150,27 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_fin_rate_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(fin_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+def prepared_fin_rate_scenarios():
+    """Own the original financial-scenario index level, including unused labels."""
+    return inputs.index(fin_rate_table().index.levels[0])
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -163,4 +184,4 @@ fin_rate_file = "fin_rate_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

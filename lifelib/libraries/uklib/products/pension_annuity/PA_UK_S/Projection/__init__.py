@@ -275,7 +275,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def purchase_price():
@@ -465,7 +465,7 @@ def death_mth(life):
     death "in month 16" is decremented at the end of month 16, so ``lives_if(k, life)``
     is 1 up to ``k = 16`` and 0 from ``k = 17``.
     """
-    v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
+    v = tables.lookup_object(prepared_model_point(), "death_mth_1" if life == 1 else "death_mth_2")
     return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
@@ -910,7 +910,7 @@ def claims(t, kind=None):
         partial period.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("VP", "PROP")))
+        return expressions.sum_values((claims(t, k) for k in ("VP", "PROP")))
     if kind == "VP":
         if vp_pct() <= 0.0:
             return 0.0
@@ -1008,7 +1008,7 @@ def check_lives_roll_fwd_resid(k):
             built = 0.0 if (d >= 0 and k > d) else 1.0
         else:
             built = 1.0
-            for s in range(k):
+            for s in expressions.periods(k):
                 built *= 1.0 - mort_rate_mth(s, i)
         res += built - lives_if(k, i)
     return res
@@ -1023,7 +1023,7 @@ def check_lives_roll_fwd():
     every projected month and the close of the last one.  The signed residual of a
     failing time point stays available as :func:`check_lives_roll_fwd_resid`.
     """
-    return all((abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
+    return expressions.all_true((abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in expressions.periods(proj_len() + 1)))
 
 
 def check_payment_factor_resid(t):
@@ -1038,7 +1038,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return all((abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_payment_factor_resid(t)) < 1e-10 for t in expressions.periods(proj_len())))
 
 
 def check_guarantee_xor():
@@ -1072,7 +1072,7 @@ def result_cf():
     ``net_cf`` is income-positive, the library-wide convention, and ``liability_cf`` is
     the technical notes' outgo-positive ``CF(t)``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1094,7 +1094,7 @@ def result_pols():
     ``lives_if_1``, ``lives_if_2``, ``cum_annuity_all`` and ``vp_balance`` are the
     closing values of the month whose flows the same row of :func:`result_cf` carries.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t + 1, 1) for t in ts],
@@ -1147,8 +1147,8 @@ inflation_rate = 0.03
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

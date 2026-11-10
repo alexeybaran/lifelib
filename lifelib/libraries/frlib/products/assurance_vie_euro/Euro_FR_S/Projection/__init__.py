@@ -427,7 +427,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -611,7 +611,7 @@ def avance_on():
 def scenario_id():
     """The financial scenario the model point runs on: ``base``, ``low`` or ``high``."""
     v = tables.lookup_str(prepared_model_point(), "scenario_id")
-    if v not in tuple(data.fin_rate_table().index.levels[0]):        # noqa: F821
+    if v not in tuple(expressions.keys(data.prepared_fin_rate_scenarios())):        # noqa: F821
         raise ValueError("unknown scenario_id")
     return v
 
@@ -717,8 +717,8 @@ def r_fin(y):
     The scenario table is an **annual** path and stays one; the month reaches it through
     ``proj_year(t)``.
     """
-    tbl = data.fin_rate_table().loc[scenario_id()]                   # noqa: F821
-    return float(tbl.loc[min(y, int(tbl.index.max())), "r_fin"])
+    tbl = tables.subtable(data.prepared_fin_rate_table_groups_1(), scenario_id())                   # noqa: F821
+    return float(tables.lookup_object(tbl, min(y, int(tables.last_key(tbl))), "r_fin"))
 
 
 def ref_rate(y):
@@ -728,8 +728,8 @@ def ref_rate(y):
     table rather than as a Reference because in a different financial scenario the rate
     available elsewhere is a different rate too.
     """
-    tbl = data.fin_rate_table().loc[scenario_id()]                   # noqa: F821
-    return float(tbl.loc[min(y, int(tbl.index.max())), "ref_rate"])
+    tbl = tables.subtable(data.prepared_fin_rate_table_groups_1(), scenario_id())                   # noqa: F821
+    return float(tables.lookup_object(tbl, min(y, int(tables.last_key(tbl))), "ref_rate"))
 
 
 def prem_gross_pp(y):
@@ -825,7 +825,7 @@ def pm_avg_pp(y):
     election has emptied the account, in which case every rate below is nil rather than
     undefined.
     """
-    return av_pp(12 * y) + sum(
+    return av_pp(12 * y) + expressions.sum_values(
         (prem_wt_mth(k) * (prem_to_av_mth_pp(12 * y + k)
                           - withdrawals_mth_pp(12 * y + k)) for k in expressions.periods(12)))
 
@@ -1034,7 +1034,7 @@ def ppb_vintage_release_pp(y, v):
     """
     if v < ppb_vintage_first() or v >= y:
         return 0.0
-    drawn = sum((ppb_vintage_release_pp(y, u) for u in expressions.periods(ppb_vintage_first(), v)))
+    drawn = expressions.sum_values((ppb_vintage_release_pp(y, u) for u in expressions.periods(ppb_vintage_first(), v)))
     return min(max(0.0, ppb_release_pp(y) - drawn), ppb_vintage_pp(y, v))
 
 
@@ -1044,7 +1044,7 @@ def ppb_ledger_pp(y):
     Computed independently of :func:`ppb_pp`, which runs its own aggregate recursion, so
     that :func:`check_ppb_roll_fwd` compares two things rather than restating one.
     """
-    return sum((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), max(y, 0))))
+    return expressions.sum_values((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), max(y, 0))))
 
 
 def ppb_dotation_pp(y):
@@ -1077,7 +1077,7 @@ def ppb_forced_pp(y):
     **deadline**, and it can exceed what the insurer would have chosen to release - which
     is the whole reason the ledger is per vintage.
     """
-    return sum((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), y - 7)))
+    return expressions.sum_values((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), y - 7)))
 
 
 def ppb_release_pp(y):
@@ -1344,8 +1344,7 @@ def lapse_rate_base(t):
     step is **twelve months wide**, ``t = 24 ... 35`` on the anchor cell.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
-                         "lapse_rate_base"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate_base")
 
 
 def lapse_dyn_add(t):
@@ -1490,7 +1489,7 @@ def claims(t, kind=None):
     :func:`withdrawals`.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "LAPSE":
@@ -1583,7 +1582,7 @@ def check_av_roll_fwd():
     wrong.
     """
     scale = max(av_pp_init() * pols_if_init(), 1.0)
-    return all((abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale for t in expressions.periods(proj_len())))
 
 
 def check_ppb_roll_fwd_resid(y):
@@ -1612,7 +1611,7 @@ def check_ppb_roll_fwd():
     The range is ``proj_years``, not ``proj_len()``: this is a financial-year statement
     and restating it at 480 months would cost twelve times as much for the same answer.
     """
-    for y in range(proj_years):                                      # noqa: F821
+    for y in expressions.periods(proj_years):                                      # noqa: F821
         if ppb_pp(y) < -1e-9:
             return False
         if abs(ppb_ledger_pp(y) - ppb_pp(y)) > 1e-8:
@@ -1631,7 +1630,7 @@ def check_ppb_clock_resid(y):
     the index: a vintage with ``v = y - 8`` is due *during* year y and is still standing at
     its start - that is what :func:`ppb_forced_pp` is about to take out.
     """
-    return sum((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), y - 8)))
+    return expressions.sum_values((ppb_vintage_pp(y, v) for v in expressions.periods(ppb_vintage_first(), y - 8)))
 
 
 def check_ppb_clock():
@@ -1643,7 +1642,7 @@ def check_ppb_clock():
     being spent - a breach that is invisible in the balance and obvious in the ledger.
     The clock counts financial years, so the sweep does too.
     """
-    return all((abs(check_ppb_clock_resid(y)) <= 1e-8 for y in expressions.periods(proj_years)))                           # noqa: F821
+    return expressions.all_true((abs(check_ppb_clock_resid(y)) <= 1e-8 for y in expressions.periods(proj_years)))                           # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1660,7 +1659,7 @@ def check_pols_roll_fwd():
     understates the exits by ``q_m w_m l(t)`` a month.
     """
     scale = max(pols_if_init(), 1.0)
-    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale for t in expressions.periods(proj_len())))
 
 
 def check_decrements_compound_resid(t):
@@ -1684,7 +1683,7 @@ def check_decrements_compound():
     checked at each year's first month, because the annual rates are properties of the
     policy year and do not move inside it.
     """
-    return all((abs(check_decrements_compound_resid(t)) <= 1e-12 for t in expressions.periods(0, proj_len(), 12)))
+    return expressions.all_true((abs(check_decrements_compound_resid(t)) <= 1e-12 for t in expressions.periods(0, proj_len(), 12)))
 
 
 def check_pb_allocation_resid(y):
@@ -1716,7 +1715,7 @@ def check_pb_allocation():
     the balance goes to the PPB and not to the insurer.
     """
     scale = max(av_pp_init(), 1.0)
-    return all((abs(check_pb_allocation_resid(y)) <= 1e-9 * scale for y in expressions.periods(proj_years)))                           # noqa: F821
+    return expressions.all_true((abs(check_pb_allocation_resid(y)) <= 1e-9 * scale for y in expressions.periods(proj_years)))                           # noqa: F821
 
 
 def check_cliquet_resid(y):
@@ -1753,7 +1752,7 @@ def check_cliquet():
     non-decreasing" is a listed pitfall; :func:`check_guar_floor` is the weaker and
     correct statement about the balance.
     """
-    return all((abs(check_cliquet_resid(y)) <= 1e-8 for y in expressions.periods(proj_years)))                           # noqa: F821
+    return expressions.all_true((abs(check_cliquet_resid(y)) <= 1e-8 for y in expressions.periods(proj_years)))                           # noqa: F821
 
 
 def check_guar_floor_resid(t):
@@ -1778,7 +1777,7 @@ def check_guar_floor():
     looked at.  On the shipped scenarios it never binds, and knowing that it does not bind
     is the reason to check it.
     """
-    return all((check_guar_floor_resid(t) <= 1e-6 for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_guar_floor_resid(t) <= 1e-6 for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1791,7 +1790,7 @@ def result_cf():
     income-positive; ``liability_cf`` is the notes' outgo-positive orientation, verbatim.
     :func:`result_cf_annual` sums the same frame into projection years.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1847,7 +1846,7 @@ def result_pb():
     values ``av_pp(12y)`` and ``guar_floor_pp(12y)``.  So on the anchor cell the ``y = 0``
     row shows ``ppb_pp`` 3 637.06 while the cells ``ppb_pp(0)`` is the 4 000.00 carried in.
     """
-    ys = list(range(proj_years))                                     # noqa: F821
+    ys = list(expressions.periods(proj_years))                                     # noqa: F821
     return pd.DataFrame(                                             # noqa: F821
         {
             "r_fin": [r_fin(y) for y in ys],
@@ -1903,8 +1902,8 @@ lapse_cap = 0.3
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

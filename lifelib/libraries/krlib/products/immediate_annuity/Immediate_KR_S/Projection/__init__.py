@@ -265,7 +265,7 @@ def model_point():
     technical notes' worked-example anchor: 남자, 보험나이 60, 일시납 ₩100,000,000 (1억원),
     종신연금형 with a ten-year 보증지급기간 on the representative crediting basis.
     """
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def shape():
@@ -445,7 +445,7 @@ def charge_basis():
     once the annuity has begun and therefore carries no risk premium at all, while the two
     that keep a 10%-of-premium death benefit carry one.
     """
-    return data.charge_table().loc[shape()]                          # noqa: F821
+    return expressions.to_pandas(expressions.row(data.prepared_charge_table_rows(), shape()))                          # noqa: F821
 
 
 def acq_charge_rate():
@@ -456,7 +456,7 @@ def acq_charge_rate():
     acquisition cost, which is why the 해약공제액 can be nil at every duration without the
     insurer giving anything away.
     """
-    return float(charge_basis()["acq_charge_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "acq_charge_rate"))
 
 
 def admin_charge_rate():
@@ -465,7 +465,7 @@ def admin_charge_rate():
     1.30% on the representative basis, and — like the acquisition charge — deducted once at
     inception rather than levied over the life of the contract.
     """
-    return float(charge_basis()["admin_charge_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "admin_charge_rate"))
 
 
 def expense_load_rate():
@@ -487,7 +487,7 @@ def risk_prem_rate():
     reduces the opening 계약자적립액 and never appears as a projected cash flow: what it
     buys appears instead as :func:`claims` on the ``DEATH`` kind.
     """
-    return float(charge_basis()["risk_prem_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "risk_prem_rate"))
 
 
 def comm_rate():
@@ -498,7 +498,7 @@ def comm_rate():
     at inception covers the commission paid out of it at the same moment, so this model has
     no acquisition strain and no deferred acquisition cost to amortise.
     """
-    return float(charge_basis()["comm_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "comm_rate"))
 
 
 def acq_expense_rate():
@@ -510,7 +510,7 @@ def acq_expense_rate():
     commission, expense, 위험보험료 and the opening 계약자적립액, with nothing left over in
     either direction.
     """
-    return float(charge_basis()["acq_expense_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "acq_expense_rate"))
 
 
 def annuity_charge_rate():
@@ -522,7 +522,7 @@ def annuity_charge_rate():
     factor instead is unverified: no filed basis document for an 즉시연금 discloses the
     annuity formula.
     """
-    return float(charge_basis()["annuity_charge_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "annuity_charge_rate"))
 
 
 def db_rate():
@@ -534,7 +534,7 @@ def db_rate():
     on the inheritance shape, and alone on the certain shape, whose remaining instalments
     continue on their own dates.
     """
-    return float(charge_basis()["db_rate"])
+    return float(tables.lookup_object(prepared_charge_basis_values(), "db_rate"))
 
 
 def decl_rate():
@@ -573,14 +573,14 @@ def min_guar_rate(t):
     the fund, never a floor on the annuity, which is the substance of the whole 과소지급
     dispute.
     """
-    tbl = data.crediting_table()                                     # noqa: F821
+    tbl = data.prepared_crediting_table_calculation_rows()
     y = t // 12
-    for _, row in tbl.iterrows():
-        if (str(row["basis_id"]) == crediting_basis()
-                and int(row["dur_from"]) <= y < int(row["dur_to"])):
-            return float(row["min_guar_rate"])
-    raise ValueError("no 최저보증이율 band for basis %s at t = %s"
-                     % (crediting_basis(), t))
+    for key in expressions.keys(tbl):
+        row = expressions.row(tbl, key)
+        if (tables.lookup_str(row, "basis_id") == crediting_basis()
+                and tables.lookup_int(row, "dur_from") <= y < tables.lookup_int(row, "dur_to")):
+            return tables.lookup_float(row, "min_guar_rate")
+    raise ValueError("no 최저보증이율 band for basis %s at t = %s" % (crediting_basis(), t))
 
 
 def crediting_rate(t):
@@ -735,7 +735,7 @@ def annuity_factor():
         raise ValueError("only 종신연금형 converts the fund through an annuity factor")
     j = crediting_rate_mth(0)
     v = 1.0 / (1.0 + j)
-    return sum((v ** (t + 1) * pricing_factor(t) for t in expressions.periods(proj_len())))
+    return expressions.sum_values((v ** (t + 1) * pricing_factor(t) for t in expressions.periods(proj_len())))
 
 
 def retention_pp(t):
@@ -1191,20 +1191,20 @@ def check_net_cf_resid(t):
     is no premium term to reconcile and no acquisition cost to amortise, which is what makes
     this the shortest ledger in the library.
     """
-    row = result_cf().loc[t]
-    built = row["premiums"] - (row["annuity_payments"]
-                               + row["claims_death"]
-                               + row["claims_lapse"]
-                               + row["claims_maturity"]
-                               + row["commissions"]
-                               + row["expenses"])
-    return built - row["net_cf"]
+    row = expressions.row(prepared_result_cf_rows(), t)
+    built = tables.lookup_object(row, "premiums") - (tables.lookup_object(row, "annuity_payments")
+                               + tables.lookup_object(row, "claims_death")
+                               + tables.lookup_object(row, "claims_lapse")
+                               + tables.lookup_object(row, "claims_maturity")
+                               + tables.lookup_object(row, "commissions")
+                               + tables.lookup_object(row, "expenses"))
+    return built - tables.lookup_object(row, "net_cf")
 
 
 def check_net_cf():
     """Whether the cash flow statement reconciles to ``net_cf`` at every projected period."""
     tol = val_tol * prem_pp()                                        # noqa: F821
-    return bool(all((abs(check_net_cf_resid(t)) < tol for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_net_cf_resid(t)) < tol for t in expressions.periods(proj_len()))))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1221,7 +1221,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """Whether the payment obligation rolls forward on its own decrements at every t."""
-    return bool(all((abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_pols_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1233,14 +1233,14 @@ def check_lives_roll_fwd_resid(t):
     *end* of the period rather than the start — shows up here from the first period.
     """
     built = pols_if_init()
-    for s in range(0, t):
+    for s in expressions.periods(0, t):
         built *= (1.0 - mort_rate_mth(s))
     return built - lives_if(t)
 
 
 def check_lives_roll_fwd():
     """Whether the annuitant's survival curve closes against a direct product at every t."""
-    return bool(all((abs(check_lives_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len() + 1))))
+    return bool(expressions.all_true((abs(check_lives_roll_fwd_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len() + 1))))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1282,7 +1282,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """Whether the 계약자적립액 recursion closes against its closed form at every t."""
     tol = val_tol * prem_pp()                                        # noqa: F821
-    return bool(all((abs(check_av_roll_fwd_resid(t)) < tol for t in expressions.periods(proj_len() + 1))))
+    return bool(expressions.all_true((abs(check_av_roll_fwd_resid(t)) < tol for t in expressions.periods(proj_len() + 1))))
 
 
 def check_av_terminal():
@@ -1322,7 +1322,7 @@ def check_annuity_basis_resid():
     excess is precisely the shortfall the determination left the insurer to fund, which is
     why that term appears on the right-hand side rather than being tolerated away.
     """
-    built = sum((annuity_pp(t) * pricing_factor(t) * disc_factor(t + 1) for t in expressions.periods(proj_len())))
+    built = expressions.sum_values((annuity_pp(t) * pricing_factor(t) * disc_factor(t + 1) for t in expressions.periods(proj_len())))
     if shape() == "inheritance":
         built += maturity_benefit() * disc_factor(annuity_term_mths())
     return built - av_pp_init() - retention_shortfall_pp()
@@ -1366,7 +1366,7 @@ def check_rate_level():
     if shape() != "life":
         return True
     i0 = crediting_rate(0)
-    return bool(all((abs(crediting_rate(t) - i0) < 1e-15 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(crediting_rate(t) - i0) < 1e-15 for t in expressions.periods(proj_len()))))
 
 
 def check_guarantee_certain():
@@ -1384,7 +1384,7 @@ def check_guarantee_certain():
     """
     if shape() != "life":
         return True
-    return bool(all((abs(payment_factor(t) - pols_if_init()) < roll_fwd_tol for t in expressions.periods(0, annuity_term_mths()))))
+    return bool(expressions.all_true((abs(payment_factor(t) - pols_if_init()) < roll_fwd_tol for t in expressions.periods(0, annuity_term_mths()))))
 
 
 def check_payment_factor_resid(t):
@@ -1409,7 +1409,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the payment weight matches its second construction at every period."""
-    return bool(all((abs(check_payment_factor_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_payment_factor_resid(t)) < roll_fwd_tol for t in expressions.periods(proj_len()))))
 
 
 def check_surr_value():
@@ -1426,8 +1426,8 @@ def check_surr_value():
     """
     tol = val_tol * prem_pp()                                        # noqa: F821
     if shape() == "life":
-        return bool(all((lapse_rate(t) == 0.0 and cv_pp(t) == 0.0 for t in expressions.periods(proj_len()))))
-    return bool(all((abs(cv_pp(t) - max(av_pp(t), 0.0)) < tol for t in expressions.periods(proj_len() + 1))))
+        return bool(expressions.all_true((lapse_rate(t) == 0.0 and cv_pp(t) == 0.0 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(cv_pp(t) - max(av_pp(t), 0.0)) < tol for t in expressions.periods(proj_len() + 1))))
 
 
 def result_cf():
@@ -1445,7 +1445,7 @@ def result_cf():
     net flow are published: ``net_cf`` is income-positive, the library-wide convention, and
     ``liability_cf`` is the technical notes' outgo-positive ``CF(t)``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1471,7 +1471,7 @@ def result_pols():
     **start** of the period, as ``pols_if`` is, so a row reads as the state the period opens
     in and the flows that period produces.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1495,6 +1495,16 @@ def prepared_model_point():
     return inputs.record(model_point(), preserve_scalar_types=True)
 
 
+def prepared_result_cf_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(result_cf(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_charge_basis_values():
+    """Own public Series values; retain normal public Cell overrides."""
+    return inputs.record(charge_basis(), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -1510,8 +1520,8 @@ val_tol = 1e-12
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

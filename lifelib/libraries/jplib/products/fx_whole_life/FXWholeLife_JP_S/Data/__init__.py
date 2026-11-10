@@ -177,6 +177,27 @@ def prepared_charge_table_loc():
                         indexing='loc')
 
 
+def prepared_fx_path_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(fx_path_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_calculation_groups_1():
+    """Own original input values for calculation operations."""
+    return inputs.table(mort_table(), groups=('sex',), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_calculation_groups_1():
+    """Own original input values for calculation operations."""
+    return inputs.table(lapse_table(), groups=('shape',), rows=False, preserve_scalar_types=True)
+
+
+def prepared_fx_path_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(fx_path_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -192,4 +213,4 @@ fx_path_file = "fx_path_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

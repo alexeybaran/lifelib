@@ -360,7 +360,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -695,7 +695,7 @@ def age(t):
 
 def charge_row():
     """The row of ``charge_table.csv`` for this policy's ``charge_id``."""
-    return data.charge_table().loc[charge_id()]                      # noqa: F821
+    return expressions.to_pandas(expressions.row(data.prepared_charge_table_rows(), charge_id()))                      # noqa: F821
 
 
 def alpha_rate():
@@ -706,7 +706,7 @@ def alpha_rate():
     than a guessed interior point, on the ground that a reference implementation should
     demonstrate the binding constraint.  Zero on the *Nettotarif*.
     """
-    return float(charge_row()["alpha_rate"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "alpha_rate"))
 
 
 def alpha_spread_months():
@@ -717,7 +717,7 @@ def alpha_spread_months():
     the *Beitragsverrechnung*: only one sixtieth may be withheld per month, so units are
     bought from the start and the surrender value is positive from the first month.
     """
-    return int(charge_row()["alpha_spread_months"])
+    return int(tables.lookup_object(prepared_charge_row_values(), "alpha_spread_months"))
 
 
 def beta_rate():
@@ -727,7 +727,7 @@ def beta_rate():
     and it stops when premiums stop.  **[std]** at 4.00 % on the composite against an
     argued range of 2 % to 10 %; no carrier level was established.
     """
-    return float(charge_row()["beta_rate"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "beta_rate"))
 
 
 def gamma_rate_ann():
@@ -738,7 +738,7 @@ def gamma_rate_ann():
     policy decay, and — because it compounds against the whole accumulated fund — the
     dominant component of the reduction in yield on a long contract.
     """
-    return float(charge_row()["gamma_rate_ann"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "gamma_rate_ann"))
 
 
 def gamma_rate_mth():
@@ -760,7 +760,7 @@ def policy_fee_mth():
     *Fondsguthaben* — the reason insurers set a minimum fund below which
     *Beitragsfreistellung* is refused.
     """
-    return float(charge_row()["policy_fee_mth"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "policy_fee_mth"))
 
 
 def zuzahlung_charge_rate():
@@ -770,7 +770,7 @@ def zuzahlung_charge_rate():
     *beitragsbezogene* charge — it is not a regular *Beitrag* — and on a single-premium
     contract this rate is the whole of the acquisition charge, levied once on receipt.
     """
-    return float(charge_row()["zuzahlung_charge_rate"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "zuzahlung_charge_rate"))
 
 
 def stornoabzug_rate():
@@ -784,7 +784,7 @@ def stornoabzug_rate():
     non-zero one would be an unsourced number attached to a contested clause; 2.00 % on
     ``std_high``, the only shipped tariff that carries one.
     """
-    return float(charge_row()["stornoabzug_rate"])
+    return float(tables.lookup_object(prepared_charge_row_values(), "stornoabzug_rate"))
 
 
 # ----------------------------------------  premium and the Beitragsverrechnung
@@ -976,8 +976,7 @@ def fund_return_gross_ann(t):
     ``glide_months`` months with a linear ramp down to ``mmkt_return_ann``, reaching the
     money-market rate exactly in the final month.
     """
-    base = data.fund_scenario_table().loc[                           # noqa: F821
-        (scenario_id(), policy_year(t)), "gross_return_ann"]
+    base = tables.lookup_object(data.prepared_fund_scenario_table_scalar_loc(), (scenario_id(), policy_year(t)), "gross_return_ann")
     base = float(base)
     if not ablauf_flag():
         return base
@@ -1798,7 +1797,7 @@ def gross_return_ref():
     on the base scenario.
     """
     prod = 1.0
-    for t in range(proj_start(), proj_len()):
+    for t in expressions.periods(proj_start(), proj_len()):
         prod *= (1.0 + fund_return_gross_ann(t)) ** (1.0 / 12.0)
     return prod ** (12.0 / (proj_len() - proj_start())) - 1.0
 
@@ -1820,14 +1819,14 @@ def irr_ann():
     n = proj_len()
     t0 = proj_start()
     flows = [(prem_pp(t) + topup_pp(t), (n - t) / 12.0)
-             for t in range(t0, n)]
-    flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in range(t0, n)]
+             for t in expressions.periods(t0, n)]
+    flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in expressions.periods(t0, n)]
     flows += [(av_pp(t0), (n - t0) / 12.0)]
     target = av_maturity_pp()
     lo, hi = -0.99, 5.0
-    for _ in range(200):
+    for _ in expressions.periods(200):
         mid = 0.5 * (lo + hi)
-        if sum((a * (1.0 + mid) ** m for (a, m) in flows)) - target > 0.0:
+        if expressions.sum_values((a * (1.0 + mid) ** m for (a, m) in flows)) - target > 0.0:
             hi = mid
         else:
             lo = mid
@@ -1883,7 +1882,7 @@ def check_net_cf():
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t))) for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_prem_split_resid(t):
@@ -1901,7 +1900,7 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
-    return all((abs(check_prem_split_resid(t))
+    return expressions.all_true((abs(check_prem_split_resid(t))
                <= val_tol * max(1.0, abs(premiums(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1921,7 +1920,7 @@ def check_units_roll_fwd_resid(t):
 
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
-    return all((abs(check_units_roll_fwd_resid(t))
+    return expressions.all_true((abs(check_units_roll_fwd_resid(t))
                <= val_tol * max(1.0, abs(units_pp(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1944,7 +1943,7 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
-    return all((abs(check_av_roll_fwd_resid(t))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t))
                <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR"))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1968,7 +1967,7 @@ def check_benefit_funding_resid(t):
 
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
-    return all((abs(check_benefit_funding_resid(t))
+    return expressions.all_true((abs(check_benefit_funding_resid(t))
                <= val_tol * max(1.0, abs(av_releases(t))) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -1988,7 +1987,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force count rolls forward exactly in every projected month."""
-    return all((abs(check_pols_roll_fwd_resid(t))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -2025,7 +2024,7 @@ def check_acq_charge_resid(t):
 
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
-    return all((abs(check_acq_charge_resid(t))
+    return expressions.all_true((abs(check_acq_charge_resid(t))
                <= val_tol * max(1.0, charge_acq_total()) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -2049,7 +2048,7 @@ def result_cf():
     has a commission to publish.  ``liability_cf`` is ``net_cf`` outgo positive, published
     so the sign convention is verifiable in the frame.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2085,7 +2084,7 @@ def result_fund():
     *Standmitteilung* reports, which is not a coincidence — the statement's line items are
     this model's state vector.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "unit_price": [unit_price(t) for t in ts],
@@ -2109,6 +2108,11 @@ def result_fund():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_charge_row_values():
+    """Own public Series values; retain normal public Cell overrides."""
+    return inputs.record(charge_row(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2150,8 +2154,8 @@ val_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

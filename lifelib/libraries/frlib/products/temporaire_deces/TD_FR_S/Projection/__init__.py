@@ -449,7 +449,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -592,7 +592,7 @@ def prem_freq():
     :func:`prem_pp`.
     """
     v = tables.lookup_object(prepared_model_point(), "prem_freq")
-    if v not in data.freq_loading_table().index:                     # noqa: F821
+    if v not in expressions.keys(data.prepared_freq_loading_table_index_selection()):                     # noqa: F821
         raise ValueError("no fractionation loading for prem_freq " + str(v))
     return v
 
@@ -777,8 +777,7 @@ def prem_instalments():
     made the fractionation loading a charge for a service the model never rendered.  On
     the monthly grid it drives :func:`prem_cycle` and :func:`prem_inst_pp`.
     """
-    return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_freq(), "instalments"])
+    return tables.lookup_int(data.prepared_freq_loading_table_scalar_loc(), prem_freq(), "instalments")
 
 
 def prem_cycle():
@@ -853,7 +852,7 @@ def tariff_annuity():
     not.  Summed over ``range(proj_len_y())``: the equivalence is annual, so it is struck
     over policy years and is unchanged by the monthly grid.
     """
-    return sum((disc_factor(y) * pols_tariff(y) for y in expressions.periods(proj_len_y())))
+    return expressions.sum_values((disc_factor(y) * pols_tariff(y) for y in expressions.periods(proj_len_y())))
 
 
 def tariff_prem_pv():
@@ -864,7 +863,7 @@ def tariff_prem_pv():
     fixed *frais d'échéance* is deliberately outside it: the fee is the same amount under
     either premium form, so it neither belongs in the equivalence nor changes it.
     """
-    return sum((disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in expressions.periods(proj_len_y())))
+    return expressions.sum_values((disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in expressions.periods(proj_len_y())))
 
 
 def prem_level_pp():
@@ -1095,8 +1094,7 @@ def lapse_rate_base(t):
     nothing to forfeit.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[
-        min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def shock_lapse_factor(t):
@@ -1269,9 +1267,8 @@ def benefit_factor(t):
     does not carry fails here, which is the honest failure: the schedule is missing, not
     the formula.
     """
-    rows = data.benefit_schedule().loc[benefit_schedule_id()]        # noqa: F821
-    return float(rows.loc[
-        min(policy_year(t), int(rows.index.max())), "benefit_factor"])
+    rows = tables.subtable(data.prepared_benefit_schedule_groups_1(), benefit_schedule_id())        # noqa: F821
+    return float(tables.lookup_object(rows, min(policy_year(t), int(tables.last_key(rows))), "benefit_factor"))
 
 
 def benefit_pp(t):
@@ -1401,7 +1398,7 @@ def claims(t, kind=None):
         :func:`check_no_cash_value`.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * (
             suicide_factor(t) * benefit_death_pp(t) + accident_extra_pp(t))
@@ -1558,7 +1555,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1580,7 +1577,7 @@ def check_decrement_closure_resid(t):
     reappears in force** — the arithmetic form of paying the capital twice, which is this
     product's first-order failure mode and which the cash flows alone would not reveal.
     """
-    exits = sum((pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in expressions.periods(t + 1)))
+    exits = expressions.sum_values((pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in expressions.periods(t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
@@ -1591,7 +1588,7 @@ def check_decrement_closure():
     :func:`check_decrement_closure_resid` gives the signed residual of the month that
     failed.
     """
-    return all((abs(check_decrement_closure_resid(t))
+    return expressions.all_true((abs(check_decrement_closure_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1623,7 +1620,7 @@ def check_ptia_gate():
     No argument, one bool over all t;  :func:`check_ptia_gate_resid` gives the signed
     residual of the month that failed.
     """
-    return all((abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_no_cash_value_resid(t):
@@ -1646,7 +1643,7 @@ def check_no_cash_value():
     No argument, one bool over all t;  :func:`check_no_cash_value_resid` gives the signed
     residual of the month that failed.
     """
-    return all((abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1665,7 +1662,7 @@ def result_cf():
     the view the notes' worked example is stated on and the one to lay beside the
     annual-step model this replaced.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1717,7 +1714,7 @@ def result_pols():
     in it.  ``prem_pp`` is likewise the year's annual cotisation and ``prem_inst_pp`` the
     instalment collected in the month.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1785,8 +1782,8 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

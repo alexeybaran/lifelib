@@ -289,7 +289,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -666,10 +666,16 @@ def uc_return_mth(t):
     segment of the elected scenario raises, rather than falling back on a last-row default -
     a projection that has run off the end of its scenario is not projecting anything.
     """
-    tbl = data.uc_scenario_table().loc[[uc_return_scenario()]]       # noqa: F821
-    for lo, hi, r in zip(tbl["from_month"], tbl["to_month"], tbl["uc_return_mth"]):
-        if int(lo) <= t <= int(hi):
-            return float(r)
+    tbl = data.prepared_uc_scenario_table_calculation_rows()
+    selected = [key for key in expressions.keys(tbl)
+                if tables.lookup_object(tbl, key, "scenario_id") == uc_return_scenario()]
+    if not selected:
+        # Retain the original pandas missing-list-selector error contract.
+        data.uc_scenario_table().loc[[uc_return_scenario()]]
+        raise KeyError(uc_return_scenario())
+    for key in selected:
+        if tables.lookup_int(tbl, key, "from_month") <= t <= tables.lookup_int(tbl, key, "to_month"):
+            return tables.lookup_float(tbl, key, "uc_return_mth")
     raise ValueError("no scenario segment covers this month")
 
 
@@ -959,9 +965,9 @@ def plancher_rate(t):
         return 0.0
     tbl = data.plancher_rate_table()                                 # noqa: F821
     a = age(t)
-    if a not in tbl.index:
+    if a not in expressions.keys(data.prepared_plancher_rate_table_index_selection()):
         raise ValueError("no plancher tariff at this attained age")
-    return float(tbl.loc[a, "premium_per_10000"]) / 10000.0
+    return tables.lookup_float(data.prepared_plancher_rate_table_scalar_loc(), a, "premium_per_10000") / 10000.0
 
 
 def plancher_rate_mth(t):
@@ -1245,8 +1251,8 @@ def lapse_rate_base(t):
     years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def return_12m(t):
@@ -1388,7 +1394,7 @@ def claims(t, kind=None):
     the account value - all except the death strain.  See the Space docstring.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
     av = av_pp_at(t, "BEF_DECR")
     if kind == "DEATH":
         return pols_death(t) * (av + nar(t))
@@ -1551,7 +1557,7 @@ def check_av_roll_fwd():
     one test can call the same check across every account-value model in the library.
     """
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_unit_roll_fwd_resid(t):
@@ -1571,7 +1577,7 @@ def check_unit_roll_fwd_resid(t):
 def check_unit_roll_fwd():
     """True when the unit count closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, units_init())                      # noqa: F821
-    return all((abs(check_unit_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_unit_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1588,7 +1594,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all((abs(check_pols_roll_fwd_resid(t)) <= pols_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= pols_tol for t in expressions.periods(proj_len())))
 
 
 def check_floor_base_resid(t):
@@ -1606,7 +1612,7 @@ def check_floor_base_resid(t):
 def check_floor_base():
     """True when the floor base moves on premiums and surrenders alone."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all((abs(check_floor_base_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_floor_base_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_nar_bounds_resid(t):
@@ -1627,7 +1633,7 @@ def check_nar_bounds_resid(t):
 
 def check_nar_bounds():
     """True when the `capital sous risque` stays inside ``[0, cap]`` in every month."""
-    return all((check_nar_bounds_resid(t) == 0.0 for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_nar_bounds_resid(t) == 0.0 for t in expressions.periods(proj_len())))
 
 
 def check_benefit_funding_resid(t):
@@ -1648,7 +1654,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded by the account value plus the death strain."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return all((abs(check_benefit_funding_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_benefit_funding_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1665,7 +1671,7 @@ def result_cf():
     published precisely because it is **not** in ``net_cf``: it is withheld from the
     policyholder and remitted.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1694,7 +1700,7 @@ def result_av():
     count, the two legs, the end-of-month account value, the floor, the `capital sous
     risque`, and the two per-policy charges.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "unit_price": [unit_price(t) for t in ts],
@@ -1751,8 +1757,8 @@ pols_tol = 1e-12
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

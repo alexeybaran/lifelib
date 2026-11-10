@@ -228,6 +228,28 @@ def prepared_fund_table_generators():
     return inputs.table(fund_table(), groups=('fund_set',), preserve_scalar_types = True)
 
 
+def prepared_fund_table_scalar_at():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(fund_table(), rows=False, indexing='at', preserve_scalar_types=True)
+
+
+def prepared_risk_prem_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(risk_prem_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_crediting_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(crediting_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(lapse_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -249,4 +271,4 @@ crediting_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

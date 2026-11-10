@@ -191,7 +191,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                          # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                          # noqa: F821
 
 
 def age_at_entry():
@@ -336,7 +336,7 @@ def premium_pp_ann(t):
     :func:`premium_taxes` are charged on.
     """
     key = (plan(), sex(), rate_class(), band(), policy_year(t))
-    return float(data.premium_rates().loc[key, "premium_pp"])               # noqa: F821
+    return tables.lookup_float(data.prepared_premium_rates_scalar_loc(), key, "premium_pp")               # noqa: F821
 
 
 def premium_pp(t):
@@ -413,10 +413,13 @@ def mort_rate_mth(t):
 def shock_lapse_rate():
     """Shock lapse at the end of the level period, by jump-ratio bucket **[std]**."""
     j = jump_ratio()
-    for _, r in data.shock_lapse_table().iterrows():                        # noqa: F821
-        if r["jump_lo"] < j <= r["jump_hi"]:
-            return float(r["shock_lapse_rate"])
-    return float(data.shock_lapse_table().iloc[-1]["shock_lapse_rate"])     # noqa: F821
+    tbl = data.prepared_shock_lapse_table_calculation_rows()
+    keys = list(expressions.keys(tbl))
+    for key in keys:
+        r = expressions.row(tbl, key)
+        if tables.lookup_object(r, "jump_lo") < j <= tables.lookup_object(r, "jump_hi"):
+            return tables.lookup_float(r, "shock_lapse_rate")
+    return tables.lookup_float(expressions.row(tbl, keys[-1]), "shock_lapse_rate")
 
 
 def lapse_rate(t):
@@ -614,7 +617,7 @@ def net_cf(t):
 
 def result_cf():
     """Result table of cashflows, one row per **month** ``t = 0 .. proj_len() - 1``."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -687,8 +690,8 @@ conv_rate_final = 0.0
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -229,6 +229,63 @@ def prepared_cause_shares():
     return inputs.record(cause_mix_table()["share"], preserve_scalar_types=True)
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_reduction_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(reduction_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_revision_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(revision_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_severity_share_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(severity_share_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_mort_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(mort_table().index)
+
+
+
+def prepared_reduction_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(reduction_table().index)
+
+
+
+def prepared_revision_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(revision_table().index)
+
+
+def prepared_cause_mix_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(cause_mix_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -250,4 +307,4 @@ revision_file = "revision_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

@@ -288,7 +288,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def chassis():
@@ -491,7 +491,7 @@ def omega_age():
     Read off ``mort_table.csv`` rather than hard-coded, so that replacing the table
     replaces the horizon with it.
     """
-    return int(data.mort_table().loc[sex()].index.max())             # noqa: F821
+    return int(tables.last_key(tables.subtable(data.prepared_mort_table_groups_1(), sex())))             # noqa: F821
 
 
 def expiry_age():
@@ -654,8 +654,8 @@ def lapse_rate(t):
     t // 12 + 1``, so the first twelve months, ``t = 0 ... 11``, all read policy year 1.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -708,7 +708,7 @@ def inc_band(t):
     """The five-year 入院受療率 band containing ``age(t)``, keyed by its lower edge."""
     idx = expressions.keys(data.prepared_incidence_index_generators())                               # noqa: F821
     a = age(t)
-    return int(max((b for b in idx if b <= a)))
+    return int(expressions.max_value((b for b in idx if b <= a)))
 
 
 def inc_rate_base(t):
@@ -737,10 +737,10 @@ def inc_rate_base(t):
     not the age x sex cross-tabulation, which lives in an e-Stat table that was not
     downloaded [R6][R7][REG-R33].
     """
-    row = data.incidence_table().loc[inc_band(t)]                    # noqa: F821
-    f = float(row["inc_factor_m" if sex() == "M" else "inc_factor_f"])
-    return (float(row["juryoritsu_per_100k"]) / 100000.0
-            * 365.0 / float(row["alos_days"]) * f)
+    row = expressions.row(data.prepared_incidence_table_rows(), inc_band(t))                    # noqa: F821
+    f = float(tables.lookup_object(row, "inc_factor_m" if sex() == "M" else "inc_factor_f"))
+    return (float(tables.lookup_object(row, "juryoritsu_per_100k")) / 100000.0
+            * 365.0 / float(tables.lookup_object(row, "alos_days")) * f)
 
 
 def inc_rate(t):
@@ -773,7 +773,7 @@ def los_band(t):
     """
     idx = expressions.keys(data.prepared_los_index_generators())                                     # noqa: F821
     a = age(t)
-    return int(max((b for (b, _) in idx if b <= a)))
+    return int(expressions.max_value((b for (b, _) in idx if b <= a)))
 
 
 def los_days(band):
@@ -816,7 +816,7 @@ def d_raw(t):
     平均在院日数 that :func:`los_probs` is calibrated to [REG-R27].
     """
     b = los_band(t)
-    return sum((p * g for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
+    return expressions.sum_values((p * g for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
 
 
 def d_pay_capped(t):
@@ -828,7 +828,7 @@ def d_pay_capped(t):
     *mean* instead would give ``min(20.20, 60) = 20.20`` and remove the limit silently.
     """
     b = los_band(t)
-    return sum((p * min(g, limit_per_hosp()) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
+    return expressions.sum_values((p * min(g, limit_per_hosp()) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
 
 
 def d_ben_capped(t):
@@ -840,7 +840,7 @@ def d_ben_capped(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum((p * max(f, min(g, limit_per_hosp())) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
+    return expressions.sum_values((p * max(f, min(g, limit_per_hosp())) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
 
 
 def d_ben_raw(t):
@@ -851,7 +851,7 @@ def d_ben_raw(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return sum((p * max(f, g) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
+    return expressions.sum_values((p * max(f, g) for (g, p) in expressions.zip_values((los_days(b), los_probs(b)))))
 
 
 def share_free():
@@ -1301,7 +1301,7 @@ def claims(t, kind=None):
         imported from a cash-value model is one of the notes' pitfalls.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE")))
     if kind == "HOSP":
         return (pols_if(t) * daily_amount() * inc_rate_mth(t)
                 * (s_dis * d_ben_dis(t) + s_acc * d_ben_acc(t)))     # noqa: F821
@@ -1421,7 +1421,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_agg_days_resid(t):
@@ -1446,7 +1446,7 @@ def check_agg_days_resid(t):
 
 def check_agg_days():
     """True when both 通算 day ledgers roll forward and stay inside their limit."""
-    return all((abs(check_agg_days_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_agg_days_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_day_limits_resid(t):
@@ -1472,7 +1472,7 @@ def check_day_limits_resid(t):
 
 def check_day_limits():
     """True when the three day limits act in the notes' order in every projected month."""
-    return all((abs(check_day_limits_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_day_limits_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_adv_ledger_resid(t):
@@ -1488,7 +1488,7 @@ def check_adv_ledger_resid(t):
 
 def check_adv_ledger():
     """True when the 先進医療 ledger rolls forward and stays inside its cap."""
-    return all((abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap for t in expressions.periods(proj_len())))
 
 
 def check_lump_ledger_resid(t):
@@ -1503,7 +1503,7 @@ def check_lump_ledger_resid(t):
 
 def check_lump_ledger():
     """True when the 入院一時金 count ledger rolls forward and stays inside its limit."""
-    return all((abs(check_lump_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_lump_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_waiver_roll_fwd_resid(t):
@@ -1520,7 +1520,7 @@ def check_waiver_roll_fwd_resid(t):
 
 def check_waiver_roll_fwd():
     """True when the premium waiver state rolls forward in every projected month."""
-    return all((abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1538,7 +1538,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 # --- Result tables ----------------------------------------------------------
@@ -1558,7 +1558,7 @@ def result_cf():
     every 終身払 model point — there is no surrender value — and is published rather than
     dropped; see the Space docstring.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1582,7 +1582,7 @@ def result_pols():
 
     Same frame as :func:`result_cf`: ``t = 0, 1, ..., proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1610,7 +1610,7 @@ def result_days():
     table reads as one policyholder's consumption of the 通算 limits and not as the
     block's.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1698,8 +1698,8 @@ cash_tol = 1e-06
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -232,6 +232,21 @@ def prepared_lapse_table_flat_generators():
     return inputs.table(lapse_table(), preserve_scalar_types = True)
 
 
+def prepared_commute_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(commute_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_anchor_table_calculation():
+    """Own original input values for calculation operations."""
+    return inputs.table(mort_anchor_table().reset_index(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+def prepared_commute_factor_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(commute_factor_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -251,4 +266,4 @@ commute_factor_file = "commute_factor_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

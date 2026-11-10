@@ -152,7 +152,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -434,7 +434,7 @@ def sum_assured(cover):
     ``fracture`` ₩400,000, ``burn`` ₩200,000, ``liability`` ₩100,000,000 per occurrence and
     ``neonatal`` ₩10,000,000 as the 태아 module's own 가입금액.
     """
-    return float(model_point()["sa_" + cover])
+    return float(tables.lookup_object(prepared_model_point(), "sa_" + cover))
 
 
 def hosp_daily():
@@ -531,7 +531,7 @@ def lapse_basis():
     the guideline requires an insurer departing from the 원칙모형 to disclose.
     """
     v = tables.lookup_str(prepared_model_point(), "lapse_basis")
-    if v not in set(data.lapse_table().index):                       # noqa: F821
+    if v not in set(expressions.keys(data.prepared_lapse_table_index_selection())):                       # noqa: F821
         raise ValueError("invalid lapse_basis")
     return v
 
@@ -658,7 +658,7 @@ def mort_series(s):
 
     Held as a cells so the frame is sliced once per sex rather than once per lookup.
     """
-    return data.mort_table().loc[s]["mort_rate"]                     # noqa: F821
+    return expressions.to_pandas(expressions.column(tables.subtable(data.prepared_mort_table_groups_1(), s), "mort_rate", report=True))                     # noqa: F821
 
 
 def mort_rate_at_age(x, s):
@@ -670,7 +670,7 @@ def mort_rate_at_age(x, s):
     infant peak, the trough at about age 10 and the adolescent turn — none of which a table
     graduated from age 20 upwards would carry.
     """
-    return float(mort_series(s).loc[min(max(x, 0), 120)])
+    return float(tables.lookup_object(prepared_mort_series_values(s), min(max(x, 0), 120), "value"))
 
 
 def mort_rate(t):
@@ -707,7 +707,7 @@ def mort_rate_payer(t):
 
 def lapse_param(name):
     """One parameter of the selected lapse basis, from *lapse_table.csv*."""
-    return float(data.lapse_table().loc[lapse_basis(), name])        # noqa: F821
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), lapse_basis(), name)        # noqa: F821
 
 
 def lapse_rate(t):
@@ -783,8 +783,8 @@ def inc_pivots(cause):
     Held as a cells so *incidence_table.csv* is sliced once per cause rather than once per
     age.
     """
-    s = data.incidence_table().loc[(cause, sex())]["rate"]           # noqa: F821
-    return [(int(a), float(r)) for a, r in s.items()]
+    tbl = tables.subtable(tables.subtable(data.prepared_incidence_table_calculation_groups_2(), cause), sex())
+    return [(int(a), tables.lookup_float(tbl, a, "rate")) for a in expressions.keys(tbl)]
 
 
 def inc_rate_at(x, cause):
@@ -812,7 +812,7 @@ def inc_rate_at(x, cause):
         if a == x:
             return r
     import math
-    for i in range(len(pv) - 1):
+    for i in expressions.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= x <= x1:
@@ -1137,13 +1137,13 @@ def neonatal_cost_pp(timing):
         return 0.0
     tab = data.neonatal_table()                                      # noqa: F821
     total = 0.0
-    for item in tab.index:
-        row = tab.loc[item]
-        if str(row["timing"]) != timing:
+    for item in expressions.keys(data.prepared_neonatal_table_index_selection()):
+        row = expressions.row(data.prepared_neonatal_table_rows(), item)
+        if str(tables.lookup_object(row, "timing")) != timing:
             continue
-        amount = (float(row["amount"])
-                  + float(row["amount_ratio"]) * sum_assured("neonatal"))
-        total += float(row["freq"]) * float(row["units"]) * amount
+        amount = (float(tables.lookup_object(row, "amount"))
+                  + float(tables.lookup_object(row, "amount_ratio")) * sum_assured("neonatal"))
+        total += float(tables.lookup_object(row, "freq")) * float(tables.lookup_object(row, "units")) * amount
     return total
 
 
@@ -1250,7 +1250,7 @@ def benefit_cost_pp(t):
     the quantity :func:`risk_prem_ann_pp` accumulates over the first policy year to form the
     notional 보험가입금액 of 감독규정 [별표 15] 제9호 [REG-R21].
     """
-    return sum((benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return expressions.sum_values((benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "NEONATAL")))
 
 
@@ -1305,13 +1305,13 @@ def refund_build(d):
     공시이율 while the 보장부분 reserve is still building.  And only a hundred-year term
     can do it.
     """
-    tab = data.av_table().loc["build"]["value"]                      # noqa: F821
-    pv = [(float(k), float(v)) for k, v in tab.items()]
+    tab = tables.subtable(data.prepared_av_table_calculation_groups_1(), "build")                      # noqa: F821
+    pv = [(float(k), float(v)) for k, v in zip(expressions.keys(tab), expressions.column(tab, "value"))]
     if d <= pv[0][0]:
         return pv[0][1]
     if d >= pv[-1][0]:
         return pv[-1][1]
-    for i in range(len(pv) - 1):
+    for i in expressions.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= d <= x1:
@@ -1329,13 +1329,13 @@ def refund_taper(r):
     16.0% on a 100세만기 contract; indexing on the fraction of the term rather than on a
     duration is what lets one shipped grid also serve the 30세만기 and 110세만기 points.
     """
-    tab = data.av_table().loc["taper"]["value"]                      # noqa: F821
-    pv = [(float(k), float(v)) for k, v in tab.items()]
+    tab = tables.subtable(data.prepared_av_table_calculation_groups_1(), "taper")                      # noqa: F821
+    pv = [(float(k), float(v)) for k, v in zip(expressions.keys(tab), expressions.column(tab, "value"))]
     if r <= pv[0][0]:
         return pv[0][1]
     if r >= pv[-1][0]:
         return pv[-1][1]
-    for i in range(len(pv) - 1):
+    for i in expressions.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= r <= x1:
@@ -1419,7 +1419,7 @@ def risk_prem_ann_pp():
     carries the 태아 module, which is most of it: the module's whole cost falls inside the
     first thirteen months of a hundred-year contract.
     """
-    return sum((benefit_cost_pp(t) for t in expressions.periods(0, min(12, proj_len() - 1))))
+    return expressions.sum_values((benefit_cost_pp(t) for t in expressions.periods(0, min(12, proj_len() - 1))))
 
 
 def sa_notional_pp():
@@ -1673,7 +1673,7 @@ def claims(t, kind=None):
         adjustment rather than in the lapse column.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+        return expressions.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                     "LIABILITY", "NEONATAL", "DEATH", "LAPSE", "MATURITY",
                     "VOID")))
     if kind == "DEATH":
@@ -1809,7 +1809,7 @@ def epv_outgo_pp():
 
     Benefits, claim handling expense, acquisition and maintenance expense and commission.
     """
-    return sum((pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
+    return expressions.sum_values((pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
                                + commissions(t)) for t in expressions.periods(0, proj_len())))
 
 
@@ -1821,7 +1821,7 @@ def epv_prem_unit_pp():
     annuity the equivalence premium is divided by, and on a 20년납 hundred-year contract it
     is where the waiver and the lapse assumption do all their work.
     """
-    return sum((pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in expressions.periods(0, prem_period_mths())))
+    return expressions.sum_values((pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in expressions.periods(0, prem_period_mths())))
 
 
 def equiv_premium_mth_pp():
@@ -1866,7 +1866,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_waiver_split_resid(t):
@@ -1881,7 +1881,7 @@ def check_waiver_split_resid(t):
 
 def check_waiver_split():
     """True when the paying and waived compartments sum to the in-force block, every month."""
-    return all((abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_exit_total_resid():
@@ -1892,7 +1892,7 @@ def check_exit_total_resid():
     global companion to the per-month roll-forward, and it is what catches a decrement that
     closes locally at every t and still loses mass at the ends.
     """
-    total = sum((pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in expressions.periods(0, proj_len())))
+    total = expressions.sum_values((pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in expressions.periods(0, proj_len())))
     return total - pols_if_init()
 
 
@@ -1914,7 +1914,7 @@ def check_cover_at_birth_resid(t):
     """
     if born(t):
         return 0.0
-    return sum((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return expressions.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "DEATH")))
 
 
@@ -1925,7 +1925,7 @@ def check_cover_at_birth():
     vacuous on a non-foetal model point, where ``birth_month()`` is zero, and that is the
     right behaviour: the same formula covers both.
     """
-    return all((abs(check_cover_at_birth_resid(t)) <= val_tol for t in expressions.periods(0, birth_month() + 1)))
+    return expressions.all_true((abs(check_cover_at_birth_resid(t)) <= val_tol for t in expressions.periods(0, birth_month() + 1)))
 
 
 def check_once_only_resid(t):
@@ -1946,7 +1946,7 @@ def check_once_only_resid(t):
 
 def check_once_only():
     """True when every 최초 1회한 ledger is a valid, non-increasing probability."""
-    return all((check_once_only_resid(t) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((check_once_only_resid(t) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_neonatal_term_resid(t):
@@ -1963,7 +1963,7 @@ def check_neonatal_term_resid(t):
 
 def check_neonatal_term():
     """True when the 태아 module pays inside its own terms and nowhere else."""
-    return all((abs(check_neonatal_term_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_neonatal_term_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_cv_floor_resid(t):
@@ -1989,7 +1989,7 @@ def check_cv_floor_resid(t):
 
 def check_cv_floor():
     """True when the surrender value obeys its form's floor in every projected month."""
-    return all((check_cv_floor_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((check_cv_floor_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_av_bounds_resid(t):
@@ -2010,7 +2010,7 @@ def check_av_bounds_resid(t):
 
 def check_av_bounds():
     """True when the 계약자적립액 stays inside the bounds its own derivation allows."""
-    return all((check_av_bounds_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((check_av_bounds_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_surr_chg_cap_resid(t):
@@ -2027,7 +2027,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge stays inside the 표준해약공제액 at every duration."""
-    return all((check_surr_chg_cap_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((check_surr_chg_cap_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_acq_cost_cap_resid():
@@ -2066,7 +2066,7 @@ def check_refund_grid_resid(t):
 
 def check_refund_grid():
     """True when the 환급률 progression reproduces every published node it reaches."""
-    return all((abs(check_refund_grid_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_refund_grid_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
 
 
 def check_equiv_premium_resid():
@@ -2107,7 +2107,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured("disability"), 1.0)              # noqa: F821
-    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(0, proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(0, proj_len())))
 
 
 # --- results ---
@@ -2125,7 +2125,7 @@ def result_cf():
     progression, published rather than dropped because the residual 적립부분 is a real
     quantity on a contract whose term ends earlier.
     """
-    ts = list(range(0, proj_len()))
+    ts = list(expressions.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2158,7 +2158,7 @@ def result_pols():
     ``age`` is 보험나이 and ``age_man`` 만나이, printed side by side so that the offset a
     foetal contract carries for its whole life can be read off the table.
     """
-    ts = list(range(0, proj_len()))
+    ts = list(expressions.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2187,7 +2187,7 @@ def result_val():
     ratio the supervisor regulates; on the anchor cell it reproduces the published grid at
     every node.
     """
-    ts = list(range(0, proj_len()))
+    ts = list(expressions.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "cum_prem_pp": [cum_prem_pp(t) for t in ts],
@@ -2204,6 +2204,11 @@ def result_val():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_mort_series_values(s):
+    """Own public Series values; retain normal public Cell overrides."""
+    return inputs.table(mort_series(s).to_frame(name="value"), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2257,8 +2262,8 @@ val_tol = 1e-07
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

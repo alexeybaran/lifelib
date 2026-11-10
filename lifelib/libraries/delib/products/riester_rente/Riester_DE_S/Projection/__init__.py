@@ -329,7 +329,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series, indexed by ``point_id``."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -815,8 +815,8 @@ def annuity_mort_rate(x, tau):
     if x >= omega_age:                                               # noqa: F821
         return 1.0
     tab = data.annuity_mort_table()                                  # noqa: F821
-    qb = float(tab.at[x, "qx_base"])
-    im = float(tab.at[x, "improvement"])
+    qb = tables.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "qx_base")
+    im = tables.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "improvement")
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 
@@ -1067,11 +1067,11 @@ def zulage_entitlement_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    row = data.zulage_schedule().loc[(zulage_id(), k)]               # noqa: F821
-    return (grundzulage * float(row["unmittelbar"])                  # noqa: F821
-            + kinderzulage_pre2008 * float(row["n_kinder_pre2008"])  # noqa: F821
-            + kinderzulage_post2008 * float(row["n_kinder_post2008"])  # noqa: F821
-            + berufseinsteiger_bonus * float(row["bonus"]))          # noqa: F821
+    row = expressions.row(data.prepared_zulage_schedule_rows(), (zulage_id(), k))               # noqa: F821
+    return (grundzulage * float(tables.lookup_object(row, "unmittelbar"))                  # noqa: F821
+            + kinderzulage_pre2008 * float(tables.lookup_object(row, "n_kinder_pre2008"))  # noqa: F821
+            + kinderzulage_post2008 * float(tables.lookup_object(row, "n_kinder_post2008"))  # noqa: F821
+            + berufseinsteiger_bonus * float(tables.lookup_object(row, "bonus")))          # noqa: F821
 
 
 def mindesteigenbeitrag_pp(k):
@@ -1761,7 +1761,7 @@ def claims(t, kind=None):
         of it; that approximation is gone.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
                                           "LUMPSUM", "COMMUTATION", "ANNUITY")))
     k = proj_year(t)
     if kind == "DEATH":
@@ -1939,13 +1939,13 @@ def check_net_cf_resid(t):
     interest credit is on the annual clock and is not a column of this frame at all, which
     removes the most tempting way to break the identity.
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] + row["zulagen"]
-               - row["claims_death"] - row["claims_lapse"] - row["claims_transfer"]
-               - row["claims_lumpsum"] - row["claims_commutation"]
-               - row["claims_annuity"]
-               - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
+    row = expressions.row(prepared_result_cf_rows(), t)
+    rebuilt = (tables.lookup_object(row, "premiums") + tables.lookup_object(row, "zulagen")
+               - tables.lookup_object(row, "claims_death") - tables.lookup_object(row, "claims_lapse") - tables.lookup_object(row, "claims_transfer")
+               - tables.lookup_object(row, "claims_lumpsum") - tables.lookup_object(row, "claims_commutation")
+               - tables.lookup_object(row, "claims_annuity")
+               - tables.lookup_object(row, "expenses") - tables.lookup_object(row, "commissions"))
+    return float(tables.lookup_object(row, "net_cf") - rebuilt)
 
 
 def check_net_cf():
@@ -1957,7 +1957,7 @@ def check_net_cf():
     argument, one bool over all ``t``; :func:`check_net_cf_resid` gives the signed residual
     of the month that failed.
     """
-    return all((abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1)) for t in expressions.periods(proj_len())))
 
 
@@ -1985,8 +1985,8 @@ def check_av_roll_fwd_resid(k):
     """
     if k >= k_conv():
         return av_total_pp(k + 1)
-    months = range(12 * k, 12 * k + 12)
-    out = sum((claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "TRANSFER")
+    months = expressions.periods(12 * k, 12 * k + 12)
+    out = expressions.sum_values((claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "TRANSFER")
               + exit_charge_pp(t) for t in months))
     return (av_total_at(k + 1, "BEF_PREM")
             - (av_total_at(k, "BEF_PREM") + prem_to_av_pp(k) * pols_if(12 * k)
@@ -1995,7 +1995,7 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the account rolls forward exactly in every projected year."""
-    return all((abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    return expressions.all_true((abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
@@ -2031,9 +2031,9 @@ def check_guar_roll_fwd():
     cannot shrink the guarantee further.  Both are stated per projection **year**: the
     accumulator counts contributions, and a contribution is an annual event.
     """
-    ok = all((abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    ok = expressions.all_true((abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
              * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
-    cap = all((guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
+    cap = expressions.all_true((guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
               * (eigenbeitrag_pp(k) + zulage_pp(k) + contrib_extra_pp()
                  + rider_prem_pp()) + roll_fwd_tol for k in expressions.periods(k_conv())))
     return bool(ok and cap)
@@ -2069,9 +2069,9 @@ def check_pols_roll_fwd():
     the survivor term is exactly zero and the identity is exact rather than approximate.
     """
     n = proj_len()
-    step = all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+    step = expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
                * max(pols_if_init(), 1.0) for t in expressions.periods(n)))
-    exits = sum((pols_death(s) + pols_lapse(s) + pols_transfer(s) for s in expressions.periods(n)))
+    exits = expressions.sum_values((pols_death(s) + pols_lapse(s) + pols_transfer(s) for s in expressions.periods(n)))
     if is_kleinbetrag():
         exits += pols_conv()
     closure = abs(exits + pols_if(n) - pols_if_init()) <= (
@@ -2114,7 +2114,7 @@ def check_conversion_resid(k):
 
 def check_conversion():
     """True when the conversion at *Rentenbeginn* closes on all four identities."""
-    return all((check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
+    return expressions.all_true((check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
@@ -2141,7 +2141,7 @@ def check_zulage_lag_resid(k):
 
 def check_zulage_lag():
     """True when the Zulage is credited one projection year after it is earned, everywhere."""
-    return all((abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
+    return expressions.all_true((abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1)) for k in expressions.periods(proj_len_y())))
 
 
@@ -2169,7 +2169,7 @@ def result_cf():
     of them, including a contract commuted at *Rentenbeginn*, which then carries zeros to
     the end rather than being truncated.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2206,15 +2206,16 @@ def result_cf_annual():
     compete month by month, and the annuity and the expenses do not, because both are now
     paid as the months pass.
     """
-    ks = list(range(proj_len_y()))
+    ks = list(expressions.periods(proj_len_y()))
     flows = ["premiums", "zulagen", "claims_death", "claims_lapse", "claims_transfer",
              "claims_lumpsum", "claims_commutation", "claims_annuity", "expenses",
              "commissions", "net_cf", "liability_cf"]
-    df = result_cf()
+    df = prepared_result_cf_annual_flows()
+    grouped = expressions.group_sum(df, tuple(i // 12 for i in expressions.periods(tables.key_count(df))))
     out = {"pols_if": [pols_if(12 * k) for k in ks],
            "pols_annuity_pay": [pols_annuity_pay(12 * k) for k in ks]}
     for col in flows:
-        out[col] = [float(df[col].iloc[12 * k:12 * k + 12].sum()) for k in ks]
+        out[col] = [tables.lookup_float(grouped, k, col, default=0.0) for k in ks]
     return pd.DataFrame(out, index=pd.Index(ks, name="k"))           # noqa: F821
 
 
@@ -2234,7 +2235,7 @@ def result_acct():
     and not asserted by the conventions suite; it is the frame the technical notes' worked
     example reads its per-policy columns from.
     """
-    ks = list(range(proj_len_y()))
+    ks = list(expressions.periods(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "age": [age_y(k) for k in ks],
@@ -2265,6 +2266,16 @@ def result_acct():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_result_cf_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(result_cf(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_result_cf_annual_flows():
+    """Own original input values for calculation operations."""
+    return inputs.table(result_cf(), columns=('premiums', 'zulagen', 'claims_death', 'claims_lapse', 'claims_transfer', 'claims_lumpsum', 'claims_commutation', 'claims_annuity', 'expenses', 'commissions', 'net_cf', 'liability_cf'), report=True, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2348,8 +2359,8 @@ roll_fwd_tol = 1e-09
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

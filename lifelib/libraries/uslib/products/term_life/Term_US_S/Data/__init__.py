@@ -112,6 +112,16 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_premium_rates_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(premium_rates(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_shock_lapse_table_calculation_rows():
+    """Own original input values for calculation operations."""
+    return inputs.table(shock_lapse_table(), groups=(), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -127,4 +137,4 @@ shock_lapse_file = "shock_lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

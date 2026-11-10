@@ -160,7 +160,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -1384,7 +1384,7 @@ def ann_count(t):
     if not annuity_on() or t < 0 or t >= proj_len() - 1:
         return 0.0
     total = 0.0
-    for u in range(0, min(t, annuity_max_mths() - 1) + 1):
+    for u in expressions.periods(0, min(t, annuity_max_mths() - 1) + 1):
         s = t - u
         if u < annuity_guar_mths():
             w = 1.0
@@ -1404,7 +1404,7 @@ def ann_pay(t):
     if not annuity_on() or t < 0 or t >= proj_len() - 1:
         return 0.0
     total = 0.0
-    for u in range(0, min(t, annuity_max_mths() - 1) + 1):
+    for u in expressions.periods(0, min(t, annuity_max_mths() - 1) + 1):
         s = t - u
         if u < annuity_guar_mths():
             w = 1.0
@@ -1425,7 +1425,7 @@ def ann_tests(t):
     if not annuity_on() or t <= 0 or t >= proj_len() - 1:
         return 0.0
     total = 0.0
-    for k in range(1, annuity_max_mths() // 12):
+    for k in expressions.periods(1, annuity_max_mths() // 12):
         s = t - 12 * k
         if s < 0:
             continue
@@ -1784,7 +1784,7 @@ def check_pols_roll_fwd():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_nesting_resid(t):
@@ -1802,7 +1802,7 @@ def check_nesting_resid(t):
 
 def check_nesting():
     """True when the compartments stay non-negative and add to the in-force count."""
-    return all((check_nesting_resid(t) >= -roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_nesting_resid(t) >= -roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_ann_ledger_resid(t):
@@ -1817,7 +1817,7 @@ def check_ann_ledger_resid(t):
     if not annuity_on() or t < 0 or t >= proj_len() - 1:
         return 0.0
     built = 0.0
-    for s in range(max(0, t - annuity_max_mths() + 1), t + 1):
+    for s in expressions.periods(max(0, t - annuity_max_mths() + 1), t + 1):
         u = t - s
         if u < annuity_guar_mths():
             built += pols_entry_care(s)
@@ -1828,7 +1828,7 @@ def check_ann_ledger_resid(t):
 
 def check_ann_ledger():
     """True when the 간병연금 ledger closes in every projected month."""
-    return all((abs(check_ann_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_ann_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_av_continuity_resid(t):
@@ -1849,7 +1849,7 @@ def check_av_continuity_resid(t):
 
 def check_av_continuity():
     """True when the 계약자적립액's two branches meet at 납입완료."""
-    return all((abs(check_av_continuity_resid(t)) <= val_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_continuity_resid(t)) <= val_tol for t in expressions.periods(proj_len())))
 
 
 def check_cv_form_resid(t):
@@ -1869,7 +1869,7 @@ def check_cv_form_resid(t):
 
 def check_cv_form():
     """True when the surrender-value form behaves in every projected month."""
-    return all((check_cv_form_resid(t) >= -val_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_cv_form_resid(t) >= -val_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1893,7 +1893,7 @@ def check_net_cf():
 
     The house contract: no model's headline number is reconciled only in prose.
     """
-    return all((abs(check_net_cf_resid(t)) <= val_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= val_tol for t in expressions.periods(proj_len())))
 
 
 # --- result tables ---
@@ -1914,7 +1914,7 @@ def result_cf():
     and its last row, ``t = proj_len() - 1``, is the 계약해당일 on which the contract matures:
     an in-force count and no cash flow.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1941,7 +1941,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts, decrement rates and per-policy values, indexed by ``t``."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2022,8 +2022,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

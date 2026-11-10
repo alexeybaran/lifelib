@@ -154,6 +154,45 @@ def prepared_improvement_scale_loc():
                         indexing='loc')
 
 
+def prepared_payout_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(payout_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_rop_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(rop_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_premium_schedule_groups():
+    """Own original input values for calculation operations."""
+    frame = premium_schedule_table()
+    pieces = []
+    for key in frame["point_id"].unique():
+        piece = frame[frame["point_id"] == key].sort_values("premium_mth")
+        if len(piece):
+            # concat compares attrs between pieces; arbitrary array-valued attrs
+            # need not have scalar equality. Restore original metadata below.
+            piece.attrs = {}
+            pieces.append(piece)
+    selected = pd.concat(pieces) if pieces else frame.iloc[[]].sort_values("premium_mth")
+    selected.attrs = frame.attrs
+    selected.flags.allows_duplicate_labels = frame.flags.allows_duplicate_labels
+    group_name = "point_id"
+    while group_name in frame.index.names:
+        group_name = "_" + group_name
+    selected = selected.set_index(selected["point_id"].rename(group_name), append=True, drop=False)
+    return inputs.table(selected, groups=(group_name,), report=True, preserve_scalar_types=True)
+
+
+
+def prepared_empty_premium_schedule():
+    """Own original input values for calculation operations."""
+    frame = premium_schedule_table()
+    return inputs.table(frame.iloc[[]].sort_values("premium_mth"), report=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -171,4 +210,4 @@ rop_factor_file = "rop_factor_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

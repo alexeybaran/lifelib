@@ -238,7 +238,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def cell():
@@ -564,8 +564,8 @@ def select_uplift(t):
     cell's death-outgo series.
     """
     tbl = data.select_table()                                        # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "select_factor"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_select_table_index_selection()))))
+    return tables.lookup_float(data.prepared_select_table_scalar_loc(), y, "select_factor")
 
 
 def mort_improve_factor(t):
@@ -614,8 +614,8 @@ def lapse_rate_base(t):
     changes for the policyholder at ``t = 12`` except that the cover becomes worth having.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def lapse_rate(t):
@@ -732,8 +732,8 @@ def surr_scale_anchors():
     :func:`surr_scale_pp`, rather than indexing the DataFrame afresh in each of several
     hundred projected months.
     """
-    tbl = data.surr_scale_table().loc[surr_scale()]                  # noqa: F821
-    return [(int(m), float(v)) for m, v in zip(tbl.index, tbl["surr_value"])]
+    tbl = tables.subtable(data.prepared_surr_scale_table_groups_1(), surr_scale())                  # noqa: F821
+    return [(int(m), float(v)) for m, v in zip(expressions.keys(tbl), expressions.column(tbl, "surr_value"))]
 
 
 def surr_scale_pp(t):
@@ -806,8 +806,8 @@ def single_prem_rate(x):
     reduction*.
     """
     tbl = data.single_prem_table()                                   # noqa: F821
-    x = min(max(x, int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[x, "single_prem_rate"])
+    x = min(max(x, int(min(expressions.keys(data.prepared_single_prem_table_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_single_prem_table_index_selection()))))
+    return tables.lookup_float(data.prepared_single_prem_table_scalar_loc(), x, "single_prem_rate")
 
 
 def reduced_capital_pp(t):
@@ -1047,7 +1047,7 @@ def crossover_mth(basis):
     """
     if basis not in ("ISSUE", "CURRENT"):
         raise ValueError("invalid basis")
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         target = capital_0() if basis == "ISSUE" else capital_pp(t)
         if cum_prem_pp(t) > target:
             return t
@@ -1096,7 +1096,7 @@ def claims(t, kind=None):
     identically zero because there is no maturity.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "DEATH_PAID_UP", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "DEATH_PAID_UP", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * benefit_pp(t, "DEATH")
     if kind == "DEATH_PAID_UP":
@@ -1176,7 +1176,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol      # noqa: F821
                * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1204,7 +1204,7 @@ def check_surv_annual_resid(t):
 
 def check_surv_annual():
     """True when the monthly decrements compound back to the annual ones in every year."""
-    return all((abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
+    return expressions.all_true((abs(check_surv_annual_resid(t)) <= roll_fwd_tol        # noqa: F821
                * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1231,7 +1231,7 @@ def check_capital_reval_resid(t):
 
 def check_capital_reval():
     """True when the capital is flat through year 1 and steps once a year after it."""
-    return all((abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
+    return expressions.all_true((abs(check_capital_reval_resid(t)) <= roll_fwd_tol      # noqa: F821
                * max(capital_0(), 1.0) for t in expressions.periods(proj_len())))
 
 
@@ -1248,14 +1248,14 @@ def check_lapse_gate_resid(t):
     y = policy_year(t)
     first = 12 * (y - 1)
     last = min(first + 11, proj_len() - 1)
-    if any((prem_due_pp(s) > 0.0 for s in expressions.periods(first, last + 1))):
+    if expressions.any_true((prem_due_pp(s) > 0.0 for s in expressions.periods(first, last + 1))):
         return 0.0
     return lapse_rate_mth(t)
 
 
 def check_lapse_gate():
     """True when no premium-stop decrement is applied where no premium is due."""
-    return all((check_lapse_gate_resid(t) == 0.0 for t in expressions.periods(proj_len())))
+    return expressions.all_true((check_lapse_gate_resid(t) == 0.0 for t in expressions.periods(proj_len())))
 
 
 def check_truncation_resid(t):
@@ -1287,7 +1287,7 @@ def result_cf():
     single ``claims_death`` column is their sum.  ``liability_cf`` is the notes'
     outgo-positive orientation and ``net_cf`` its exact negative.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1306,7 +1306,7 @@ def result_cf():
 
 def result_pols():
     """Policy counts, benefits and rates, indexed by policy month t = 0 ... proj_len()-1."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1365,8 +1365,8 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

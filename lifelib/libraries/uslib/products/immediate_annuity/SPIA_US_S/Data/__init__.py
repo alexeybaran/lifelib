@@ -108,6 +108,16 @@ def prepared_improvement_scale_loc():
                         indexing='loc')
 
 
+def prepared_surr_charge_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surr_charge_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_surr_charge_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(surr_charge_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -121,4 +131,4 @@ surr_charge_file = "surr_charge_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

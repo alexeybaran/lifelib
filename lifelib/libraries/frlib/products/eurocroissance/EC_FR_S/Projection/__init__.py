@@ -504,7 +504,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def chassis():
@@ -950,8 +950,8 @@ def asset_return(t):
     never read.  The last row is held beyond the table.
     """
     tbl = data.scenario_table()                                      # noqa: F821
-    y = min(duration(t) + 1, int(tbl.index.get_level_values("year").max()))
-    return float(tbl.loc[(scenario(), y), "asset_return"])
+    y = min(duration(t) + 1, int(expressions.max_value(expressions.keys(data.prepared_scenario_table_index_selection_level_year()))))
+    return tables.lookup_float(data.prepared_scenario_table_scalar_loc(), (scenario(), y), "asset_return")
 
 
 def asset_return_mth(t):
@@ -1002,18 +1002,23 @@ def tec_rate(m):
     ``product-spec.md`` states the article as retrieved.  The two readings differ only on a
     sloped curve, which is what shipped model point 10 exercises.
     """
-    tbl = data.tec_curve()                                           # noqa: F821
-    y = min(m // 12, int(tbl.index.get_level_values("year").max()))
-    curve = tbl.loc[(scenario(), y), "tec_rate"]
-    ms = [int(v) for v in curve.index]
+    y = min(m // 12, int(expressions.max_value(expressions.keys(data.prepared_tec_curve_years()))))
+    try:
+        curve = tables.subtable(tables.subtable(data.prepared_tec_curve_calculation_groups_2(), scenario()), y)
+    except KeyError:
+        # Preserve the original partial-MultiIndex selector error contract.
+        data.tec_curve().loc[(scenario(), y), "tec_rate"]
+        raise
+    ms = [int(v) for v in expressions.keys(curve)]
     mat = rem_term(m)
     if mat <= ms[0]:
-        return float(curve.iloc[0])
+        return tables.lookup_float(curve, ms[0], "tec_rate")
     if mat >= ms[-1]:
-        return float(curve.iloc[-1])
+        return tables.lookup_float(curve, ms[-1], "tec_rate")
     for lo, hi in zip(ms[:-1], ms[1:]):
         if lo <= mat <= hi:
-            r_lo, r_hi = float(curve.loc[lo]), float(curve.loc[hi])
+            r_lo = tables.lookup_float(curve, lo, "tec_rate")
+            r_hi = tables.lookup_float(curve, hi, "tec_rate")
             return r_lo + (r_hi - r_lo) * (mat - lo) / (hi - lo)
     raise ValueError("no bracketing maturity for " + str(mat))
 
@@ -1192,8 +1197,8 @@ def wd_rate_base(t):
     at ``policy_year(t)``; policy years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "wd_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "wd_rate")
 
 
 def wd_rate(t):
@@ -2016,8 +2021,8 @@ def lapse_rate_base(t):
     table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def guarantee_imminent(t):
@@ -2219,7 +2224,7 @@ def claims(t, kind=None):
     this column and not a fourth kind.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "LAPSE":
@@ -2339,7 +2344,7 @@ def check_assets_roll_fwd_resid(t):
 
 def check_assets_roll_fwd():
     """True when the account-asset recursion closes in every projected month."""
-    return all((abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_parts_roll_fwd_resid(t):
@@ -2362,7 +2367,7 @@ def check_parts_roll_fwd_resid(t):
 
 def check_parts_roll_fwd():
     """True when the parts recursion closes in every projected month."""
-    return all((abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_guarantee_roll_fwd_resid(t):
@@ -2384,7 +2389,7 @@ def check_guarantee_roll_fwd_resid(t):
 
 def check_guarantee_roll_fwd():
     """True when the guaranteed-amount recursion closes in every projected month."""
-    return all((abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2401,7 +2406,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all((abs(check_pols_roll_fwd_resid(t))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t))
                <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
@@ -2434,7 +2439,7 @@ def check_guarantee_funding_resid(t):
 
 def check_guarantee_funding():
     """True when the *provision mathématique* funds the guarantee exactly, at every t."""
-    return all((abs(check_guarantee_funding_resid(t)) <= funding_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_guarantee_funding_resid(t)) <= funding_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_pgt_covers_guarantee_resid(t):
@@ -2457,7 +2462,7 @@ def check_pgt_covers_guarantee_resid(t):
 
 def check_pgt_covers_guarantee():
     """True when the diversification provision and the own-funds provisions cover the guarantee."""
-    return all((check_pgt_covers_guarantee_resid(t) >= -funding_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((check_pgt_covers_guarantee_resid(t) >= -funding_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_part_value_floor_resid(t):
@@ -2476,7 +2481,7 @@ def check_part_value_floor_resid(t):
 
 def check_part_value_floor():
     """True when the part value stays at or above its contractual minimum, every month."""
-    return all((check_part_value_floor_resid(t) >= -floor_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((check_part_value_floor_resid(t) >= -floor_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_own_funds_not_paid_resid(t):
@@ -2502,7 +2507,7 @@ def check_own_funds_not_paid_resid(t):
 
 def check_own_funds_not_paid():
     """True when no benefit before the *échéance* exceeds the savers' two provisions."""
-    return all((check_own_funds_not_paid_resid(t) <= funding_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((check_own_funds_not_paid_resid(t) <= funding_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_pm_restruck_resid(t):
@@ -2531,7 +2536,7 @@ def check_pm_restruck_resid(t):
 
 def check_pm_restruck():
     """True when a shipped in-force *provision mathématique* agrees with R. 134-2."""
-    return all((abs(check_pm_restruck_resid(t)) <= inforce_tol for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_pm_restruck_resid(t)) <= inforce_tol for t in expressions.periods(proj_start(), proj_len())))
 
 
 def result_cf():
@@ -2548,7 +2553,7 @@ def result_cf():
     memo lines outside ``net_cf`` — the first is a transfer inside the account from the
     savers to the insurer, and the second is already inside ``claims_death``.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2618,7 +2623,7 @@ def result_provisions():
     A. 134-1 rate at the month-end boundary, since :func:`i_pm` is indexed by a month
     boundary.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "i_pm": [i_pm(t + 1) for t in ts],
@@ -2698,8 +2703,8 @@ inforce_tol = 0.005
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

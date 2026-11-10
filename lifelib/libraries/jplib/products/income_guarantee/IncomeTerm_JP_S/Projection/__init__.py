@@ -287,7 +287,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -371,7 +371,7 @@ def rate_class():
     module its mechanism.
     """
     v = tables.lookup_object(prepared_model_point(), "rate_class")
-    if v not in data.rate_class_table().index:                       # noqa: F821
+    if v not in expressions.keys(data.prepared_rate_class_table_index_selection()):                       # noqa: F821
         raise ValueError("unknown rate_class " + str(v))
     return v
 
@@ -593,7 +593,7 @@ def lapse_rate(t):
     if t < 0 or t > term_m() - 1:
         return 0.0
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -859,7 +859,7 @@ def annuities_ended(t):
     """
     n, g = term_m(), guar_m()
     if t == n:
-        return sum((annuities_open(s) for s in expressions.periods(0, n - g + 1)))
+        return expressions.sum_values((annuities_open(s) for s in expressions.periods(0, n - g + 1)))
     if t > n:
         return annuities_open(t - g)
     return 0.0
@@ -972,7 +972,7 @@ def claims(t, kind=None):
         the kind exists so the zero is stated rather than left to inference.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
     if kind == "ANNUITY":
         return annuity_mth() * annuities_if(t)
     if kind == "COMMUTATION":
@@ -1097,7 +1097,7 @@ def check_pols_roll_fwd():
     one test can call the same check across every model.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
 
 
 def check_annuity_ledger_resid(t):
@@ -1112,7 +1112,7 @@ def check_annuity_ledger_resid(t):
     lo = 0 if t <= n - 1 else t - g + 1
     hi = min(t, n - 1)
     direct = 0.0
-    for s in range(max(0, lo), hi + 1):
+    for s in expressions.periods(max(0, lo), hi + 1):
         direct += annuities_open(s)
     return annuities_if(t) - direct
 
@@ -1123,7 +1123,7 @@ def check_annuity_ledger():
     No argument, one bool over all t; :func:`check_annuity_ledger_resid` gives the
     signed residual of the month that failed.
     """
-    return all((abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_annuity_total_resid(t):
@@ -1137,14 +1137,14 @@ def check_annuity_total_resid(t):
     """
     n, g = term_m(), guar_m()
     built = 0.0
-    for s in range(min(t, n - 1) + 1):
+    for s in expressions.periods(min(t, n - 1) + 1):
         built += annuities_open(s) * (min(t, max(n - 1, s + g - 1)) - s + 1)
     return annuities_cum(t) - built
 
 
 def check_annuity_total():
     """True when the instalments due to date reconcile in every projected month."""
-    return all((abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pay_count_resid(t):
@@ -1160,7 +1160,7 @@ def check_pay_count_resid(t):
 
 def check_pay_count():
     """True when the instalment count and the stream end date agree in every month."""
-    return all((abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return expressions.all_true((abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
 
 
 def check_expired_cover_resid(t):
@@ -1179,7 +1179,7 @@ def check_expired_cover_resid(t):
 
 def check_expired_cover():
     """True when nothing is charged to the in-force population past the policy term."""
-    return all((abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m(), proj_len())))
+    return expressions.all_true((abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m(), proj_len())))
 
 
 def check_class_factor_norm_resid(t):
@@ -1193,9 +1193,10 @@ def check_class_factor_norm_resid(t):
     market.  The identity has no time dimension, so ``t`` is carried only for uniformity
     with the other ``check_*_resid`` cells.
     """
-    tbl = data.rate_class_table()                                    # noqa: F821
-    return float((tbl["class_factor"] * tbl["mix_weight"]).sum()
-                 / tbl["mix_weight"].sum() - 1.0)
+    tbl = data.prepared_rate_class_table_calculation()
+    products = [a * b for a, b in zip(expressions.column(tbl, "class_factor"), expressions.column(tbl, "mix_weight"))]                                    # noqa: F821
+    return float(expressions.sum_f64(v for v in products if not tables.is_missing(pd.isna, v))
+                 / expressions.sum_f64(v for v in expressions.column(tbl, "mix_weight") if not tables.is_missing(pd.isna, v)) - 1.0)
 
 
 def check_class_factor_norm():
@@ -1230,7 +1231,7 @@ def check_net_cf():
     bool over all t, with the signed residual of the month that failed at
     :func:`check_net_cf_resid`.
     """
-    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1260,7 +1261,7 @@ def result_cf():
     the policy term: the last rows carry annuity instalments and their administration
     expense alone.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1285,7 +1286,7 @@ def result_pols():
 
     Same frame as :func:`result_cf`: ``t`` runs ``0 ... proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1364,8 +1365,8 @@ cash_tol = 1e-06
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

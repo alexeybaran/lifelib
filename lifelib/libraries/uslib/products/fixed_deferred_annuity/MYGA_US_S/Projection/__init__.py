@@ -283,7 +283,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -544,9 +544,9 @@ def scenario_rate(t, name):
     Each row of *rate_scenario.csv* states the level that holds from its own month ``t``
     until the next row of the same scenario, so a flat path is one row at ``t = 0``.
     """
-    sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
-    months = [i for i in sub.index if i <= t]
-    return float(sub.loc[max(months), name])
+    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                    # noqa: F821
+    months = [i for i in expressions.keys(sub) if i <= t]
+    return float(tables.lookup_object(sub, expressions.max_value(months), name))
 
 
 def market_rate(t):
@@ -632,7 +632,7 @@ def wd_scheduled_pp(t):
     """
     table = data.withdrawal_table()                                  # noqa: F821
     key = (wd_schedule_id(), t)
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    return tables.lookup_float(data.prepared_withdrawal_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_withdrawal_table_index_selection()) else 0.0
 
 
 def wd_pp(t):
@@ -818,10 +818,10 @@ def surr_charge_age_cap(t):
     """
     table = data.surr_charge_age_cap_table()                         # noqa: F821
     attained = age(t)
-    lo, hi = int(table.index.min()), int(table.index.max())
+    lo, hi = int(min(expressions.keys(data.prepared_surr_charge_age_cap_table_index_selection()))), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_age_cap_table_index_selection())))
     if attained < lo:
         return 1.0
-    return float(table.loc[min(attained, hi), "surr_charge_cap"])
+    return tables.lookup_float(data.prepared_surr_charge_age_cap_table_scalar_loc(), min(attained, hi), "surr_charge_cap")
 
 
 def surr_charge_rate(t):
@@ -836,9 +836,9 @@ def surr_charge_rate(t):
         return 0.0
     key = (schedule, surr_charge_year(t))
     table = data.surr_charge_table()                                 # noqa: F821
-    if key not in table.index:
+    if key not in expressions.keys(data.prepared_surr_charge_table_index_selection()):
         return 0.0
-    return min(float(table.loc[key, "surr_charge_rate"]), surr_charge_age_cap(t))
+    return min(tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "surr_charge_rate"), surr_charge_age_cap(t))
 
 
 def mva_term(t):
@@ -912,12 +912,12 @@ def mva_duration_factor(t):
     column = ("factor_lo" if credit_rate(t) < mva_factor_rate_split  # noqa: F821
               else "factor_hi")
     years = mva_term(t)
-    last = int(table.index.max())
+    last = int(expressions.max_value(expressions.keys(data.prepared_mva_factor_table_index_selection())))
     lower = int(math.floor(years))                                   # noqa: F821
     if lower >= last:
-        return float(table.loc[last, column])
-    f0 = float(table.loc[lower, column])
-    f1 = float(table.loc[lower + 1, column])
+        return tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), last, column)
+    f0 = tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), lower, column)
+    f1 = tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), lower + 1, column)
     return f0 + (f1 - f0) * (years - lower)
 
 
@@ -1546,7 +1546,7 @@ def check_av_roll_fwd():
     :func:`check_av_roll_fwd_resid` carries the per-month signed residual, and this is
     ``abs(resid) <= check_tol_av`` over ``t = 0 .. proj_len() - 1``.
     """
-    return all((abs(check_av_roll_fwd_resid(t)) <= check_tol_av for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= check_tol_av for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1569,7 +1569,7 @@ def check_pols_roll_fwd():
     No argument, returns a bool over ``t = 0 .. proj_len() - 1``, matching
     :func:`check_av_roll_fwd` and the library convention.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1584,7 +1584,7 @@ def result_cf():
     flows: ``withdrawals(t) / wd_payment_pp(t)`` and
     ``expenses(t) / ((expense_maint / 12) * inflation_factor(t))`` both return it.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1612,7 +1612,7 @@ def result_pols():
     month's ``pols_if``, which equals ``pols_if_aft_decr`` in every month but the last,
     ``proj_len() - 1``, where the deemed maturity empties the block.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1633,7 +1633,7 @@ def result_av():
     ``AV(t-1)``, ``W(t)``, ``AV'(t)``, the closing balance ``AV(t)`` and ``MGSV(t)`` —
     and the rest are its surrender trace, available at every duration.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp_bef_wd": [av_pp_at(t, "BEF_WD") for t in ts],
@@ -1739,8 +1739,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

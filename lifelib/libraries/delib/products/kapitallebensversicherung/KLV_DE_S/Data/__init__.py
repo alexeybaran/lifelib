@@ -243,6 +243,62 @@ def prepared_cost_table_loc():
                         indexing='loc')
 
 
+def prepared_cost_table_rows():
+    """Own pandas-style rows for repeated calculation selection."""
+    return inputs.table(cost_table(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_deckrv_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(deckrv_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_freq_loading_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_surplus_rate_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surplus_rate_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_surplus_rate_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(surplus_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_deckrv_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(deckrv_table().index)
+
+
+
+def prepared_freq_loading_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(freq_loading_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -262,4 +318,4 @@ deckrv_file = "deckrv_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

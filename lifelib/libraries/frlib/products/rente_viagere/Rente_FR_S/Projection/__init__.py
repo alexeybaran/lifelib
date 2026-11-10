@@ -312,7 +312,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def purchase_price():
@@ -526,7 +526,7 @@ def death_mth(life):
     - is 0 from ``t = d + 1`` and the *arrérage* of month d is nevertheless due in full,
     as the *prorata*.
     """
-    v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
+    v = tables.lookup_object(prepared_model_point(), "death_mth_1" if life == 1 else "death_mth_2")
     return -1 if tables.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
@@ -713,7 +713,7 @@ def annuity_factor(table_sex):
     not over the projection frame's month indices, so it does not move with the frame.
     """
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum((tariff_lives(t, table_sex) * v ** t for t in expressions.periods(1, tariff_horizon_mths() + 1))) / 12.0
+    return expressions.sum_values((tariff_lives(t, table_sex) * v ** t for t in expressions.periods(1, tariff_horizon_mths() + 1))) / 12.0
 
 
 def taux_rente_tariff():
@@ -764,7 +764,7 @@ def certain_excess_years():
     if n <= 0:
         return 0.0
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return sum(((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t for t in expressions.periods(1, n + 1))) / 12.0
+    return expressions.sum_values(((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t for t in expressions.periods(1, n + 1))) / 12.0
 
 
 def guarantee_coeff():
@@ -799,12 +799,14 @@ def reversion_coeff():
     if reversion_pct() <= 0.0:
         return 1.0
     d = birth_year(2) - birth_year(1)
-    tbl = data.reversion_coeff_table()                               # noqa: F821
-    hit = tbl[((tbl["reversion_pct"] - reversion_pct()).abs() < 1e-9)
-              & (tbl["gen_diff_lo"] <= d) & (d <= tbl["gen_diff_hi"])]
+    tbl = data.prepared_reversion_coeff_table_calculation()
+    hit = [key for key in expressions.keys(tbl)
+           if abs(tables.lookup_float(tbl, key, "reversion_pct") - reversion_pct()) < 1e-9
+           and tables.lookup_float(tbl, key, "gen_diff_lo") <= d
+           and d <= tables.lookup_float(tbl, key, "gen_diff_hi")]
     if len(hit) != 1:
         raise ValueError("no published reversion coefficient for this model point")
-    return float(hit["reversion_coeff"].iloc[0])
+    return tables.lookup_float(tbl, hit[0], "reversion_coeff")
 
 
 def option_coeff():
@@ -1091,7 +1093,7 @@ def claims(t, kind=None):
         part of the *capital constitutif*.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("PRORATA",)))
+        return expressions.sum_values((claims(t, k) for k in ("PRORATA",)))
     if kind == "PRORATA":
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
     raise ValueError("invalid kind")
@@ -1207,7 +1209,7 @@ def check_lives_roll_fwd_resid(t):
             built = 1.0
             full = t // 12
             rest = t - 12 * full
-            for j in range(full):
+            for j in expressions.periods(full):
                 built *= 1.0 - mort_rate_at_age(
                     sex(life), birth_year(life), age_at_entry(life) + j)
             if rest:
@@ -1227,7 +1229,7 @@ def check_lives_roll_fwd():
     the **time points** the frame reads, ``t = 0 .. proj_len()``: the last projected
     month, ``proj_len() - 1``, closes at time ``proj_len()``.
     """
-    return bool(all((abs(check_lives_roll_fwd_resid(t)) < 1e-10 for t in expressions.periods(proj_len() + 1))))
+    return bool(expressions.all_true((abs(check_lives_roll_fwd_resid(t)) < 1e-10 for t in expressions.periods(proj_len() + 1))))
 
 
 def check_revalo_roll_fwd_resid(t):
@@ -1253,7 +1255,7 @@ def check_revalo_roll_fwd_resid(t):
 
 def check_revalo_roll_fwd():
     """Whether the revalorisation index closes against its closed form at every month."""
-    return bool(all((abs(check_revalo_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_revalo_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
 
 
 def check_cum_annuity_roll_fwd_resid(t):
@@ -1268,13 +1270,13 @@ def check_cum_annuity_roll_fwd_resid(t):
     """
     step = 12 // payment_freq()
     start = step - 1 if payment_timing() == "arrears" else 0
-    built = sum((annuity_pp(s) for s in expressions.periods(start, t + 1, step)))
+    built = expressions.sum_values((annuity_pp(s) for s in expressions.periods(start, t + 1, step)))
     return built - cum_annuity_pp(t, "ANNUITANT")
 
 
 def check_cum_annuity_roll_fwd():
     """Whether the cumulative *arrérages* schedule closes at every projected month."""
-    return bool(all((abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8 for t in expressions.periods(proj_len()))))
 
 
 def check_calendar_index_resid(t):
@@ -1291,7 +1293,7 @@ def check_calendar_index_resid(t):
 
 def check_calendar_index():
     """Whether the calendar index agrees with the calendar at every projected month."""
-    return bool(all((check_calendar_index_resid(t) == 0 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((check_calendar_index_resid(t) == 0 for t in expressions.periods(proj_len()))))
 
 
 def check_payment_factor_resid(t):
@@ -1306,7 +1308,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return bool(all((abs(check_payment_factor_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_payment_factor_resid(t)) < 1e-12 for t in expressions.periods(proj_len()))))
 
 
 def check_revalo_floor():
@@ -1317,7 +1319,7 @@ def check_revalo_floor():
     ``revalo_rate`` fed into the model must therefore leave the annuity where it was
     rather than cutting it.  The sweep starts at month 1, month 0 having no predecessor.
     """
-    return bool(all((revalo_factor(t) >= revalo_factor(t - 1) - 1e-15 for t in expressions.periods(1, proj_len()))))
+    return bool(expressions.all_true((revalo_factor(t) >= revalo_factor(t - 1) - 1e-15 for t in expressions.periods(1, proj_len()))))
 
 
 def check_options_xor():
@@ -1367,7 +1369,7 @@ def result_cf():
 
     The index is the 0-based month, ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1390,7 +1392,7 @@ def result_pols():
     a table of periods, so the row carries the closing value, which is also the point an
     arrears instalment is measured at.  The index is ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t + 1, 1) for t in ts],
@@ -1440,8 +1442,8 @@ inflation_rate = 0.015
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

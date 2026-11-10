@@ -179,6 +179,45 @@ def prepared_mort_index_generators():
     return inputs.index(mort_table().index)
 
 
+def prepared_transaction_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(transaction_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_cdsc_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(cdsc_table(), groups=('cdsc_schedule',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_fund_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(fund_table(), groups=('fund_set',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_gawa_pct_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(gawa_pct_table(), groups=('gawa_grid',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_rate_scenario_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(rate_scenario(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_return_scenario_groups_2():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(return_scenario(), groups=('scenario_id', 'sub_id'), rows=True, preserve_scalar_types=True)
+
+
+def prepared_transaction_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(transaction_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -200,4 +239,4 @@ transaction_file = "transaction_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

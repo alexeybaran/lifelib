@@ -352,7 +352,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def product():
@@ -577,7 +577,7 @@ def mec_flag():
 def premium_rate():
     """Final-expense annual premium per $1,000 of face, from *premium_rates.csv* [S7]."""
     key = (product(), sex(), risk_class(), age_at_entry())
-    return float(data.premium_rates().loc[key, "rate_per_1000"])     # noqa: F821
+    return tables.lookup_float(data.prepared_premium_rates_scalar_loc(), key, "rate_per_1000")     # noqa: F821
 
 
 def modal_factor():
@@ -742,8 +742,7 @@ def cv_pp_anniv(y):
     if y <= 0 or y > proj_len() // 12:
         return 0.0
     key = (premium_period(), sex(), age_at_entry(), y)
-    return sum_assured() / 1000.0 * float(
-        data.cv_table().loc[key, "cv_per_1000"])                     # noqa: F821
+    return sum_assured() / 1000.0 * tables.lookup_float(data.prepared_cv_table_scalar_loc(), key, "cv_per_1000")                     # noqa: F821
 
 
 def cv_pp(t):
@@ -813,8 +812,7 @@ def np_guar():
     carrier table that *does* vary by m can be dropped in without a formula change.
     """
     key = (premium_period(), sex(), age_at_entry())
-    return sum_assured() / 1000.0 * float(
-        data.np_guar_table().loc[key, "np_guar_per_1000"])           # noqa: F821
+    return sum_assured() / 1000.0 * tables.lookup_float(data.prepared_np_guar_table_scalar_loc(), key, "np_guar_per_1000")           # noqa: F821
 
 
 def mort_rate_guar_at(y):
@@ -1364,7 +1362,7 @@ def expenses(t):
 def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted."""
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
     elif kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     elif kind == "LAPSE":
@@ -1433,7 +1431,7 @@ def result_cf():
     library-wide convention, and ``liability_cf`` is the technical notes'
     outgo-positive ``NetCF_t``; the two are negatives of each other.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1469,7 +1467,7 @@ def result_cf_annual():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by t."""
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1493,7 +1491,7 @@ def result_cv():
     that drives them and the two benefit amounts they feed. Every balance on row t is
     the **closing** value of month t.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "cv_pp": [cv_pp(t) for t in ts],
@@ -1530,7 +1528,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed. The tolerance scales with pols_if_init(),
     since the residual is an accumulation of rounding on that many policies.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_pua_roll_fwd_resid(t):
@@ -1553,7 +1551,7 @@ def check_pua_roll_fwd():
     check_pua_roll_fwd_resid(t) gives the signed residual. The tolerance is relative to
     the block itself, which reaches six figures of face on a compounding projection.
     """
-    return all((abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def prepared_model_point():
@@ -1630,8 +1628,8 @@ prem_offset_share = 0.5
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -228,6 +228,46 @@ def prepared_claim_duration_table_loc():
                         indexing='loc')
 
 
+def prepared_freq_loading_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_inception_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(inception_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mortality_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mortality_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_inception_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(inception_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_mortality_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(mortality_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -247,4 +287,4 @@ freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

@@ -382,7 +382,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def chassis():
@@ -580,7 +580,7 @@ def fund_exhaust_mth():
     """
     if not is_unitised() or wd_rate() <= 0.0:
         return 0
-    for t in range(proj_start(), 12 * (omega_age - age_at_entry())):  # noqa: F821
+    for t in expressions.periods(proj_start(), 12 * (omega_age - age_at_entry())):  # noqa: F821
         if units(t) <= 1e-9:
             return t
     return 0
@@ -1325,9 +1325,9 @@ def surr_rate_base(t):
     years beyond the table take its last row.  A drafting construction: no public UK
     with-profits lapse experience was retrieved.
     """
-    tbl = data.lapse_table().loc[chassis()]                          # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    tbl = tables.subtable(data.prepared_lapse_table_groups_1(), chassis())                          # noqa: F821
+    y = min(policy_year(t), int(tables.last_key(tbl)))
+    return float(tables.lookup_object(tbl, y, "lapse_rate"))
 
 
 def mvr_deterrent(t):
@@ -1371,7 +1371,7 @@ def guarantee_imminent(t):
     between one and twelve months away.  On the annual grid this was the single period
     before a guarantee-date period, which is the same window counted in years.
     """
-    if any((0 < 12 * g - 1 - t <= 12 for g in guarantee_years())):
+    if expressions.any_true((0 < 12 * g - 1 - t <= 12 for g in guarantee_years())):
         return guarantee_imminent_factor                             # noqa: F821
     return 1.0
 
@@ -1497,7 +1497,7 @@ def claims(t, kind=None):
     exit *is* a surrender, paid MVR-free, so it is already inside the surrender line.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "SURRENDER", "MATURITY")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "SURRENDER", "MATURITY")))
     if kind == "DEATH":
         return claim_pp(t, "DEATH") * pols_death(t)
     if kind == "SURRENDER":
@@ -1582,7 +1582,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_asset_share_roll_fwd_resid(t):
@@ -1609,7 +1609,7 @@ def check_asset_share_roll_fwd_resid(t):
 
 def check_asset_share_roll_fwd():
     """True when the asset share recursion closes in every projected month."""
-    return all((abs(check_asset_share_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((abs(check_asset_share_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_fb_mvr_exclusive():
@@ -1620,7 +1620,7 @@ def check_fb_mvr_exclusive():
     produce both, and would then pay a final bonus and deduct a reduction on the same
     exit.
     """
-    return all((min(final_bonus_pp(t), mvr_pp(t)) <= 1e-9 for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((min(final_bonus_pp(t), mvr_pp(t)) <= 1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_mvr_bound():
@@ -1629,7 +1629,7 @@ def check_mvr_bound():
     It may not exceed the excess of the unit value over the underlying asset value,
     ``max(0, GB - AS)``.  The bound is a conduct rule, not a modelling nicety.
     """
-    return all((mvr_pp(t) <= max(0.0, guar_benefit_pp(t) - asset_share(t)) + 1e-9 for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((mvr_pp(t) <= max(0.0, guar_benefit_pp(t) - asset_share(t)) + 1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_fund_nonneg():
@@ -1642,7 +1642,7 @@ def check_fund_nonneg():
     enough to read past.  :func:`wd_pp` caps the withdrawal at the fund and
     :func:`proj_len` stops at exhaustion; this asserts that they worked.
     """
-    return all((units(t) >= -1e-9 and asset_share(t) >= -1e-9 for t in expressions.periods(proj_start(), proj_len())))
+    return expressions.all_true((units(t) >= -1e-9 and asset_share(t) >= -1e-9 for t in expressions.periods(proj_start(), proj_len())))
 
 
 def check_payout_corridor():
@@ -1651,7 +1651,7 @@ def check_payout_corridor():
     Deterministic at model-point level; the regulatory test is a portfolio property that
     a single-policy model cannot express.
     """
-    for t in range(proj_start(), proj_len()):
+    for t in expressions.periods(proj_start(), proj_len()):
         as_t = asset_share(t)
         if as_t <= 0.0:
             continue
@@ -1680,7 +1680,7 @@ def check_declaration_is_annual():
     Tolerances are relative to the quantity, since these are money amounts and a price
     rather than probabilities.
     """
-    for t in range(proj_start(), proj_len()):
+    for t in expressions.periods(proj_start(), proj_len()):
         if is_declaration_month(t):
             continue
         if is_unitised():
@@ -1707,7 +1707,7 @@ def result_cf():
     payouts are measured against - but it is a state variable, not a cash flow, and it
     is not part of ``net_cf``.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1736,7 +1736,7 @@ def result_payout():
     across twelve rows and steps once a year; ``cost_of_bonus_pp`` and
     ``shareholder_transfer_pp`` beside it are nil in eleven of those twelve.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(expressions.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "asset_share": [asset_share(t) for t in ts],
@@ -1818,8 +1818,8 @@ inflation_rate = 0.03
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

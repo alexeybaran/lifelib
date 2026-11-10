@@ -138,6 +138,57 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_mva_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mva_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_surr_charge_age_cap_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surr_charge_age_cap_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_surr_charge_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surr_charge_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_withdrawal_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(withdrawal_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_rate_scenario_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(rate_scenario(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_mva_factor_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(mva_factor_table().index)
+
+
+
+def prepared_surr_charge_age_cap_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(surr_charge_age_cap_table().index)
+
+
+
+def prepared_surr_charge_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(surr_charge_table().index)
+
+
+
+def prepared_withdrawal_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(withdrawal_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -157,4 +208,4 @@ mva_factor_file = "mva_factor_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

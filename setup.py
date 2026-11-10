@@ -179,7 +179,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['modelx>=0.32'],
+    install_requires=['modelx[helpers]>=0.33.1.dev0'],
 
     # If your project only runs on certain Python versions,
     # setting the python_requires argument to the appropriate PEP 440 version
@@ -203,9 +203,7 @@ setup(
     package_data={
         'lifelib': get_package_data([
             path.join(here, 'lifelib', 'libraries'),
-        ]) + ['_native_inputs.pyx', '_native_inputs.pxd',
-              '_native_indices.pyx', '_native_indices.pxd',
-              '_native_streams.pyx', '_native_streams.pxd'],
+        ]),
     },
 
     # Although 'package_data' is the preferred approach, in some case you may

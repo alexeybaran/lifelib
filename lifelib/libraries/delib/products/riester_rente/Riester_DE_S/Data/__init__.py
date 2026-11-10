@@ -261,6 +261,16 @@ def prepared_surplus_scenario_at():
                         indexing='at')
 
 
+def prepared_annuity_mort_table_scalar_at():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
+
+
+def prepared_zulage_schedule_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -282,4 +292,4 @@ freq_loading_file = "freq_loading.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

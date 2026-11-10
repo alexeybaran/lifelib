@@ -233,6 +233,17 @@ def prepared_rentenfaktor_table_loc():
                         indexing='loc')
 
 
+def prepared_charge_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_fund_scenario_table_scalar_loc():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(fund_scenario_table(), rows=False, indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -250,4 +261,4 @@ rentenfaktor_file = "rentenfaktor_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

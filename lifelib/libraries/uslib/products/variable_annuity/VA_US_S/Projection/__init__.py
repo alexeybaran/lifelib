@@ -414,7 +414,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -483,7 +483,7 @@ def sub_ids():
     unit accounting. Real contracts offer far more; one carrier's build-your-own menu
     lists 76 options across 12 asset classes [S4].
     """
-    return list(data.fund_table().loc[fund_set()].index)              # noqa: F821
+    return list(expressions.keys(tables.subtable(data.prepared_fund_table_groups_1(), fund_set())))              # noqa: F821
 
 
 def alloc(i):
@@ -767,9 +767,14 @@ def inv_return_mth(t, i):
     to a crafted proxy fund, normally a linear combination of recognized market indices
     [R1]; the model takes the return series as an input rather than hard-coding one.
     """
-    sub = data.return_scenario().loc[(scenario_id(), i)]              # noqa: F821
-    months = [m for m in sub.index if m <= max(duration_mth(t), 0)]
-    return float(sub.loc[max(months), "gross_return"])
+    try:
+        sub = tables.subtable(tables.subtable(data.prepared_return_scenario_groups_2(), scenario_id()), i)              # noqa: F821
+    except KeyError:
+        # Let the original selector produce its exact pandas error.
+        data.return_scenario().loc[(scenario_id(), i)]
+        raise
+    months = [m for m in expressions.keys(sub) if m <= max(duration_mth(t), 0)]
+    return float(tables.lookup_object(sub, expressions.max_value(months), "gross_return"))
 
 
 def scenario_rate(t, name):
@@ -779,9 +784,9 @@ def scenario_rate(t, name):
     policy month — the file's 0-based ``t`` column — until the next row of the same
     scenario, so a flat path is one row, keyed ``t = 0``.
     """
-    sub = data.rate_scenario().loc[scenario_id()]                     # noqa: F821
-    months = [m for m in sub.index if m <= max(duration_mth(t), 0)]
-    return float(sub.loc[max(months), name])
+    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                     # noqa: F821
+    months = [m for m in expressions.keys(sub) if m <= max(duration_mth(t), 0)]
+    return float(tables.lookup_object(sub, expressions.max_value(months), name))
 
 
 def vix_sq(k):
@@ -854,7 +859,7 @@ def sa_pp(t, i):
 
 def av_pp_at(t, timing):
     """AV at month t read at the point given by ``timing``: the sum over subaccounts."""
-    return sum((sa_pp_at(t, i, timing) for i in sub_ids()))
+    return expressions.sum_values((sa_pp_at(t, i, timing) for i in sub_ids()))
 
 
 def av_pp(t):
@@ -876,7 +881,7 @@ def gross_inv_income_pp(t):
     """The gross fund return over month t, before any charge."""
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum((sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i) for i in sub_ids()))
+    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i) for i in sub_ids()))
 
 
 def fund_expense_pp(t):
@@ -887,7 +892,7 @@ def fund_expense_pp(t):
     """
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
                * fund_expense_rate(i) / 12.0 for i in sub_ids()))
 
 
@@ -901,7 +906,7 @@ def asset_charge_pp(t):
     if t < 0 or depleted_flag(t - 1):
         return 0.0
     rate = (asset_charge_me + asset_charge_admin) / 12.0             # noqa: F821
-    return sum((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
                * (1.0 - fund_expense_rate(i) / 12.0) * rate for i in sub_ids()))
 
 
@@ -926,7 +931,7 @@ def prem_scheduled_pp(t):
         return 0.0
     table = data.transaction_table()                                 # noqa: F821
     key = (txn_id(), duration_mth(t))
-    return float(table.loc[key, "prem_amount"]) if key in table.index else 0.0
+    return tables.lookup_float(data.prepared_transaction_table_scalar_loc(), key, "prem_amount") if key in expressions.keys(data.prepared_transaction_table_index_selection()) else 0.0
 
 
 def premium_pp(t):
@@ -965,7 +970,7 @@ def wd_scheduled_pp(t):
         return 0.0
     table = data.transaction_table()                                 # noqa: F821
     key = (txn_id(), duration_mth(t))
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    return tables.lookup_float(data.prepared_transaction_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_transaction_table_index_selection()) else 0.0
 
 
 def is_wd_month(t):
@@ -1020,17 +1025,17 @@ def is_wd_year(t):
     *any* withdrawal in a Contract Year kills that year's bonus [S1].
     """
     first = t_of_month(12 * (policy_year(t) - 1))
-    return any((is_wd_taken(u) for u in expressions.periods(max(0, first),
+    return expressions.any_true((is_wd_taken(u) for u in expressions.periods(max(0, first),
                                              min(first + 12, proj_len()))))
 
 
 def gawa_pct_at_age(a):
     """g(a): the GAWA% for attained age a, from *gawa_pct_table.csv* [S3]."""
-    grid = data.gawa_pct_table().loc[glwb_option()]                  # noqa: F821
-    bands = [b for b in grid.index if b <= a]
+    grid = tables.subtable(data.prepared_gawa_pct_table_groups_1(), glwb_option())                  # noqa: F821
+    bands = [b for b in expressions.keys(grid) if b <= a]
     if not bands:
         return 0.0
-    return float(grid.loc[max(bands), "gawa_pct"])
+    return float(tables.lookup_object(grid, expressions.max_value(bands), "gawa_pct"))
 
 
 def wd_limit_pp(t):
@@ -1193,9 +1198,9 @@ def surr_charge_rate(t):
     test; splitting the pool needs a withdrawal-ordering rule across tranches that no
     retrieved source states.
     """
-    grid = data.cdsc_table().loc[cdsc_schedule()]                    # noqa: F821
-    years = min(duration(t), int(grid.index.max()))
-    return float(grid.loc[years, "surr_charge_rate"])
+    grid = tables.subtable(data.prepared_cdsc_table_groups_1(), cdsc_schedule())                    # noqa: F821
+    years = min(duration(t), int(tables.last_key(grid)))
+    return float(tables.lookup_object(grid, years, "surr_charge_rate"))
 
 
 def wd_charge_pp(t):
@@ -1485,7 +1490,7 @@ def stepup_base_pp(t):
     if basis == "annual_CV":
         return av_pp(t)
     elif basis == "highest_quarterly_CV":
-        return max((av_pp(t - 3 * j) for j in expressions.periods(0, 4) if t - 3 * j >= 0))
+        return expressions.max_value((av_pp(t - 3 * j) for j in expressions.periods(0, 4) if t - 3 * j >= 0))
     else:
         raise ValueError("invalid stepup_basis")
 
@@ -1913,7 +1918,7 @@ def mort_rate(t):
     annuitant mortality is a different and generally lighter basis [REG-R59].
     """
     table = data.prepared_mort_index_generators()                                        # noqa: F821
-    top = max((a for (a, s) in expressions.keys(table)))
+    top = expressions.max_value((a for (a, s) in expressions.keys(table)))
     return expressions.lookup_float(data.prepared_mort_table_generators(), (min(age(t), top), sex()), "mort_rate")
 
 
@@ -2327,7 +2332,7 @@ def check_av_roll_fwd():
     The per-month signed residual is :func:`check_av_roll_fwd_resid`; the tolerance is
     1e-6 of a currency unit on a contract value of order 1e5.
     """
-    return all((abs(check_av_roll_fwd_resid(t)) < 1e-6 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) < 1e-6 for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2349,7 +2354,7 @@ def check_pols_roll_fwd():
     No argument and a ``bool`` return; :func:`check_pols_roll_fwd_resid` is the signed
     per-month residual. In-force is a probability of order 1, so the tolerance is 1e-12.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len())))
 
 
 def check_charge_split_resid(t):
@@ -2373,7 +2378,7 @@ def check_charge_split():
     No argument and a ``bool`` return; :func:`check_charge_split_resid` is the signed
     per-month residual, measured per contract, so the tolerance is 1e-8.
     """
-    return all((abs(check_charge_split_resid(t)) < 1e-8 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_charge_split_resid(t)) < 1e-8 for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -2384,7 +2389,7 @@ def result_cf():
     is the count in force at the **start** of each month and is the weight carried by
     every cash flow on that row, so the two reconcile.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2415,7 +2420,7 @@ def result_pols():
     across: ``pols_if - pols_death - pols_lapse - pols_maturity`` is the next row's
     ``pols_if``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2434,7 +2439,7 @@ def result_av():
     One ``sa_pp_<i>`` column per subaccount, then the worked example's own columns: the
     contract value before the charges, the three charges, and the end-of-month value.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     cols = {}
     for i in sub_ids():
         cols["sa_pp_%s" % i] = [sa_pp(t, i) for t in ts]
@@ -2451,7 +2456,7 @@ def result_av():
 
 def result_bases():
     """Result table of the guarantee bases and moneyness ratios, indexed by t."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "gwb_pp": [gwb_pp(t) for t in ts],
@@ -2593,8 +2598,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -186,6 +186,39 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_scenario_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(scenario_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_tec_curve_calculation_groups_2():
+    """Own original input values for calculation operations."""
+    return inputs.table(tec_curve(), groups=('scenario', 'year'), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_tec_curve_years():
+    """Own original input values for calculation operations."""
+    return inputs.index(tec_curve().index.get_level_values("year"))
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_scenario_table_index_selection_level_year():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(scenario_table().index.get_level_values("year"))
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -201,4 +234,4 @@ tec_curve_file = "tec_curve.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

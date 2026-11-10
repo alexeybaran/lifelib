@@ -273,6 +273,46 @@ def prepared_tier_table_loc():
                         indexing='loc')
 
 
+def prepared_care_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(care_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_tier_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(tier_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_incidence_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(incidence_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_tier_share_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(tier_share_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -294,4 +334,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

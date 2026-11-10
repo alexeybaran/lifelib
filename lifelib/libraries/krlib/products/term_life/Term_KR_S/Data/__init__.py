@@ -271,6 +271,27 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_prem_rate_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_prem_anchor_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(prem_anchor_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_prem_rate_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(prem_rate_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -286,4 +307,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

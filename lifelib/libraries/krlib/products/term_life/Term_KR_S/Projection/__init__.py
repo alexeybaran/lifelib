@@ -405,7 +405,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -802,7 +802,7 @@ def mort_table_mean(x, m):
     quantity, and feeding the best-estimate factor in would move a published rate card by
     an assumption that has nothing to do with pricing.
     """
-    return sum((mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
+    return expressions.sum_values((mort_rate_at_age(a) for a in expressions.periods(int(x), int(x) + int(m)))) / float(m)
 
 
 def mort_rate_base(t):
@@ -907,9 +907,9 @@ def lapse_rate(t):
     [S1] [S2 제33조제2항] [S12].
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    start = float(tbl.loc["in_payment_start", "lapse_rate"])
-    end = float(tbl.loc["in_payment_end", "lapse_rate"])
-    post = float(tbl.loc["post_payment", "lapse_rate"])
+    start = tables.lookup_float(data.prepared_lapse_table_scalar_loc(), "in_payment_start", "lapse_rate")
+    end = tables.lookup_float(data.prepared_lapse_table_scalar_loc(), "in_payment_end", "lapse_rate")
+    post = tables.lookup_float(data.prepared_lapse_table_scalar_loc(), "post_payment", "lapse_rate")
     n_p = pay_term()
     y = policy_year(t) - 1
     if y >= n_p:
@@ -1021,13 +1021,12 @@ def prem_rate_mth(t):
     x_k, m_k = term_start_age(k), term_len(k)
     tbl = data.prem_rate_table()                                     # noqa: F821
     key = (maturity_form(), sex(), int(x_k), int(m_k))
-    if key in tbl.index:
-        return float(tbl.loc[key, "prem_mth_per_100m"])
-    anchor = data.prem_anchor_table().loc[                           # noqa: F821
-        (maturity_form(), sex())]
-    return (float(anchor["prem_mth_per_100m"])
+    if key in expressions.keys(data.prepared_prem_rate_table_index_selection()):
+        return tables.lookup_float(data.prepared_prem_rate_table_scalar_loc(), key, "prem_mth_per_100m")
+    anchor = expressions.row(data.prepared_prem_anchor_table_rows(), (maturity_form(), sex()))
+    return (float(tables.lookup_object(anchor, "prem_mth_per_100m"))
             * mort_table_mean(x_k, m_k)
-            / mort_table_mean(int(anchor["issue_age"]), int(anchor["term_y"])))
+            / mort_table_mean(int(tables.lookup_object(anchor, "issue_age")), int(tables.lookup_object(anchor, "term_y"))))
 
 
 def premium_mth_pp(t):
@@ -1090,7 +1089,7 @@ def cum_prem_pp(t):
     That is exactly why the waived state is a real state and not a cash-flow adjustment.
     """
     n = min(int(t) + 1, 12 * pay_term())
-    return sum((premium_mth_pp(s) for s in expressions.periods(n)))
+    return expressions.sum_values((premium_mth_pp(s) for s in expressions.periods(n)))
 
 
 def pols_if_init():
@@ -1248,7 +1247,7 @@ def pols_lapse_pool(t):
     reinstate.
     """
     rho = reinstate_rate_eff()
-    return sum((pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window), t)))      # noqa: F821
+    return expressions.sum_values((pols_lapse(s) * (1.0 - rho) ** (t - 1 - s) for s in expressions.periods(max(0, t - reinstate_window), t)))      # noqa: F821
 
 
 def pols_reinstate(t):
@@ -1500,7 +1499,7 @@ def claims(t, kind=None):
         ``WholeLife_KR_S``.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "ACC_DEATH", "ACCEL", "MATURITY", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "ACC_DEATH", "ACCEL", "MATURITY", "LAPSE")))
     if kind == "DEATH":
         return sum_assured() * (1.0 - accel_share(t)) * pols_death(t)
     if kind == "ACC_DEATH":
@@ -1673,7 +1672,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the period that failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_lapse_pool_resid(t):
@@ -1691,7 +1690,7 @@ def check_lapse_pool_resid(t):
 
 def check_lapse_pool():
     """True when the 부활 pool ledger closes in every projected period."""
-    return all((abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_lapse_pool_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pols_payer_resid(t):
@@ -1709,7 +1708,7 @@ def check_pols_payer_resid(t):
 
 def check_pols_payer():
     """True when payers and waived lives partition the premium-owing in-force."""
-    return all((abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_payer_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_prem_level_resid(t):
@@ -1730,7 +1729,7 @@ def check_prem_level_resid(t):
 
 def check_prem_level():
     """True when the premium is level within every 보험기간 of the projection."""
-    return all((abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_prem_level_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_decline_timing():
@@ -1744,7 +1743,7 @@ def check_decline_timing():
     as a lapse loading: a rate that is non-zero in a non-boundary period has stopped being
     a renewal decline whatever it is called.
     """
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         boundary = (renewal_type() == "gaengsin"
                     and (t + 1) % (12 * policy_term()) == 0 and t < proj_len() - 1)
         if boundary != (renewal_decline_rate(t) > 0.0):
@@ -1763,7 +1762,7 @@ def check_waiver_reset():
     the waiver across the boundary would be caught collecting no premium from a population
     the contract says must resume paying.
     """
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         if t == 0 or term_index(t) != term_index(t - 1):
             if abs(wop_waived_frac(t)) > roll_fwd_tol:               # noqa: F821
                 return False
@@ -1778,11 +1777,11 @@ def check_net_cf_resid(t):
     benefit kind that exists in :func:`claims` but was never given a column — which would
     leave the statement silently short of outgo it is charging.
     """
-    row = result_cf().loc[t]
-    return float(row["net_cf"] - (
-        row["premiums"] - row["claims_death"] - row["claims_acc_death"]
-        - row["claims_accel"] - row["claims_maturity"] - row["claims_lapse"]
-        - row["claim_expenses"] - row["expenses"] - row["commissions"]))
+    row = expressions.row(prepared_result_cf_rows(), t)
+    return float(tables.lookup_object(row, "net_cf") - (
+        tables.lookup_object(row, "premiums") - tables.lookup_object(row, "claims_death") - tables.lookup_object(row, "claims_acc_death")
+        - tables.lookup_object(row, "claims_accel") - tables.lookup_object(row, "claims_maturity") - tables.lookup_object(row, "claims_lapse")
+        - tables.lookup_object(row, "claim_expenses") - tables.lookup_object(row, "expenses") - tables.lookup_object(row, "commissions")))
 
 
 def check_net_cf():
@@ -1797,7 +1796,7 @@ def check_net_cf():
     and far below one won, which is the smallest error a reader adding up the printed
     statement could observe.
     """
-    return all((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1811,7 +1810,7 @@ def result_cf():
     zeros by product design — there is no 해약환급금 at any duration on the representative
     form — and is published rather than dropped; see :func:`claims`.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1843,7 +1842,7 @@ def result_pols():
     boundary month is the row where the decline rate is non-zero and the premium changes
     on the next row.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1870,6 +1869,11 @@ def result_pols():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_result_cf_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(result_cf(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1931,8 +1935,8 @@ cash_tol = 1e-06
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

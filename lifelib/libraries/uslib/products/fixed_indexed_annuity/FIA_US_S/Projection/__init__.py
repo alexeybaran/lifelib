@@ -468,7 +468,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -858,10 +858,10 @@ def scenario_value(y, name):
     scenario, so a flat path is one row.  Anniversaries before the first row take the
     first row's level.
     """
-    sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
-    keys = [i for i in sub.index if i <= y]
-    key = max(keys) if keys else min(sub.index)
-    return float(sub.loc[key, name])
+    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                    # noqa: F821
+    keys = [i for i in expressions.keys(sub) if i <= y]
+    key = expressions.max_value(keys) if keys else min(expressions.keys(sub))
+    return float(tables.lookup_object(sub, key, name))
 
 
 def index_level(y):
@@ -1208,8 +1208,8 @@ def surr_charge_rate(t):
     month of a year.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), int(table.index.max()))
-    return float(table.loc[key, "surr_charge_rate"])
+    key = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection()))))
+    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "surr_charge_rate")
 
 
 def vest_rate(t):
@@ -1220,8 +1220,8 @@ def vest_rate(t):
     clawback.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), int(table.index.max()))
-    return float(table.loc[key, "vest_rate"])
+    key = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection()))))
+    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "vest_rate")
 
 
 def rollup_rate(t):
@@ -1232,11 +1232,11 @@ def rollup_rate(t):
     zero after [S2]; another documented design is a flat 3.00% over fifteen anniversaries
     [S9].
     """
-    sub = data.rollup_table().loc[rollup_id()]                       # noqa: F821
-    keys = [y for y in sub.index if y <= policy_year(t)]
+    sub = tables.subtable(data.prepared_rollup_table_groups_1(), rollup_id())                       # noqa: F821
+    keys = [y for y in expressions.keys(sub) if y <= policy_year(t)]
     if not keys:
         return 0.0
-    return float(sub.loc[max(keys), "rollup_rate"])
+    return float(tables.lookup_object(sub, expressions.max_value(keys), "rollup_rate"))
 
 
 def payout_rate(a, basis):
@@ -1252,12 +1252,14 @@ def payout_rate(a, basis):
         column = "payout_rate_joint"
     else:
         raise ValueError("invalid glwb_basis")
-    table = data.payout_rate_table()                                 # noqa: F821
-    for _, row in table.iterrows():
-        if int(row["age_lo"]) <= a <= int(row["age_hi"]):
-            return float(row[column])
-    last = table.iloc[-1]
-    return float(last[column]) if a > int(last["age_hi"]) else 0.0
+    table = data.prepared_payout_rate_table_calculation_rows()
+    keys = list(expressions.keys(table))
+    for key in keys:
+        row = expressions.row(table, key)
+        if tables.lookup_int(row, "age_lo") <= a <= tables.lookup_int(row, "age_hi"):
+            return tables.lookup_float(row, column)
+    last = expressions.row(table, keys[-1])
+    return tables.lookup_float(last, column) if a > tables.lookup_int(last, "age_hi") else 0.0
 
 
 def payout_rate_locked(t):
@@ -1629,7 +1631,7 @@ def wd_scheduled_pp(t):
         return 0.0
     table = data.withdrawal_table()                                  # noqa: F821
     key = (wd_schedule_id(), duration(t))
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    return tables.lookup_float(data.prepared_withdrawal_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_withdrawal_table_index_selection()) else 0.0
 
 
 def wd_pp(t):
@@ -2628,10 +2630,10 @@ def check_av_roll_fwd():
     accumulated over a century of months; it is not a modelling assumption.
     """
     res = []
-    for t in range(entry_mth(), proj_len()):
+    for t in expressions.periods(entry_mth(), proj_len()):
         res.append(math.isclose(check_av_roll_fwd_resid(t), 0.0,      # noqa: F821
                                 abs_tol=1e-6))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2654,10 +2656,10 @@ def check_pols_roll_fwd():
     single month is :func:`check_pols_roll_fwd_resid`.
     """
     res = []
-    for t in range(entry_mth(), proj_len()):
+    for t in expressions.periods(entry_mth(), proj_len()):
         res.append(math.isclose(check_pols_roll_fwd_resid(t), 0.0,    # noqa: F821
                                 abs_tol=1e-12))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def result_cf():
@@ -2681,7 +2683,7 @@ def result_cf():
     frame double-counts the withdrawal.**  ``net_cf`` is income-positive, as everywhere
     in this library.
     """
-    ts = list(range(entry_mth(), proj_len()))
+    ts = list(expressions.periods(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2713,7 +2715,7 @@ def result_pols():
     identity ``check_pols_roll_fwd_resid`` asserts is therefore
     ``pols_if(t) - pols_if(t+1) = pols_death + pols_lapse + pols_maturity``.
     """
-    ts = list(range(entry_mth(), proj_len()))
+    ts = list(expressions.periods(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2739,7 +2741,7 @@ def result_av():
     trace, available in **every month** rather than only at the anniversaries the notes
     tabulate — which is the reading a mid-year surrender needs.
     """
-    ts = list(range(entry_mth(), proj_len()))
+    ts = list(expressions.periods(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
@@ -2769,7 +2771,7 @@ def result_glwb():
     Every one of them is annual: the rider state is flat between anniversaries and steps at
     each one, so the rows of interest are the anniversary rows ``t = 12k + 11``.
     """
-    ts = list(range(entry_mth(), proj_len()))
+    ts = list(expressions.periods(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "phase": [phase(t) for t in ts],
@@ -2929,8 +2931,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

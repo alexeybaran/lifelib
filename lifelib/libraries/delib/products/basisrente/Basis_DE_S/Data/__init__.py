@@ -239,12 +239,55 @@ def prepared_charge_table_loc():
                         indexing='loc')
 
 
+def prepared_charge_table_rows():
+    """Own pandas-style charge rows for repeated calculation selection."""
+    return inputs.table(charge_table(), rows=True, preserve_scalar_types=True)
+
+
 
 def prepared_rentenfaktor_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
     return inputs.table(rentenfaktor_table(),
                         columns=('rf_curr',),
                         indexing='loc')
+
+
+def prepared_mort_table_rows():
+    """Own pandas-style rows for repeated calculation selection."""
+    return inputs.table(mort_table(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_behaviour_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(behaviour_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_option_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(option_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_surplus_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surplus_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_behaviour_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(behaviour_table(), groups=('beh_table_id',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_surplus_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(surplus_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_mort_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(mort_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -266,4 +309,4 @@ option_file = "option_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

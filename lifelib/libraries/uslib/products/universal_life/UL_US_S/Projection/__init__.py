@@ -281,7 +281,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -503,8 +503,8 @@ def prem_persistency(t):
     levels are a standardization.
     """
     tbl = data.prem_persistency_table()                              # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "prem_persistency"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_prem_persistency_table_index_selection()))))
+    return tables.lookup_float(data.prepared_prem_persistency_table_scalar_loc(), y, "prem_persistency")
 
 
 def premium_pp(t):
@@ -660,8 +660,8 @@ def corridor_factor(t):
     if qual_test() != "GPT":
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[a, "corridor_factor"])
+    a = min(max(age(t), int(min(expressions.keys(data.prepared_corridor_factors_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_corridor_factors_index_selection()))))
+    return tables.lookup_float(data.prepared_corridor_factors_scalar_loc(), a, "corridor_factor")
 
 
 def av_pp_db_basis(t):
@@ -738,8 +738,14 @@ def coi_rate_scale():
     shipped table covers the specimen anchor cell M / StdNT / 35 only; a model point
     on any other cell needs the table extended first.
     """
-    return data.coi_rates().loc[                                     # noqa: F821
-        (sex(), rate_class(), age_at_entry())]["coi_rate_guar"]
+    try:
+        _selected_group = tables.subtable(tables.subtable(tables.subtable(data.prepared_coi_rates_groups_3(), sex()), rate_class()), age_at_entry())
+    except KeyError:
+        # Let the original selector produce its exact pandas error.
+        data.coi_rates().loc[                                     # noqa: F821
+        (sex(), rate_class(), age_at_entry())]
+        raise
+    return expressions.to_pandas(expressions.column(_selected_group, "coi_rate_guar", report=True))
 
 
 def coi_rate_guar(t):
@@ -749,9 +755,9 @@ def coi_rate_guar(t):
     anchor years **[std]**; it grades to 1000/12 at attained ages 112-120 and to zero
     from attained age 121.  Policy years beyond the table take its last row.
     """
-    scale = coi_rate_scale()
-    y = min(policy_year(t), int(scale.index.max()))
-    return float(scale[y])
+    scale = prepared_coi_rate_scale_values()
+    y = min(policy_year(t), int(tables.last_key(scale)))
+    return float(tables.lookup_object(scale, y, "value"))
 
 
 def coi_rate(t):
@@ -972,9 +978,9 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
-    init = float(row["sc_per_1000_init"])
-    yrs = float(row["runoff_years"])
+    row = expressions.row(data.prepared_surr_charge_table_rows(), surr_charge_id())             # noqa: F821
+    init = tables.lookup_float(row, "sc_per_1000_init")
+    yrs = tables.lookup_float(row, "runoff_years")
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1124,8 +1130,8 @@ def mort_rate(t):
     row, where the rate is 1.0.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[a, "mort_rate"]) * class_factor() * mort_ae_factor  # noqa: F821
+    a = min(max(age(t), int(min(expressions.keys(data.prepared_mort_table_index_selection())))), int(expressions.max_value(expressions.keys(data.prepared_mort_table_index_selection()))))
+    return tables.lookup_float(data.prepared_mort_table_scalar_loc(), a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1143,8 +1149,8 @@ def lapse_rate_base(t):
     standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate_ann"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate_ann")
 
 
 def lapse_shock_year():
@@ -1159,7 +1165,7 @@ def lapse_shock_year():
     """
     if not has_surr_charge():
         return 0
-    return int(data.surr_charge_table().loc[surr_charge_id(), "runoff_years"]) + 1  # noqa: F821
+    return tables.lookup_int(data.prepared_surr_charge_table_scalar_loc(), surr_charge_id(), "runoff_years") + 1  # noqa: F821
 
 
 def lapse_rate_sc_mult(t):
@@ -1329,7 +1335,7 @@ def claims(t, kind=None):
     elif kind == "LAPSE":
         return claim_pp(t, "LAPSE") * pols_lapse(t)
     elif kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
     else:
         raise ValueError("invalid kind")
 
@@ -1448,7 +1454,7 @@ def check_av_roll_fwd():
     the *post-deduction* balance and that decrements come after the credit.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         av = (av_at(t, "BEF_PREM")
               + prem_to_av(t)
               - withdrawals(t)
@@ -1459,7 +1465,7 @@ def check_av_roll_fwd():
               - claims_from_av(t, "LAPSE"))
         res.append(math.isclose(av_at(t + 1, "BEF_PREM"), av,        # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-9))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def check_margin():
@@ -1479,13 +1485,13 @@ def check_margin():
     the case for every shipped model point.
     """
     res = []
-    for t in range(proj_len()):
+    for t in expressions.periods(proj_len()):
         rhs = (margin_expense(t) + margin_mortality(t)
                + av_change(t) - inv_income(t)
                + loan_bal_pp(t) * pols_lapse(t))
         res.append(math.isclose(net_cf(t), rhs,                      # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-9))
-    return all(res)
+    return expressions.all_true(res)
 
 
 def result_cf():
@@ -1497,7 +1503,7 @@ def result_cf():
     income-positive sign convention: ``premiums`` less every other flow.  The index
     runs ``t = 0 .. proj_len() - 1``, one row per projected month.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1518,7 +1524,7 @@ def result_pols():
 
     The index runs ``t = 0 .. proj_len() - 1``, as in :func:`result_cf`.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1541,7 +1547,7 @@ def result_av():
     index runs ``t = 0 .. proj_len() - 1``; row ``t = 0`` is the notes' issue-month
     row, and the ``loan_bal_pp`` column is the end-of-month balance ``L(t)``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp_bef_prem": [av_pp_at(t, "BEF_PREM") for t in ts],
@@ -1565,6 +1571,11 @@ def result_av():
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
     return inputs.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_coi_rate_scale_values():
+    """Own public Series values; retain normal public Cell overrides."""
+    return inputs.table(coi_rate_scale().to_frame(name="value"), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1624,8 +1635,8 @@ pd = ("Module", "pandas")
 
 math = ("Module", "math")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

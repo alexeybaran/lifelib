@@ -297,6 +297,11 @@ def prepared_lapse_table_flat_generators():
     return inputs.table(lapse_table(), preserve_scalar_types = True)
 
 
+def prepared_mort_anchor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(mort_anchor_table(), indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -320,4 +325,4 @@ tax_table_file = "tax_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

@@ -314,7 +314,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -443,7 +443,7 @@ def franchise_days():
     *franchise* enters through :func:`franchise_factor` and nowhere else.
     """
     v = tables.lookup_int(prepared_model_point(), "franchise_days")
-    if v not in [int(d) for d in data.franchise_table().index]:      # noqa: F821
+    if v not in [int(d) for d in expressions.keys(data.prepared_franchise_table_index_selection())]:      # noqa: F821
         raise ValueError("invalid franchise_days")
     return v
 
@@ -674,7 +674,7 @@ def mort_rate(t):
         return expressions.lookup_float(sub, ages[0], "mort_rate")
     if x >= ages[-1]:
         return expressions.lookup_float(sub, ages[-1], "mort_rate")
-    lo = max((a for a in ages if a <= x))
+    lo = expressions.max_value((a for a in ages if a <= x))
     hi = min((a for a in ages if a > x))
     r_lo = expressions.lookup_float(sub, lo, "mort_rate")
     r_hi = expressions.lookup_float(sub, hi, "mort_rate")
@@ -727,7 +727,7 @@ def itt_inception_rate(t):
     elif x >= ages[-1]:
         r = expressions.lookup_float(sub, ages[-1], "itt_inception_rate")
     else:
-        lo = max((a for a in ages if a <= x))
+        lo = expressions.max_value((a for a in ages if a <= x))
         hi = min((a for a in ages if a > x))
         r_lo = expressions.lookup_float(sub, lo, "itt_inception_rate")
         r_hi = expressions.lookup_float(sub, hi, "itt_inception_rate")
@@ -754,7 +754,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return float(tbl.loc[min(y, int(tbl.index.max())), "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def market_prem_pp(t):
@@ -811,7 +811,7 @@ def claim_dur_year(z):
     table's third year - the year the 1 095-day cap falls in.
     """
     tbl = data.itt_termination_table()                               # noqa: F821
-    return min((z - 1) // 12 + 1, int(tbl.index.max()))
+    return min((z - 1) // 12 + 1, int(expressions.max_value(expressions.keys(data.prepared_itt_termination_table_index_selection()))))
 
 
 def itt_recovery_rate(z):
@@ -880,7 +880,7 @@ def itt_rate_vectors():
     because they are what a reader looks up and what a test asserts against; this is
     built *from* them, so there is still one definition of each rate.
     """
-    zs = range(1, itt_max_months() + 1)
+    zs = expressions.periods(1, itt_max_months() + 1)
     rho = [itt_recovery_rate_mth(z) for z in zs]
     tau = [itt_to_ipt_rate_mth(z) for z in zs]
     qs = [itt_mort_rate_mth(z) for z in zs]
@@ -907,7 +907,7 @@ def itt_annuity_months():
     of it: it is the object a claims-in-payment reserve for a fresh ITT claim is quoted
     as, before the cap assessment feeds IPT.
     """
-    return sum((itt_surv(z) for z in expressions.periods(1, itt_max_months() + 1)))
+    return expressions.sum_values((itt_surv(z) for z in expressions.periods(1, itt_max_months() + 1)))
 
 
 def itt_benefit_per_inception():
@@ -951,7 +951,7 @@ def crd_rate(t):
         return expressions.lookup_float(tbl, ages[0], "crd_rate")
     if x >= ages[-1]:
         return expressions.lookup_float(tbl, ages[-1], "crd_rate")
-    lo = max((a for a in ages if a <= x))
+    lo = expressions.max_value((a for a in ages if a <= x))
     hi = min((a for a in ages if a > x))
     r_lo = expressions.lookup_float(tbl, lo, "crd_rate")
     r_hi = expressions.lookup_float(tbl, hi, "crd_rate")
@@ -1015,11 +1015,11 @@ def itt_cohorts_raw(t):
         if status() != "itt":
             return [0.0] * n
         seed = min(claim_duration_months(), n - 1)
-        return [pols_if_init() if z == seed else 0.0 for z in range(n)]
+        return [pols_if_init() if z == seed else 0.0 for z in expressions.periods(n)]
     prev = itt_cohorts(t - 1)
     surv = itt_rate_vectors()[3]
     out = [pols_itt_inception(t - 1)]
-    for z in range(1, n):
+    for z in expressions.periods(1, n):
         out.append(prev[z - 1] * surv[z - 1])
     return out
 
@@ -1052,7 +1052,7 @@ def pols_itt_dur(t, z):
 
 def pols_itt(t):
     """l_itt(t): the total population in ITT payment at the start of month t."""
-    return sum(itt_cohorts(t))
+    return expressions.sum_values(itt_cohorts(t))
 
 
 def pols_itt_transfer(t):
@@ -1066,7 +1066,7 @@ def pols_itt_transfer(t):
     """
     if t < 0 or t >= proj_len() or cover_itt(t):
         return 0.0
-    return sum(itt_cohorts_raw(t))
+    return expressions.sum_values(itt_cohorts_raw(t))
 
 
 def pols_ipt_raw(t):
@@ -1185,7 +1185,7 @@ def pols_itt_recovery(t):
     """
     v = itt_cohorts(t)
     rho = itt_rate_vectors()[0]
-    return sum((a * r for (a, r) in expressions.zip_values((v, rho)) if a != 0.0))
+    return expressions.sum_values((a * r for (a, r) in expressions.zip_values((v, rho)) if a != 0.0))
 
 
 def pols_itt_to_ipt(t):
@@ -1197,7 +1197,7 @@ def pols_itt_to_ipt(t):
     """
     v = itt_cohorts(t)
     rho, tau, _, _ = itt_rate_vectors()
-    return sum((a * (1.0 - r) * x for (a, r, x) in expressions.zip_values((v, rho, tau)) if a != 0.0))
+    return expressions.sum_values((a * (1.0 - r) * x for (a, r, x) in expressions.zip_values((v, rho, tau)) if a != 0.0))
 
 
 def pols_itt_death(t):
@@ -1208,7 +1208,7 @@ def pols_itt_death(t):
     """
     v = itt_cohorts(t)
     rho, tau, qs, _ = itt_rate_vectors()
-    return sum((a * (1.0 - r) * (1.0 - x) * d for (a, r, x, d) in expressions.zip_values((v, rho, tau, qs)) if a != 0.0))
+    return expressions.sum_values((a * (1.0 - r) * (1.0 - x) * d for (a, r, x, d) in expressions.zip_values((v, rho, tau, qs)) if a != 0.0))
 
 
 def pols_itt_stay(t):
@@ -1221,7 +1221,7 @@ def pols_itt_stay(t):
     """
     v = itt_cohorts(t)
     surv = itt_rate_vectors()[3]
-    return sum((a * b for (a, b) in expressions.zip_values((v, surv)) if a != 0.0))
+    return expressions.sum_values((a * b for (a, b) in expressions.zip_values((v, surv)) if a != 0.0))
 
 
 def pols_itt_cap(t):
@@ -1313,7 +1313,7 @@ def pols_itt_close(t):
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    return sum(itt_cohorts_raw(t + 1))
+    return expressions.sum_values(itt_cohorts_raw(t + 1))
 
 
 def pols_ipt_close(t):
@@ -1452,7 +1452,7 @@ def claims(t, kind=None):
     stated instead of inferred from a missing column.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "PTIA", "ITT", "IPT", "LAPSE", "MATURITY")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "PTIA", "ITT", "IPT", "LAPSE", "MATURITY")))
     if kind == "DEATH":
         deaths = pols_death_healthy(t) + pols_itt_death(t) + pols_ipt_death(t)
         return benefit_deces_pp(t) * deaths * cover_deces(t)
@@ -1541,7 +1541,7 @@ def check_crd():
         return False
     if abs(crd(0) - capital_initial()) > tol:
         return False
-    return all((abs(check_crd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_crd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_states_resid(t):
@@ -1563,7 +1563,7 @@ def check_states():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_states_resid` gives the signed residual of the month that failed.
     """
-    return all((abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1584,7 +1584,7 @@ def check_pols_roll_fwd():
     The tolerance scales with :func:`pols_if_init`, since the residual accumulates
     rounding on that many policies.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
 
 
 def check_benefit_split_resid(t):
@@ -1619,7 +1619,7 @@ def check_benefit_split_resid(t):
 def check_benefit_split():
     """True when the ITT / IPT paying-mass identity holds in every projected month."""
     scale = max(benefit_itt_pp(), 1.0) * max(pols_if_init(), 1.0)
-    return all((abs(check_benefit_split_resid(t)) <= 1e-10 * scale for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_benefit_split_resid(t)) <= 1e-10 * scale for t in expressions.periods(proj_len())))
 
 
 def check_cover_end_resid(t):
@@ -1642,7 +1642,7 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when no ITT or IPT benefit is paid after the guarantee's age limit."""
-    return all((abs(check_cover_end_resid(t)) <= 1e-12 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_cover_end_resid(t)) <= 1e-12 for t in expressions.periods(proj_len())))
 
 
 # -- Discounting: a companion, not part of the projection --------------------
@@ -1670,7 +1670,7 @@ def pv_premiums():
     EUR 12 602.19 on the anchor cell, against EUR 12 588.82 for the same cover on the CRD
     premium basis - a ratio of 1.001062, which is the calibration of the CRD scale.
     """
-    return sum((premiums(t) * disc_factor(t) for t in expressions.periods(proj_len())))
+    return expressions.sum_values((premiums(t) * disc_factor(t) for t in expressions.periods(proj_len())))
 
 
 def pv_claims(kind=None):
@@ -1679,7 +1679,7 @@ def pv_claims(kind=None):
     On the anchor cell: Décès 7 170.56, PTIA 635.87, ITT 1 932.71 and IPT 1 293.18, so
     death and PTIA are 70.8 % of the benefit present value and the incapacity side 29.2 %.
     """
-    return sum((claims(t, kind) * disc_factor(t) for t in expressions.periods(proj_len())))
+    return expressions.sum_values((claims(t, kind) * disc_factor(t) for t in expressions.periods(proj_len())))
 
 
 def pv_expenses():
@@ -1688,7 +1688,7 @@ def pv_expenses():
     EUR 334.17 on the anchor cell - second-order for the total and first-order for the
     margin.
     """
-    return sum((expenses(t) * disc_factor(t) for t in expressions.periods(proj_len())))
+    return expressions.sum_values((expenses(t) * disc_factor(t) for t in expressions.periods(proj_len())))
 
 
 def pv_outgo():
@@ -1711,7 +1711,7 @@ def result_cf():
     the loan's own time-point index, which is the sum insured for the Décès and PTIA
     columns.  Nothing here is discounted; see :func:`disc_factor`.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1741,7 +1741,7 @@ def result_states():
     ``l_ipt(t + 1)`` - the state at the end of month t - so the worked example's table
     can be read straight off this frame.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_healthy_close": [pols_healthy_close(t) for t in ts],
@@ -1804,8 +1804,8 @@ disc_rate = 0.025
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

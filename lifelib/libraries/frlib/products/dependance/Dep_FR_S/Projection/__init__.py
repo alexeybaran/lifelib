@@ -368,7 +368,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -784,8 +784,7 @@ def revision_rate(t):
     repricing.
     """
     tbl = data.revision_table()                                      # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
-                         "revision_rate"])
+    return tables.lookup_float(data.prepared_revision_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_revision_table_index_selection())))), "revision_rate")
 
 
 def premium_factor(y):
@@ -863,10 +862,10 @@ def reduction_coeff(n):
     if n < reduction_qualifying_years():
         return 0.0
     tbl = data.reduction_table()                                     # noqa: F821
-    lo, hi = int(tbl.index.min()), int(tbl.index.max())
+    lo, hi = int(min(expressions.keys(data.prepared_reduction_table_index_selection()))), int(expressions.max_value(expressions.keys(data.prepared_reduction_table_index_selection())))
     if n < lo:
         return 0.0
-    return float(tbl.loc[min(n, hi), "coefficient"])
+    return tables.lookup_float(data.prepared_reduction_table_scalar_loc(), min(n, hi), "coefficient")
 
 
 def inflation_factor(t):
@@ -956,12 +955,12 @@ def mort_force_at(x):
     tbl = data.mort_table()                                          # noqa: F821
     lo = int(math.floor(x))                                          # noqa: F821
     hi = lo + 1
-    ages = [a for s, a in tbl.index if s == sex()]
-    top = max(ages)
+    ages = [a for s, a in expressions.keys(data.prepared_mort_table_index_selection()) if s == sex()]
+    top = expressions.max_value(ages)
     if lo >= top:
         return float("inf")
-    q_lo = float(tbl.loc[(sex(), lo), "mort_rate"])
-    q_hi = float(tbl.loc[(sex(), min(hi, top)), "mort_rate"])
+    q_lo = tables.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo), "mort_rate")
+    q_hi = tables.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), min(hi, top)), "mort_rate")
     if q_lo >= 1.0 or q_hi >= 1.0:
         return float("inf")
     m_lo = -math.log(1.0 - q_lo)                                     # noqa: F821
@@ -980,8 +979,7 @@ def lapse_rate_base(t):
     row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
-                         "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def revision_lapse_factor(t):
@@ -1050,7 +1048,7 @@ def carence_factor(t):
     a covered one does, and takes :func:`refunds_carence` with it.
     """
     tbl = data.prepared_cause_mix_index()                                     # noqa: F821
-    return float(sum((expressions.lookup_object(data.prepared_cause_shares(), c) for c in expressions.keys(tbl) if carence_months(c) <= t)))
+    return float(expressions.sum_values((expressions.lookup_object(data.prepared_cause_shares(), c) for c in expressions.keys(tbl) if carence_months(c) <= t)))
 
 
 def aggravation_carence(t):
@@ -1119,8 +1117,7 @@ def severity_share(kind):
     """
     if kind not in ("partial", "total"):
         raise ValueError("invalid kind")
-    return float(data.severity_share_table().loc[                    # noqa: F821
-        trigger_grid(), "share_" + kind])
+    return tables.lookup_float(data.prepared_severity_share_table_scalar_loc(), trigger_grid(), "share_" + kind)
 
 
 def prev_partial(t):
@@ -1479,7 +1476,7 @@ def dep_cohorts(t):
     recog = aggravation_carence(t - 1)
     restart = not cover_partial()
     fresh = 0.0
-    for z in range(1, min(len(prev_p), n - 1) + 1):
+    for z in expressions.periods(1, min(len(prev_p), n - 1) + 1):
         ps = prev_p[z - 1] * surv_p
         na = ps * ia
         part[z] = ps - na
@@ -1521,12 +1518,12 @@ def pols_totr_dur(t, z):
 
 def pols_part(t):
     """The whole population in *dépendance partielle* at the start of month t."""
-    return sum(dep_cohorts(t)[0])
+    return expressions.sum_values(dep_cohorts(t)[0])
 
 
 def pols_tot(t):
     """The whole population in *dépendance totale* on a full *rente*, at the start of t."""
-    return sum(dep_cohorts(t)[1])
+    return expressions.sum_values(dep_cohorts(t)[1])
 
 
 def pols_totr(t):
@@ -1536,12 +1533,12 @@ def pols_totr(t):
     :func:`pols_red` and carry a frozen reduced amount rather than the policy year's
     guarantee.
     """
-    return sum(dep_cohorts(t)[2])
+    return expressions.sum_values(dep_cohorts(t)[2])
 
 
 def totr_rente_value(t):
     """The reduced-rente *totale* ledger's population times the amount it is paid."""
-    return sum(dep_cohorts(t)[3])
+    return expressions.sum_values(dep_cohorts(t)[3])
 
 
 def pols_recovery(t):
@@ -1700,7 +1697,7 @@ def instalments(t):
     s_p = (1.0 - mort_rate_partial_mth(t)) if cover_partial() else 0.0
     s_t = 1.0 - mort_rate_total_mth(t)
     out = 0.0
-    for z in range(franchise_months() + 1, len(part) + 1):
+    for z in expressions.periods(franchise_months() + 1, len(part) + 1):
         out += part[z - 1] * s_p + (tot[z - 1] + totr[z - 1]) * s_t
     return out
 
@@ -1729,7 +1726,7 @@ def claims(t, kind=None):
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE")))
+        return expressions.sum_values((claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE")))
     if kind == "RENTE":
         part, tot, totr, val = dep_cohorts(t)
         s_p = 1.0 - mort_rate_partial_mth(t)
@@ -1737,7 +1734,7 @@ def claims(t, kind=None):
         rho = partial_ratio_paid()
         amounts = {}
         out = 0.0
-        for z in range(franchise_months() + 1, len(part) + 1):
+        for z in expressions.periods(franchise_months() + 1, len(part) + 1):
             p, o, v = part[z - 1], tot[z - 1], val[z - 1]
             if p == 0.0 and o == 0.0 and v == 0.0:
                 continue
@@ -1892,7 +1889,7 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_states_resid(t):
@@ -1918,7 +1915,7 @@ def check_states():
     still has one.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all((abs(check_states_resid(t)) <= tol for t in expressions.periods(proj_len() + 1)))
+    return expressions.all_true((abs(check_states_resid(t)) <= tol for t in expressions.periods(proj_len() + 1)))
 
 
 def check_part_roll_fwd_resid(t):
@@ -1940,7 +1937,7 @@ def check_part_roll_fwd_resid(t):
 def check_part_roll_fwd():
     """True when the *partielle* ledger closes against its aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all((abs(check_part_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_part_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_tot_roll_fwd_resid(t):
@@ -1964,7 +1961,7 @@ def check_tot_roll_fwd_resid(t):
 def check_tot_roll_fwd():
     """True when the two *totale* ledgers close against their aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return all((abs(check_tot_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_tot_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_model_point():
@@ -1977,8 +1974,8 @@ def check_model_point():
     cell with enough years of premiums behind it to have qualified, and a cause mix that
     sums to one — without which :func:`carence_factor` would silently scale every claim.
     """
-    tbl = data.cause_mix_table()                                     # noqa: F821
-    if abs(float(tbl["share"].sum()) - 1.0) > 1e-9:
+    tbl = data.prepared_cause_mix_table_calculation()                                     # noqa: F821
+    if abs(expressions.sum_f64(v for v in expressions.column(tbl, "share") if not tables.is_missing(pd.isna, v)) - 1.0) > 1e-9:
         return False
     if not 500.0 <= rente_total_mth() <= 3000.0:
         return False
@@ -2010,7 +2007,7 @@ def result_cf():
     has its own because it is a per-event cost rather than a per-policy one.  Nothing
     here is discounted.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2034,7 +2031,7 @@ def result_cf():
 
 def result_states():
     """Result table of state movements and rates, indexed by policy month t."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_entry_partial": [pols_entry_partial(t) for t in ts],
@@ -2108,8 +2105,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

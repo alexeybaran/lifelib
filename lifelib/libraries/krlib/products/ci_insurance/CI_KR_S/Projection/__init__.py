@@ -345,7 +345,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -714,8 +714,8 @@ def omega_age():
     not a transcription.  It is a hard model parameter and not a rounding: projecting a
     whole-life contract to 100 truncates the liability and projecting to 120 invents one.
     """
-    tbl = data.mort_table().loc[sex()]                               # noqa: F821
-    return int(tbl.index[tbl["mort_rate"] >= 1.0][0])
+    tbl = tables.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
+    return int([a for a in expressions.keys(tbl) if tables.lookup_float(tbl, a, "mort_rate") >= 1.0][0])
 
 
 def proj_years():
@@ -1110,8 +1110,7 @@ def lapse_rate_base(t):
     the subject of [REG-R27].
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(max(policy_year(t), 1), int(tbl.index.max())),
-                         "lapse_rate"])
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(max(policy_year(t), 1), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_ult():
@@ -1556,8 +1555,8 @@ def ci_cohort_ids(t):
     join at the start of the month after they accelerate, so no label ``> t`` can be
     populated at t.
     """
-    return ([-s for s in range(1, min(max(t, 0), 12) + 1)]
-            + list(range(1, max(t, 0) + 1)))
+    return ([-s for s in expressions.periods(1, min(max(t, 0), 12) + 1)]
+            + list(expressions.periods(1, max(t, 0) + 1)))
 
 
 def accel_benefit_pp(s):
@@ -1695,7 +1694,7 @@ def resid_db_total_pp(t):
         return resid_nom_total_pp(t)
     if floor >= resid_nom_max_pp(t):
         return floor * n
-    return sum((pols_if_ci_at(t, s) * resid_db_pp(t + 1, s) for s in ci_cohort_ids(t)))
+    return expressions.sum_values((pols_if_ci_at(t, s) * resid_db_pp(t + 1, s) for s in ci_cohort_ids(t)))
 
 
 def resid_db_avg_pp(t):
@@ -2055,7 +2054,7 @@ def claims(t, kind=None):
         return (claims(t, "CI") + claims(t, "DEATH") + claims(t, "DEATH_CI")
                 + claims(t, "LAPSE") + claims(t, "LAPSE_CI"))
     if kind == "CI":
-        return sum((pols_ci_in(t, s) * accel_benefit_pp(s) for s in (t + 1, -(t + 1))))
+        return expressions.sum_values((pols_ci_in(t, s) * accel_benefit_pp(s) for s in (t + 1, -(t + 1))))
     if kind == "DEATH":
         return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
     if kind == "DEATH_CI":
@@ -2069,7 +2068,7 @@ def claims(t, kind=None):
             return mort_rate_ci_mth(t) * (resid_db_total_pp(t) - loan * n)
         if loan >= max(resid_nom_max_pp(t), floor):
             return 0.0
-        return sum((pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
+        return expressions.sum_values((pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
                    * max(0.0, resid_db_pp(t + 1, s) - loan) for s in ci_cohort_ids(t)))
     if kind == "LAPSE":
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_lapse(t)
@@ -2181,7 +2180,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the total in-force roll-forward closes in every projected month."""
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_ci_state_roll_fwd_resid(t):
@@ -2202,7 +2201,7 @@ def check_ci_state_roll_fwd_resid(t):
 
 def check_ci_state_roll_fwd():
     """True when both cohorts roll forward and the transition between them balances."""
-    return all((abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_decrement_sum_resid(t):
@@ -2214,14 +2213,14 @@ def check_decrement_sum_resid(t):
     policy leaves by a death or a surrender in one of the two states and there is no
     residual population and no tail state anywhere in this model.
     """
-    exits = sum((pols_death(u) + pols_death_ci(u) + pols_lapse(u)
+    exits = expressions.sum_values((pols_death(u) + pols_death_ci(u) + pols_lapse(u)
                 + pols_lapse_ci(u) for u in expressions.periods(t + 1)))
     return pols_if(0) - exits - pols_if(t + 1)
 
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every month."""
-    return all((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_pol_val_roll_fwd_resid(t):
@@ -2247,7 +2246,7 @@ def check_pol_val_roll_fwd_resid(t):
 def check_pol_val_roll_fwd():
     """True when the 계약자적립액 rolls forward on its own basis in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_accel_complement_resid(t):
@@ -2273,7 +2272,7 @@ def check_accel_complement_resid(t):
 def check_accel_complement():
     """True when the acceleration and its residual sum to the 기본보험금, every cohort."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_accel_complement_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_accel_complement_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_resid_floor_resid(t):
@@ -2308,7 +2307,7 @@ def check_resid_floor_resid(t):
 def check_resid_floor():
     """True when the residual death benefit is the maximum of its two limbs, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_resid_floor_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_resid_floor_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cv_carve_out_resid(t):
@@ -2330,7 +2329,7 @@ def check_cv_carve_out_resid(t):
 def check_cv_carve_out():
     """True when the post-CI surrender value is never below the pre-CI one."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_cv_carve_out_resid(t)) <= tol for t in expressions.periods(proj_len() + 1)))
+    return expressions.all_true((abs(check_cv_carve_out_resid(t)) <= tol for t in expressions.periods(proj_len() + 1)))
 
 
 def check_loan_roll_fwd_resid(t):
@@ -2348,7 +2347,7 @@ def check_loan_roll_fwd_resid(t):
 def check_loan_roll_fwd():
     """True when the loan balance accumulates at ``j_L`` in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_loan_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
+    return expressions.all_true((abs(check_loan_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len() - 1)))
 
 
 def check_net_cf_resid(t):
@@ -2368,7 +2367,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -2383,7 +2382,7 @@ def result_cf():
     ``net_cf`` and the acceleration can be read apart from the death benefit it
     accelerates.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2411,7 +2410,7 @@ def result_pols():
     ``mort_rate``, ``ci_rate`` and ``lapse_rate``, which hold the figures the sources
     tabulate.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2448,7 +2447,7 @@ def result_val():
     ``resid_db_avg_pp`` against ``resid_nominal_pp`` at any duration shows how far the 105%
     account floor has taken over the residual.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pol_val_pp": [pol_val_pp(t + 1) for t in ts],
@@ -2532,8 +2531,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

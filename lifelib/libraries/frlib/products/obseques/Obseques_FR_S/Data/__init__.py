@@ -193,6 +193,45 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_select_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(select_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_single_prem_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(single_prem_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_surr_scale_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(surr_scale_table(), groups=('scale',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_select_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(select_table().index)
+
+
+
+def prepared_single_prem_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(single_prem_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -210,4 +249,4 @@ single_prem_file = "single_prem_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

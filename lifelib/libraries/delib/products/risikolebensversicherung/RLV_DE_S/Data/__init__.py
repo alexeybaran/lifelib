@@ -271,6 +271,11 @@ def prepared_freq_loading_table_at():
                         indexing='at')
 
 
+def prepared_freq_loading_table_scalar_at():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(freq_loading_table(), indexing='at', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -288,4 +293,4 @@ freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

@@ -324,7 +324,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def shape():
@@ -619,8 +619,8 @@ def omega_age():
     109 male and 113 female on 生保標準生命表2018（死亡保険用）.  It is read off the table
     rather than hard-coded, so replacing the table moves the horizon with it.
     """
-    tbl = data.mort_table().xs(sex(), level="sex")                   # noqa: F821
-    return int(tbl.index[tbl["mort_rate"] >= 1.0].min())
+    tbl = tables.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
+    return int(min((a for a in expressions.keys(tbl) if tables.lookup_float(tbl, a, "mort_rate") >= 1.0)))
 
 
 def proj_len():
@@ -712,9 +712,9 @@ def lapse_rate_base(t):
     4 / 3%, rests on no public evidence at all and is a **[std]** judgement.  Policy
     years beyond the table take its last row.
     """
-    tbl = data.lapse_table().xs(shape(), level="shape")              # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate"])
+    tbl = tables.subtable(data.prepared_lapse_table_calculation_groups_1(), shape())
+    y = min(policy_year(t), int(tables.last_key(tbl)))
+    return tables.lookup_float(tbl, y, "lapse_rate")
 
 
 def lapse_dyn_factor(t):
@@ -1127,7 +1127,7 @@ def fx_rate(t):
     if not fx_path():
         return fx_ttm()
     tbl = data.fx_path_table()                                       # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "fx_ttm"])
+    return tables.lookup_float(data.prepared_fx_path_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_fx_path_table_index_selection())))), "fx_ttm")
 
 
 def premium_jpy0():
@@ -1170,7 +1170,7 @@ def target_month():
     """
     if not target_on():
         return proj_len() + 1
-    for t in range(target_dead_zone_mths, proj_len() + 1):           # noqa: F821
+    for t in expressions.periods(target_dead_zone_mths, proj_len() + 1):           # noqa: F821
         if target_hit(t):
             return t
     return proj_len() + 1
@@ -1579,10 +1579,10 @@ def check_pols_roll_fwd():
     tol = roll_fwd_tol * max(pols_if_init, 1.0)                      # noqa: F821
     if abs(pols_if(proj_len())) > tol:
         return False
-    total = sum((pols_death(t) + pols_lapse(t) + pols_target(t) for t in expressions.periods(proj_len())))
+    total = expressions.sum_values((pols_death(t) + pols_lapse(t) + pols_target(t) for t in expressions.periods(proj_len())))
     if abs(total - pols_if_init) > tol:                              # noqa: F821
         return False
-    return all((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1604,7 +1604,7 @@ def check_av_roll_fwd():
     of the month that failed.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_cv_ledger_resid(t):
@@ -1635,7 +1635,7 @@ def check_cv_ledger():
     rebuild is independent of the cells that produce the claim.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all((abs(check_cv_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_cv_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1656,7 +1656,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published columns add to :func:`net_cf` in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return all((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def check_fx_ledger_resid(t):
@@ -1673,7 +1673,7 @@ def check_fx_ledger_resid(t):
 def check_fx_ledger():
     """True when the three-rate yen translation closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured() * fx_rate(0))        # noqa: F821
-    return all((abs(check_fx_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_fx_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -1688,7 +1688,7 @@ def result_cf():
     benefit on the same row is valued.  ``conversions`` is a column of zeros on every
     model point without the target rider.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1711,7 +1711,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by policy month t."""
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1735,7 +1735,7 @@ def result_av():
     the uplift measured against it, the three charges, and the three factors that stand
     between the 積立金 and the 解約返戻金.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp": [av_pp(t) for t in ts],
@@ -1804,8 +1804,8 @@ comm_trail_years = 7
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

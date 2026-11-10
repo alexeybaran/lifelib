@@ -169,6 +169,44 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_surr_charge_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surr_charge_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_withdrawal_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(withdrawal_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_rate_scenario_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(rate_scenario(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_rollup_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(rollup_table(), groups=('rollup_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_payout_rate_table_calculation_rows():
+    """Own original input values for calculation operations."""
+    return inputs.table(payout_rate_table(), groups=(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_surr_charge_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(surr_charge_table().index)
+
+
+
+def prepared_withdrawal_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(withdrawal_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -188,4 +226,4 @@ withdrawal_file = "withdrawal_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

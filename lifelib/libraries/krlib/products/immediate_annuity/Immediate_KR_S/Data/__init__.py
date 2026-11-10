@@ -151,6 +151,16 @@ def prepared_crediting_groups_generators():
     return inputs.table(crediting_table().set_index("basis_id", append=True), groups=("basis_id",), preserve_scalar_types = True)
 
 
+def prepared_charge_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return inputs.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_crediting_table_calculation_rows():
+    """Own original input values for calculation operations."""
+    return inputs.table(crediting_table(), groups=(), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -164,4 +174,4 @@ crediting_table_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

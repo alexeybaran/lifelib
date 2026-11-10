@@ -294,6 +294,11 @@ def prepared_expense_table_at():
                         indexing='at')
 
 
+def prepared_basis_table_scalar_at():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(basis_table(), indexing='at', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -317,4 +322,4 @@ basis_file = "basis_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

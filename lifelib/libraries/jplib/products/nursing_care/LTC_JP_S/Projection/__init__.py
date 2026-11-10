@@ -310,7 +310,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -552,7 +552,7 @@ def omega_age():
     carries after that.  The table's last row for a sex has ``mort_rate = 1``.
     """
     tbl = data.prepared_mort_index_generators()                                          # noqa: F821
-    return int(max((a for (s, a) in expressions.keys(tbl) if s == sex())))
+    return int(expressions.max_value((a for (s, a) in expressions.keys(tbl) if s == sex())))
 
 
 def proj_len():
@@ -668,8 +668,8 @@ def lapse_rate(t):
     that single number.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(max(tbl.index)))
-    return float(tbl.loc[y, "lapse_rate"])
+    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -1086,7 +1086,7 @@ def ann_count(t):
     of the annuity liability and misdate all of it.
     """
     total = 0.0
-    for j in range(annuity_max()):
+    for j in expressions.periods(annuity_max()):
         s = t - 12 * j
         if s < 0:
             continue
@@ -1300,7 +1300,7 @@ def check_pols_roll_fwd():
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that
     failed.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_nesting_resid(t):
@@ -1330,7 +1330,7 @@ def check_nesting():
     three checks are cash flow and roll-forward identities of a *period* and stop at
     ``proj_len() - 1``.
     """
-    return all((check_nesting_resid(t) >= -roll_fwd_tol for t in expressions.periods(proj_len() + 1)))
+    return expressions.all_true((check_nesting_resid(t) >= -roll_fwd_tol for t in expressions.periods(proj_len() + 1)))
 
 
 def check_ann_ledger_resid(t):
@@ -1343,7 +1343,7 @@ def check_ann_ledger_resid(t):
     :func:`care_surv` would show up here.
     """
     built = 0.0
-    for s in range(max(0, t - 12 * annuity_max() + 1), t + 1):
+    for s in expressions.periods(max(0, t - 12 * annuity_max() + 1), t + 1):
         if (t - s) % 12 == 0:
             built += pols_entry_n(s) * care_surv(s, t)
     return ann_count(t) - built
@@ -1351,7 +1351,7 @@ def check_ann_ledger_resid(t):
 
 def check_ann_ledger():
     """True when the annuity ledger closes in every projected month."""
-    return all((abs(check_ann_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_ann_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1371,7 +1371,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the cash flow statement re-adds to :func:`net_cf` in every month."""
-    return all((abs(check_net_cf_resid(t)) <= 1e-6 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_net_cf_resid(t)) <= 1e-6 for t in expressions.periods(proj_len())))
 
 
 # --- result tables ---
@@ -1396,7 +1396,7 @@ def result_cf():
     published rather than dropped; see the Space docstring.  There is no ``claims_death``
     column, because the contract pays nothing on death.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1423,7 +1423,7 @@ def result_pols():
 
     Indexed by policy month ``t = 0, 1, ..., proj_len() - 1``.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1489,8 +1489,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

@@ -183,6 +183,33 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_freq_loading_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_benefit_schedule_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(benefit_schedule(), groups=('schedule_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_freq_loading_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(freq_loading_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -200,4 +227,4 @@ benefit_schedule_file = "benefit_schedule.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

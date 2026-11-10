@@ -282,6 +282,11 @@ def prepared_lapse_table_loc():
                         indexing='loc')
 
 
+def prepared_index_return_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(index_return_table(), indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -303,4 +308,4 @@ freq_load_file = "freq_load_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

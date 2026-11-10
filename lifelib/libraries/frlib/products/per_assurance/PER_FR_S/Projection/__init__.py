@@ -512,7 +512,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -585,7 +585,7 @@ def allocation_profile():
     is enough to make it usable.
     """
     v = tables.lookup_str(prepared_model_point(), "allocation_profile")
-    if v not in set(data.allocation_grid().index.get_level_values(0)):  # noqa: F821
+    if v not in set(expressions.keys(data.prepared_allocation_grid_index_selection_level_0())):  # noqa: F821
         raise ValueError("allocation_profile not in allocation_grid.csv")
     return v
 
@@ -862,9 +862,9 @@ def alloc_euro(t):
     Years beyond the last row of the grid take that row, which is the ``k > 10`` band in
     the shipped file.
     """
-    grid = data.allocation_grid().loc[allocation_profile()]          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(grid.index.max())))
-    return float(grid.loc[k, "euro_share"])
+    grid = tables.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
+    k = max(1, min(years_to_horizon(t), int(tables.last_key(grid))))
+    return float(tables.lookup_object(grid, k, "euro_share"))
 
 
 def alloc_uc(t):
@@ -874,9 +874,9 @@ def alloc_uc(t):
     whose rows do not close is caught by :func:`check_glide_path_closes` instead of being
     silently half-ignored.
     """
-    grid = data.allocation_grid().loc[allocation_profile()]          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(grid.index.max())))
-    return float(grid.loc[k, "uc_share"])
+    grid = tables.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
+    k = max(1, min(years_to_horizon(t), int(tables.last_key(grid))))
+    return float(tables.lookup_object(grid, k, "uc_share"))
 
 
 def premium_pp(t):
@@ -1345,9 +1345,9 @@ def early_release_rate(t):
     the 0-based :func:`duration` — and compartment 3 carries a lower rate because the
     main-residence limb is closed to it.
     """
-    tbl = data.exit_table().loc[compartment()]                       # noqa: F821
-    d = max(1, min(plan_year(t), int(tbl.index.max())))
-    return float(tbl.loc[d, "early_release_rate"])
+    tbl = tables.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
+    d = max(1, min(plan_year(t), int(tables.last_key(tbl))))
+    return float(tables.lookup_object(tbl, d, "early_release_rate"))
 
 
 def early_release_rate_mth(t):
@@ -1383,9 +1383,9 @@ def transfer_out_rate(t):
     only: applied over a longer pre-anniversary run it is below 1 on average, and a
     calibration that spans one would have to rescale.
     """
-    tbl = data.exit_table().loc[compartment()]                       # noqa: F821
-    d = max(1, min(plan_year(t), int(tbl.index.max())))
-    return float(tbl.loc[d, "transfer_out_rate"])
+    tbl = tables.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
+    d = max(1, min(plan_year(t), int(tables.last_key(tbl))))
+    return float(tables.lookup_object(tbl, d, "transfer_out_rate"))
 
 
 def transfer_out_rate_mth(t):
@@ -1697,7 +1697,7 @@ def claims(t, kind=None):
     it carries its own line in :func:`result_cf`.
     """
     if kind is None:
-        return sum((claims(t, k) for k in ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY")))
+        return expressions.sum_values((claims(t, k) for k in ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY")))
     if kind == "DEATH":
         return claim_pp(t, kind) * pols_death(t)
     if kind == "EARLY_RELEASE":
@@ -1800,7 +1800,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return bool(all(
+    return bool(expressions.all_true(
         (abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len()))))
 
 
@@ -1830,7 +1830,7 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the account value roll-forward closes in every projected month."""
-    return bool(all((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
 
 
 def check_floor_identity_resid(t):
@@ -1861,7 +1861,7 @@ def check_floor_identity_resid(t):
 
 def check_floor_identity():
     """True when the *garantie plancher* identity closes in every projected month."""
-    return bool(all((abs(check_floor_identity_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(expressions.all_true((abs(check_floor_identity_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
 
 
 def check_euro_share_min_resid(t):
@@ -1922,7 +1922,7 @@ def check_euro_share_min():
     on a de-risking switch puts the residual at ``-(1 - a) arb`` where the bound is zero,
     and fails here at the first band crossing.
     """
-    return bool(all(
+    return bool(expressions.all_true(
         (check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8 for t in expressions.periods(proj_len()) if is_plan_boy(t))))
 
 
@@ -1937,7 +1937,7 @@ def check_glide_path_closes():
     distinct row of the grid a projection touches is read exactly once; the other eleven
     months of each plan year return the same row.
     """
-    return bool(all((abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12 for t in expressions.periods(proj_len()) if is_plan_boy(t))))
+    return bool(expressions.all_true((abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12 for t in expressions.periods(proj_len()) if is_plan_boy(t))))
 
 
 def check_commutation_identity():
@@ -1968,7 +1968,7 @@ def check_horizon():
     n = proj_len()
     if premium_pp(n) != 0.0 or years_to_horizon(n) != 0:
         return False
-    maturity_mths = [t for t in range(n) if pols_maturity(t) > 0.0]
+    maturity_mths = [t for t in expressions.periods(n) if pols_maturity(t) > 0.0]
     return bool(maturity_mths == [n - 1])
 
 
@@ -1989,7 +1989,7 @@ def result_cf():
     :func:`result_cf_annual` sums this frame into plan years so that it can be laid beside
     the annual-step model it replaced.
     """
-    ts = list(range(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(expressions.periods(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2066,7 +2066,7 @@ def result_state():
     are one period apart: ``result_state()["pols_if_eoy"].loc[t]`` equals
     ``result_cf()["pols_if"].loc[t + 1]``.
     """
-    ts = list(range(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(expressions.periods(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "years_to_horizon": [years_to_horizon(t) for t in ts],
@@ -2102,7 +2102,7 @@ def result_state_annual():
     Every figure in it reproduces the annual-step model's to floating point, which is what
     lets the notes' worked example stay in the notes and still be asserted.
     """
-    years = list(range(proj_years()))
+    years = list(expressions.periods(proj_years()))
     bom = [12 * y for y in years]                    # the rebalancing month
     eom = [12 * y + 11 for y in years]               # the anniversary month
     return pd.DataFrame(                                             # noqa: F821
@@ -2206,8 +2206,8 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

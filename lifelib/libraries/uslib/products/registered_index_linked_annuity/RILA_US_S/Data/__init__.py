@@ -165,6 +165,50 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_guar_min_rate_table_rows():
+    """Own pandas-style rows for repeated calculation selection."""
+    return inputs.table(guar_min_rate_table(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_surr_charge_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(surr_charge_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_withdrawal_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(withdrawal_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_market_scenario_groups_1():
+    """Own labelled groups in original row and column order."""
+    return inputs.table(market_scenario(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(lapse_table().index)
+
+
+
+def prepared_surr_charge_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(surr_charge_table().index)
+
+
+
+def prepared_withdrawal_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return inputs.index(withdrawal_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -184,4 +228,4 @@ withdrawal_file = "withdrawal_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")

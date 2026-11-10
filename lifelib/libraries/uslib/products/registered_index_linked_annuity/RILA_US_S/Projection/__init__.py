@@ -349,7 +349,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
@@ -645,9 +645,9 @@ def market_state(k, name):
     path is one row. The index path is therefore piecewise constant between the scenario's
     own anchor months; that is a property of the deterministic scenario, not of the model.
     """
-    sub = data.market_scenario().loc[scenario_id()]                  # noqa: F821
-    months = [i for i in sub.index if i <= k]
-    return float(sub.loc[max(months), name])
+    sub = tables.subtable(data.prepared_market_scenario_groups_1(), scenario_id())                  # noqa: F821
+    months = [i for i in expressions.keys(sub) if i <= k]
+    return float(tables.lookup_object(sub, expressions.max_value(months), name))
 
 
 def index_level(t):
@@ -792,13 +792,13 @@ def guar_min_rate(kind):
     floored here [R5][REG-R26]; the floor mechanically raises the option budget and
     compresses the spread, which is why the table is a genuine tail exposure.
     """
-    row = data.guar_min_rate_table().loc[term_years()]                # noqa: F821
+    row = expressions.row(data.prepared_guar_min_rate_table_rows(), term_years())                # noqa: F821
     if kind == "CAP":
-        return float(row["guar_min_cap"])
+        return tables.lookup_float(row, "guar_min_cap")
     elif kind == "STEP":
-        return float(row["guar_min_step"])
+        return tables.lookup_float(row, "guar_min_step")
     elif kind == "EDGE":
-        return float(row["guar_min_edge"])
+        return tables.lookup_float(row, "guar_min_edge")
     else:
         raise ValueError("invalid kind")
 
@@ -845,7 +845,7 @@ def declared_cap_solved(t):
     """
     target = opt_budget_target()
     lo, hi = 0.0, nge_cap_search_max                                 # noqa: F821
-    for _ in range(nge_solve_iter):                                  # noqa: F821
+    for _ in expressions.periods(nge_solve_iter):                                  # noqa: F821
         mid = 0.5 * (lo + hi)
         if opt_budget_at_cap(t, mid) < target:
             lo = mid
@@ -965,7 +965,7 @@ def opt_portfolio(t, spot, tau_, mkt):
     reproduce ``IA(1 + g)`` exactly, the strike set or the notional convention is wrong;
     :func:`check_term_end_identity` tests it.
     """
-    return sum((opt_component(t, leg, spot, tau_, mkt) for leg in opt_legs()))
+    return expressions.sum_values((opt_component(t, leg, spot, tau_, mkt) for leg in opt_legs()))
 
 
 def opt_portfolio_abs(t, spot, tau_, mkt):
@@ -975,7 +975,7 @@ def opt_portfolio_abs(t, spot, tau_, mkt):
     prospectus quantifies the trading cost provision; the base must be stated whenever the
     factor is recalibrated.
     """
-    return sum((abs(opt_component(t, leg, spot, tau_, mkt)) for leg in opt_legs()))
+    return expressions.sum_values((abs(opt_component(t, leg, spot, tau_, mkt)) for leg in opt_legs()))
 
 
 def opt_budget(t):
@@ -1509,7 +1509,7 @@ def wd_scheduled_pp(t):
     """
     table = data.withdrawal_table()                                  # noqa: F821
     key = (wd_schedule_id(), t + 1)
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    return tables.lookup_float(data.prepared_withdrawal_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_withdrawal_table_index_selection()) else 0.0
 
 
 def wd_behavioral_pp(t):
@@ -1572,9 +1572,9 @@ def surr_charge_rate(t):
     """
     table = data.surr_charge_table()                                 # noqa: F821
     key = duration_eom(t)
-    if key not in table.index:
+    if key not in expressions.keys(data.prepared_surr_charge_table_index_selection()):
         return 0.0
-    return float(table.loc[key, "surr_charge_rate"])
+    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "surr_charge_rate")
 
 
 def wd_charge_pp(t):
@@ -1618,7 +1618,7 @@ def wd_alloc_pp(t, bucket):
     """
     if wd_pp(t) <= 0.0:
         return 0.0
-    total = sum((wd_bucket_value_pp(t, b) for b in ("OPTION", "FIXED", "HOLDING")))
+    total = expressions.sum_values((wd_bucket_value_pp(t, b) for b in ("OPTION", "FIXED", "HOLDING")))
     if total <= 0.0:
         return 0.0
     return wd_pp(t) * wd_bucket_value_pp(t, bucket) / total
@@ -1705,8 +1705,8 @@ def lapse_rate_base(t):
     and neither is baked into the other.
     """
     table = data.lapse_table()                                       # noqa: F821
-    years = [i for i in table.index if i <= policy_year(t)]
-    return float(table.loc[max(years), "lapse_rate_base"])
+    years = [i for i in expressions.keys(data.prepared_lapse_table_index_selection()) if i <= policy_year(t)]
+    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), expressions.max_value(years), "lapse_rate_base")
 
 
 def lapse_shock_year():
@@ -1719,9 +1719,9 @@ def lapse_shock_year():
     following a Term End Date [S1][S2].
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    free = [cy for cy in table.index
-            if float(table.loc[cy, "surr_charge_rate"]) <= 0.0]
-    return (min(free) if free else max(table.index) + 1) + 1
+    free = [cy for cy in expressions.keys(data.prepared_surr_charge_table_index_selection())
+            if tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), cy, "surr_charge_rate") <= 0.0]
+    return (min(free) if free else expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection())) + 1) + 1
 
 
 def lapse_rate_sc_mult(t):
@@ -2096,7 +2096,7 @@ def check_av_roll_fwd():
     this library, so one test can call the same check across every model;
     :func:`check_av_roll_fwd_resid` gives the signed residual of a month that fails.
     """
-    return all((abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol() for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol() for t in expressions.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2117,7 +2117,7 @@ def check_pols_roll_fwd():
     The counts are probabilities of order 1, so the tolerance is absolute rather than the
     currency-scaled :func:`roll_fwd_tol`.
     """
-    return all((abs(check_pols_roll_fwd_resid(t)) <= 1e-12 for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-12 for t in expressions.periods(proj_len())))
 
 
 def check_term_end_identity_resid(t):
@@ -2142,7 +2142,7 @@ def check_term_end_identity():
     :func:`check_term_end_identity_resid` gives the signed residual of a term end that
     fails. This is the check the notes ask for by name.
     """
-    return all((abs(check_term_end_identity_resid(t)) <= roll_fwd_tol() for t in expressions.periods(proj_len())))
+    return expressions.all_true((abs(check_term_end_identity_resid(t)) <= roll_fwd_tol() for t in expressions.periods(proj_len())))
 
 
 def result_cf():
@@ -2159,7 +2159,7 @@ def result_cf():
     ``pols_if`` is the count in force at the **start** of each month, so it is the weight
     the cash flows on that same row carry - the column and the row reconcile.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2184,7 +2184,7 @@ def result_pols():
     death, surrender and the term-end concentration, but before the Maturity Date
     annuitization that ``pols_maturity`` carries out.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2205,7 +2205,7 @@ def result_av():
     Account Value, the general accounts, the return-of-premium base and the surrender and
     death benefits.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "inv_amt_pp": [inv_amt_pp(t) for t in ts],
@@ -2232,7 +2232,7 @@ def result_iv():
     value and the Investment Amount, each measured before the roll split so the columns
     line up with the notes.
     """
-    ts = list(range(proj_len()))
+    ts = list(expressions.periods(proj_len()))
     out = {
         "index_level": [index_level(t) for t in ts],
         "index_perf": [index_perf(t) for t in ts],
@@ -2320,8 +2320,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "lifelib.typed_inputs")
+tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "lifelib.expressions")
+expressions = ("Module", "modelx_helpers.expressions")

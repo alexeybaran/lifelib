@@ -153,6 +153,23 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_cv_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(cv_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_np_guar_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(np_guar_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_premium_rates_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return inputs.table(premium_rates(), indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -170,4 +187,4 @@ premium_rates_file = "premium_rates.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "lifelib.pandas_inputs")
+inputs = ("Module", "modelx_helpers.pandas_inputs")
