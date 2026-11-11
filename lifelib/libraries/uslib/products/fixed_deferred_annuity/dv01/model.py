@@ -5,6 +5,7 @@ No policy-month arrays are prepared before the formula graph executes.
 """
 from pathlib import Path
 import inspect
+import math
 import numpy as np
 import pandas as pd
 from . import lookup
@@ -37,34 +38,119 @@ def initial_state():
                      Scenarios(0, False, -1).rate(0, 5.0)], dtype=float)
 
 
+def _myga_data(model, source_path, folder):
+    """Compose the saved MYGA Data Space and add the DV01 lookup Cells."""
+    import modelx as mx
+    from modelx_helpers import typed_inputs
+    from modelx_helpers.immutable_inputs import Table
+
+    source = mx.read_model(source_path, name=model.name + 'InputSource')
+    try:
+        data = source.Data.copy(model, 'Data')
+    finally:
+        source.close()
+    model.path = folder / Path(source_path).name
+    data.Table = Table
+    data.Sex = getattr(data, 'Sex', None)
+    data.Schedule = getattr(data, 'Schedule', None)
+    data.typed_lookup = typed_inputs.lookup
+    data.typed_float = typed_inputs.lookup_float
+    data.typed_object = typed_inputs.lookup_object
+    data.subtable = typed_inputs.subtable
+    data.has_group = typed_inputs.has_group
+    data.last_key = typed_inputs.last_key
+    data.prepared_interpolation = typed_inputs.prepared_interpolation
+    data.math = math
+    data.new_cells('numeric_field', 'lambda policy_id, column: typed_float(model_point_table(), policy_id, column)')
+    data.new_cells('label_field', 'lambda policy_id, column: typed_object(model_point_table(), policy_id, column)')
+    data.new_cells('mortality_rate', '''def mortality_rate(age, sex):
+    table = mort_table()
+    if isinstance(table, Table):
+        return typed_float(table, (age, sex), 'mort_rate')
+    return typed_float(subtable(table, sex if Sex is None else Sex[sex]), age, 'mort_rate')
+''')
+    data.new_cells('withdrawal_amount', '''def withdrawal_amount(schedule, month):
+    table = withdrawal_table()
+    if isinstance(table, Table):
+        return typed_float(table, (schedule, month), 'wd_amount', 0.0)
+    if not has_group(table, schedule):
+        return 0.0
+    return typed_float(subtable(table, schedule), month, 'wd_amount', 0.0)
+''')
+    data.new_cells('surrender_rate', '''def surrender_rate(schedule, year):
+    table = surr_charge_table()
+    if isinstance(table, Table):
+        return typed_float(table, (schedule, year), 'surr_charge_rate', 0.0)
+    group = schedule if Schedule is None else Schedule[schedule]
+    if not has_group(table, group):
+        return 0.0
+    return typed_float(subtable(table, group), year, 'surr_charge_rate', 0.0)
+''')
+    data.new_cells('mva_factor', '''def mva_factor(term, column):
+    table = mva_factor_table()
+    prepared = prepared_interpolation(table, column, term, typed_lookup, last_key, math)
+    if prepared is not None:
+        return prepared
+    lower = max((key for key in table['keys'] if key <= term), default=None)
+    if lower is None:
+        raise KeyError(term)
+    if lower == last_key(table):
+        return typed_lookup(table, lower, column)
+    upper = min(key for key in table['keys'] if key > term)
+    left = typed_lookup(table, lower, column)
+    right = typed_lookup(table, upper, column)
+    return left + (right - left) * (term - lower) / (upper - lower)
+''')
+    data.new_cells('mva_factor_lo', 'lambda term: mva_factor(term, 0)')
+    data.new_cells('mva_factor_hi', 'lambda term: mva_factor(term, 1)')
+    return data
+
+
 def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
-                policy_table=None, route='collect'):
+                policy_table=None, route='collect', myga_model=None):
     import modelx as mx
     if route not in ('collect', 'direct'):
         raise ValueError('route must be collect or direct')
-    folder = Path(reference_dir or Path(__file__).resolve().parent.parent)
-    table = (pd.read_csv(folder / 'model_point_table.csv', index_col='point_id')
-             if policy_table is None else policy_table.copy())
-    if not table.index.is_unique or len(table) == 0:
-        raise ValueError('policy IDs must be nonempty and unique')
-    table = table.sort_index()
-    ids = tuple(int(i) for i in table.index)
+    if myga_model is not None and policy_table is not None:
+        raise ValueError('use the saved MYGA Data Cell or supply policy_table')
+    folder = Path(reference_dir or (Path(myga_model).parent if myga_model is not None
+                                   else Path(__file__).resolve().parent.parent))
     curves, spreads = curve_helpers.outer_scenario()
     model = mx.new_model(model_name)
-    data = model.new_space('Data', refs={
-        'policy_table': table,
-        'mortality': pd.read_csv(folder / 'mort_table.csv', index_col=['age', 'sex']),
-        'withdrawals': pd.read_csv(folder / 'withdrawal_table.csv', index_col=['wd_schedule_id', 't']),
-        'surrender': pd.read_csv(folder / 'surr_charge_table.csv', index_col=['schedule', 'contract_year']),
-        'mva_factors': pd.read_csv(folder / 'mva_factor_table.csv', index_col='years_remaining'),
-        'annual_curves': curves, 'annual_spreads': spreads, 'curves': curve_helpers, 'lookup': lookup})
-    data.new_cells('numeric_field', "lambda policy_id, column: lookup.at(policy_table, policy_id, column)")
-    data.new_cells('label_field', "lambda policy_id, column: lookup.field(policy_table, policy_id, column)")
-    data.new_cells('mortality_rate', "lambda age, sex: lookup.at(mortality, (age, sex), 'mort_rate')")
-    data.new_cells('withdrawal_amount', "lambda schedule, month: lookup.get(withdrawals, (schedule, month), 'wd_amount')")
-    data.new_cells('surrender_rate', "lambda schedule, year: lookup.get(surrender, (schedule, year), 'surr_charge_rate')")
-    data.new_cells('mva_factor_lo', "lambda term: lookup.linear(mva_factors, term, 'factor_lo')")
-    data.new_cells('mva_factor_hi', "lambda term: lookup.linear(mva_factors, term, 'factor_hi')")
+    try:
+        if myga_model is not None:
+            data = _myga_data(model, myga_model, folder)
+            data.annual_curves = curves
+            data.annual_spreads = spreads
+            data.curves = curve_helpers
+            data.lookup = lookup
+            ids = tuple(sorted(int(i) for i in data.model_point_table()['keys']))
+            if not ids or len(set(ids)) != len(ids):
+                raise ValueError('policy IDs must be nonempty and unique')
+        else:
+            table = (pd.read_csv(folder / 'model_point_table.csv', index_col='point_id')
+                     if policy_table is None else policy_table.copy())
+            if not table.index.is_unique or len(table) == 0:
+                raise ValueError('policy IDs must be nonempty and unique')
+            table = table.sort_index()
+            ids = tuple(int(i) for i in table.index)
+            data = model.new_space('Data', refs={
+                'policy_table': table,
+                'mortality': pd.read_csv(folder / 'mort_table.csv', index_col=['age', 'sex']),
+                'withdrawals': pd.read_csv(folder / 'withdrawal_table.csv', index_col=['wd_schedule_id', 't']),
+                'surrender': pd.read_csv(folder / 'surr_charge_table.csv', index_col=['schedule', 'contract_year']),
+                'mva_factors': pd.read_csv(folder / 'mva_factor_table.csv', index_col='years_remaining'),
+                'annual_curves': curves, 'annual_spreads': spreads, 'curves': curve_helpers, 'lookup': lookup})
+            data.new_cells('numeric_field', "lambda policy_id, column: lookup.at(policy_table, policy_id, column)")
+            data.new_cells('label_field', "lambda policy_id, column: lookup.field(policy_table, policy_id, column)")
+            data.new_cells('mortality_rate', "lambda age, sex: lookup.at(mortality, (age, sex), 'mort_rate')")
+            data.new_cells('withdrawal_amount', "lambda schedule, month: lookup.get(withdrawals, (schedule, month), 'wd_amount')")
+            data.new_cells('surrender_rate', "lambda schedule, year: lookup.get(surrender, (schedule, year), 'surr_charge_rate')")
+            data.new_cells('mva_factor_lo', "lambda term: lookup.linear(mva_factors, term, 'factor_lo')")
+            data.new_cells('mva_factor_hi', "lambda term: lookup.linear(mva_factors, term, 'factor_hi')")
+    except BaseException:
+        model.close()
+        raise
     curve_space = model.new_space('Curves', refs={
         'Data': data, 'helpers': curve_helpers, 'np': np,
         'tenors': curve_helpers.KRD_TENORS, 'shock_bp': curve_helpers.KRD_BP,

@@ -43,6 +43,24 @@ def test_scenario_result_shared_across_policies(model):
     assert first.initial_state is not second.initial_state
 
 
+def test_saved_myga_data_cells_are_used_by_dv01(model):
+    import modelx as mx
+    source = Path(__file__).resolve().parents[1] / 'MYGA_US_S'
+    myga = mx.read_model(source, name='SharedDataSource')
+    linked = build_model(route='direct', model_name='SharedDataLinked', myga_model=source)
+    try:
+        for name in ('model_point_table', 'mort_table', 'withdrawal_table',
+                     'surr_charge_table', 'mva_factor_table'):
+            assert linked.Data.cells[name].formula.source == myga.Data.cells[name].formula.source
+        assert linked.Actual.policy_ids == model.Actual.policy_ids
+        assert linked.Actual[1].net_cf(12) == model.Actual[1].net_cf(12)
+        assert linked.Data.surrender_rate('initial', 1) == model.Data.surrender_rate('initial', 1)
+        assert linked.Data.mva_factor_hi(0.5) == model.Data.mva_factor_hi(0.5)
+    finally:
+        linked.close()
+        myga.close()
+
+
 def test_different_policy_rules_still_apply(model):
     assert model.Actual[3].annual_redeclare()
     assert not model.Actual[1].annual_redeclare()

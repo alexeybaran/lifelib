@@ -100,74 +100,47 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
 
 
 def cv_table():
     """The guaranteed cash value schedule per $1,000 of face, from *cv_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    frame = pd.read_csv(                                              # noqa: F821
         input_dir() / cv_file,                                       # noqa: F821
         index_col=["premium_period", "sex", "issue_age", "policy_year"])
+    return pdn.table(frame, columns=("cv_per_1000",), groups=frame.index.names[:-1])
 
 
 def nsp_table():
     """The endowment-at-100 net single premiums by attained age, from *nsp_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    frame = pd.read_csv(                                              # noqa: F821
         input_dir() / nsp_file, index_col=["sex", "age"])            # noqa: F821
+    return pdn.table(frame, columns=("nsp",), groups=frame.index.names[:-1])
 
 
-def np_guar_table():
+def np_guar_table() -> "modelx_helpers.immutable_inputs.Table":
     """The nonforfeiture net level premiums per $1,000, from *np_guar_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    frame = pd.read_csv(                                              # noqa: F821
         input_dir() / np_guar_file,                                  # noqa: F821
         index_col=["premium_period", "sex", "issue_age"])
+    return pdn.table(frame, preserve_scalar_types=True)
 
 
 def mort_table():
     """The guaranteed mortality table by sex and age, read from *mort_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    frame = pd.read_csv(                                              # noqa: F821
         input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
+    return pdn.table(frame, columns=("mort_rate",), groups=frame.index.names[:-1])
 
 
-def premium_rates():
+def premium_rates() -> "modelx_helpers.immutable_inputs.Table":
     """The final-expense premium rates per $1,000, read from *premium_rates.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    frame = pd.read_csv(                                              # noqa: F821
         input_dir() / premium_rates_file,                            # noqa: F821
         index_col=["product", "sex", "risk_class", "issue_age"])
-
-
-def prepared_nsp_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(nsp_table(),
-                        columns=('nsp',),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_cv_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(cv_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_np_guar_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(np_guar_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_premium_rates_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(premium_rates(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(frame, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -187,4 +160,4 @@ premium_rates_file = "premium_rates.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

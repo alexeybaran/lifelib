@@ -83,21 +83,28 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)
 
 
 def mort_table():
     """Annual mortality by attained age and sex, read from *mort_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_table_file, index_col=["age", "sex"]),
+        columns=("mort_rate",), groups=("sex",))
+
+
+def mortality_max_age():
+    """The highest attained age in the mortality input."""
+    return max(table.index.max_int() for table in mort_table().values())
 
 
 def fund_table():
     """Subaccount allocations and fund expense ratios, from *fund_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / fund_file, index_col=["fund_set", "sub_id"])   # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / fund_file, index_col=["fund_set", "sub_id"]),
+        columns=("alloc", "fund_expense"), groups=("fund_set",))
 
 
 def return_scenario():
@@ -108,9 +115,10 @@ def return_scenario():
     states the monthly gross fund return that holds from that month until the next row
     for the same scenario and subaccount.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / return_scenario_file,                          # noqa: F821
-        index_col=["scenario_id", "sub_id", "t"])
+        index_col=["scenario_id", "sub_id", "t"]),
+        columns=("gross_return",), groups=("scenario_id", "sub_id"))
 
 
 def rate_scenario():
@@ -122,9 +130,9 @@ def rate_scenario():
     Treasury rate driving the optional formula-linked GMDB roll-up [S7]. Neither is used
     by the base run.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / rate_scenario_file,                            # noqa: F821
-        index_col=["scenario_id", "t"])
+        index_col=["scenario_id", "t"]), groups=("scenario_id",))
 
 
 def gawa_pct_table():
@@ -133,8 +141,9 @@ def gawa_pct_table():
     Indexed by ``(gawa_grid, age_from)``; the applicable row is the highest ``age_from``
     at or below the attained age at the first withdrawal [S3].
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / gawa_pct_file, index_col=["gawa_grid", "age_from"])  # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / gawa_pct_file, index_col=["gawa_grid", "age_from"]),
+        columns=("gawa_pct",), groups=("gawa_grid",))
 
 
 def cdsc_table():
@@ -143,9 +152,10 @@ def cdsc_table():
     Indexed by ``(cdsc_schedule, completed_years)``, where the key is completed years
     **since receipt of the premium being withdrawn**, not the contract year [S2].
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / cdsc_file,                                     # noqa: F821
-        index_col=["cdsc_schedule", "completed_years"])
+        index_col=["cdsc_schedule", "completed_years"]),
+        columns=("surr_charge_rate",), groups=("cdsc_schedule",))
 
 
 def transaction_table():
@@ -156,66 +166,9 @@ def transaction_table():
     withdrawals are **added to** the utilization withdrawal the base run derives from the
     GLWB, which is how the excess algebra is exercised.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / transaction_file, index_col=["txn_id", "t"])   # noqa: F821
-
-
-def prepared_fund_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(fund_table(),
-                        columns=('alloc', 'fund_expense'),
-                        indexing='loc')
-
-
-
-
-def prepared_mort_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(mort_table(), preserve_scalar_types = True)
-
-
-def prepared_mort_index_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.index(mort_table().index)
-
-
-def prepared_transaction_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(transaction_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_cdsc_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(cdsc_table(), groups=('cdsc_schedule',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_fund_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(fund_table(), groups=('fund_set',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_gawa_pct_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(gawa_pct_table(), groups=('gawa_grid',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_rate_scenario_groups_1():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(rate_scenario(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_return_scenario_groups_2():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(return_scenario(), groups=('scenario_id', 'sub_id'), rows=True, preserve_scalar_types=True)
-
-
-def prepared_transaction_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(transaction_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / transaction_file, index_col=["txn_id", "t"]),
+        columns=("prem_amount", "wd_amount"), groups=("txn_id",))
 
 
 # ---------------------------------------------------------------------------
@@ -239,4 +192,4 @@ transaction_file = "transaction_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

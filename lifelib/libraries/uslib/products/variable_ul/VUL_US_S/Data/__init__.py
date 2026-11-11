@@ -94,18 +94,18 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True, report=True)  # noqa: F821
 
 
-def subaccount_table():
+def subaccount_table() -> "modelx_helpers.immutable_inputs.Table":
     """The separate-account subaccount lineup, read from *subaccount_table.csv*.
 
     One row per subaccount, giving its name and its annual fund operating expense
     ratio.  The two-subaccount lineup is a **[std]** collapse of the observed menus.
     """
-    return pd.read_csv(input_dir() / subaccount_file, index_col="subaccount_id")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / subaccount_file, index_col="subaccount_id"))  # noqa: F821
 
 
 def scenario_table():
@@ -117,9 +117,11 @@ def scenario_table():
     projection, so a table row is the fund's own return before any charge.  The index
     is sorted on read so partial slices of the three-level key are lexsorted.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / scenario_file,                                 # noqa: F821
         index_col=["scenario_id", "subaccount_id", "t"]).sort_index()
+    return pdn.table(values, groups=values.index.names[:-1],
+                        columns=("gross_return_mth",))
 
 
 def coi_rates():
@@ -128,132 +130,45 @@ def coi_rates():
     Per $1,000 of net amount at risk, keyed by issue-age cell and policy year.  An
     illustrative **[std]** stand-in for the licensed 2017 CSO ultimate ANB table.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / coi_rates_file,                                # noqa: F821
         index_col=["sex", "rate_class", "age_at_entry", "policy_year"])
+    return pdn.table(values, groups=values.index.names[:-1],
+                        columns=("coi_rate_guar",), report=True)
 
 
-def corridor_factors():
+def corridor_factors() -> "modelx_helpers.immutable_inputs.Table":
     """The GPT corridor factor table by attained age, read from *corridor_factors.csv*."""
-    return pd.read_csv(input_dir() / corridor_file, index_col="age")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / corridor_file, index_col="age"))  # noqa: F821
 
 
-def mort_table():
+def mort_table() -> "modelx_helpers.immutable_inputs.Table":
     """The best-estimate annual mortality table by age, read from *mort_table.csv*."""
-    return pd.read_csv(input_dir() / mort_table_file, index_col="age")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / mort_table_file, index_col="age"))  # noqa: F821
 
 
-def class_factor_table():
+def class_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pd.read_csv(input_dir() / class_factor_file, index_col="rate_class")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
 
 
-def lapse_table():
+def lapse_table() -> "modelx_helpers.immutable_inputs.Table":
     """The base annual lapse rates by policy year, read from *lapse_table.csv*."""
-    return pd.read_csv(input_dir() / lapse_table_file, index_col="policy_year")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / lapse_table_file, index_col="policy_year"))  # noqa: F821
 
 
-def prem_persistency_table():
+def prem_persistency_table() -> "modelx_helpers.immutable_inputs.Table":
     """Premium persistency (paid/planned) by policy year, read from *prem_persistency.csv*."""
-    return pd.read_csv(input_dir() / prem_persistency_file, index_col="policy_year")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / prem_persistency_file, index_col="policy_year"))  # noqa: F821
 
 
-def surr_charge_table():
+def surr_charge_table() -> "modelx_helpers.immutable_inputs.Table":
     """The surrender charge schedules, read from *surr_charge_table.csv*.
 
     One row per ``surr_charge_id``, giving the initial charge per $1,000 of initial
     face and the number of policy years over which it runs off linearly.
     """
-    return pd.read_csv(input_dir() / surr_charge_file, index_col="surr_charge_id")  # noqa: F821
-
-
-def prepared_subaccount_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(subaccount_table(),
-                        columns=('fund_expense_ann',),
-                        indexing='loc')
-
-
-
-def prepared_class_factor_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(class_factor_table(),
-                        columns=('factor',),
-                        indexing='loc')
-
-
-def prepared_surr_charge_table_rows():
-    """Own pandas-style rows for repeated calculation selection."""
-    return inputs.table(surr_charge_table(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_corridor_factors_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(corridor_factors(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_prem_persistency_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(prem_persistency_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_surr_charge_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(surr_charge_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_coi_rates_groups_3():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(coi_rates(), groups=('sex', 'rate_class', 'age_at_entry'), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_scenario_table_groups_2():
-    """Own labelled groups in original row and column order."""
-    return inputs.table(scenario_table(), groups=('scenario_id', 'subaccount_id'), rows=True, preserve_scalar_types=True)
-
-
-def prepared_corridor_factors_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(corridor_factors().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
-
-
-
-def prepared_mort_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(mort_table().index)
-
-
-
-def prepared_prem_persistency_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(prem_persistency_table().index)
-
-
-
-def prepared_subaccount_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(subaccount_table().index)
+    return pdn.table(pd.read_csv(input_dir() / surr_charge_file, index_col="surr_charge_id"))  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -281,4 +196,4 @@ surr_charge_file = "surr_charge_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

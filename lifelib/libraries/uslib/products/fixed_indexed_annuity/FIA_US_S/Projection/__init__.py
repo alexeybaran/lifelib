@@ -467,23 +467,23 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    """The selected model point."""
+    return data.model_point_table().slice(point_id)     # noqa: F821
 
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "policy_id")
+    return model_point()["policy_id"]
 
 
 def age_at_entry():
     """x: the issue age (ANB) of the selected model point."""
-    return tables.lookup_int(prepared_model_point(), "age_at_entry")
+    return int(model_point()["age_at_entry"])
 
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return tables.lookup_object(prepared_model_point(), "sex")
+    return model_point()["sex"]
 
 
 def tax_status():
@@ -493,17 +493,17 @@ def tax_status():
     implemented, though the notes make the RMD age a behavioural input through
     :func:`activation_rate` and the ``rmd_age`` Reference.
     """
-    return tables.lookup_object(prepared_model_point(), "tax_status")
+    return model_point()["tax_status"]
 
 
 def premium_pp():
     """P: the single premium per contract."""
-    return tables.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def pols_if_init():
     """l(0): in-force probability at entry, 1 for a single-contract model point."""
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def entry_year():
@@ -519,7 +519,7 @@ def entry_year():
     from one, so deriving them would mean retuning assumptions to force a match.  Every
     recursion opens here.
     """
-    return tables.lookup_int(prepared_model_point(), "entry_year")
+    return int(model_point()["entry_year"])
 
 
 def entry_mth():
@@ -536,12 +536,12 @@ def entry_mth():
 
 def bonus_rate():
     """b: the premium bonus rate, 7% of the single premium [S5]."""
-    return tables.lookup_float(prepared_model_point(), "bonus_rate")
+    return float(model_point()["bonus_rate"])
 
 
 def alloc_indexed():
     """The share of the account value allocated to the indexed account; 100% **[std]**."""
-    return tables.lookup_float(prepared_model_point(), "alloc_indexed")
+    return float(model_point()["alloc_indexed"])
 
 
 def alloc_fixed():
@@ -551,7 +551,7 @@ def alloc_fixed():
 
 def glwb_elected():
     """Whether the GLWB rider is elected at issue [S5][S9][S11]."""
-    return tables.lookup_bool(prepared_model_point(), "glwb_elected")
+    return bool(model_point()["glwb_elected"])
 
 
 def glwb_basis():
@@ -561,13 +561,13 @@ def glwb_basis():
     younger covered person [S1][S3].  Joint-life *survivorship* is **not implemented**:
     the notes specify the joint payout percentage but no second-life mortality basis.
     """
-    return tables.lookup_object(prepared_model_point(), "glwb_basis")
+    return model_point()["glwb_basis"]
 
 
 def joint_age():
     """The issue age (ANB) of the joint covered person; the annuitant's own if blank."""
-    given = tables.lookup_object(prepared_model_point(), "joint_age")
-    return age_at_entry() if tables.is_missing(pd.isna, given) else int(given)           # noqa: F821
+    given = model_point()["joint_age"]
+    return age_at_entry() if pdn.isna(given) else int(given)           # noqa: F821
 
 
 def income_start_age():
@@ -577,7 +577,7 @@ def income_start_age():
     which the notes say clusters at the RMD age but which cannot be applied to a single
     deterministic cell; see :func:`activation_rate`.
     """
-    return tables.lookup_int(prepared_model_point(), "income_start_age")
+    return int(model_point()["income_start_age"])
 
 
 def utilization_intensity():
@@ -588,7 +588,7 @@ def utilization_intensity():
     proportional reduction of step 5, which is why efficiency and excess-withdrawal
     assumptions cannot be set independently.
     """
-    return tables.lookup_float(prepared_model_point(), "utilization_intensity")
+    return float(model_point()["utilization_intensity"])
 
 
 def credit_method():
@@ -599,7 +599,7 @@ def credit_method():
     which the notes exclude, and its floor convention is itself flagged as ambiguous
     [S4][R1].
     """
-    return tables.lookup_object(prepared_model_point(), "credit_method")
+    return model_point()["credit_method"]
 
 
 def cap_rate():
@@ -610,7 +610,7 @@ def cap_rate():
     re-declaration against the option budget is **not implemented** because the notes
     give the target but no option-pricing function.
     """
-    return tables.lookup_float(prepared_model_point(), "cap_rate")
+    return float(model_point()["cap_rate"])
 
 
 def stack_factor():
@@ -620,7 +620,7 @@ def stack_factor():
     stacking design (b), where one carrier's 250% election credits 250% to the benefit
     base [S3][S4].
     """
-    return tables.lookup_float(prepared_model_point(), "stack_factor")
+    return float(model_point()["stack_factor"])
 
 
 def av_int_factor():
@@ -631,27 +631,27 @@ def av_int_factor():
     value, deliberately starving the account value.  The stacking factor ``m`` applies to
     the **gross** index credit, not to ``kappa x IC``.
     """
-    return tables.lookup_float(prepared_model_point(), "av_int_factor")
+    return float(model_point()["av_int_factor"])
 
 
 def rollup_id():
     """The guaranteed rollup schedule, a key into *rollup_table.csv*."""
-    return tables.lookup_object(prepared_model_point(), "rollup_id")
+    return model_point()["rollup_id"]
 
 
 def mva_ref_yield_at_issue():
     """i0: the MVA reference index level locked at issue, 3.00% **[std]**."""
-    return tables.lookup_float(prepared_model_point(), "mva_ref_yield_at_issue")
+    return float(model_point()["mva_ref_yield_at_issue"])
 
 
 def scenario_id():
     """The index and reference-yield scenario, a key into *rate_scenario.csv*."""
-    return tables.lookup_object(prepared_model_point(), "scenario_id")
+    return model_point()["scenario_id"]
 
 
 def wd_schedule_id():
     """The ad hoc withdrawal programme, a key into *withdrawal_table.csv*."""
-    return tables.lookup_object(prepared_model_point(), "wd_schedule_id")
+    return model_point()["wd_schedule_id"]
 
 
 def av_pp_init():
@@ -661,8 +661,8 @@ def av_pp_init():
     day one [S5]; it does **not** enter the benefit base [S9] or the nonforfeiture base
     [S10].
     """
-    given = tables.lookup_object(prepared_model_point(), "av_initial")
-    if tables.is_missing(pd.isna, given):                                               # noqa: F821
+    given = model_point()["av_initial"]
+    if pdn.isna(given):                                               # noqa: F821
         return premium_pp() * (1.0 + bonus_rate())
     return float(given)
 
@@ -676,8 +676,8 @@ def benefit_base_pp_init():
     """BB at entry: the stated in-force base, else ``P`` -- the bonus stays out [S9]."""
     if not glwb_elected():
         return 0.0
-    given = tables.lookup_object(prepared_model_point(), "bb_initial")
-    if tables.is_missing(pd.isna, given):                                               # noqa: F821
+    given = model_point()["bb_initial"]
+    if pdn.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -686,8 +686,8 @@ def rollup_base_pp_init():
     """RB at entry: the stated in-force rollup base, else ``P`` [S2][S9]."""
     if not glwb_elected():
         return 0.0
-    given = tables.lookup_object(prepared_model_point(), "rb_initial")
-    if tables.is_missing(pd.isna, given):                                               # noqa: F821
+    given = model_point()["rb_initial"]
+    if pdn.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -698,27 +698,27 @@ def mgsv_pp_init():
     87.5% of the single premium **excluding the bonus** [S10]; the worked example's
     ``93,811.84 = 87,500 x 1.01^7`` is that value rolled forward seven years.
     """
-    given = tables.lookup_object(prepared_model_point(), "mgv_initial")
-    if tables.is_missing(pd.isna, given):                                               # noqa: F821
+    given = model_point()["mgv_initial"]
+    if pdn.isna(given):                                               # noqa: F821
         return net_consideration_ratio * premium_pp()                # noqa: F821
     return float(given)
 
 
 def lw_pp_init():
     """LW at entry: zero before exercise, else the stated in-force income amount."""
-    given = tables.lookup_object(prepared_model_point(), "lw_initial")
-    return 0.0 if tables.is_missing(pd.isna, given) else float(given)                   # noqa: F821
+    given = model_point()["lw_initial"]
+    return 0.0 if pdn.isna(given) else float(given)                   # noqa: F821
 
 
 def payout_rate_init():
     """The payout percentage already locked at entry; zero before exercise."""
-    given = tables.lookup_object(prepared_model_point(), "payout_rate_initial")
-    return 0.0 if tables.is_missing(pd.isna, given) else float(given)                   # noqa: F821
+    given = model_point()["payout_rate_initial"]
+    return 0.0 if pdn.isna(given) else float(given)                   # noqa: F821
 
 
 def phase_init():
     """The phase at entry: ``ACCUM`` unless the model point enters in force in income."""
-    value = tables.lookup_object(prepared_model_point(), "phase_initial")
+    value = model_point()["phase_initial"]
     if value not in ("ACCUM", "INCOME", "DEPLETED", "TERMINATED"):
         raise ValueError("invalid phase_initial")
     return value
@@ -858,10 +858,14 @@ def scenario_value(y, name):
     scenario, so a flat path is one row.  Anniversaries before the first row take the
     first row's level.
     """
-    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                    # noqa: F821
-    keys = [i for i in expressions.keys(sub) if i <= y]
-    key = expressions.max_value(keys) if keys else min(expressions.keys(sub))
-    return float(tables.lookup_object(sub, key, name))
+    schedule = rate_schedule()
+    key = max(y, pdn.first_key(schedule))
+    return float(schedule.previous(key, name))
+
+
+def rate_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The rate table for the model point’s scenario."""
+    return data.rate_scenario().slice(scenario_id())                  # noqa: F821
 
 
 def index_level(y):
@@ -1208,8 +1212,8 @@ def surr_charge_rate(t):
     month of a year.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection()))))
-    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "surr_charge_rate")
+    key = min(policy_year(t), table.index.max_int())
+    return table.lookup_float(key, "surr_charge_rate")
 
 
 def vest_rate(t):
@@ -1220,8 +1224,8 @@ def vest_rate(t):
     clawback.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_table_index_selection()))))
-    return tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "vest_rate")
+    key = min(policy_year(t), table.index.max_int())
+    return table.lookup_float(key, "vest_rate")
 
 
 def rollup_rate(t):
@@ -1232,11 +1236,16 @@ def rollup_rate(t):
     zero after [S2]; another documented design is a flat 3.00% over fifteen anniversaries
     [S9].
     """
-    sub = tables.subtable(data.prepared_rollup_table_groups_1(), rollup_id())                       # noqa: F821
-    keys = [y for y in expressions.keys(sub) if y <= policy_year(t)]
-    if not keys:
+    schedule = rollup_schedule()
+    year = policy_year(t)
+    if year < pdn.first_key(schedule):
         return 0.0
-    return float(tables.lookup_object(sub, expressions.max_value(keys), "rollup_rate"))
+    return float(schedule.previous(year, "rollup_rate"))
+
+
+def rollup_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The rollup table for the model point’s selected schedule."""
+    return data.rollup_table().slice(rollup_id())                     # noqa: F821
 
 
 def payout_rate(a, basis):
@@ -1252,14 +1261,14 @@ def payout_rate(a, basis):
         column = "payout_rate_joint"
     else:
         raise ValueError("invalid glwb_basis")
-    table = data.prepared_payout_rate_table_calculation_rows()
-    keys = list(expressions.keys(table))
+    table = data.payout_rate_table()
+    keys = list(table.index)
     for key in keys:
-        row = expressions.row(table, key)
-        if tables.lookup_int(row, "age_lo") <= a <= tables.lookup_int(row, "age_hi"):
-            return tables.lookup_float(row, column)
-    last = expressions.row(table, keys[-1])
-    return tables.lookup_float(last, column) if a > tables.lookup_int(last, "age_hi") else 0.0
+        row = table.slice(key)
+        if int(row["age_lo"]) <= a <= int(row["age_hi"]):
+            return float(row[column])
+    last = table.slice(keys[-1])
+    return float(last[column]) if a > int(last["age_hi"]) else 0.0
 
 
 def payout_rate_locked(t):
@@ -1631,7 +1640,7 @@ def wd_scheduled_pp(t):
         return 0.0
     table = data.withdrawal_table()                                  # noqa: F821
     key = (wd_schedule_id(), duration(t))
-    return tables.lookup_float(data.prepared_withdrawal_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_withdrawal_table_index_selection()) else 0.0
+    return table.lookup_float(key, "wd_amount", 0.0)
 
 
 def wd_pp(t):
@@ -2121,6 +2130,11 @@ def mgsv_rate_is_compliant(cmt5, option_cost):
     return mgsv_rate >= mgsv_rate_statutory(cmt5, option_cost)       # noqa: F821
 
 
+def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The annual mortality table for the model point’s sex."""
+    return data.mort_table().slice(sex())                             # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the **annual** mortality rate of the contract year containing month t.
 
@@ -2140,7 +2154,7 @@ def mort_rate(t):
     [REG-R61]; the spelling is the library's shared one, so the A/E factor reads the same
     in every model that has one.
     """
-    base = tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')  # noqa: F821
+    base = mortality_schedule().lookup_float(age(t), "mort_rate")
     return min(1.0, mort_ae_factor * base)                           # noqa: F821
 
 
@@ -2339,11 +2353,11 @@ def pols_maturity(t):
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return pols_lapse(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -2362,11 +2376,11 @@ def claim_pp(t, kind):
     """
     if phase(t) == "DEPLETED":
         return 0.0
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return max(av_pp(t), mgsv_pp(t))
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return max(av_pp(t), mgsv_pp(t))
     else:
         raise ValueError("invalid kind")
@@ -2379,7 +2393,7 @@ def claim_from_av_pp(t, kind):
     :func:`claims_over_av`, positive when the Model #805 floor binds and negative when
     the surrender charge and a negative MVA bite.
     """
-    if kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind in (Claim.DEATH, Claim.LAPSE, Claim.MATURITY):
         return av_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -2467,10 +2481,10 @@ def withdrawals(t):
     return 0.0 if t < entry_mth() else wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "MATURITY"))
+def claims(t, kind):
+    """Benefit outgo in month t, for one ``kind`` or, with ``kind=Claim.ALL``, all three."""
+    if kind == Claim.ALL:
+        return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -2479,16 +2493,16 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed and a reconciliation quantity only: positive exactly when the Model #805 floor
     binds, negative when the surrender charge, the clawback and a negative MVA bite.  A
     binding floor does not add a top-up cash flow — it raises the benefit.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "MATURITY"))
+    if kind == Claim.ALL:
+        return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
+                + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -2544,7 +2558,7 @@ def net_cf(t):
     of their own.  Only amounts paid to or received from the contract holder, and the
     insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t)
+    return (premiums(t) - withdrawals(t) - claims(t, Claim.ALL)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 
@@ -2614,8 +2628,8 @@ def check_av_roll_fwd_resid(t):
         return 0.0
     expected = (prem_to_av(t) + inv_income(t) - rider_charges(t) - wd_from_av(t)
                 + av_depletion(t)
-                - claims_from_av(t, "DEATH") - claims_from_av(t, "LAPSE")
-                - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Claim.DEATH) - claims_from_av(t, Claim.LAPSE)
+                - claims_from_av(t, Claim.MATURITY))
     return av_change(t) - expected
 
 
@@ -2630,10 +2644,10 @@ def check_av_roll_fwd():
     accumulated over a century of months; it is not a modelling assumption.
     """
     res = []
-    for t in expressions.periods(entry_mth(), proj_len()):
+    for t in range(entry_mth(), proj_len()):
         res.append(math.isclose(check_av_roll_fwd_resid(t), 0.0,      # noqa: F821
                                 abs_tol=1e-6))
-    return expressions.all_true(res)
+    return all(res)
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2656,10 +2670,10 @@ def check_pols_roll_fwd():
     single month is :func:`check_pols_roll_fwd_resid`.
     """
     res = []
-    for t in expressions.periods(entry_mth(), proj_len()):
+    for t in range(entry_mth(), proj_len()):
         res.append(math.isclose(check_pols_roll_fwd_resid(t), 0.0,    # noqa: F821
                                 abs_tol=1e-12))
-    return expressions.all_true(res)
+    return all(res)
 
 
 def result_cf():
@@ -2683,7 +2697,7 @@ def result_cf():
     frame double-counts the withdrawal.**  ``net_cf`` is income-positive, as everywhere
     in this library.
     """
-    ts = list(expressions.periods(entry_mth(), proj_len()))
+    ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2692,9 +2706,9 @@ def result_cf():
             "wd_guar": [wd_guar(t) for t in ts],
             "wd_excess": [wd_excess(t) for t in ts],
             "income_payments": [income_payments(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Claim.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Claim.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Claim.MATURITY) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2715,7 +2729,7 @@ def result_pols():
     identity ``check_pols_roll_fwd_resid`` asserts is therefore
     ``pols_if(t) - pols_if(t+1) = pols_death + pols_lapse + pols_maturity``.
     """
-    ts = list(expressions.periods(entry_mth(), proj_len()))
+    ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2741,7 +2755,7 @@ def result_av():
     trace, available in **every month** rather than only at the anniversaries the notes
     tabulate — which is the reading a mid-year surrender needs.
     """
-    ts = list(expressions.periods(entry_mth(), proj_len()))
+    ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
@@ -2771,7 +2785,7 @@ def result_glwb():
     Every one of them is annual: the rider state is flat between anniversaries and steps at
     each one, so the rows of interest are the anniversary rows ``t = 12k + 11``.
     """
-    ts = list(expressions.periods(entry_mth(), proj_len()))
+    ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "phase": [phase(t) for t in ts],
@@ -2806,16 +2820,10 @@ def result_cf_annual():
     claims fall in the month of exit, and maintenance expense accrues monthly.  That gap is
     the point of the finer grid — see the Space docstring.
     """
-    monthly = inputs.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in expressions.keys(monthly)]
-    annual = expressions.group_sum(monthly, years, first=('pols_if',))
-    return expressions.to_pandas(annual, index_name='policy_year')
-
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    monthly = pdn.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in monthly.index]
+    annual = pdn.group_sum(monthly, years, first=('pols_if',))
+    return pdn.to_pandas(annual, index_name="policy_year")
 
 
 # ---------------------------------------------------------------------------
@@ -2931,8 +2939,8 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
+Claim = ("Pickle", 1)
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+enum_definitions = ("Pickle", 2)
 
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

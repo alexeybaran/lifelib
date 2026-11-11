@@ -88,109 +88,68 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    values = pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(values, rows=True, report=True)
 
 
 def premium_schedule_table():
     """The premium schedules of every model point, from *premium_schedule.csv*.
 
     Long format, one row per premium slice, keyed by ``point_id`` - deliberately not
-    indexed, so that selecting a contract's rows returns a DataFrame whether it has one
-    slice or many.
+    indexed in the CSV. The internal table groups the original rows by point ID and
+    keeps the same payment-month order and report metadata.
     """
-    return pd.read_csv(input_dir() / premium_schedule_file)           # noqa: F821
+    values = pd.read_csv(input_dir() / premium_schedule_file)        # noqa: F821
+    groups = {}
+    for key in values["point_id"].unique():
+        rows = values[values["point_id"] == key].sort_values("premium_mth")
+        if len(rows):
+            groups[key] = pdn.table(rows, rows=True, preserve_scalar_types=True)
+    empty = values.iloc[[]].sort_values("premium_mth")
+    groups[None] = pdn.table(empty, rows=True, preserve_scalar_types=True)
+    return pdn.Record(groups)
 
 
 def mort_table():
     """The base annuitant mortality table by age and sex, read from *mort_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("mort_rate",))
 
 
 def improvement_scale():
     """The generational improvement scale by age and sex, from *improvement_scale.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / improvement_scale_file, index_col=["age", "sex"])  # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("improvement_rate",))
 
 
-def payout_factor_table():
+def payout_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The illustrative payout annuity factors, from *payout_factor_table.csv*.
 
     Keyed by ``(income_start_age, sex, payout_form)``; the value is
     ``a^(m)_y(f; i_p)``, the APV at the income start age of $1 per annum of income.
     **[std]** - no insurer publishes payout factors for this product.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / payout_factor_file,                            # noqa: F821
         index_col=["income_start_age", "sex", "payout_form"])
+    return pdn.table(values, preserve_scalar_types=True)
 
 
-def rop_factor_table():
+def rop_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The illustrative return-of-premium factors, from *rop_factor_table.csv*.
 
     Keyed by ``(issue_age, sex, deferral_years)``; the value is ``A_rop(x, d; i_p)``,
     the APV at the premium date of $1 payable at the end of the month of death within a
     ``d``-year deferral.  **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / rop_factor_file,                               # noqa: F821
         index_col=["issue_age", "sex", "deferral_years"])
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_improvement_scale_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(improvement_scale(),
-                        columns=('improvement_rate',),
-                        indexing='loc')
-
-
-def prepared_payout_factor_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(payout_factor_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_rop_factor_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(rop_factor_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_premium_schedule_groups():
-    """Own original input values for calculation operations."""
-    frame = premium_schedule_table()
-    pieces = []
-    for key in frame["point_id"].unique():
-        piece = frame[frame["point_id"] == key].sort_values("premium_mth")
-        if len(piece):
-            # concat compares attrs between pieces; arbitrary array-valued attrs
-            # need not have scalar equality. Restore original metadata below.
-            piece.attrs = {}
-            pieces.append(piece)
-    selected = pd.concat(pieces) if pieces else frame.iloc[[]].sort_values("premium_mth")
-    selected.attrs = frame.attrs
-    selected.flags.allows_duplicate_labels = frame.flags.allows_duplicate_labels
-    group_name = "point_id"
-    while group_name in frame.index.names:
-        group_name = "_" + group_name
-    selected = selected.set_index(selected["point_id"].rename(group_name), append=True, drop=False)
-    return inputs.table(selected, groups=(group_name,), report=True, preserve_scalar_types=True)
-
-
-
-def prepared_empty_premium_schedule():
-    """Own original input values for calculation operations."""
-    frame = premium_schedule_table()
-    return inputs.table(frame.iloc[[]].sort_values("premium_mth"), report=True, preserve_scalar_types=True)
+    return pdn.table(values, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -210,4 +169,4 @@ rop_factor_file = "rop_factor_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

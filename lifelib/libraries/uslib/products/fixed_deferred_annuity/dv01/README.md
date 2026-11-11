@@ -26,5 +26,11 @@ The default inputs are the CSV files in the parent product directory.
 an alternative policy DataFrame indexed by `point_id`. The source reference
 pins are recorded in `provenance.json`.
 
+Pass `myga_model=path_to_saved_MYGA_US_S` to use the saved MYGA model's Data
+Cells. DV01 uses those Cells for policy rows and assumption tables and keeps
+its own valuation, shock and state formulas. `reference_dir` can select the
+CSV directory for those Cells. With this option, the policy book comes from
+the MYGA model point Cell.
+
 Export with `model.export(path)` and use the ordinary modelx-cython sample
 tracing workflow. The compiler discovers types through the sample run.

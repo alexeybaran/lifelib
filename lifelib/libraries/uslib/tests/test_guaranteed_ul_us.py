@@ -27,9 +27,11 @@ test_coi_scale_precision_divergence_is_shipped_not_resolved.
 import re
 
 import modelx as mx
+import pandas as pd
 import pytest
 
 from us_registry import LIB
+from lifelib.libraries.uslib.products.guaranteed_ul.categories import Claim, Timing, PremiumMode
 
 MODEL_PATH = LIB / "products/guaranteed_ul/ULSG_US_S"
 
@@ -234,11 +236,11 @@ def test_naar_discount_convention_and_its_floor(anchor):
     for t in (0, 1, 2, 3, 4):
         assert anchor.net_amt_at_risk(t) == pytest.approx(
             max(0.0, anchor.db_pp(t) / anchor.naar_factor()
-                - max(anchor.av_pp_at(t, "BEF_COI"), 0.0)), abs=EXACT)
+                - max(anchor.av_pp_at(t, Timing.BEF_COI), 0.0)), abs=EXACT)
         assert anchor.sg_net_amt_at_risk(t) == pytest.approx(
             max(0.0, anchor.db_pp(t) / anchor.sg_naar_factor()
-                - max(anchor.sg_pp_at(t, "BEF_COI"), 0.0)), abs=EXACT)
-    assert anchor.av_pp_at(4, "BEF_COI") == pytest.approx(-105.50, abs=CENT)
+                - max(anchor.sg_pp_at(t, Timing.BEF_COI), 0.0)), abs=EXACT)
+    assert anchor.av_pp_at(4, Timing.BEF_COI) == pytest.approx(-105.50, abs=CENT)
     assert anchor.net_amt_at_risk(4) == pytest.approx(499175.57, abs=CENT)
 
 
@@ -255,7 +257,7 @@ def test_monthly_coi_is_the_simple_twelfth(anchor, guaranteed_ul):
     The notes fix the simple twelfth for the COI and say expressly not to mix it with
     1 - (1-q)^(1/12), which differs materially above age 85 where q exceeds 0.10.
     """
-    scale = guaranteed_ul.Data.coi_rates().loc[("M", "StdNT", 85), "coi_rate_guar_ann"]
+    scale = guaranteed_ul.Data.coi_rates()["M"]["StdNT"].lookup_float(85, "coi_rate_guar_ann")
     assert scale == pytest.approx(8.615 * 12, abs=5e-4)
     assert anchor.coi_rate_guar(0) == pytest.approx(scale / 12, abs=1e-12)
 
@@ -301,8 +303,8 @@ def test_the_zero_floor_is_unconditional_and_that_is_a_deviation(anchor):
         assert anchor.is_guar_active(t) is False
         assert anchor.is_guar_supported(t) is False
         assert anchor.status(t) == "GRACE"
-        assert anchor.av_pp_at(t, "BEF_COI") == pytest.approx(-105.50, abs=CENT)
-        assert anchor.av_pp_at(t, "BEF_INV") == 0.0     # the notes would leave it < 0
+        assert anchor.av_pp_at(t, Timing.BEF_COI) == pytest.approx(-105.50, abs=CENT)
+        assert anchor.av_pp_at(t, Timing.BEF_INV) == 0.0     # the notes would leave it < 0
         assert anchor.av_pp(t) == 0.0
         # ... and the forgone-deduction cells reports the shortfall there, where the
         # notes' D_t is not defined - it is their required grace payment instead.
@@ -314,8 +316,8 @@ def test_the_zero_floor_is_unconditional_and_that_is_a_deviation(anchor):
             anchor.mth_deduction_forgone_pp(t) / 0.75, abs=EXACT)
 
     # No cash flow moves either way: the policy leaves grace with nothing.
-    assert anchor.claims(81, "GRACE") == 0.0
-    assert anchor.claims_from_av(81, "GRACE") == 0.0
+    assert anchor.claims(81, Claim.GRACE) == 0.0
+    assert anchor.claims_from_av(81, Claim.GRACE) == 0.0
     assert anchor.check_av_roll_fwd() is True
 
     # After the lapse the per-policy account goes on projecting, weighted by nothing:
@@ -323,7 +325,7 @@ def test_the_zero_floor_is_unconditional_and_that_is_a_deviation(anchor):
     assert anchor.status(84) == "LAPSED"
     assert anchor.pols_if(84) == 0.0
     assert anchor.premium_pp(84) == 10800.0
-    assert anchor.av_pp_at(84, "BEF_WD") == pytest.approx(8100.0, abs=EXACT)
+    assert anchor.av_pp_at(84, Timing.BEF_WD) == pytest.approx(8100.0, abs=EXACT)
     assert anchor.av_pp(84) == pytest.approx(2731.95, abs=CENT)
     assert anchor.premiums(84) == 0.0
     assert anchor.mth_deduction_forgone(84) == 0.0
@@ -349,9 +351,9 @@ def test_forgone_deductions_are_not_receivables(anchor):
     arrears = sum(anchor.mth_deduction_forgone_pp(t) for t in range(3, 12))
     assert arrears > 20000.0
     assert anchor.premium_pp(12) == 10800.0
-    assert anchor.av_pp_at(12, "BEF_WD") == pytest.approx(
+    assert anchor.av_pp_at(12, Timing.BEF_WD) == pytest.approx(
         anchor.av_pp(11) + anchor.prem_to_av_pp(12), abs=EXACT)
-    assert anchor.av_pp_at(12, "BEF_WD") == pytest.approx(8100.0, abs=EXACT)
+    assert anchor.av_pp_at(12, Timing.BEF_WD) == pytest.approx(8100.0, abs=EXACT)
     assert anchor.check_av_roll_fwd() is True
 
 
@@ -406,8 +408,8 @@ def test_lapse_for_insufficiency_takes_the_whole_remaining_block(anchor):
         anchor.pols_if(81) - anchor.pols_death(81) - anchor.pols_lapse(81)
         - anchor.pols_rop(81), abs=EXACT)
     assert anchor.pols_lapse_grace(81) > 0.0
-    assert anchor.claims(81, "GRACE") == 0.0
-    assert anchor.claims_from_av(81, "GRACE") == 0.0     # the account is exhausted
+    assert anchor.claims(81, Claim.GRACE) == 0.0
+    assert anchor.claims_from_av(81, Claim.GRACE) == 0.0     # the account is exhausted
     assert all(anchor.pols_lapse_grace(t) == 0.0 for t in range(81))
 
 
@@ -506,7 +508,7 @@ def test_result_cf_columns_sum_to_net_cf(anchor):
     # Income-positive: premium income raises net_cf, claim outgo lowers it.
     assert df.loc[0, "premiums"] > 0 and df.loc[1, "premiums"] == 0
     assert anchor.net_cf(0) == pytest.approx(
-        anchor.premiums(0) - anchor.claims(0) - anchor.withdrawals(0)
+        anchor.premiums(0) - anchor.claims(0, Claim.ALL) - anchor.withdrawals(0)
         - anchor.expenses(0) - anchor.premium_taxes(0), abs=EXACT)
 
 
@@ -524,7 +526,7 @@ def test_pols_if_weights_its_own_row(anchor):
         assert anchor.premium_pp(t) > 0
         assert df.loc[t, "premiums"] / anchor.premium_pp(t) == pytest.approx(
             df.loc[t, "pols_if"], abs=EXACT)
-    for timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    for timing in (Timing.BEF_MAT, Timing.BEF_NB, Timing.BEF_DECR):
         assert anchor.pols_if_at(39, timing) == anchor.pols_if(39)
 
 
@@ -540,19 +542,36 @@ def test_withdrawals_are_a_payment_not_a_claim(anchor, guaranteed_ul):
 
     t = 0
     assert anchor.withdrawals(t) == pytest.approx(
-        anchor.claim_pp(t, "WITHDRAWAL") * anchor.pols_if(t), abs=EXACT)
-    assert anchor.claim_pp(t, "WITHDRAWAL") == anchor.wd_pp(t)
-    assert anchor.claims_from_av(t, "WITHDRAWAL") == anchor.withdrawals(t)
+        anchor.claim_pp(t, Claim.WITHDRAWAL) * anchor.pols_if(t), abs=EXACT)
+    assert anchor.claim_pp(t, Claim.WITHDRAWAL) == anchor.wd_pp(t)
+    assert anchor.claims_from_av(t, Claim.WITHDRAWAL) == anchor.withdrawals(t)
 
     # Utilisation is zero in every shipped model point, so the column is zero and the
     # claims total is the three termination kinds alone.
-    for point_id in guaranteed_ul.Data.model_point_table().index:
+    for point_id in guaranteed_ul.Data.model_point_table()["keys"]:
         proj = guaranteed_ul.Projection[point_id]
         assert proj.result_cf()["withdrawals"].abs().max() == 0.0
     for t in (0, 39, 80):
-        assert anchor.claims(t) == pytest.approx(
-            anchor.claims(t, "DEATH") + anchor.claims(t, "LAPSE")
-            + anchor.claims(t, "REFUND") + anchor.claims(t, "GRACE"), abs=EXACT)
+        assert anchor.claims(t, Claim.ALL) == pytest.approx(
+            anchor.claims(t, Claim.DEATH) + anchor.claims(t, Claim.LAPSE)
+            + anchor.claims(t, Claim.REFUND) + anchor.claims(t, Claim.GRACE), abs=EXACT)
+
+
+def test_withdrawal_amount_comes_from_the_csv_after_eligibility_checks(tmp_path):
+    model = mx.read_model(MODEL_PATH, name="ULSG_withdrawal_input")
+    try:
+        points = pd.read_csv(MODEL_PATH.parent / "model_point_table.csv", index_col="point_id")
+        points.loc[2, "wd_pp"] = 125.0
+        path = tmp_path / "points.csv"
+        points.to_csv(path)
+        model.Data.model_point_file = path
+        proj = model.Projection[2]
+        assert proj.wd_pp(11) == 0.0
+        assert proj.wd_pp(12) == 125.0
+        assert proj.wd_pp(731) == 125.0
+        assert proj.wd_pp(732) == 0.0
+    finally:
+        model.close()
 
 
 def test_checks_take_no_argument_and_return_bool(anchor):
@@ -584,14 +603,14 @@ def test_corridor_table_is_the_irc_7702d2_applicable_percentages(guaranteed_ul, 
     been claiming as sourced.
     """
     tbl = guaranteed_ul.Data.corridor_factors()
-    assert set(tbl["provenance"]) == {"sourced [R4]"}
+    assert {tbl.lookup(age, "provenance") for age in tbl["keys"]} == {"sourced [R4]"}
     for a, pct in IRC_7702D2.items():
-        assert tbl.loc[a, "corridor_factor"] == pytest.approx(pct / 100, abs=1e-12)
-    assert tbl["corridor_factor"].loc[95:].eq(1.00).all()
+        assert tbl.lookup_float(a, "corridor_factor") == pytest.approx(pct / 100, abs=1e-12)
+    assert all(tbl.lookup_float(a, "corridor_factor") == 1.0 for a in tbl["keys"] if a >= 95)
     assert anchor.corridor_factor(0) == 1.05             # attained age 85
 
     # It never binds on any shipped point - which is why the death benefit is a max.
-    for point_id in guaranteed_ul.Data.model_point_table().index:
+    for point_id in guaranteed_ul.Data.model_point_table()["keys"]:
         proj = guaranteed_ul.Projection[point_id]
         assert all(proj.db_pp(t) == proj.sum_assured_at(t)
                    for t in range(proj.proj_len()))
@@ -643,22 +662,22 @@ def test_opening_balances_are_the_first_month_opening_timing(anchor, new_biz):
     of the frame; there is no seed row at t = 0 and nothing is indexed at t = -1.
     """
     for proj in (anchor, new_biz):
-        assert proj.av_pp_at(0, "BEF_PREM") == proj.av_pp_init()
-        assert proj.sg_pp_at(0, "BEF_PREM") == proj.sg_pp_init()
-        assert proj.loan_bal_pp_at(0, "BEF_INT") == proj.loan_bal_init()
+        assert proj.av_pp_at(0, Timing.BEF_PREM) == proj.av_pp_init()
+        assert proj.sg_pp_at(0, Timing.BEF_PREM) == proj.sg_pp_init()
+        assert proj.loan_bal_pp_at(0, Timing.BEF_INT) == proj.loan_bal_init()
         assert proj.cum_prem_pp(0) == pytest.approx(
             proj.cum_prem_init() + proj.premium_pp(0), abs=EXACT)
         assert proj.pols_if(0) == proj.pols_if_init()
         assert proj.is_lapsed(0) is False
         assert proj.grace_mth(0) == 0
         for t in (1, 5, 12):
-            assert proj.av_pp_at(t, "BEF_PREM") == proj.av_pp(t - 1)
-            assert proj.sg_pp_at(t, "BEF_PREM") == proj.sg_pp(t - 1)
-            assert proj.loan_bal_pp_at(t, "BEF_INT") == proj.loan_bal_pp(t - 1)
+            assert proj.av_pp_at(t, Timing.BEF_PREM) == proj.av_pp(t - 1)
+            assert proj.sg_pp_at(t, Timing.BEF_PREM) == proj.sg_pp(t - 1)
+            assert proj.loan_bal_pp_at(t, Timing.BEF_INT) == proj.loan_bal_pp(t - 1)
     # The anchor's first month takes the premium on top of av_init = 2,400, so its
     # closing balance is not its opening one.
     assert anchor.av_pp_init() == 2400.0
-    assert anchor.av_pp_at(0, "BEF_WD") == pytest.approx(2400.0 + 8100.0, abs=EXACT)
+    assert anchor.av_pp_at(0, Timing.BEF_WD) == pytest.approx(2400.0 + 8100.0, abs=EXACT)
     assert anchor.av_pp(0) == pytest.approx(7679.30, abs=NOTES_ROUNDING)
 
 
@@ -671,8 +690,8 @@ def test_rop_window_and_cap(anchor):
     assert anchor.rop_ratio(0) == 1.00
     assert anchor.rop_rate(0) == 0.10
     assert anchor.cum_prem_pp(0) == pytest.approx(280800.0, abs=CENT)
-    assert anchor.claim_pp(0, "REFUND") == 200000.0            # the cap binds
-    assert anchor.claim_pp(0, "REFUND") < anchor.cum_prem_pp(0)
+    assert anchor.claim_pp(0, Claim.REFUND) == 200000.0            # the cap binds
+    assert anchor.claim_pp(0, Claim.REFUND) < anchor.cum_prem_pp(0)
     assert anchor.pols_rop(0) == pytest.approx(
         anchor.pols_if(0) * (1 - anchor.mort_rate_mth(0))
         * (1 - anchor.lapse_rate_mth(0)) * 0.10, abs=EXACT)
@@ -754,7 +773,7 @@ def test_notes_csv_symbol_is_ncsv(new_biz):
     assert new_biz.ncsv_pp(t) == pytest.approx(
         max(0.0, new_biz.av_pp(t) - new_biz.surr_charge_pp(t)
             - new_biz.loan_bal_pp(t)), abs=EXACT)
-    assert new_biz.claim_pp(t, "LAPSE") == new_biz.ncsv_pp(t)
+    assert new_biz.claim_pp(t, Claim.LAPSE) == new_biz.ncsv_pp(t)
 
 
 def test_mortality_improvement_grades_and_stops(new_biz):
@@ -793,7 +812,7 @@ def test_premium_persistency_is_applied_once(anchor, new_biz):
 
 def test_premium_falls_on_anniversaries_only(new_biz):
     """The issue month t = 0 and every anniversary t = 12 k after it."""
-    assert new_biz.premium_mode() == "A"
+    assert new_biz.premium_mode() == PremiumMode.A
     assert new_biz.premium_freq() == 1
     on = [t for t in range(36) if new_biz.is_premium_mth(t)]
     assert on == [0, 12, 24]

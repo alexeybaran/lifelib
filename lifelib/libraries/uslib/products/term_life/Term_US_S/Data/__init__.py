@@ -65,9 +65,9 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
 
 
 def premium_rates():
@@ -77,49 +77,25 @@ def premium_rates():
     0-based projection index; ``Projection.premium_pp_ann(t)`` looks it up at
     ``policy_year(t) = duration(t) + 1``, the policy year containing month ``t``.
     """
-    return pd.read_csv(                                              # noqa: F821
+    rates = pd.read_csv(                                             # noqa: F821
         input_dir() / premium_rates_file,                            # noqa: F821
         index_col=["plan", "sex", "rate_class", "band", "policy_year"])
+    return pdn.table(rates, columns=("premium_pp",), groups=rates.index.names[:-1])  # noqa: F821
 
 
-def mort_table():
+def mort_table() -> "modelx_helpers.immutable_inputs.Table":
     """The base mortality table by age, read from *mort_table.csv*."""
-    return pd.read_csv(input_dir() / mort_table_file, index_col="age")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / mort_table_file, index_col="age"))  # noqa: F821
 
 
-def class_factor_table():
+def class_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pd.read_csv(input_dir() / class_factor_file, index_col="rate_class")  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
 
 
-def shock_lapse_table():
+def shock_lapse_table() -> "modelx_helpers.immutable_inputs.Table":
     """The shock-lapse buckets by jump ratio, read from *shock_lapse_table.csv*."""
-    return pd.read_csv(input_dir() / shock_lapse_file)               # noqa: F821
-
-
-def prepared_class_factor_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(class_factor_table(),
-                        columns=('factor',),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_premium_rates_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return inputs.table(premium_rates(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_shock_lapse_table_calculation_rows():
-    """Own original input values for calculation operations."""
-    return inputs.table(shock_lapse_table(), groups=(), rows=True, preserve_scalar_types=True)
+    return pdn.table(pd.read_csv(input_dir() / shock_lapse_file), rows=True)  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -137,4 +113,4 @@ shock_lapse_file = "shock_lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

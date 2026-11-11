@@ -414,22 +414,22 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().slice(point_id)
 
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "policy_id")
+    return model_point()["policy_id"]
 
 
 def age_at_entry():
     """x: the issue age (ANB) of the selected model point."""
-    return tables.lookup_int(prepared_model_point(), "age_at_entry")
+    return int(model_point()["age_at_entry"])
 
 
 def sex():
     """The sex of the Designated Life, M or F."""
-    return tables.lookup_object(prepared_model_point(), "sex")
+    return model_point()["sex"]
 
 
 def designated_lives():
@@ -439,7 +439,7 @@ def designated_lives():
     product spec, so the GAWA% grid and the For Life test are the single-life ones
     **[std]**.
     """
-    return tables.lookup_object(prepared_model_point(), "designated_lives")
+    return model_point()["designated_lives"]
 
 
 def tax_status():
@@ -448,12 +448,12 @@ def tax_status():
     Reported only. The base run is non-qualified **[std]**, which keeps the RMD term of
     ``L = max(GAWA, RMD)`` disclosed but inactive; no RMD module is implemented.
     """
-    return tables.lookup_object(prepared_model_point(), "tax_status")
+    return model_point()["tax_status"]
 
 
 def pols_if_init():
     """l(-1): in-force probability at entry, 1 for a single-contract model point."""
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def premium_tax_rate():
@@ -463,17 +463,22 @@ def premium_tax_rate():
     checkable; premium tax is contractually deducted from the amounts that initialize the
     guarantee bases [S1].
     """
-    return tables.lookup_float(prepared_model_point(), "premium_tax_rate")
+    return float(model_point()["premium_tax_rate"])
 
 
 def premium_single():
     """The single purchase payment, paid at the beginning of the first projected month."""
-    return tables.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def fund_set():
     """The key into *fund_table.csv* naming this contract's subaccount allocation."""
-    return tables.lookup_object(prepared_model_point(), "fund_set")
+    return model_point()["fund_set"]
+
+
+def fund_rows() -> "modelx_helpers.immutable_inputs.Table":
+    """The selected allocation set in its original file order."""
+    return data.fund_table().slice(fund_set())                       # noqa: F821
 
 
 def sub_ids():
@@ -483,22 +488,32 @@ def sub_ids():
     unit accounting. Real contracts offer far more; one carrier's build-your-own menu
     lists 76 options across 12 asset classes [S4].
     """
-    return list(expressions.keys(tables.subtable(data.prepared_fund_table_groups_1(), fund_set())))              # noqa: F821
+    return list(fund_rows().index)
+
+
+def fund_count():
+    """The number of subaccounts in the selected allocation set."""
+    return len(sub_ids())
+
+
+def fund_id(position):
+    """The subaccount key at a position in the original allocation order."""
+    return sub_ids()[position]
 
 
 def alloc(i):
     """alloc[i]: the share of net premium allocated to subaccount i, no rebalancing."""
-    return tables.lookup_float(data.prepared_fund_table_loc(), (fund_set(), i), 'alloc')     # noqa: F821
+    return fund_rows().lookup_float(i, "alloc")
 
 
 def fund_expense_rate(i):
     """e_i: the annual fund expense ratio of subaccount i, paid to the fund [S2]."""
-    return tables.lookup_float(data.prepared_fund_table_loc(), (fund_set(), i), 'fund_expense')  # noqa: F821
+    return fund_rows().lookup_float(i, "fund_expense")
 
 
 def glwb_option():
     """The GLWB election, and the key into the GAWA% grid; ``single_core`` [S3]."""
-    return tables.lookup_object(prepared_model_point(), "glwb_option")
+    return model_point()["glwb_option"]
 
 
 def stepup_basis():
@@ -511,7 +526,7 @@ def stepup_basis():
     dollar-for-dollar / proportional rule, which is **not implemented** — see the model
     docstring.
     """
-    return tables.lookup_object(prepared_model_point(), "glwb_stepup_basis")
+    return StepupBasis[model_point()["glwb_stepup_basis"]]
 
 
 def gmdb_option():
@@ -526,12 +541,12 @@ def gmdb_option():
     :func:`gmdb_guarantee_pp`. The notes' fourth form, ``combination``, is **not
     implemented** — see the model docstring.
     """
-    return tables.lookup_object(prepared_model_point(), "gmdb_option")
+    return GmdbOption[model_point()["gmdb_option"]]
 
 
 def cdsc_schedule():
     """The key into *cdsc_table.csv* naming this contract's withdrawal charge scale."""
-    return tables.lookup_object(prepared_model_point(), "cdsc_schedule")
+    return model_point()["cdsc_schedule"]
 
 
 def fee_reset_rule():
@@ -542,7 +557,7 @@ def fee_reset_rule():
     of +0.25% at each fifth Contract Anniversary up to the guaranteed maximum [S1].
     ``vix`` applies a second carrier's non-discretionary VIX-squared formula [S4][S6].
     """
-    return tables.lookup_object(prepared_model_point(), "fee_reset_rule")
+    return FeeResetRule[model_point()["fee_reset_rule"]]
 
 
 def rollup_rule():
@@ -553,7 +568,7 @@ def rollup_rule():
     CMT plus 1.00% (1.50% before the first withdrawal), rounded to 0.10%, floored at 4%
     and capped at 8% [S7].
     """
-    return tables.lookup_object(prepared_model_point(), "rollup_rule")
+    return RollupRule[model_point()["rollup_rule"]]
 
 
 def wd_start_age():
@@ -564,7 +579,7 @@ def wd_start_age():
     prescribed alternative is VM-21's Withdrawal Delay Cohort Method, which is **not
     implemented**.
     """
-    return tables.lookup_int(prepared_model_point(), "wd_start_age")
+    return int(model_point()["wd_start_age"])
 
 
 def wd_intensity():
@@ -574,17 +589,17 @@ def wd_intensity():
     prescribed partial-withdrawal assumption is 90% for lifetime GMWBs and 70% for
     non-lifetime ones [R1].
     """
-    return tables.lookup_float(prepared_model_point(), "wd_intensity")
+    return float(model_point()["wd_intensity"])
 
 
 def scenario_id():
     """The scenario the model point runs on, a key into the two scenario tables."""
-    return tables.lookup_object(prepared_model_point(), "scenario_id")
+    return model_point()["scenario_id"]
 
 
 def txn_id():
     """The scheduled transaction programme, a key into *transaction_table.csv*."""
-    return tables.lookup_object(prepared_model_point(), "txn_id")
+    return model_point()["txn_id"]
 
 
 def duration_mth_init():
@@ -595,7 +610,7 @@ def duration_mth_init():
     state is entered this way on model point 2, with 26 elapsed months, so that ``t = 0``
     there is the 27th policy month.
     """
-    return tables.lookup_int(prepared_model_point(), "duration_mth_init")
+    return int(model_point()["duration_mth_init"])
 
 
 def is_inforce():
@@ -610,22 +625,22 @@ def av_pp_init():
     notes give an ``av_initial`` model point attribute but no subaccount split, and the
     worked example's carried state is exactly at its 60/40 target allocation.
     """
-    return tables.lookup_float(prepared_model_point(), "av_init")
+    return float(model_point()["av_init"])
 
 
 def gwb_pp_init():
     """GWB carried into the frame; 0 at issue, where the premium creates it [S1]."""
-    return tables.lookup_float(prepared_model_point(), "gwb_init")
+    return float(model_point()["gwb_init"])
 
 
 def gawa_pp_init():
     """GAWA carried into the frame; 0 until the first withdrawal fixes it [S1]."""
-    return tables.lookup_float(prepared_model_point(), "gawa_init")
+    return float(model_point()["gawa_init"])
 
 
 def gawa_pct_init():
     """The GAWA% already locked at entry; 0 when no withdrawal has been taken."""
-    return tables.lookup_float(prepared_model_point(), "gawa_pct_init")
+    return float(model_point()["gawa_pct_init"])
 
 
 def has_wd_init():
@@ -639,27 +654,27 @@ def has_wd_init():
 
 def bb_pp_init():
     """Bonus Base carried into the frame; it initializes at GWB [S1]."""
-    return tables.lookup_float(prepared_model_point(), "bb_init")
+    return float(model_point()["bb_init"])
 
 
 def rb_pp_init():
     """GMDB Benefit Base carried into the frame."""
-    return tables.lookup_float(prepared_model_point(), "rb_init")
+    return float(model_point()["rb_init"])
 
 
 def np_pp_init():
     """Cumulative Net Premiums carried into the frame."""
-    return tables.lookup_float(prepared_model_point(), "np_init")
+    return float(model_point()["np_init"])
 
 
 def rp_pp_init():
     """Remaining Premium carried into the frame; the CDSC basis [S2]."""
-    return tables.lookup_float(prepared_model_point(), "rp_init")
+    return float(model_point()["rp_init"])
 
 
 def adj_pp_init():
     """GWB Adjustment carried into the frame; 105% of net premium at issue [S3]."""
-    return tables.lookup_float(prepared_model_point(), "adj_init")
+    return float(model_point()["adj_init"])
 
 
 def bonus_end_init():
@@ -667,7 +682,7 @@ def bonus_end_init():
 
     Zero on an at-issue cell, where it is set to ``bonus_period_years`` = 10 [S1].
     """
-    return tables.lookup_int(prepared_model_point(), "bonus_end_init")
+    return int(model_point()["bonus_end_init"])
 
 
 def policy_term():
@@ -758,6 +773,11 @@ def phase(t):
     return "DEPLETED" if depleted_flag(t) else "ACCUM"
 
 
+def fund_return_rows(i) -> "modelx_helpers.immutable_inputs.Table":
+    """The return series for the selected scenario and subaccount."""
+    return data.return_scenario().slice(scenario_id(), i)              # noqa: F821
+
+
 def inv_return_mth(t, i):
     """r_i(t): the gross monthly fund return of subaccount i, a scenario input.
 
@@ -767,14 +787,7 @@ def inv_return_mth(t, i):
     to a crafted proxy fund, normally a linear combination of recognized market indices
     [R1]; the model takes the return series as an input rather than hard-coding one.
     """
-    try:
-        sub = tables.subtable(tables.subtable(data.prepared_return_scenario_groups_2(), scenario_id()), i)              # noqa: F821
-    except KeyError:
-        # Let the original selector produce its exact pandas error.
-        data.return_scenario().loc[(scenario_id(), i)]
-        raise
-    months = [m for m in expressions.keys(sub) if m <= max(duration_mth(t), 0)]
-    return float(tables.lookup_object(sub, expressions.max_value(months), "gross_return"))
+    return fund_return_rows(i).previous(max(duration_mth(t), 0), "gross_return")
 
 
 def scenario_rate(t, name):
@@ -784,9 +797,8 @@ def scenario_rate(t, name):
     policy month — the file's 0-based ``t`` column — until the next row of the same
     scenario, so a flat path is one row, keyed ``t = 0``.
     """
-    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                     # noqa: F821
-    months = [m for m in expressions.keys(sub) if m <= max(duration_mth(t), 0)]
-    return float(tables.lookup_object(sub, expressions.max_value(months), name))
+    sub = data.rate_scenario().slice(scenario_id())                   # noqa: F821
+    return pdn.previous(sub, max(duration_mth(t), 0), name)
 
 
 def vix_sq(k):
@@ -833,38 +845,38 @@ def sa_pp_at(t, i, timing):
     if t < 0 or t >= proj_len() or depleted_flag(t - 1):
         return 0.0
     sa = alloc(i) * av_pp_init() if t == 0 else sa_pp(t - 1, i)
-    if timing == "BEF_PREM":
+    if timing == AvTiming.BEF_PREM:
         return sa
     sa = sa + alloc(i) * prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == AvTiming.BEF_WD:
         return sa
-    base = av_pp_at(t, "BEF_WD")
+    base = av_pp_at(t, AvTiming.BEF_WD)
     sa = sa * (1.0 - wd_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "BEF_INV":
+    if timing == AvTiming.BEF_INV:
         return sa
     sa = sa * unit_growth(t, i)
-    if timing == "BEF_FEE":
+    if timing == AvTiming.BEF_FEE:
         return sa
-    base = av_pp_at(t, "BEF_FEE")
+    base = av_pp_at(t, AvTiming.BEF_FEE)
     sa = sa * (1.0 - charge_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "EOM":
+    if timing == AvTiming.EOM:
         return sa
     raise ValueError("invalid timing")
 
 
 def sa_pp(t, i):
     """SA_i(t): the value of subaccount i per contract at the end of month t."""
-    return sa_pp_at(t, i, "EOM")
+    return sa_pp_at(t, i, AvTiming.EOM)
 
 
 def av_pp_at(t, timing):
     """AV at month t read at the point given by ``timing``: the sum over subaccounts."""
-    return expressions.sum_values((sa_pp_at(t, i, timing) for i in sub_ids()))
+    return sum(sa_pp_at(t, fund_id(k), timing) for k in range(fund_count()))
 
 
 def av_pp(t):
     """AV(t): the contract value per contract at the end of month t."""
-    return av_pp_at(t, "EOM")
+    return av_pp_at(t, AvTiming.EOM)
 
 
 def sa_weight(t, i):
@@ -873,15 +885,16 @@ def sa_weight(t, i):
     Read at ``BEF_FEE``, where the notes read it: after the month's growth and before the
     charges that cancel units.
     """
-    base = av_pp_at(t, "BEF_FEE")
-    return sa_pp_at(t, i, "BEF_FEE") / base if base > 0.0 else 0.0
+    base = av_pp_at(t, AvTiming.BEF_FEE)
+    return sa_pp_at(t, i, AvTiming.BEF_FEE) / base if base > 0.0 else 0.0
 
 
 def gross_inv_income_pp(t):
     """The gross fund return over month t, before any charge."""
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i) for i in sub_ids()))
+    return sum(sa_pp_at(t, i, AvTiming.BEF_INV) * inv_return_mth(t, i)
+               for k in range(fund_count()) for i in (fund_id(k),))
 
 
 def fund_expense_pp(t):
@@ -892,8 +905,9 @@ def fund_expense_pp(t):
     """
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
-               * fund_expense_rate(i) / 12.0 for i in sub_ids()))
+    return sum(sa_pp_at(t, i, AvTiming.BEF_INV) * (1.0 + inv_return_mth(t, i))
+               * fund_expense_rate(i) / 12.0
+               for k in range(fund_count()) for i in (fund_id(k),))
 
 
 def asset_charge_pp(t):
@@ -906,8 +920,9 @@ def asset_charge_pp(t):
     if t < 0 or depleted_flag(t - 1):
         return 0.0
     rate = (asset_charge_me + asset_charge_admin) / 12.0             # noqa: F821
-    return expressions.sum_values((sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
-               * (1.0 - fund_expense_rate(i) / 12.0) * rate for i in sub_ids()))
+    return sum(sa_pp_at(t, i, AvTiming.BEF_INV) * (1.0 + inv_return_mth(t, i))
+               * (1.0 - fund_expense_rate(i) / 12.0) * rate
+               for k in range(fund_count()) for i in (fund_id(k),))
 
 
 def inv_income_pp(t):
@@ -918,7 +933,17 @@ def inv_income_pp(t):
     """
     if t < 0:
         return 0.0
-    return av_pp_at(t, "BEF_FEE") - av_pp_at(t, "BEF_INV")
+    return av_pp_at(t, AvTiming.BEF_FEE) - av_pp_at(t, AvTiming.BEF_INV)
+
+
+def has_transactions():
+    """Whether the input contains the selected transaction schedule."""
+    return txn_id() in data.transaction_table()                     # noqa: F821
+
+
+def transaction_rows() -> "modelx_helpers.immutable_inputs.Table":
+    """The selected schedule, indexed by elapsed policy month."""
+    return data.transaction_table().slice(txn_id())                 # noqa: F821
 
 
 def prem_scheduled_pp(t):
@@ -927,11 +952,9 @@ def prem_scheduled_pp(t):
     The file's ``t`` column is the **elapsed** policy month, so the key is
     :func:`duration_mth` ``(t)``.
     """
-    if t < 0:
+    if t < 0 or not has_transactions():
         return 0.0
-    table = data.transaction_table()                                 # noqa: F821
-    key = (txn_id(), duration_mth(t))
-    return tables.lookup_float(data.prepared_transaction_table_scalar_loc(), key, "prem_amount") if key in expressions.keys(data.prepared_transaction_table_index_selection()) else 0.0
+    return transaction_rows().lookup_float(duration_mth(t), "prem_amount", 0.0)
 
 
 def premium_pp(t):
@@ -966,11 +989,9 @@ def wd_scheduled_pp(t):
     Keyed on the **elapsed** policy month :func:`duration_mth` ``(t)``, as
     :func:`prem_scheduled_pp` is.
     """
-    if t < 0:
+    if t < 0 or not has_transactions():
         return 0.0
-    table = data.transaction_table()                                 # noqa: F821
-    key = (txn_id(), duration_mth(t))
-    return tables.lookup_float(data.prepared_transaction_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_transaction_table_index_selection()) else 0.0
+    return transaction_rows().lookup_float(duration_mth(t), "wd_amount", 0.0)
 
 
 def is_wd_month(t):
@@ -1025,17 +1046,14 @@ def is_wd_year(t):
     *any* withdrawal in a Contract Year kills that year's bonus [S1].
     """
     first = t_of_month(12 * (policy_year(t) - 1))
-    return expressions.any_true((is_wd_taken(u) for u in expressions.periods(max(0, first),
-                                             min(first + 12, proj_len()))))
+    return any(is_wd_taken(u) for u in range(max(0, first),
+                                             min(first + 12, proj_len())))
 
 
 def gawa_pct_at_age(a):
     """g(a): the GAWA% for attained age a, from *gawa_pct_table.csv* [S3]."""
-    grid = tables.subtable(data.prepared_gawa_pct_table_groups_1(), glwb_option())                  # noqa: F821
-    bands = [b for b in expressions.keys(grid) if b <= a]
-    if not bands:
-        return 0.0
-    return float(tables.lookup_object(grid, expressions.max_value(bands), "gawa_pct"))
+    grid = data.gawa_pct_table().slice(glwb_option())
+    return pdn.previous(grid, a, "gawa_pct", 0.0)
 
 
 def wd_limit_pp(t):
@@ -1046,8 +1064,8 @@ def wd_limit_pp(t):
     non-qualified and no RMD module is implemented.
     """
     if is_first_wd(t):
-        return gawa_pct_at_age(age(t)) * gwb_pp_at(t, "BEF_WD")
-    return gawa_pp_at(t, "BEF_WD")
+        return gawa_pct_at_age(age(t)) * gwb_pp_at(t, BenefitTiming.BEF_WD)
+    return gawa_pp_at(t, BenefitTiming.BEF_WD)
 
 
 def wd_glwb_pp(t):
@@ -1073,7 +1091,7 @@ def wd_pp(t):
     charge** for all guarantee calculations [S1]; using net proceeds would understate the
     benefit-base reduction. Capped at the available contract value **[std]**.
     """
-    return min(wd_pp_due(t), av_pp_at(t, "BEF_WD"))
+    return min(wd_pp_due(t), av_pp_at(t, AvTiming.BEF_WD))
 
 
 def sum_wd_pp(t):
@@ -1108,7 +1126,7 @@ def cv_pre_excess_pp(t):
     **first**, and the proportional factor for the excess is computed against the
     contract value *after* that reduction. Reversing it changes both GWB and GAWA.
     """
-    return av_pp_at(t, "BEF_WD") - wd_nonexcess_pp(t)
+    return av_pp_at(t, AvTiming.BEF_WD) - wd_nonexcess_pp(t)
 
 
 def excess_factor(t):
@@ -1127,8 +1145,8 @@ def free_wd_allow(t):
     scale delivers by reaching 0.0% at seven completed years [S2].
     """
     rp = (rp_pp_init() if t == 0 else rp_pp(t - 1)) + premium_pp(t)
-    earnings = max(0.0, av_pp_at(t, "BEF_WD") - rp)
-    return max(earnings, free_wd_rate * rp)                          # noqa: F821
+    earnings = max(0.0, av_pp_at(t, AvTiming.BEF_WD) - rp)
+    return max(earnings, free_wd_rate * rp)
 
 
 def free_wd_avail(t):
@@ -1181,6 +1199,11 @@ def wd_chargeable_pp(t):
     return wd_pp(t) - wd_exempt_pp(t)
 
 
+def charge_rows() -> "modelx_helpers.immutable_inputs.Table":
+    """The selected surrender charge scale."""
+    return data.cdsc_table().slice(cdsc_schedule())                   # noqa: F821
+
+
 def surr_charge_rate(t):
     """The CDSC rate at month t, read off the **contract duration** [S2].
 
@@ -1198,9 +1221,9 @@ def surr_charge_rate(t):
     test; splitting the pool needs a withdrawal-ordering rule across tranches that no
     retrieved source states.
     """
-    grid = tables.subtable(data.prepared_cdsc_table_groups_1(), cdsc_schedule())                    # noqa: F821
-    years = min(duration(t), int(tables.last_key(grid)))
-    return float(tables.lookup_object(grid, years, "surr_charge_rate"))
+    grid = charge_rows()
+    years = min(duration(t), grid.index.max_int())
+    return grid.lookup_float(years, "surr_charge_rate")
 
 
 def wd_charge_pp(t):
@@ -1254,13 +1277,13 @@ def phi_glwb(t):
     independent lapse-style rate.
     """
     rule = fee_reset_rule()
-    if rule == "none":
+    if rule == FeeResetRule.none:
         return phi_glwb_curr                                         # noqa: F821
-    elif rule == "quinquennial":
+    elif rule == FeeResetRule.quinquennial:
         steps = duration(t) // fee_reset_years                       # noqa: F821
         return min(phi_glwb_max,                                     # noqa: F821
                    phi_glwb_curr + fee_increase_max * steps)         # noqa: F821
-    elif rule == "vix":
+    elif rule == FeeResetRule.vix:
         return phi_glwb_vix(contract_quarter(t))
     else:
         raise ValueError("invalid fee_reset_rule")
@@ -1303,7 +1326,7 @@ def phi_gmdb(t):
     0.90% of the GMDB Benefit Base currently, guaranteed maximum 1.80% [S2][S3]. The
     ``basic`` death benefit is included at no charge [S1][S2], so the rate is zero there.
     """
-    return 0.0 if gmdb_option() == "basic" else phi_gmdb_curr        # noqa: F821
+    return 0.0 if gmdb_option() == GmdbOption.basic else phi_gmdb_curr
 
 
 def rollup_pct():
@@ -1320,9 +1343,9 @@ def rollup_rate(t):
     the 10-year CMT plus 1.00%, or 1.50% before the first withdrawal, rounded to 0.10%,
     floored at 4% and capped at 8% [S7].
     """
-    if rollup_rule() == "fixed":
+    if rollup_rule() == RollupRule.fixed:
         return rollup_pct()
-    elif rollup_rule() == "cmt_linked":
+    elif rollup_rule() == RollupRule.cmt_linked:
         spread = cmt_spread if has_wd_by(t) else cmt_spread_predraw  # noqa: F821
         raw = cmt10(t) + spread
         step = cmt_round_step                                        # noqa: F821
@@ -1342,7 +1365,7 @@ def fee_glwb_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_quarterly_anniv(t):
         return 0.0
-    return (phi_glwb(t) / 4.0) * gwb_pp_at(t, "BEF_ANNIV")
+    return (phi_glwb(t) / 4.0) * gwb_pp_at(t, BenefitTiming.BEF_ANNIV)
 
 
 def fee_gmdb_pp_due(t):
@@ -1353,7 +1376,7 @@ def fee_gmdb_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_quarterly_anniv(t):
         return 0.0
-    return (phi_gmdb(t) / 4.0) * rb_pp_at(t, "BEF_ANNIV")
+    return (phi_gmdb(t) / 4.0) * rb_pp_at(t, BenefitTiming.BEF_ANNIV)
 
 
 def maint_fee_pp_due(t):
@@ -1365,9 +1388,9 @@ def maint_fee_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_anniv(t):
         return 0.0
-    after_riders = (av_pp_at(t, "BEF_FEE")
+    after_riders = (av_pp_at(t, AvTiming.BEF_FEE)
                     - fee_glwb_pp_due(t) - fee_gmdb_pp_due(t))
-    return 0.0 if after_riders >= maint_fee_waiver_av else maint_fee  # noqa: F821
+    return 0.0 if after_riders >= maint_fee_waiver_av else maint_fee
 
 
 def charge_pp_due(t):
@@ -1385,7 +1408,7 @@ def charge_scale(t):
     due = charge_pp_due(t)
     if due <= 0.0:
         return 0.0
-    return min(1.0, av_pp_at(t, "BEF_FEE") / due)
+    return min(1.0, av_pp_at(t, AvTiming.BEF_FEE) / due)
 
 
 def fee_glwb_pp(t):
@@ -1426,17 +1449,17 @@ def gwb_pp_at(t, timing):
     g = gwb_pp_init() if t == 0 else gwb_pp(t - 1)
     if depleted_flag(t - 1):
         return g
-    if timing == "BEF_PREM":
+    if timing == BenefitTiming.BEF_PREM:
         return g
     g = min(gwb_cap, g + prem_to_av_pp(t))                           # noqa: F821
-    if timing == "BEF_WD":
+    if timing == BenefitTiming.BEF_WD:
         return g
     if wd_pp(t) > 0.0:
         if sum_wd_pp(t) <= wd_limit_pp(t):
             g = max(g - wd_pp(t), 0.0)
         else:
             g = max((g - wd_nonexcess_pp(t)) * excess_factor(t), 0.0)
-    if timing == "BEF_ANNIV":
+    if timing == BenefitTiming.BEF_ANNIV:
         return g
     raise ValueError("invalid timing")
 
@@ -1453,7 +1476,7 @@ def bb_pp_bef_anniv(t):
         return prev
     b = min(gwb_cap, prev + prem_to_av_pp(t))                        # noqa: F821
     if wd_pp(t) > 0.0 and sum_wd_pp(t) > wd_limit_pp(t):
-        b = min(gwb_pp_at(t, "BEF_ANNIV"), b)
+        b = min(gwb_pp_at(t, BenefitTiming.BEF_ANNIV), b)
     return b
 
 
@@ -1477,7 +1500,7 @@ def bonus_pp(t):
 
 def gwb_pp_aft_bonus(t):
     """GWB after anniversary sub-step 3, the GLWB bonus."""
-    return gwb_pp_at(t, "BEF_ANNIV") + bonus_pp(t)
+    return gwb_pp_at(t, BenefitTiming.BEF_ANNIV) + bonus_pp(t)
 
 
 def stepup_base_pp(t):
@@ -1487,10 +1510,10 @@ def stepup_base_pp(t):
     highest contract value over the four most recent Contract Quarterly Anniversaries.
     """
     basis = stepup_basis()
-    if basis == "annual_CV":
+    if basis == StepupBasis.annual_CV:
         return av_pp(t)
-    elif basis == "highest_quarterly_CV":
-        return expressions.max_value((av_pp(t - 3 * j) for j in expressions.periods(0, 4) if t - 3 * j >= 0))
+    elif basis == StepupBasis.highest_quarterly_CV:
+        return max(av_pp(u) for u in range(t, max(-1, t - 12), -3))
     else:
         raise ValueError("invalid stepup_basis")
 
@@ -1618,19 +1641,19 @@ def gawa_pp_at(t, timing):
     g = gawa_pp_init() if t == 0 else gawa_pp(t - 1)
     if depleted_flag(t - 1):
         return g
-    if timing == "BEF_PREM":
+    if timing == BenefitTiming.BEF_PREM:
         return g
     had_wd = has_wd_init() if t == 0 else has_wd_by(t - 1)
     if had_wd and prem_to_av_pp(t) > 0.0:
         pct = gawa_pct_init() if t == 0 else gawa_pct_fixed(t - 1)
         g = g + pct * prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == BenefitTiming.BEF_WD:
         return g
     if is_first_wd(t):
-        g = gawa_pct_at_age(age(t)) * gwb_pp_at(t, "BEF_WD")
+        g = gawa_pct_at_age(age(t)) * gwb_pp_at(t, BenefitTiming.BEF_WD)
     if wd_pp(t) > 0.0 and sum_wd_pp(t) > wd_limit_pp(t):
-        g = min(g * excess_factor(t), gwb_pp_at(t, "BEF_ANNIV"))
-    if timing == "BEF_ANNIV":
+        g = min(g * excess_factor(t), gwb_pp_at(t, BenefitTiming.BEF_ANNIV))
+    if timing == BenefitTiming.BEF_ANNIV:
         return g
     raise ValueError("invalid timing")
 
@@ -1644,7 +1667,7 @@ def gawa_pp(t):
     """
     if depleted_flag(t - 1):
         return gawa_pp_init() if t == 0 else gawa_pp(t - 1)
-    g = gawa_pp_at(t, "BEF_ANNIV")
+    g = gawa_pp_at(t, BenefitTiming.BEF_ANNIV)
     if is_anniv(t):
         pct = gawa_pct_fixed(t)
         if has_wd_by(t) and pct > 0.0:
@@ -1685,7 +1708,7 @@ def rp_reduction_pp(t):
     if t < 0 or wd_pp(t) <= 0.0:
         return 0.0
     rp = (rp_pp_init() if t == 0 else rp_pp(t - 1)) + premium_pp(t)
-    earnings = max(0.0, av_pp_at(t, "BEF_WD") - rp)
+    earnings = max(0.0, av_pp_at(t, AvTiming.BEF_WD) - rp)
     return min(rp, max(0.0, wd_pp(t) - earnings))
 
 
@@ -1706,7 +1729,7 @@ def rb_prior_anniv_pp(t):
     Benefit Base plus the premium taken at the start of the first projected month.
     """
     u = t_of_month(12 * (policy_year(t) - 1) - 1)
-    return rb_pp(u) if u >= 0 else rb_pp_at(0, "BEF_WD")
+    return rb_pp(u) if u >= 0 else rb_pp_at(0, BenefitTiming.BEF_WD)
 
 
 def gmdb_allow_pp(t):
@@ -1720,7 +1743,7 @@ def gmdb_allow_pp(t):
 
 def gmdb_wd_dfd_pp(t):
     """The dollar-for-dollar portion of month t's withdrawal against the allowance [S1]."""
-    if t < 0 or wd_pp(t) <= 0.0 or gmdb_option() != "rollup":
+    if t < 0 or wd_pp(t) <= 0.0 or gmdb_option() != GmdbOption.rollup:
         return 0.0
     used = 0.0 if t == 0 or is_year_start(t) else gmdb_dfd_acc_pp(t - 1)
     return min(wd_pp(t), max(0.0, gmdb_allow_pp(t) - used))
@@ -1728,7 +1751,7 @@ def gmdb_wd_dfd_pp(t):
 
 def gmdb_wd_excess_pp(t):
     """The portion of month t's withdrawal above the GMDB d-f-d allowance [S1]."""
-    if t < 0 or gmdb_option() != "rollup":
+    if t < 0 or gmdb_option() != GmdbOption.rollup:
         return 0.0
     return wd_pp(t) - gmdb_wd_dfd_pp(t)
 
@@ -1743,7 +1766,7 @@ def gmdb_wd_factor(t):
     """
     if gmdb_wd_excess_pp(t) <= 0.0:
         return 1.0
-    base = av_pp_at(t, "BEF_WD") - gmdb_wd_dfd_pp(t)
+    base = av_pp_at(t, AvTiming.BEF_WD) - gmdb_wd_dfd_pp(t)
     if base <= 0.0:
         return 0.0
     return max(0.0, 1.0 - gmdb_wd_excess_pp(t) / base)
@@ -1779,15 +1802,15 @@ def rb_pp_at(t, timing):
     r = rb_pp_init() if t == 0 else rb_pp(t - 1)
     if depleted_flag(t - 1):
         return r
-    if timing == "BEF_PREM":
+    if timing == BenefitTiming.BEF_PREM:
         return r
     r = r + prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == BenefitTiming.BEF_WD:
         return r
-    if wd_pp(t) > 0.0 and gmdb_option() != "rollup":
-        base = av_pp_at(t, "BEF_WD")
+    if wd_pp(t) > 0.0 and gmdb_option() != GmdbOption.rollup:
+        base = av_pp_at(t, AvTiming.BEF_WD)
         r = r * max(0.0, 1.0 - wd_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "BEF_ANNIV":
+    if timing == BenefitTiming.BEF_ANNIV:
         return r
     raise ValueError("invalid timing")
 
@@ -1801,18 +1824,18 @@ def rb_pp(t):
     """
     if depleted_flag(t - 1):
         return rb_pp_init() if t == 0 else rb_pp(t - 1)
-    r = rb_pp_at(t, "BEF_ANNIV")
+    r = rb_pp_at(t, BenefitTiming.BEF_ANNIV)
     if not is_anniv(t):
         return r
     option = gmdb_option()
-    if option == "rollup":
+    if option == GmdbOption.rollup:
         r = max(0.0, (r - gmdb_dfd_acc_pp(t)) * gmdb_factor_acc(t))
         if age_at_anniv(t) <= gmdb_growth_cutoff_age:                # noqa: F821
             r = r * (1.0 + rollup_rate(t))
-    elif option == "HQAV":
+    elif option == GmdbOption.HQAV:
         if age_at_anniv(t) <= gmdb_growth_cutoff_age:                # noqa: F821
             r = max(r, av_pp(t))
-    elif option == "basic":
+    elif option == GmdbOption.basic:
         pass
     else:
         raise ValueError("invalid gmdb_option")
@@ -1836,7 +1859,7 @@ def gmdb_guarantee_pp(t):
     conflict and the choice; :func:`np_pp` still carries cumulative net premiums, and a
     test pins the difference on model point 9.
     """
-    if gmdb_option() == "basic":
+    if gmdb_option() == GmdbOption.basic:
         return rb_pp(t)
     return max(np_pp(t), rb_pp(t))
 
@@ -1907,6 +1930,11 @@ def glwb_payment_pp(t):
     return amount if forlife_flag() else min(amount, gwb_pp(t - 1))
 
 
+def mortality_rows() -> "modelx_helpers.immutable_inputs.Table":
+    """The selected mortality scale by attained age."""
+    return data.mort_table().slice(sex())                             # noqa: F821
+
+
 def mort_rate(t):
     """The annual mortality rate at the attained age and sex, from *mort_table.csv*.
 
@@ -1917,9 +1945,7 @@ def mort_rate(t):
     repointing ``Data.mort_table_file``. **Do not use CSO or VBT life tables** —
     annuitant mortality is a different and generally lighter basis [REG-R59].
     """
-    table = data.prepared_mort_index_generators()                                        # noqa: F821
-    top = expressions.max_value((a for (a, s) in expressions.keys(table)))
-    return expressions.lookup_float(data.prepared_mort_table_generators(), (min(age(t), top), sex()), "mort_rate")
+    return mortality_rows().lookup_float(min(age(t), data.mortality_max_age()), "mort_rate")
 
 
 def mort_rate_mth(t):
@@ -2018,7 +2044,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -2031,13 +2057,13 @@ def pols_if_at(t, timing):
     if t < 0:
         return 0.0
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -2049,7 +2075,7 @@ def pols_death(t):
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of mortality."""
-    return 0.0 if t < 0 else pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return 0.0 if t < 0 else pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -2058,16 +2084,16 @@ def pols_maturity(t):
     Not a decrement — the projection runs out — but needed for the in-force roll-forward
     to close; see the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return pols_lapse(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -2080,11 +2106,11 @@ def claim_pp(t, kind):
     proceeds :func:`surr_benefit_pp`. ``"MATURITY"`` is the surrender value of the
     survivors at the projection horizon.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return db_pp(t)
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return surr_benefit_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -2096,7 +2122,7 @@ def claim_from_av_pp(t, kind):
     Always ``AV(t)``: the separate account gives up the account value, and whatever the
     guarantee adds on top is general-account money, reported as :func:`claims_over_av`.
     """
-    if kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY):
         return av_pp(t)
     raise ValueError("invalid kind")
 
@@ -2161,11 +2187,11 @@ def glwb_payments(t):
     return 0.0 if t < 0 else glwb_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE")
-                + claims(t, "MATURITY"))
+def claims(t, kind):
+    """Benefit outgo in month t, for one ``kind`` or, with ``Kind.ALL``, all three."""
+    if kind == Kind.ALL:
+        return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
+                + claims(t, Kind.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -2174,16 +2200,16 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the contract value released, ``claims - claims_from_av``.
 
     On death this is exactly the GMDB guarantee claim — the general-account strain. On a
     surrender it is negative by the withdrawal charge, which the separate account keeps.
     A reconciliation quantity, never a ledger line of its own.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "MATURITY"))
+    if kind == Kind.ALL:
+        return (claims_over_av(t, Kind.DEATH) + claims_over_av(t, Kind.LAPSE)
+                + claims_over_av(t, Kind.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -2240,7 +2266,7 @@ def net_cf(t):
     account-value identity.
     """
     return (premiums(t) + charge_income(t)
-            - withdrawals(t) - glwb_payments(t) - claims(t)
+            - withdrawals(t) - glwb_payments(t) - claims(t, Kind.ALL)
             - expenses(t) - commissions(t) - premium_taxes(t))
 
 
@@ -2271,7 +2297,7 @@ def av_at(t, timing):
     """
     if t < 0:
         return 0.0
-    if timing == "EOM":
+    if timing == AvTiming.EOM:
         return av_pp(t) * pols_if(t + 1)
     return av_pp_at(t, timing) * pols_if(t)
 
@@ -2298,8 +2324,8 @@ def av_change(t):
     projected month and ``av_at(t - 1, "EOM")`` after it.
     """
     opening = (av_pp_init() * pols_if_init() if t == 0
-               else av_at(t - 1, "EOM"))
-    return av_at(t, "EOM") - opening
+               else av_at(t - 1, AvTiming.EOM))
+    return av_at(t, AvTiming.EOM) - opening
 
 
 def check_av_roll_fwd_resid(t):
@@ -2319,8 +2345,8 @@ def check_av_roll_fwd_resid(t):
         return 0.0
     expected = (prem_to_av(t) - wd_from_av(t) + inv_income(t)
                 - charges_from_av(t)
-                - claims_from_av(t, "DEATH") - claims_from_av(t, "LAPSE")
-                - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Kind.DEATH) - claims_from_av(t, Kind.LAPSE)
+                - claims_from_av(t, Kind.MATURITY))
     return av_change(t) - expected
 
 
@@ -2332,7 +2358,8 @@ def check_av_roll_fwd():
     The per-month signed residual is :func:`check_av_roll_fwd_resid`; the tolerance is
     1e-6 of a currency unit on a contract value of order 1e5.
     """
-    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) < 1e-6 for t in expressions.periods(proj_len())))
+    return all(abs(check_av_roll_fwd_resid(t)) < 1e-6
+               for t in range(proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2354,7 +2381,8 @@ def check_pols_roll_fwd():
     No argument and a ``bool`` return; :func:`check_pols_roll_fwd_resid` is the signed
     per-month residual. In-force is a probability of order 1, so the tolerance is 1e-12.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) < 1e-12 for t in expressions.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) < 1e-12
+               for t in range(proj_len()))
 
 
 def check_charge_split_resid(t):
@@ -2378,7 +2406,8 @@ def check_charge_split():
     No argument and a ``bool`` return; :func:`check_charge_split_resid` is the signed
     per-month residual, measured per contract, so the tolerance is 1e-8.
     """
-    return expressions.all_true((abs(check_charge_split_resid(t)) < 1e-8 for t in expressions.periods(proj_len())))
+    return all(abs(check_charge_split_resid(t)) < 1e-8
+               for t in range(proj_len()))
 
 
 def result_cf():
@@ -2389,7 +2418,7 @@ def result_cf():
     is the count in force at the **start** of each month and is the weight carried by
     every cash flow on that row, so the two reconcile.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2400,9 +2429,9 @@ def result_cf():
             "maint_fees": [maint_fees(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
             "glwb_payments": [glwb_payments(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2420,14 +2449,14 @@ def result_pols():
     across: ``pols_if - pols_death - pols_lapse - pols_maturity`` is the next row's
     ``pols_if``.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2439,11 +2468,11 @@ def result_av():
     One ``sa_pp_<i>`` column per subaccount, then the worked example's own columns: the
     contract value before the charges, the three charges, and the end-of-month value.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     cols = {}
     for i in sub_ids():
         cols["sa_pp_%s" % i] = [sa_pp(t, i) for t in ts]
-    cols["av_pp_bef_fee"] = [av_pp_at(t, "BEF_FEE") for t in ts]
+    cols["av_pp_bef_fee"] = [av_pp_at(t, AvTiming.BEF_FEE) for t in ts]
     cols["fee_glwb_pp"] = [fee_glwb_pp(t) for t in ts]
     cols["fee_gmdb_pp"] = [fee_gmdb_pp(t) for t in ts]
     cols["maint_fee_pp"] = [maint_fee_pp(t) for t in ts]
@@ -2451,12 +2480,12 @@ def result_av():
     cols["fund_expense_pp"] = [fund_expense_pp(t) for t in ts]
     cols["av_pp"] = [av_pp(t) for t in ts]
     cols["surr_benefit_pp"] = [surr_benefit_pp(t) for t in ts]
-    return pd.DataFrame(cols, index=pd.Index(ts, name="t"))          # noqa: F821
+    return pd.DataFrame(cols, index=pd.Index(ts, name="t"))
 
 
 def result_bases():
     """Result table of the guarantee bases and moneyness ratios, indexed by t."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "gwb_pp": [gwb_pp(t) for t in ts],
@@ -2474,11 +2503,6 @@ def result_bases():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2598,8 +2622,22 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
+StepupBasis = ("Pickle", 1)
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+GmdbOption = ("Pickle", 2)
 
-expressions = ("Module", "modelx_helpers.expressions")
+FeeResetRule = ("Pickle", 3)
+
+RollupRule = ("Pickle", 4)
+
+AvTiming = ("Pickle", 5)
+
+BenefitTiming = ("Pickle", 6)
+
+PolTiming = ("Pickle", 7)
+
+Kind = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)
+
+pdn = ("Module", "modelx_helpers.pdn")

@@ -190,43 +190,43 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                          # noqa: F821
+    """The selected model point."""
+    return data.model_point_table().slice(point_id)      # noqa: F821
 
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return tables.lookup_int(prepared_model_point(), "age_at_entry")
+    return int(model_point()["age_at_entry"])
 
 
 def sex():
     """The sex of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "sex")
+    return model_point()["sex"]
 
 
 def rate_class():
     """The underwriting class of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "rate_class")
+    return model_point()["rate_class"]
 
 
 def plan():
     """The plan code of the selected model point (T10 / T20 / T30)."""
-    return tables.lookup_object(prepared_model_point(), "plan")
+    return model_point()["plan"]
 
 
 def sum_assured():
     """The face amount of the selected model point."""
-    return tables.lookup_float(prepared_model_point(), "sum_assured")
+    return float(model_point()["sum_assured"])
 
 
 def pols_if_init():
     """Initial number of policies in-force."""
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def premium_mode():
     """The premium mode of the selected model point: A, SA, Q or M [S6]."""
-    return tables.lookup_object(prepared_model_point(), "premium_mode")
+    return model_point()["premium_mode"]
 
 
 def band():
@@ -326,6 +326,11 @@ def prem_due(t):
     return duration_mth(t) % prem_cycle() == 0
 
 
+def premium_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The premium table for this policy's plan, sex, class and band."""
+    return data.premium_rates().slice(plan(), sex(), rate_class(), band())  # noqa: F821
+
+
 def premium_pp_ann(t):
     """AP(t): the guaranteed **annualized** gross premium per policy, fee included.
 
@@ -335,8 +340,7 @@ def premium_pp_ann(t):
     and it is that instalment — not ``AP`` — that :func:`commissions` and
     :func:`premium_taxes` are charged on.
     """
-    key = (plan(), sex(), rate_class(), band(), policy_year(t))
-    return tables.lookup_float(data.prepared_premium_rates_scalar_loc(), key, "premium_pp")               # noqa: F821
+    return premium_schedule().lookup_float(policy_year(t), "premium_pp")
 
 
 def premium_pp(t):
@@ -366,8 +370,8 @@ def plt_mort_factor_init_formula():
 
 def plt_mort_factor_init():
     """M(1) actually used: the model point's override if given, else the formula."""
-    o = tables.lookup_object(prepared_model_point(), "plt_mort_factor_override")
-    return plt_mort_factor_init_formula() if tables.is_missing(pd.isna, o) else float(o)  # noqa: F821
+    o = model_point()["plt_mort_factor_override"]
+    return plt_mort_factor_init_formula() if pdn.isna(o) else float(o)  # noqa: F821
 
 
 def plt_mort_factor(d):
@@ -382,12 +386,12 @@ def plt_mort_factor(d):
 
 def class_factor():
     """Underwriting-class multiplier on the base mortality table **[std]**."""
-    return tables.lookup_float(data.prepared_class_factor_table_loc(), rate_class(), 'factor')      # noqa: F821
+    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
 
 
 def mort_rate_base(t):
     """Base-table **annual** mortality rate at the attained age in month t, ``age(t)``."""
-    return tables.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')                 # noqa: F821
+    return data.mort_table().lookup_float(age(t), "mort_rate")       # noqa: F821
 
 
 def mort_rate(t):
@@ -413,13 +417,12 @@ def mort_rate_mth(t):
 def shock_lapse_rate():
     """Shock lapse at the end of the level period, by jump-ratio bucket **[std]**."""
     j = jump_ratio()
-    tbl = data.prepared_shock_lapse_table_calculation_rows()
-    keys = list(expressions.keys(tbl))
+    tbl = data.shock_lapse_table()                                   # noqa: F821
+    keys = list(tbl.index)
     for key in keys:
-        r = expressions.row(tbl, key)
-        if tables.lookup_object(r, "jump_lo") < j <= tables.lookup_object(r, "jump_hi"):
-            return tables.lookup_float(r, "shock_lapse_rate")
-    return tables.lookup_float(expressions.row(tbl, keys[-1]), "shock_lapse_rate")
+        if tbl.lookup_float(key, "jump_lo") < j <= tbl.lookup_float(key, "jump_hi"):
+            return tbl.lookup_float(key, "shock_lapse_rate")
+    return tbl.lookup_float(keys[-1], "shock_lapse_rate")
 
 
 def lapse_rate(t):
@@ -617,7 +620,7 @@ def net_cf(t):
 
 def result_cf():
     """Result table of cashflows, one row per **month** ``t = 0 .. proj_len() - 1``."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -648,15 +651,10 @@ def result_cf_annual():
     than at the anniversary, and so not on ``net_cf``. That gap is the point of the finer
     grid — see the Space docstring.
     """
-    monthly = inputs.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in expressions.keys(monthly)]
-    annual = expressions.group_sum(monthly, years, first=('pols_if',))
-    return expressions.to_pandas(annual, index_name='policy_year')
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    monthly = pdn.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in monthly.index]
+    annual = pdn.group_sum(monthly, years, first=('pols_if',))
+    return pdn.to_pandas(annual, index_name="policy_year")
 
 
 # ---------------------------------------------------------------------------
@@ -690,8 +688,4 @@ conv_rate_final = 0.0
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

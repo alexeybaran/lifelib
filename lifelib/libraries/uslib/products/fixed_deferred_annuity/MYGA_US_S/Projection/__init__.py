@@ -283,22 +283,22 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().slice(point_id)
 
 
 def policy_id():
     """The contract identifier of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "policy_id")
+    return model_point()["policy_id"]
 
 
 def age_at_entry():
     """The issue age (ANB) of the selected model point."""
-    return tables.lookup_int(prepared_model_point(), "age_at_entry")
+    return int(model_point()["age_at_entry"])
 
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return tables.lookup_object(prepared_model_point(), "sex")
+    return model_point()["sex"]
 
 
 def tax_status():
@@ -306,12 +306,12 @@ def tax_status():
 
     Reported only. The base run is non-qualified **[std]**; no RMD module is implemented.
     """
-    return tables.lookup_object(prepared_model_point(), "tax_status")
+    return model_point()["tax_status"]
 
 
 def premium_pp():
     """P: the single purchase payment per contract."""
-    return tables.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def pols_if_init():
@@ -320,22 +320,22 @@ def pols_if_init():
     The notes' ``l(t-1)`` at ``t = 0``, the in-force probability at issue; their
     end-of-month ``l(0)`` is ``pols_if_at(0, "AFT_DECR")``.
     """
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def guar_period():
     """n: the guarantee period in years; the surrender charge and MVA periods equal it."""
-    return tables.lookup_int(prepared_model_point(), "guar_period")
+    return int(model_point()["guar_period"])
 
 
 def declared_rate_initial():
     """The declared credited rate guaranteed for the initial term, 4.45% p.a. [S11]."""
-    return tables.lookup_float(prepared_model_point(), "declared_rate_initial")
+    return float(model_point()["declared_rate_initial"])
 
 
 def gmir():
     """The guaranteed minimum interest rate, 0.25% p.a. [S11]; a floor on any declared rate."""
-    return tables.lookup_float(prepared_model_point(), "gmir")
+    return float(model_point()["gmir"])
 
 
 def mgsv_rate():
@@ -345,7 +345,7 @@ def mgsv_rate():
     rate :func:`mgsv_rate_statutory`; crediting the floor at more is permitted and simply
     produces a higher floor [R1 4.B].
     """
-    return tables.lookup_float(prepared_model_point(), "mgsv_rate")
+    return float(model_point()["mgsv_rate"])
 
 
 def mgsv_annual_charge():
@@ -353,7 +353,7 @@ def mgsv_annual_charge():
 
     $0 representative [S11]; the statutory maximum is $50 p.a. [R1 4.A].
     """
-    return tables.lookup_float(prepared_model_point(), "mgsv_annual_charge")
+    return float(model_point()["mgsv_annual_charge"])
 
 
 def mgsv_wd_convention():
@@ -363,7 +363,7 @@ def mgsv_wd_convention():
     paid, W(t) + M(t) - C(t), keeping the floor higher. Both are live in the market and
     the difference compounds at i_nf for the rest of the contract.
     """
-    return tables.lookup_object(prepared_model_point(), "mgsv_wd_convention")
+    return MgsvWithdrawal[model_point()["mgsv_wd_convention"]]
 
 
 def renewal_architecture():
@@ -374,7 +374,7 @@ def renewal_architecture():
     ``annual_redeclare`` redeclares the rate each anniversary with no further surrender
     charge and no MVA [S13], so the shock happens once.
     """
-    return tables.lookup_object(prepared_model_point(), "renewal_architecture")
+    return Renewal[model_point()["renewal_architecture"]]
 
 
 def free_wd_rule():
@@ -384,12 +384,12 @@ def free_wd_rule():
     [S5][S6] is the prior contract year's credited interest. The notes' third value,
     ``greatest_of`` [S13], is **not implemented**: no formula is given for it.
     """
-    return tables.lookup_object(prepared_model_point(), "free_wd_rule")
+    return FreeRule[model_point()["free_wd_rule"]]
 
 
 def free_wd_rate():
     """The free-withdrawal percentage under ``pct_av``, 10% [S10]."""
-    return tables.lookup_float(prepared_model_point(), "free_wd_rate")
+    return float(model_point()["free_wd_rate"])
 
 
 def free_wd_mva_exempt():
@@ -401,12 +401,12 @@ def free_wd_mva_exempt():
     ``max(AV(t) x (1 + mu(t) - sc(y)), MGSV(t))``. The notes apply the flag to both the
     charge and the adjustment; in the market it strictly concerns the adjustment.
     """
-    return tables.lookup_bool(prepared_model_point(), "free_wd_mva_exempt")
+    return bool(model_point()["free_wd_mva_exempt"])
 
 
 def mva_family():
     """``linear_duration``, ``geometric`` or ``declared_differential``. All implemented."""
-    return tables.lookup_object(prepared_model_point(), "mva_family")
+    return MvaFamily[model_point()["mva_family"]]
 
 
 def mva_cap_rule():
@@ -415,17 +415,17 @@ def mva_cap_rule():
     The cap, not the formula family, is the largest cross-carrier divergence in the source
     set, so it is a first-class model parameter. See :func:`mva_pp_on`.
     """
-    return tables.lookup_object(prepared_model_point(), "mva_cap_rule")
+    return Cap[model_point()["mva_cap_rule"]]
 
 
 def mva_ref_yield_at_issue():
     """i0 at issue: the MVA reference yield locked for the initial period, 5.00% **[std]**."""
-    return tables.lookup_float(prepared_model_point(), "mva_ref_yield_at_issue")
+    return float(model_point()["mva_ref_yield_at_issue"])
 
 
 def premium_tax_rate():
     """Premium tax deducted from the contract, 0% **[std]** [S3][S16]."""
-    return tables.lookup_float(prepared_model_point(), "premium_tax_rate")
+    return float(model_point()["premium_tax_rate"])
 
 
 def tax_basis_pp_init():
@@ -434,17 +434,17 @@ def tax_basis_pp_init():
     The notes' ``basis(t)`` is the end-of-month value, so this is ``basis(t-1)`` at
     ``t = 0``, not ``tax_basis_pp(0)``.
     """
-    return tables.lookup_float(prepared_model_point(), "tax_basis_initial")
+    return float(model_point()["tax_basis_initial"])
 
 
 def scenario_id():
     """The rate scenario the model point runs on, a key into *rate_scenario.csv*."""
-    return tables.lookup_object(prepared_model_point(), "scenario_id")
+    return model_point()["scenario_id"]
 
 
 def wd_schedule_id():
     """The withdrawal programme, a key into *withdrawal_table.csv*."""
-    return tables.lookup_object(prepared_model_point(), "wd_schedule_id")
+    return model_point()["wd_schedule_id"]
 
 
 def policy_term():
@@ -483,17 +483,27 @@ def duration(t):
 
 def age(t):
     """The attained age (ANB) during month t, ``age_at_entry() + duration(t)``."""
-    return age_at_entry() + duration(t)
+    return attained_age(duration(t))
+
+
+def attained_age(completed_years):
+    """The attained age for a completed policy year."""
+    return age_at_entry() + completed_years
+
+
+def guar_period_months():
+    """The guarantee period in months."""
+    return 12 * guar_period()
 
 
 def gp_index(t):
     """The index of the guarantee period containing month t: 1 for ``t = 0 .. 12n - 1``."""
-    return t // (12 * guar_period()) + 1
+    return t // guar_period_months() + 1
 
 
 def gp_start_month(t):
     """The first month of the guarantee period containing month t; 0 for the first period."""
-    return 12 * guar_period() * (gp_index(t) - 1)
+    return guar_period_months() * (gp_index(t) - 1)
 
 
 def gp_end(t):
@@ -502,7 +512,7 @@ def gp_end(t):
     ``12 n gp_index(t) - (t + 1)``: 59 at ``t = 0`` and 0 at ``t = 12n - 1``, the month
     that ends the period.
     """
-    return 12 * guar_period() * gp_index(t) - (t + 1)
+    return guar_period_months() * gp_index(t) - (t + 1)
 
 
 def in_gp_window(t):
@@ -515,10 +525,10 @@ def in_gp_window(t):
     annuitization is elected. Under ``annual_redeclare`` there is exactly one window, at
     ``t = 12n``, the month after the initial term.
     """
-    n12 = 12 * guar_period()
+    n12 = guar_period_months()
     if t <= 0 or t % n12 != 0:
         return False
-    if renewal_architecture() == "annual_redeclare":
+    if renewal_architecture() == Renewal.annual_redeclare:
         return t == n12
     return True
 
@@ -530,12 +540,17 @@ def redeclare_month(t):
     guarantee period, under ``annual_redeclare`` the first month of the current contract
     year.
     """
-    n12 = 12 * guar_period()
+    n12 = guar_period_months()
     if t < n12:
         return 0
-    if renewal_architecture() == "rollover":
+    if renewal_architecture() == Renewal.rollover:
         return n12 * (gp_index(t) - 1)
     return 12 * duration(t)
+
+
+def scenario_table() -> "modelx_helpers.immutable_inputs.Table":
+    """The rate scenario selected for this policy."""
+    return data.rate_scenario().slice(scenario_id())                   # noqa: F821
 
 
 def scenario_rate(t, name):
@@ -544,9 +559,7 @@ def scenario_rate(t, name):
     Each row of *rate_scenario.csv* states the level that holds from its own month ``t``
     until the next row of the same scenario, so a flat path is one row at ``t = 0``.
     """
-    sub = tables.subtable(data.prepared_rate_scenario_groups_1(), scenario_id())                    # noqa: F821
-    months = [i for i in expressions.keys(sub) if i <= t]
-    return float(tables.lookup_object(sub, expressions.max_value(months), name))
+    return scenario_table().previous(t, name)
 
 
 def market_rate(t):
@@ -556,7 +569,7 @@ def market_rate(t):
     50% A / 50% AA spread less the pricing spread [R2 6.B.5]; the model takes it as an
     exogenous input because the index is a state-filed variable **[std]**.
     """
-    return scenario_rate(t, "market_rate")
+    return scenario_rate(t, RateColumn.market_rate)
 
 
 def mva_ref_yield(t):
@@ -565,7 +578,7 @@ def mva_ref_yield(t):
     The source design is Barclay's US Credit Index with a state-varying formula [S8]; the
     model takes a scalar series rather than hard-coding an index.
     """
-    return scenario_rate(t, "mva_ref_yield")
+    return scenario_rate(t, RateColumn.mva_ref_yield)
 
 
 def credit_rate(t):
@@ -576,7 +589,7 @@ def credit_rate(t):
     run sets ``renewal_spread = 0``, so the credited rate equals the competitor rate and
     the dynamic lapse term is exactly zero.
     """
-    if t < 12 * guar_period():
+    if t < guar_period_months():
         return declared_rate_initial()
     return max(gmir(), market_rate(redeclare_month(t)) - renewal_spread)  # noqa: F821
 
@@ -625,14 +638,24 @@ def prem_to_av_pp(t):
     return av_pp_init() if t == 0 else 0.0
 
 
+def has_withdrawal_schedule():
+    """Whether the input contains the selected withdrawal schedule."""
+    return wd_schedule_id() in data.withdrawal_table()               # noqa: F821
+
+
+def withdrawal_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The selected schedule, indexed by the original policy month."""
+    return data.withdrawal_table().slice(wd_schedule_id())            # noqa: F821
+
+
 def wd_scheduled_pp(t):
     """The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.
 
     An exact-key lookup on ``(wd_schedule_id, t)`` with ``t`` the 0-based policy month.
     """
-    table = data.withdrawal_table()                                  # noqa: F821
-    key = (wd_schedule_id(), t)
-    return tables.lookup_float(data.prepared_withdrawal_table_scalar_loc(), key, "wd_amount") if key in expressions.keys(data.prepared_withdrawal_table_index_selection()) else 0.0
+    if not has_withdrawal_schedule():
+        return 0.0
+    return withdrawal_schedule().lookup_float(t, "wd_amount", 0.0)
 
 
 def wd_pp(t):
@@ -660,7 +683,7 @@ def av_pp(t):
     value: this chassis carries no front-end load, no annual fee and no rider charges
     [S5][S10][S13][S16].
     """
-    return av_pp_at(t, "BEF_INV") * (1.0 + credit_rate_mth(t))
+    return av_pp_at(t, AvTiming.BEF_INV) * (1.0 + credit_rate_mth(t))
 
 
 def av_pp_at(t, timing):
@@ -670,11 +693,11 @@ def av_pp_at(t, timing):
     ``av_pp(t - 1)`` after; ``"BEF_INV"`` is ``AV'(t) = AV(t-1) - W(t)``; ``"EOM"`` is
     ``AV(t)``, the closing balance.
     """
-    if timing == "BEF_WD":
+    if timing == AvTiming.BEF_WD:
         return av_pp_init() if t == 0 else av_pp(t - 1)
-    elif timing == "BEF_INV":
-        return av_pp_at(t, "BEF_WD") - wd_pp(t)
-    elif timing == "EOM":
+    elif timing == AvTiming.BEF_INV:
+        return av_pp_at(t, AvTiming.BEF_WD) - wd_pp(t)
+    elif timing == AvTiming.EOM:
         return av_pp(t)
     else:
         raise ValueError("invalid timing")
@@ -682,7 +705,7 @@ def av_pp_at(t, timing):
 
 def inv_income_pp(t):
     """Interest credited to one contract's account value at the end of month t."""
-    return av_pp_at(t, "BEF_INV") * credit_rate_mth(t)
+    return av_pp_at(t, AvTiming.BEF_INV) * credit_rate_mth(t)
 
 
 def interest_credited_pp(t):
@@ -716,7 +739,7 @@ def free_wd_base(y):
     *fixed known amount* at each anniversary is what lets ``E(t) = AV(t) - FW(t)`` be
     evaluated without a fixed point.
     """
-    return premium_pp() if y <= 1 else av_pp_at(12 * (y - 1), "BEF_WD")
+    return premium_pp() if y <= 1 else av_pp_at(12 * (y - 1), AvTiming.BEF_WD)
 
 
 def free_wd_allow(y):
@@ -728,9 +751,9 @@ def free_wd_allow(y):
     year 1. ``greatest_of`` [S13] is not implemented and raises.
     """
     rule = free_wd_rule()
-    if rule == "pct_av":
+    if rule == FreeRule.pct_av:
         return free_wd_rate() * free_wd_base(y)
-    elif rule == "interest_only":
+    elif rule == FreeRule.interest_only:
         if y <= 1:
             return 0.0
         prior = interest_credited_pp(12 * (y - 2) - 1) if y > 2 else 0.0
@@ -793,10 +816,10 @@ def surr_charge_id(t):
     [S13]. Getting this clock wrong relocates the shock lapse by years.
     """
     if gp_index(t) <= 1:
-        return "initial"
-    if renewal_architecture() == "annual_redeclare":
-        return "none"
-    return "renewal"
+        return Schedule.initial
+    if renewal_architecture() == Renewal.annual_redeclare:
+        return Schedule.none
+    return Schedule.renewal
 
 
 def surr_charge_year(t):
@@ -818,10 +841,11 @@ def surr_charge_age_cap(t):
     """
     table = data.surr_charge_age_cap_table()                         # noqa: F821
     attained = age(t)
-    lo, hi = int(min(expressions.keys(data.prepared_surr_charge_age_cap_table_index_selection()))), int(expressions.max_value(expressions.keys(data.prepared_surr_charge_age_cap_table_index_selection())))
+    lo = int(min(table.index))
+    hi = table.index.max_int()
     if attained < lo:
         return 1.0
-    return tables.lookup_float(data.prepared_surr_charge_age_cap_table_scalar_loc(), min(attained, hi), "surr_charge_cap")
+    return table.lookup_float(min(attained, hi), "surr_charge_cap")
 
 
 def surr_charge_rate(t):
@@ -832,13 +856,15 @@ def surr_charge_rate(t):
     30-day guarantee-period-end window [S1][S2].
     """
     schedule = surr_charge_id(t)
-    if schedule == "none" or in_gp_window(t):
+    if schedule == Schedule.none or in_gp_window(t):
         return 0.0
-    key = (schedule, surr_charge_year(t))
-    table = data.surr_charge_table()                                 # noqa: F821
-    if key not in expressions.keys(data.prepared_surr_charge_table_index_selection()):
+    if schedule not in data.surr_charge_table():                    # noqa: F821
         return 0.0
-    return min(tables.lookup_float(data.prepared_surr_charge_table_scalar_loc(), key, "surr_charge_rate"), surr_charge_age_cap(t))
+    key = surr_charge_year(t)
+    table = data.surr_charge_table().slice(schedule)                 # noqa: F821
+    if key not in table.index:
+        return 0.0
+    return min(table.lookup_float(key, "surr_charge_rate"), surr_charge_age_cap(t))
 
 
 def mva_term(t):
@@ -851,7 +877,7 @@ def mva_term(t):
     serves as the geometric branch's ``tau``, which the notes define as days to maturity
     / 365.25. The two divisors differ in the sources; on exact twelfths they cannot.
     """
-    if renewal_architecture() == "annual_redeclare" and t >= 12 * guar_period():
+    if renewal_architecture() == Renewal.annual_redeclare and t >= guar_period_months():
         return 0.0
     months_to_year_end = 12 * policy_year(t) - (t + 1)
     whole_years_left = guar_period() * gp_index(t) - policy_year(t)
@@ -911,14 +937,7 @@ def mva_duration_factor(t):
     table = data.mva_factor_table()                                  # noqa: F821
     column = ("factor_lo" if credit_rate(t) < mva_factor_rate_split  # noqa: F821
               else "factor_hi")
-    years = mva_term(t)
-    last = int(expressions.max_value(expressions.keys(data.prepared_mva_factor_table_index_selection())))
-    lower = int(math.floor(years))                                   # noqa: F821
-    if lower >= last:
-        return tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), last, column)
-    f0 = tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), lower, column)
-    f1 = tables.lookup_float(data.prepared_mva_factor_table_scalar_loc(), lower + 1, column)
-    return f0 + (f1 - f0) * (years - lower)
+    return table.interpolate_float(mva_term(t), column)
 
 
 def mva_rate(t):
@@ -933,12 +952,12 @@ def mva_rate(t):
     if not mva_in_force(t):
         return 0.0
     family = mva_family()
-    if family == "linear_duration":
+    if family == MvaFamily.linear_duration:
         return (mva_ref_yield_locked(t) - mva_ref_yield(t)) * mva_term(t)
-    elif family == "geometric":
+    elif family == MvaFamily.geometric:
         return mva_factor_geometric(
             mva_ref_yield_locked(t), mva_ref_yield(t), mva_term(t)) - 1.0
-    elif family == "declared_differential":
+    elif family == MvaFamily.declared_differential:
         return (credit_rate(t) - market_rate(t)) * mva_duration_factor(t)
     else:
         raise ValueError("invalid mva_family")
@@ -965,17 +984,17 @@ def mva_pp_on(t, base):
     """
     raw = mva_rate(t) * base
     rule = mva_cap_rule()
-    if rule == "none":
+    if rule == Cap.none:
         return raw
     charge = surr_charge_rate(t) * base
-    if rule == "sym_sc":
+    if rule == Cap.sym_sc:
         return max(-charge, min(charge, raw))
-    elif rule == "min_sc_interest":
+    elif rule == Cap.min_sc_interest:
         limit = min(charge, interest_credited_pp(t))
         return max(-limit, min(limit, raw))
-    elif rule == "asym_sc_snfl":
+    elif rule == Cap.asym_sc_snfl:
         return min(charge, raw)
-    elif rule == "gmir_floor":
+    elif rule == Cap.gmir_floor:
         return max(raw, prem_accum_gmir_pp(t) - av_pp(t))
     else:
         raise ValueError("invalid mva_cap_rule")
@@ -1044,9 +1063,9 @@ def mgsv_wd_deduct_pp(t):
     ``W(t) + M(t) - C(t)``, under ``net_of_charges`` [S9].
     """
     convention = mgsv_wd_convention()
-    if convention == "gross":
+    if convention == MgsvWithdrawal.gross:
         return wd_pp(t)
-    elif convention == "net_of_charges":
+    elif convention == MgsvWithdrawal.net_of_charges:
         return wd_payment_pp(t)
     else:
         raise ValueError("invalid mgsv_wd_convention")
@@ -1073,7 +1092,7 @@ def taxable_wd_pp(t):
     flow.
     """
     opening_basis = tax_basis_pp_init() if t == 0 else tax_basis_pp(t - 1)
-    gain = max(0.0, av_pp_at(t, "BEF_WD") - opening_basis)
+    gain = max(0.0, av_pp_at(t, AvTiming.BEF_WD) - opening_basis)
     return min(wd_pp(t), gain)
 
 
@@ -1087,6 +1106,16 @@ def tax_basis_pp(t):
     return opening - (wd_pp(t) - taxable_wd_pp(t))
 
 
+def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The original mortality scale selected by the policy's sex."""
+    return data.mort_table().slice(sex())                            # noqa: F821
+
+
+def mort_rate_for_year(completed_years):
+    """The annual mortality rate for a completed policy year."""
+    return mortality_schedule().lookup_float(attained_age(completed_years), "mort_rate")
+
+
 def mort_rate(t):
     """The annual mortality rate at the attained age and sex, from *mort_table.csv*.
 
@@ -1096,12 +1125,17 @@ def mort_rate(t):
     swap it in by repointing ``Data.mort_table_file``. Mortality is second-order on this
     product: death pays the full account value with no charge and no MVA.
     """
-    return tables.lookup_float(data.prepared_mort_table_loc(), (age(t), sex()), 'mort_rate')   # noqa: F821
+    return mort_rate_for_year(duration(t))
 
 
 def mort_rate_mth(t):
     """q(t): the monthly mortality rate, ``1 - (1 - q_x)^(1/12)``."""
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
+    return mort_rate_mth_for_year(duration(t))
+
+
+def mort_rate_mth_for_year(completed_years):
+    """The monthly mortality rate shared by months of the same policy year."""
+    return 1.0 - (1.0 - mort_rate_for_year(completed_years)) ** (1.0 / 12.0)
 
 
 def gmir_factor():
@@ -1132,7 +1166,7 @@ def lapse_rate_base(t):
     """
     year = policy_year(t)
     n = guar_period()
-    if renewal_architecture() == "rollover":
+    if renewal_architecture() == Renewal.rollover:
         if year > n and (year - 1) % n == 0:
             return lapse_base_shock                                  # noqa: F821
         return lapse_base_igp                                        # noqa: F821
@@ -1145,7 +1179,7 @@ def lapse_rate_base(t):
     elif year == n + 3:
         return lapse_base_post2                                      # noqa: F821
     else:
-        return lapse_base_ult                                        # noqa: F821
+        return lapse_base_ult
 
 
 def lapse_dyn_exponent(t):
@@ -1249,7 +1283,7 @@ def pols_if(t):
         return pols_if_init()
     if t >= proj_len():
         return 0.0
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1261,33 +1295,33 @@ def pols_if_at(t, timing):
     ``l(t) = l(t-1)(1 - a)(1 - q)(1 - w)`` **[std order]**.
     """
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - annuitization_rate(t))
-    if timing == "BEF_MORT":
+    if timing == PolTiming.BEF_MORT:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
 
 def pols_annuitization(t):
     """Annuitization elections in month t, taken at BOM before crediting."""
-    return pols_if_at(t, "BEF_DECR") * annuitization_rate(t)
+    return pols_if_at(t, PolTiming.BEF_DECR) * annuitization_rate(t)
 
 
 def pols_death(t):
     """Deaths in month t, on the in-force net of annuitization elections."""
-    return pols_if_at(t, "BEF_MORT") * mort_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_MORT) * mort_rate_mth(t)
 
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of annuitization and mortality."""
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1296,18 +1330,18 @@ def pols_maturity(t):
     Not a decrement — the projection horizon runs out — but needed for the in-force
     roll-forward to close; see the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return pols_lapse(t)
-    elif kind == "ANNUITIZATION":
+    elif kind == Kind.ANNUITIZATION:
         return pols_annuitization(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -1336,7 +1370,7 @@ def annuitization_pp(t):
     Payout factors are out of scope: no retrieved product document contains an annuity
     rate table, so the accumulation model emits the transfer and hands the amount on.
     """
-    account = av_pp_at(t, "BEF_INV")
+    account = av_pp_at(t, AvTiming.BEF_INV)
     if in_gp_window(t):
         return account
     excess = (max(0.0, account - free_wd_remain(t)) if free_wd_mva_exempt()
@@ -1354,13 +1388,13 @@ def claim_pp(t, kind):
     ``"LAPSE"`` is SB(t). ``"ANNUITIZATION"`` is :func:`annuitization_pp`.
     ``"MATURITY"`` is the account value floored at MGSV at the projection horizon.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return max(av_pp(t), surr_benefit_pp(t))
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "ANNUITIZATION":
+    elif kind == Kind.ANNUITIZATION:
         return annuitization_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return max(av_pp(t), mgsv_pp(t))
     else:
         raise ValueError("invalid kind")
@@ -1373,9 +1407,9 @@ def claim_from_av_pp(t, kind):
     :func:`claims_over_av`. Annuitizers leave at BOM and so release ``AV'(t)``, before the
     month's interest.
     """
-    if kind == "ANNUITIZATION":
-        return av_pp_at(t, "BEF_INV")
-    elif kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind == Kind.ANNUITIZATION:
+        return av_pp_at(t, AvTiming.BEF_INV)
+    elif kind in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY):
         return av_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -1402,11 +1436,11 @@ def withdrawals(t):
     return wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all four."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE")
-                + claims(t, "ANNUITIZATION") + claims(t, "MATURITY"))
+def claims(t, kind):
+    """Benefit outgo in month t, for one ``kind`` or, with ``Kind.ALL``, all four."""
+    if kind == Kind.ALL:
+        return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
+                + claims(t, Kind.ANNUITIZATION) + claims(t, Kind.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -1415,7 +1449,7 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed, and normally **negative** on this chassis: a surrender pays out less than the
@@ -1425,9 +1459,9 @@ def claims_over_av(t, kind=None):
     SB(t), it does not add a separate top-up line, and the charge and the MVA are
     internal accounting entries rather than ledger lines.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "ANNUITIZATION") + claims_over_av(t, "MATURITY"))
+    if kind == Kind.ALL:
+        return (claims_over_av(t, Kind.DEATH) + claims_over_av(t, Kind.LAPSE)
+                + claims_over_av(t, Kind.ANNUITIZATION) + claims_over_av(t, Kind.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -1473,7 +1507,7 @@ def net_cf(t):
     the benefit *amount* but are never cash flows of their own. Only amounts paid to or
     received from the contract holder, and the insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t)
+    return (premiums(t) - withdrawals(t) - claims(t, Kind.ALL)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 
@@ -1489,11 +1523,11 @@ def av_at(t, timing):
     :func:`check_av_roll_fwd` would not close. At ``t = 0`` the ``"BEF_WD"`` value is the
     premium just deposited, ``av_pp_init() * pols_if_init()``.
     """
-    if timing == "BEF_WD":
-        return av_pp_at(t, "BEF_WD") * pols_if(t)
-    elif timing == "BEF_INV":
-        return av_pp_at(t, "BEF_INV") * pols_if_at(t, "BEF_MORT")
-    elif timing == "EOM":
+    if timing == AvTiming.BEF_WD:
+        return av_pp_at(t, AvTiming.BEF_WD) * pols_if(t)
+    elif timing == AvTiming.BEF_INV:
+        return av_pp_at(t, AvTiming.BEF_INV) * pols_if_at(t, PolTiming.BEF_MORT)
+    elif timing == AvTiming.EOM:
         return av_pp(t) * pols_if(t + 1)
     else:
         raise ValueError("invalid timing")
@@ -1501,7 +1535,7 @@ def av_at(t, timing):
 
 def inv_income(t):
     """Interest credited to the whole block in month t."""
-    return av_at(t, "BEF_INV") * credit_rate_mth(t)
+    return av_at(t, AvTiming.BEF_INV) * credit_rate_mth(t)
 
 
 def wd_from_av(t):
@@ -1516,8 +1550,8 @@ def av_change(t):
     before the purchase payment, so at ``t = 0`` the change is the whole closing balance
     and :func:`prem_to_av` is the deposit that explains it.
     """
-    opening = av_at(t - 1, "EOM") if t > 0 else 0.0
-    return av_at(t, "EOM") - opening
+    opening = av_at(t - 1, AvTiming.EOM) if t > 0 else 0.0
+    return av_at(t, AvTiming.EOM) - opening
 
 
 def check_av_roll_fwd_resid(t):
@@ -1533,8 +1567,8 @@ def check_av_roll_fwd_resid(t):
     much* :func:`check_av_roll_fwd` failed.
     """
     expected = (prem_to_av(t) - wd_from_av(t) + inv_income(t)
-                - claims_from_av(t, "ANNUITIZATION") - claims_from_av(t, "DEATH")
-                - claims_from_av(t, "LAPSE") - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Kind.ANNUITIZATION) - claims_from_av(t, Kind.DEATH)
+                - claims_from_av(t, Kind.LAPSE) - claims_from_av(t, Kind.MATURITY))
     return av_change(t) - expected
 
 
@@ -1546,7 +1580,8 @@ def check_av_roll_fwd():
     :func:`check_av_roll_fwd_resid` carries the per-month signed residual, and this is
     ``abs(resid) <= check_tol_av`` over ``t = 0 .. proj_len() - 1``.
     """
-    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= check_tol_av for t in expressions.periods(proj_len())))
+    return all(abs(check_av_roll_fwd_resid(t)) <= check_tol_av      # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1569,7 +1604,8 @@ def check_pols_roll_fwd():
     No argument, returns a bool over ``t = 0 .. proj_len() - 1``, matching
     :func:`check_av_roll_fwd` and the library convention.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols for t in expressions.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= check_tol_pols  # noqa: F821
+               for t in range(proj_len()))
 
 
 def result_cf():
@@ -1584,16 +1620,16 @@ def result_cf():
     flows: ``withdrawals(t) / wd_payment_pp(t)`` and
     ``expenses(t) / ((expense_maint / 12) * inflation_factor(t))`` both return it.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_annuitization": [claims(t, "ANNUITIZATION") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_annuitization": [claims(t, Kind.ANNUITIZATION) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -1612,7 +1648,7 @@ def result_pols():
     month's ``pols_if``, which equals ``pols_if_aft_decr`` in every month but the last,
     ``proj_len() - 1``, where the deemed maturity empties the block.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1620,7 +1656,7 @@ def result_pols():
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -1633,12 +1669,12 @@ def result_av():
     ``AV(t-1)``, ``W(t)``, ``AV'(t)``, the closing balance ``AV(t)`` and ``MGSV(t)`` —
     and the rest are its surrender trace, available at every duration.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "av_pp_bef_wd": [av_pp_at(t, "BEF_WD") for t in ts],
+            "av_pp_bef_wd": [av_pp_at(t, AvTiming.BEF_WD) for t in ts],
             "wd_pp": [wd_pp(t) for t in ts],
-            "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
+            "av_pp_bef_inv": [av_pp_at(t, AvTiming.BEF_INV) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "mgsv_pp": [mgsv_pp(t) for t in ts],
             "free_wd_avail": [free_wd_remain(t) for t in ts],
@@ -1649,11 +1685,6 @@ def result_av():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1739,8 +1770,26 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
+Renewal = ("Pickle", 1)
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+FreeRule = ("Pickle", 2)
 
-expressions = ("Module", "modelx_helpers.expressions")
+MgsvWithdrawal = ("Pickle", 3)
+
+MvaFamily = ("Pickle", 4)
+
+Cap = ("Pickle", 5)
+
+AvTiming = ("Pickle", 6)
+
+PolTiming = ("Pickle", 7)
+
+Kind = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)
+
+Schedule = ("Pickle", 10)
+
+RateColumn = ("Pickle", 11)
+
+pdn = ("Module", "modelx_helpers.pdn")
