@@ -240,7 +240,7 @@ def param_table():
 
 def prepared_param_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(param_table(),
+    return pdn.table(param_table(),
                         columns=('value',),
                         indexing='at')
 
@@ -248,7 +248,7 @@ def prepared_param_table_at():
 
 def prepared_freq_load_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_load_table(),
+    return pdn.table(freq_load_table(),
                         columns=('freq_load',),
                         indexing='at')
 
@@ -256,7 +256,7 @@ def prepared_freq_load_table_at():
 
 def prepared_charge_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(charge_table(),
+    return pdn.table(charge_table(),
                         columns=('value',),
                         indexing='at')
 
@@ -264,7 +264,7 @@ def prepared_charge_table_at():
 
 def prepared_mort_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('q_base', 'improve'),
                         indexing='at')
 
@@ -272,42 +272,42 @@ def prepared_mort_table_at():
 
 def prepared_rentenfaktor_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(rentenfaktor_table(),
+    return pdn.table(rentenfaktor_table(),
                         columns=('annuity_rate_curr',),
                         indexing='at')
 
 
 def prepared_charge_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(charge_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(charge_table(), indexing='at', preserve_scalar_types=True)
 
 
 
 def prepared_decl_rate_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(decl_rate_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(decl_rate_table(), indexing='at', preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='at', preserve_scalar_types=True)
 
 
 
 def prepared_param_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(param_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(param_table(), indexing='at', preserve_scalar_types=True)
 
 
 def prepared_decl_rate_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(decl_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+    return pdn.table(decl_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -331,4 +331,4 @@ param_file = "param_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

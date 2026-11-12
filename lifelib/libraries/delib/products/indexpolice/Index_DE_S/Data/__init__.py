@@ -237,7 +237,7 @@ def freq_load_table():
 
 def prepared_freq_load_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_load_table(),
+    return pdn.table(freq_load_table(),
                         columns=('freq_load',),
                         indexing='loc')
 
@@ -245,7 +245,7 @@ def prepared_freq_load_table_loc():
 
 def prepared_surplus_rate_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(surplus_rate_table(),
+    return pdn.table(surplus_rate_table(),
                         columns=('surplus_rate',),
                         indexing='loc')
 
@@ -253,7 +253,7 @@ def prepared_surplus_rate_table_loc():
 
 def prepared_election_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(election_table(),
+    return pdn.table(election_table(),
                         columns=('w',),
                         indexing='loc')
 
@@ -261,7 +261,7 @@ def prepared_election_table_loc():
 
 def prepared_index_param_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(index_param_table(),
+    return pdn.table(index_param_table(),
                         columns=('cap', 'quote'),
                         indexing='loc')
 
@@ -269,7 +269,7 @@ def prepared_index_param_table_loc():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('qx',),
                         indexing='loc')
 
@@ -277,14 +277,14 @@ def prepared_mort_table_loc():
 
 def prepared_lapse_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(lapse_table(),
+    return pdn.table(lapse_table(),
                         columns=('lapse_rate',),
                         indexing='loc')
 
 
 def prepared_index_return_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(index_return_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(index_return_table(), indexing='loc', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -308,4 +308,4 @@ freq_load_file = "freq_load_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

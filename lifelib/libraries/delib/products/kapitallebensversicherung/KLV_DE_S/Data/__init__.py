@@ -222,7 +222,7 @@ def deckrv_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate_1st',),
                         indexing='loc')
 
@@ -230,7 +230,7 @@ def prepared_mort_table_loc():
 
 def prepared_freq_loading_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_loading_table(),
+    return pdn.table(freq_loading_table(),
                         columns=('prem_freq_load',),
                         indexing='loc')
 
@@ -238,65 +238,65 @@ def prepared_freq_loading_table_loc():
 
 def prepared_cost_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(cost_table(),
+    return pdn.table(cost_table(),
                         columns=('alpha_rate', 'beta_rate', 'gamma_rate', 'expense_infl', 'claim_expense'),
                         indexing='loc')
 
 
 def prepared_cost_table_rows():
     """Own pandas-style rows for repeated calculation selection."""
-    return inputs.table(cost_table(), rows=True, preserve_scalar_types=True)
+    return pdn.table(cost_table(), rows=True, preserve_scalar_types=True)
 
 
 def prepared_deckrv_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(deckrv_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(deckrv_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_freq_loading_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_mort_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_surplus_rate_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(surplus_rate_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(surplus_rate_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_surplus_rate_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(surplus_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+    return pdn.table(surplus_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
 
 
 def prepared_deckrv_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(deckrv_table().index)
+    return pdn.index(deckrv_table().index)
 
 
 
 def prepared_freq_loading_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(freq_loading_table().index)
+    return pdn.index(freq_loading_table().index)
 
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -318,4 +318,4 @@ deckrv_file = "deckrv_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

@@ -207,7 +207,7 @@ def freq_loading_table():
 
 def prepared_occupation_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(occupation_table(),
+    return pdn.table(occupation_table(),
                         columns=('occ_factor',),
                         indexing='loc')
 
@@ -215,7 +215,7 @@ def prepared_occupation_table_loc():
 
 def prepared_freq_loading_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_loading_table(),
+    return pdn.table(freq_loading_table(),
                         columns=('freq_load',),
                         indexing='loc')
 
@@ -223,49 +223,49 @@ def prepared_freq_loading_table_loc():
 
 def prepared_claim_duration_table_loc():
     """Own claim-year calculation columns; follow the public source Cell cache."""
-    return inputs.table(claim_duration_table(),
+    return pdn.table(claim_duration_table(),
                         columns=('recov_rate', 'mort_dis_sel_factor'),
                         indexing='loc')
 
 
 def prepared_freq_loading_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_inception_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(inception_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(inception_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_mortality_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(mortality_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(mortality_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_inception_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(inception_table().index)
+    return pdn.index(inception_table().index)
 
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 
 def prepared_mortality_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(mortality_table().index)
+    return pdn.index(mortality_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -287,4 +287,4 @@ freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

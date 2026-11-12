@@ -233,7 +233,7 @@ def basis_table():
 
 def prepared_basis_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(basis_table(),
+    return pdn.table(basis_table(),
                         columns=('value',),
                         indexing='at')
 
@@ -241,7 +241,7 @@ def prepared_basis_table_at():
 
 def prepared_benefit_scale_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(benefit_scale_table(),
+    return pdn.table(benefit_scale_table(),
                         columns=('benefit_pct',),
                         indexing='at')
 
@@ -249,7 +249,7 @@ def prepared_benefit_scale_table_at():
 
 def prepared_mort_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='at')
 
@@ -257,7 +257,7 @@ def prepared_mort_table_at():
 
 def prepared_care_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(care_table(),
+    return pdn.table(care_table(),
                         columns=('mort_mult', 'entry_share', 'det_rate', 'rec_rate'),
                         indexing='at')
 
@@ -265,7 +265,7 @@ def prepared_care_table_at():
 
 def prepared_incidence_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(incidence_table(),
+    return pdn.table(incidence_table(),
                         columns=('inc_rate',),
                         indexing='at')
 
@@ -273,7 +273,7 @@ def prepared_incidence_table_at():
 
 def prepared_lapse_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(lapse_table(),
+    return pdn.table(lapse_table(),
                         columns=('lapse_rate',),
                         indexing='at')
 
@@ -281,7 +281,7 @@ def prepared_lapse_table_at():
 
 def prepared_surrender_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(surrender_table(),
+    return pdn.table(surrender_table(),
                         columns=('rkw_prem_ratio',),
                         indexing='at')
 
@@ -289,14 +289,14 @@ def prepared_surrender_table_at():
 
 def prepared_expense_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(expense_table(),
+    return pdn.table(expense_table(),
                         columns=('value',),
                         indexing='at')
 
 
 def prepared_basis_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(basis_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(basis_table(), indexing='at', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -322,4 +322,4 @@ basis_file = "basis_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

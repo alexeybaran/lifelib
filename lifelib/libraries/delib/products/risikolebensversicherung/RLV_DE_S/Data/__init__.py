@@ -234,7 +234,7 @@ def freq_loading_table():
 
 def prepared_mort_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='at')
 
@@ -242,7 +242,7 @@ def prepared_mort_table_at():
 
 def prepared_benefit_schedule_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(benefit_schedule(),
+    return pdn.table(benefit_schedule(),
                         columns=('benefit_factor',),
                         indexing='at')
 
@@ -250,7 +250,7 @@ def prepared_benefit_schedule_at():
 
 def prepared_nvg_schedule_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(nvg_schedule(),
+    return pdn.table(nvg_schedule(),
                         columns=('sum_uplift',),
                         indexing='at')
 
@@ -258,7 +258,7 @@ def prepared_nvg_schedule_at():
 
 def prepared_lapse_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(lapse_table(),
+    return pdn.table(lapse_table(),
                         columns=('lapse_rate',),
                         indexing='at')
 
@@ -266,14 +266,14 @@ def prepared_lapse_table_at():
 
 def prepared_freq_loading_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_loading_table(),
+    return pdn.table(freq_loading_table(),
                         columns=('prem_freq_load',),
                         indexing='at')
 
 
 def prepared_freq_loading_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(freq_loading_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(freq_loading_table(), indexing='at', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -293,4 +293,4 @@ freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

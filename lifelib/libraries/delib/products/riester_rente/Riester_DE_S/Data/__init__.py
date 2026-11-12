@@ -224,7 +224,7 @@ def freq_loading():
 
 def prepared_freq_loading_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(freq_loading(),
+    return pdn.table(freq_loading(),
                         columns=('load',),
                         indexing='at')
 
@@ -232,7 +232,7 @@ def prepared_freq_loading_at():
 
 def prepared_mort_table_accum_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table_accum(),
+    return pdn.table(mort_table_accum(),
                         columns=('qx',),
                         indexing='at')
 
@@ -240,7 +240,7 @@ def prepared_mort_table_accum_at():
 
 def prepared_lapse_table_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(lapse_table(),
+    return pdn.table(lapse_table(),
                         columns=('lapse_rate', 'transfer_rate'),
                         indexing='at')
 
@@ -248,7 +248,7 @@ def prepared_lapse_table_at():
 
 def prepared_income_schedule_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(income_schedule(),
+    return pdn.table(income_schedule(),
                         columns=('income',),
                         indexing='at')
 
@@ -256,19 +256,19 @@ def prepared_income_schedule_at():
 
 def prepared_surplus_scenario_at():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(surplus_scenario(),
+    return pdn.table(surplus_scenario(),
                         columns=('decl_rate',),
                         indexing='at')
 
 
 def prepared_annuity_mort_table_scalar_at():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
+    return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
 
 
 def prepared_zulage_schedule_rows():
     """Own calculation selection; retain the public source dependency."""
-    return inputs.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
+    return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -292,4 +292,4 @@ freq_loading_file = "freq_loading.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")
