@@ -238,7 +238,7 @@ def tax_table():
 
 def prepared_pricing_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(pricing_table(),
+    return pdn.table(pricing_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -246,7 +246,7 @@ def prepared_pricing_table_loc():
 
 def prepared_expense_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(expense_table(),
+    return pdn.table(expense_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -254,7 +254,7 @@ def prepared_expense_table_loc():
 
 def prepared_tax_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(tax_table(),
+    return pdn.table(tax_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -262,7 +262,7 @@ def prepared_tax_table_loc():
 
 def prepared_mort_anchor_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_anchor_table(),
+    return pdn.table(mort_anchor_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -270,7 +270,7 @@ def prepared_mort_anchor_table_loc():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
@@ -279,27 +279,27 @@ def prepared_mort_table_loc():
 
 def prepared_decl_rate_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(decl_rate_table(), groups=('scenario',), preserve_scalar_types = True)
+    return pdn.table(decl_rate_table(), groups=('scenario',), preserve_scalar_types = True)
 
 
 def prepared_guar_rate_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(guar_rate_table(), preserve_scalar_types = True)
+    return pdn.table(guar_rate_table(), preserve_scalar_types = True)
 
 
 def prepared_lapse_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(lapse_table(), groups=('basis', 'segment'), preserve_scalar_types = True)
+    return pdn.table(lapse_table(), groups=('basis', 'segment'), preserve_scalar_types = True)
 
 
 def prepared_lapse_table_flat_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(lapse_table(), preserve_scalar_types = True)
+    return pdn.table(lapse_table(), preserve_scalar_types = True)
 
 
 def prepared_mort_anchor_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(mort_anchor_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(mort_anchor_table(), indexing='loc', preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -325,4 +325,4 @@ tax_table_file = "tax_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

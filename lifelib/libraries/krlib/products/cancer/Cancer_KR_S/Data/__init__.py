@@ -252,7 +252,7 @@ def lapse_table():
 
 def prepared_survival_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(survival_table(),
+    return pdn.table(survival_table(),
                         columns=('excess_hazard',),
                         indexing='loc')
 
@@ -260,7 +260,7 @@ def prepared_survival_table_loc():
 
 def prepared_care_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(care_table(),
+    return pdn.table(care_table(),
                         columns=('treat_hazard_yr', 'hosp_days_adm'),
                         indexing='loc')
 
@@ -268,49 +268,49 @@ def prepared_care_table_loc():
 
 def prepared_tier_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(tier_table(),
+    return pdn.table(tier_table(),
                         columns=('benefit_ratio',),
                         indexing='loc')
 
 
 def prepared_care_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(care_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(care_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_mort_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_tier_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(tier_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(tier_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_incidence_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(incidence_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    return pdn.table(incidence_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
 
 
 
 def prepared_mort_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
 
 
 
 def prepared_tier_share_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(tier_share_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    return pdn.table(tier_share_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -334,4 +334,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

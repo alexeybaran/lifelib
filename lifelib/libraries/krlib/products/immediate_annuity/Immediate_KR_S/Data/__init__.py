@@ -139,7 +139,7 @@ def crediting_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
@@ -148,17 +148,17 @@ def prepared_mort_table_loc():
 
 def prepared_crediting_groups_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(crediting_table().set_index("basis_id", append=True), groups=("basis_id",), preserve_scalar_types = True)
+    return pdn.table(crediting_table().set_index("basis_id", append=True), groups=("basis_id",), preserve_scalar_types = True)
 
 
 def prepared_charge_table_rows():
     """Own calculation selection; retain the public source dependency."""
-    return inputs.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+    return pdn.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_crediting_table_calculation_rows():
     """Own original input values for calculation operations."""
-    return inputs.table(crediting_table(), groups=(), rows=True, preserve_scalar_types=True)
+    return pdn.table(crediting_table(), groups=(), rows=True, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -174,4 +174,4 @@ crediting_table_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

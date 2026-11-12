@@ -258,7 +258,7 @@ def lapse_table():
 
 def prepared_rate_class_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(rate_class_table(),
+    return pdn.table(rate_class_table(),
                         columns=('mort_ratio', 'prem_ratio'),
                         indexing='loc')
 
@@ -266,30 +266,30 @@ def prepared_rate_class_table_loc():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate', 'acc_mort_rate'),
                         indexing='loc')
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_prem_rate_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_prem_anchor_table_rows():
     """Own calculation selection; retain the public source dependency."""
-    return inputs.table(prem_anchor_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+    return pdn.table(prem_anchor_table(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_prem_rate_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(prem_rate_table().index)
+    return pdn.index(prem_rate_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -307,4 +307,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

@@ -351,7 +351,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -362,7 +362,7 @@ def sex():
     table [S7].  The scale itself is not public, so the sex effect reaches this model
     through the **[std]** utilisation factors rather than through a premium table.
     """
-    v = tables.lookup_object(prepared_model_point(), "sex")
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -378,7 +378,7 @@ def issue_age():
     [REG-R17 제7-63조제2항제6호다목].  This is the widest single **[std]** in the
     specification.
     """
-    return tables.lookup_int(prepared_model_point(), "issue_age")
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def premium_mth_pp():
@@ -399,7 +399,7 @@ def premium_mth_pp():
     Only the *first* year is an input.  Every later year is the renewal recursion of
     :func:`prem_ge_base` and :func:`prem_np_base`.
     """
-    return tables.lookup_float(prepared_model_point(), "premium")
+    return pdn.lookup_float(prepared_model_point(), "premium")
 
 
 def np_share():
@@ -417,7 +417,7 @@ def np_share():
     **only** the rider: at 60% a band-5 policyholder pays
     ``0.40 + 0.60 x 4.00 = 2.80x`` the base total premium, but only 2.46x at 48.75%.
     """
-    return tables.lookup_float(prepared_model_point(), "np_share")
+    return pdn.lookup_float(prepared_model_point(), "np_share")
 
 
 def np_rider():
@@ -427,7 +427,7 @@ def np_rider():
     the three sub-limits and **the whole experience-rating loop** — the contract becomes
     a plain 급여-only attained-age renewable.  Model point 5 is that election.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "np_rider"))
+    return bool(pdn.lookup_int(prepared_model_point(), "np_rider"))
 
 
 def three_np():
@@ -438,7 +438,7 @@ def three_np():
     it is not held those treatments are not covered at all rather than falling back into
     the main limit.  Model point 6 is that election.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "three_np")) and np_rider()
+    return bool(pdn.lookup_int(prepared_model_point(), "three_np")) and np_rider()
 
 
 def annual_limit():
@@ -452,7 +452,7 @@ def annual_limit():
     severity distribution further.  상해 and 질병 carry **separate** limits, so the
     whole-contract annual exposure with both parts held is ₩100,000,000.
     """
-    return tables.lookup_float(prepared_model_point(), "annual_limit")
+    return pdn.lookup_float(prepared_model_point(), "annual_limit")
 
 
 def visit_cap():
@@ -462,7 +462,7 @@ def visit_cap():
     5세대 carrier menu [S3].  It binds at a covered outpatient cost of ₩250,000 on the
     급여 side, the same crossing point at both provider tiers.
     """
-    return tables.lookup_float(prepared_model_point(), "visit_cap")
+    return pdn.lookup_float(prepared_model_point(), "visit_cap")
 
 
 def oop_decile():
@@ -475,7 +475,7 @@ def oop_decile():
     differently by income decile — which is exactly why the 비급여 half, which has no
     such truncation, is 57.1% of claims against a 15.8% share of national spend.
     """
-    return tables.lookup_int(prepared_model_point(), "oop_decile")
+    return pdn.lookup_int(prepared_model_point(), "oop_decile")
 
 
 def clinic_share():
@@ -489,7 +489,7 @@ def clinic_share():
     [R7] — normalised over the named classes.  Provider mix is a first-order variable in
     this product in a way it is in nothing else in the library.
     """
-    return tables.lookup_float(prepared_model_point(), "clinic_share")
+    return pdn.lookup_float(prepared_model_point(), "clinic_share")
 
 
 def nhi_covered():
@@ -502,7 +502,7 @@ def nhi_covered():
     is why it is a model point attribute.  It also switches the 본인부담상한제 off, since
     a life outside the scheme is not refunded by it.  Model point 10 is that branch.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "nhi_covered"))
+    return bool(pdn.lookup_int(prepared_model_point(), "nhi_covered"))
 
 
 def trend_mult():
@@ -517,7 +517,7 @@ def trend_mult():
     not bind economically below a 30% claim trend**, and that is a model finding rather than
     an artefact of this parameterisation.
     """
-    return tables.lookup_float(prepared_model_point(), "trend_mult")
+    return pdn.lookup_float(prepared_model_point(), "trend_mult")
 
 
 def util_mult():
@@ -531,7 +531,7 @@ def util_mult():
     on which the public truncation binds — at 0.8018 in policy year 1 and 0.6024 by policy
     year 10.
     """
-    return tables.lookup_float(prepared_model_point(), "util_mult")
+    return pdn.lookup_float(prepared_model_point(), "util_mult")
 
 
 def reld_on():
@@ -543,7 +543,7 @@ def reld_on():
     had three renewals at flat relativity before the loop switched on.  Off on model
     points 5 and 9, where the contract is a plain attained-age renewable.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "reld_on")) and np_rider()
+    return bool(pdn.lookup_int(prepared_model_point(), "reld_on")) and np_rider()
 
 
 def noclaim_on():
@@ -555,7 +555,7 @@ def noclaim_on():
     premium where the relativity applies only to the rider, and it **stacks** with the
     band-1 discount.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "noclaim_on"))
+    return bool(pdn.lookup_int(prepared_model_point(), "noclaim_on"))
 
 
 def suspend_rate():
@@ -568,7 +568,7 @@ def suspend_rate():
     different projection, entering the product in force at resumption.  Model point 9
     carries 3% a year.
     """
-    return tables.lookup_float(prepared_model_point(), "suspend_rate")
+    return pdn.lookup_float(prepared_model_point(), "suspend_rate")
 
 
 # --- Time and the projection horizon ---------------------------------------
@@ -643,8 +643,8 @@ def mort_rate(t):
     prudence is the reverse of every protection product in this library and an
     over-statement of mortality is *anti*-conservative.
     """
-    x = min(age(t), int(expressions.max_value(expressions.keys(data.prepared_mort_table_index_selection_level_age()))))
-    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
+    x = min(age(t), int(pdn.max_value(pdn.keys(data.prepared_mort_table_index_selection_level_age()))))
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -667,8 +667,8 @@ def lapse_rate(t):
     lending anyway.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection()))))
-    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
+    y = min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection()))))
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -832,7 +832,7 @@ def util_band(y):
     NHIS coverage-ratio series comes at.
     """
     x = issue_age() + y - 1
-    top = int(expressions.max_value(expressions.keys(data.prepared_utilisation_table_index_selection_level_age_start())))
+    top = int(pdn.max_value(pdn.keys(data.prepared_utilisation_table_index_selection_level_age_start())))
     return min(5 * (x // 5), top)
 
 
@@ -843,7 +843,7 @@ def util_value(y, column):
     not, because a longer stay is not a more frequent one and the room-differential cap
     is applied against the stay length itself.
     """
-    v = tables.lookup_float(data.prepared_utilisation_table_scalar_loc(), (sex(), util_band(y)), column)
+    v = pdn.lookup_float(data.prepared_utilisation_table_scalar_loc(), (sex(), util_band(y)), column)
     if column == "los_days":
         return v
     return v * util_mult()
@@ -983,13 +983,13 @@ def sev_points(stream):
     cap truncates the top: the payment is a kinked function of cost, and applying the
     rule to a mean removes both kinks.
     """
-    sub = tables.subtable(data.prepared_severity_table_calculation_groups_1(), stream)
-    return list(zip(expressions.column(sub, "cost"), expressions.column(sub, "prob")))
+    sub = pdn.subtable(data.prepared_severity_table_calculation_groups_1(), stream)
+    return list(zip(pdn.column(sub, "cost"), pdn.column(sub, "prob")))
 
 
 def sev_mean(stream):
     """The expected cost of one event in a severity stream, KRW, before any trend."""
-    return expressions.sum_values((c * p for (c, p) in sev_points(stream)))
+    return pdn.sum_values((c * p for (c, p) in sev_points(stream)))
 
 
 # --- 급여 reimbursement — the main contract ---------------------------------
@@ -1016,7 +1016,7 @@ def oop_ceiling():
     """
     if not nhi_covered():
         return float("inf")
-    return tables.lookup_float(data.prepared_oop_ceiling_table_loc(), oop_decile(), 'ceiling')
+    return pdn.lookup_float(data.prepared_oop_ceiling_table_loc(), oop_decile(), 'ceiling')
 
 
 def oop_trunc(y):
@@ -1320,7 +1320,7 @@ def claims_ann_pp(y, kind=None):
     With no ``kind`` the sum over all five.
     """
     if kind is None:
-        return expressions.sum_values((claims_ann_pp(y, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
+        return pdn.sum_values((claims_ann_pp(y, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     if kind == "GE_IN":
         return claims_ge_in_pp(y) * ge_limit_factor(y)
     if kind == "GE_OUT":
@@ -1390,7 +1390,7 @@ def claims_np_rated_pp(y):
 
 def shape_buckets():
     """The bucket ids of the annual rated 비급여 claim distribution."""
-    return list(expressions.keys(data.prepared_claim_shape_table_index_selection()))                      # noqa: F821
+    return list(pdn.keys(data.prepared_claim_shape_table_index_selection()))                      # noqa: F821
 
 
 def shape_share(bucket):
@@ -1399,7 +1399,7 @@ def shape_share(bucket):
     Bucket 0 is the no-claim mass, 72.9% of contracts assessed at commencement [R12],
     and it is what becomes 1단계.
     """
-    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'share')      # noqa: F821
+    return pdn.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'share')      # noqa: F821
 
 
 def shape_mean():
@@ -1410,8 +1410,8 @@ def shape_mean():
     into a multiple of the mean.
     """
     tbl = data.prepared_claim_shape_table_calculation()
-    products = [a * b for a, b in zip(expressions.column(tbl, "share"), expressions.column(tbl, "claim_amount"))]                                   # noqa: F821
-    return float(expressions.sum_f64(v for v in products if not tables.is_missing(pd.isna, v)))
+    products = [a * b for a, b in zip(pdn.column(tbl, "share"), pdn.column(tbl, "claim_amount"))]                                   # noqa: F821
+    return float(pdn.sum_f64(v for v in products if not pdn.is_missing(pd.isna, v)))
 
 
 def shape_rel(bucket):
@@ -1424,7 +1424,7 @@ def shape_rel(bucket):
     m = shape_mean()
     if m <= 0.0:
         return 0.0
-    return tables.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'claim_amount') / m
+    return pdn.lookup_float(data.prepared_claim_shape_table_loc(), bucket, 'claim_amount') / m
 
 
 def band_of(amount):
@@ -1494,7 +1494,7 @@ def reld_surcharge(y):
 
     This is the revenue the wording requires be distributed to the 1단계 contracts.
     """
-    return expressions.sum_values((band_share(y, b) * band_relativity(b) for b in (2, 3, 4, 5)))
+    return pdn.sum_values((band_share(y, b) * band_relativity(b) for b in (2, 3, 4, 5)))
 
 
 def reld_solved(y):
@@ -1700,7 +1700,7 @@ def claims(t, kind=None):
     an annual quantity rather than a unit of account.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
+        return pdn.sum_values((claims(t, k) for k in ("GE_IN", "GE_OUT", "NP_IN", "NP_OUT", "NP_THREE")))
     return pols_if(t) * claims_ann_pp(policy_year(t), kind) / 12.0
 
 
@@ -1795,7 +1795,7 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1813,7 +1813,7 @@ def check_net_cf_resid(t):
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in pdn.periods(proj_len())))
 
 
 def check_claim_shape_resid():
@@ -1825,9 +1825,9 @@ def check_claim_shape_resid():
     would pass both sums and is caught separately.
     """
     ks = shape_buckets()
-    s = expressions.sum_values((shape_share(k) for k in ks))
-    m = expressions.sum_values((shape_share(k) * shape_rel(k) for k in ks))
-    neg = expressions.sum_values((max(0.0, -shape_share(k)) for k in ks))
+    s = pdn.sum_values((shape_share(k) for k in ks))
+    m = pdn.sum_values((shape_share(k) * shape_rel(k) for k in ks))
+    neg = pdn.sum_values((max(0.0, -shape_share(k)) for k in ks))
     return abs(s - 1.0) + abs(m - 1.0) + neg
 
 
@@ -1843,14 +1843,14 @@ def check_band_shares_resid(y):
     negative.  A bucket that fell through :func:`band_of` — an amount that matched no
     band — would show here as a shortfall.
     """
-    s = expressions.sum_values((band_share(y, b) for b in (1, 2, 3, 4, 5)))
-    neg = expressions.sum_values((max(0.0, -band_share(y, b)) for b in (1, 2, 3, 4, 5)))
+    s = pdn.sum_values((band_share(y, b) for b in (1, 2, 3, 4, 5)))
+    neg = pdn.sum_values((max(0.0, -band_share(y, b)) for b in (1, 2, 3, 4, 5)))
     return (s - 1.0) + neg
 
 
 def check_band_shares():
     """True when the band shares partition the contracts in every policy year."""
-    return expressions.all_true((abs(check_band_shares_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((abs(check_band_shares_resid(y)) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_relativity_neutral_resid(y):
@@ -1873,7 +1873,7 @@ def check_relativity_neutral_resid(y):
 
 def check_relativity_neutral():
     """True when the experience relativity is self-financing in every policy year."""
-    return expressions.all_true((abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((abs(check_relativity_neutral_resid(y)) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_renewal_corridor_resid(y):
@@ -1901,7 +1901,7 @@ def check_renewal_corridor_resid(y):
 
 def check_renewal_corridor():
     """True when neither priced unit moves more than 25% in a year, age effect excluded."""
-    return expressions.all_true((check_renewal_corridor_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((check_renewal_corridor_resid(y) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_annual_limits_resid(y):
@@ -1941,7 +1941,7 @@ def check_annual_limits_resid(y):
 
 def check_annual_limits():
     """True when no contractual money or count limit is exceeded in any policy year."""
-    return expressions.all_true((check_annual_limits_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((check_annual_limits_resid(y) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_indemnity_resid(y):
@@ -1959,7 +1959,7 @@ def check_indemnity_resid(y):
 
 def check_indemnity():
     """True when the claim never exceeds the incurred covered loss in any policy year."""
-    return expressions.all_true((check_indemnity_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((check_indemnity_resid(y) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_oop_ceiling_resid(y):
@@ -1978,7 +1978,7 @@ def check_oop_ceiling_resid(y):
 
 def check_oop_ceiling():
     """True when the truncated 급여 covered loss stays inside the public annual ceiling."""
-    return expressions.all_true((check_oop_ceiling_resid(y) <= roll_fwd_tol for y in expressions.periods(1, policy_year(proj_len() - 1) + 1)))
+    return pdn.all_true((check_oop_ceiling_resid(y) <= roll_fwd_tol for y in pdn.periods(1, policy_year(proj_len() - 1) + 1)))
 
 
 def check_expense_split_resid():
@@ -2011,7 +2011,7 @@ def result_cf():
     3대비급여 classes with their own sub-limits — and they sum to the whole benefit
     outgo; there is deliberately no ``claims`` subtotal column beside them.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2032,7 +2032,7 @@ def result_cf():
 
 def result_pols():
     """Result table of in-force movements and decrement rates, indexed by policy month t."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2057,7 +2057,7 @@ def result_prem():
     that the loop can be read off a single frame rather than reconstructed from the cash
     flow statement.
     """
-    ys = list(expressions.periods(1, policy_year(proj_len() - 1) + 1))
+    ys = list(pdn.periods(1, policy_year(proj_len() - 1) + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "claims_np_rated_pp": [claims_np_rated_pp(y) for y in ys],
@@ -2081,7 +2081,7 @@ def result_prem():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2181,8 +2181,4 @@ shape_tol = 1e-09
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

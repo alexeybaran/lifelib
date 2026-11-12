@@ -210,7 +210,7 @@ def av_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
@@ -218,7 +218,7 @@ def prepared_mort_table_loc():
 
 def prepared_lapse_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(lapse_table(),
+    return pdn.table(lapse_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -226,7 +226,7 @@ def prepared_lapse_table_loc():
 
 def prepared_prevalence_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(prevalence_table(),
+    return pdn.table(prevalence_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -234,7 +234,7 @@ def prepared_prevalence_table_loc():
 
 def prepared_dementia_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(dementia_table(),
+    return pdn.table(dementia_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -243,17 +243,17 @@ def prepared_dementia_table_loc():
 
 def prepared_incidence_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(incidence_table(), groups=('sex',), preserve_scalar_types = True)
+    return pdn.table(incidence_table(), groups=('sex',), preserve_scalar_types = True)
 
 
 def prepared_av_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(av_table(), preserve_scalar_types = True)
+    return pdn.table(av_table(), preserve_scalar_types = True)
 
 
 def prepared_grade_share_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(grade_share_table(), groups=('grade',), preserve_scalar_types = True)
+    return pdn.table(grade_share_table(), groups=('grade',), preserve_scalar_types = True)
 
 
 # ---------------------------------------------------------------------------
@@ -277,4 +277,4 @@ av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

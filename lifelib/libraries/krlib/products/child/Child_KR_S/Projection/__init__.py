@@ -152,12 +152,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return tables.lookup_str(prepared_model_point(), "policy_id")
+    return pdn.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -169,7 +169,7 @@ def sex():
     longer reliable: on the current published tables four carriers price the female above
     the male and seven below, the spread running 62% to 114% of the male rate [S11].
     """
-    v = tables.lookup_str(prepared_model_point(), "sex")
+    v = pdn.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -185,7 +185,7 @@ def issue_age():
     the age itself [R1], so a 30-year-old issue is a documented historic variant and is
     shipped as one.
     """
-    return tables.lookup_int(prepared_model_point(), "issue_age")
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def foetal():
@@ -197,7 +197,7 @@ def foetal():
     in FY2007 were written in utero [R3] — and every current 상품요약서 offers it, with
     가입나이 written as 「태아」 at the head of the issue-age grid [S2] [S3] [S4] [S5] [S6].
     """
-    return bool(tables.lookup_int(prepared_model_point(), "foetal"))
+    return bool(pdn.lookup_int(prepared_model_point(), "foetal"))
 
 
 def birth_month():
@@ -210,7 +210,7 @@ def birth_month():
     「1~10월만기」 at one carrier [S1].  Five is between those two bounds and is a whole
     number of grid steps.
     """
-    return tables.lookup_int(prepared_model_point(), "birth_month") if foetal() else 0
+    return pdn.lookup_int(prepared_model_point(), "birth_month") if foetal() else 0
 
 
 def issue_age_man():
@@ -235,7 +235,7 @@ def term_age():
     [S11] [S2] [S1], and the term whose arrival in 2011 made the product what it is [R5];
     110세 adds no mechanic and is shipped as a model point.
     """
-    return tables.lookup_int(prepared_model_point(), "term_age")
+    return pdn.lookup_int(prepared_model_point(), "term_age")
 
 
 def prem_period_years():
@@ -248,7 +248,7 @@ def prem_period_years():
     period, and the reason a child policy's measurement is dominated by what happens long
     after the premium stops.
     """
-    return tables.lookup_int(prepared_model_point(), "prem_period_years")
+    return pdn.lookup_int(prepared_model_point(), "prem_period_years")
 
 
 def prem_period_mths():
@@ -287,7 +287,7 @@ def premium_mth():
     the shipped basis actually implies, and where the two differ the computed figure
     governs.
     """
-    return tables.lookup_float(prepared_model_point(), "premium_mth")
+    return pdn.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_foetal_mth():
@@ -300,7 +300,7 @@ def premium_foetal_mth():
     추가로 부가합니다」 [S2], written elsewhere as a fixed 「1~10월만기 전기납 태아
     월납」 sub-term [S1].
     """
-    return tables.lookup_float(prepared_model_point(), "premium_foetal_mth") if foetal() else 0.0
+    return pdn.lookup_float(prepared_model_point(), "premium_foetal_mth") if foetal() else 0.0
 
 
 def foetal_cover_end():
@@ -346,7 +346,7 @@ def cv_form():
         the two years after 납입완료 rising in 5-point steps every two years to 50%
         eighteen years after it [S1].
     """
-    v = tables.lookup_str(prepared_model_point(), "cv_form")
+    v = pdn.lookup_str(prepared_model_point(), "cv_form")
     if v not in ("std", "susp", "graded"):
         raise ValueError("invalid cv_form")
     return v
@@ -364,7 +364,7 @@ def cv_floor_ratio():
     itself, which is the whole reason that assumption became a supervisory matter
     [R11] [REG-R27].
     """
-    return tables.lookup_float(prepared_model_point(), "cv_floor_ratio")
+    return pdn.lookup_float(prepared_model_point(), "cv_floor_ratio")
 
 
 def waiver_child():
@@ -375,7 +375,7 @@ def waiver_child():
     limbs — or a **중대한특정상해수술**, 「상해로 뇌손상, 내장손상을 입고 사고일로부터 180일
     이내에 받은 개두·개흉·개복수술」 [S2].
     """
-    return bool(tables.lookup_int(prepared_model_point(), "waiver_child"))
+    return bool(pdn.lookup_int(prepared_model_point(), "waiver_child"))
 
 
 def waiver_payer():
@@ -389,7 +389,7 @@ def waiver_payer():
     [S5] [S11], which is a benefit and not a decrement, and modelling one as the other
     would be wrong in both level and shape.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "waiver_payer"))
+    return bool(pdn.lookup_int(prepared_model_point(), "waiver_payer"))
 
 
 def payer_age():
@@ -402,7 +402,7 @@ def payer_age():
     or become severely disabled, and Korean mortality at those ages is low, which is why
     the module is cheap enough to be compulsory.
     """
-    return tables.lookup_int(prepared_model_point(), "payer_age")
+    return pdn.lookup_int(prepared_model_point(), "payer_age")
 
 
 def payer_sex():
@@ -414,7 +414,7 @@ def payer_sex():
     mid-projection; no retrieved wording states how the waiver responds, so the composite
     holds the 계약자 fixed and marks the point [unverified].
     """
-    v = tables.lookup_str(prepared_model_point(), "payer_sex")
+    v = pdn.lookup_str(prepared_model_point(), "payer_sex")
     if v not in ("M", "F"):
         raise ValueError("invalid payer_sex")
     return v
@@ -434,7 +434,7 @@ def sum_assured(cover):
     ``fracture`` ₩400,000, ``burn`` ₩200,000, ``liability`` ₩100,000,000 per occurrence and
     ``neonatal`` ₩10,000,000 as the 태아 module's own 가입금액.
     """
-    return float(tables.lookup_object(prepared_model_point(), "sa_" + cover))
+    return float(pdn.lookup_object(prepared_model_point(), "sa_" + cover))
 
 
 def hosp_daily():
@@ -446,7 +446,7 @@ def hosp_daily():
     This is the cover a child policy actually pays on, an order of magnitude below the
     diagnosis benefits in amount and several orders above them in frequency.
     """
-    return tables.lookup_float(prepared_model_point(), "hosp_daily")
+    return pdn.lookup_float(prepared_model_point(), "hosp_daily")
 
 
 def broad_def():
@@ -460,7 +460,7 @@ def broad_def():
     the narrow ones would make the anchor cell internally inconsistent.  The switch
     multiplies both incidences by ``broad_def_factor`` **[std]**.
     """
-    return bool(tables.lookup_int(prepared_model_point(), "broad_def"))
+    return bool(pdn.lookup_int(prepared_model_point(), "broad_def"))
 
 
 def waiting_mths():
@@ -485,7 +485,7 @@ def waiting_mths():
     including the eighty-five years during which the insured is an adult.  A model that
     re-tests the rule at each anniversary is wrong.
     """
-    return tables.lookup_int(prepared_model_point(), "waiting_mths")
+    return pdn.lookup_int(prepared_model_point(), "waiting_mths")
 
 
 def reduction_mths():
@@ -499,7 +499,7 @@ def reduction_mths():
     56 products, on the reasoning that 「태아는 보험가입시 역선택 가능성이 거의 없는데도」
     [R2].  The disapplication is applied here rather than left to the model point.
     """
-    return 0 if foetal() else tables.lookup_int(prepared_model_point(), "reduction_mths")
+    return 0 if foetal() else pdn.lookup_int(prepared_model_point(), "reduction_mths")
 
 
 def prem_discount_rate():
@@ -514,12 +514,12 @@ def prem_discount_rate():
     보장보험료 is not stated and is [unverified]; the model applies it to the whole office
     premium.
     """
-    return tables.lookup_float(prepared_model_point(), "prem_discount_rate")
+    return pdn.lookup_float(prepared_model_point(), "prem_discount_rate")
 
 
 def prem_discount_mths():
     """The number of months over which the 2026 저출산 discount runs: 12 where on [R6]."""
-    return tables.lookup_int(prepared_model_point(), "prem_discount_mths")
+    return pdn.lookup_int(prepared_model_point(), "prem_discount_mths")
 
 
 def lapse_basis():
@@ -530,8 +530,8 @@ def lapse_basis():
     level comparison vector.  Shipping the first two side by side is exactly the comparison
     the guideline requires an insurer departing from the 원칙모형 to disclose.
     """
-    v = tables.lookup_str(prepared_model_point(), "lapse_basis")
-    if v not in set(expressions.keys(data.prepared_lapse_table_index_selection())):                       # noqa: F821
+    v = pdn.lookup_str(prepared_model_point(), "lapse_basis")
+    if v not in set(pdn.keys(data.prepared_lapse_table_index_selection())):                       # noqa: F821
         raise ValueError("invalid lapse_basis")
     return v
 
@@ -544,7 +544,7 @@ def mort_be_factor():
     is carried so that a user replacing ``mort_table.csv`` with a company valuation table
     has the hook the sister libraries use, and one model point runs at 1.10.
     """
-    return tables.lookup_float(prepared_model_point(), "mort_be_factor")
+    return pdn.lookup_float(prepared_model_point(), "mort_be_factor")
 
 
 def pols_if_init():
@@ -648,7 +648,7 @@ def runoff(t):
 
 def basis_param(name):
     """One scalar [std] parameter of the benefit basis, from *basis_table.csv*."""
-    return tables.lookup_float(data.prepared_basis_table_loc(), name, 'value')              # noqa: F821
+    return pdn.lookup_float(data.prepared_basis_table_loc(), name, 'value')              # noqa: F821
 
 
 # --- mortality, on two lives ---
@@ -658,7 +658,7 @@ def mort_series(s):
 
     Held as a cells so the frame is sliced once per sex rather than once per lookup.
     """
-    return expressions.to_pandas(expressions.column(tables.subtable(data.prepared_mort_table_groups_1(), s), "mort_rate", report=True))                     # noqa: F821
+    return pdn.to_pandas(pdn.column(pdn.subtable(data.prepared_mort_table_groups_1(), s), "mort_rate", report=True))                     # noqa: F821
 
 
 def mort_rate_at_age(x, s):
@@ -670,7 +670,7 @@ def mort_rate_at_age(x, s):
     infant peak, the trough at about age 10 and the adolescent turn — none of which a table
     graduated from age 20 upwards would carry.
     """
-    return float(tables.lookup_object(prepared_mort_series_values(s), min(max(x, 0), 120), "value"))
+    return float(pdn.lookup_object(prepared_mort_series_values(s), min(max(x, 0), 120), "value"))
 
 
 def mort_rate(t):
@@ -707,7 +707,7 @@ def mort_rate_payer(t):
 
 def lapse_param(name):
     """One parameter of the selected lapse basis, from *lapse_table.csv*."""
-    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), lapse_basis(), name)        # noqa: F821
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), lapse_basis(), name)        # noqa: F821
 
 
 def lapse_rate(t):
@@ -783,8 +783,8 @@ def inc_pivots(cause):
     Held as a cells so *incidence_table.csv* is sliced once per cause rather than once per
     age.
     """
-    tbl = tables.subtable(tables.subtable(data.prepared_incidence_table_calculation_groups_2(), cause), sex())
-    return [(int(a), tables.lookup_float(tbl, a, "rate")) for a in expressions.keys(tbl)]
+    tbl = pdn.subtable(pdn.subtable(data.prepared_incidence_table_calculation_groups_2(), cause), sex())
+    return [(int(a), pdn.lookup_float(tbl, a, "rate")) for a in pdn.keys(tbl)]
 
 
 def inc_rate_at(x, cause):
@@ -812,7 +812,7 @@ def inc_rate_at(x, cause):
         if a == x:
             return r
     import math
-    for i in expressions.periods(len(pv) - 1):
+    for i in pdn.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= x <= x1:
@@ -1137,13 +1137,13 @@ def neonatal_cost_pp(timing):
         return 0.0
     tab = data.neonatal_table()                                      # noqa: F821
     total = 0.0
-    for item in expressions.keys(data.prepared_neonatal_table_index_selection()):
-        row = expressions.row(data.prepared_neonatal_table_rows(), item)
-        if str(tables.lookup_object(row, "timing")) != timing:
+    for item in pdn.keys(data.prepared_neonatal_table_index_selection()):
+        row = pdn.row(data.prepared_neonatal_table_rows(), item)
+        if str(pdn.lookup_object(row, "timing")) != timing:
             continue
-        amount = (float(tables.lookup_object(row, "amount"))
-                  + float(tables.lookup_object(row, "amount_ratio")) * sum_assured("neonatal"))
-        total += float(tables.lookup_object(row, "freq")) * float(tables.lookup_object(row, "units")) * amount
+        amount = (float(pdn.lookup_object(row, "amount"))
+                  + float(pdn.lookup_object(row, "amount_ratio")) * sum_assured("neonatal"))
+        total += float(pdn.lookup_object(row, "freq")) * float(pdn.lookup_object(row, "units")) * amount
     return total
 
 
@@ -1250,7 +1250,7 @@ def benefit_cost_pp(t):
     the quantity :func:`risk_prem_ann_pp` accumulates over the first policy year to form the
     notional 보험가입금액 of 감독규정 [별표 15] 제9호 [REG-R21].
     """
-    return expressions.sum_values((benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return pdn.sum_values((benefit_pp(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "NEONATAL")))
 
 
@@ -1305,13 +1305,13 @@ def refund_build(d):
     공시이율 while the 보장부분 reserve is still building.  And only a hundred-year term
     can do it.
     """
-    tab = tables.subtable(data.prepared_av_table_calculation_groups_1(), "build")                      # noqa: F821
-    pv = [(float(k), float(v)) for k, v in zip(expressions.keys(tab), expressions.column(tab, "value"))]
+    tab = pdn.subtable(data.prepared_av_table_calculation_groups_1(), "build")                      # noqa: F821
+    pv = [(float(k), float(v)) for k, v in zip(pdn.keys(tab), pdn.column(tab, "value"))]
     if d <= pv[0][0]:
         return pv[0][1]
     if d >= pv[-1][0]:
         return pv[-1][1]
-    for i in expressions.periods(len(pv) - 1):
+    for i in pdn.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= d <= x1:
@@ -1329,13 +1329,13 @@ def refund_taper(r):
     16.0% on a 100세만기 contract; indexing on the fraction of the term rather than on a
     duration is what lets one shipped grid also serve the 30세만기 and 110세만기 points.
     """
-    tab = tables.subtable(data.prepared_av_table_calculation_groups_1(), "taper")                      # noqa: F821
-    pv = [(float(k), float(v)) for k, v in zip(expressions.keys(tab), expressions.column(tab, "value"))]
+    tab = pdn.subtable(data.prepared_av_table_calculation_groups_1(), "taper")                      # noqa: F821
+    pv = [(float(k), float(v)) for k, v in zip(pdn.keys(tab), pdn.column(tab, "value"))]
     if r <= pv[0][0]:
         return pv[0][1]
     if r >= pv[-1][0]:
         return pv[-1][1]
-    for i in expressions.periods(len(pv) - 1):
+    for i in pdn.periods(len(pv) - 1):
         x0, y0 = pv[i]
         x1, y1 = pv[i + 1]
         if x0 <= r <= x1:
@@ -1419,7 +1419,7 @@ def risk_prem_ann_pp():
     carries the 태아 module, which is most of it: the module's whole cost falls inside the
     first thirteen months of a hundred-year contract.
     """
-    return expressions.sum_values((benefit_cost_pp(t) for t in expressions.periods(0, min(12, proj_len() - 1))))
+    return pdn.sum_values((benefit_cost_pp(t) for t in pdn.periods(0, min(12, proj_len() - 1))))
 
 
 def sa_notional_pp():
@@ -1673,7 +1673,7 @@ def claims(t, kind=None):
         adjustment rather than in the lapse column.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+        return pdn.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                     "LIABILITY", "NEONATAL", "DEATH", "LAPSE", "MATURITY",
                     "VOID")))
     if kind == "DEATH":
@@ -1809,8 +1809,8 @@ def epv_outgo_pp():
 
     Benefits, claim handling expense, acquisition and maintenance expense and commission.
     """
-    return expressions.sum_values((pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
-                               + commissions(t)) for t in expressions.periods(0, proj_len())))
+    return pdn.sum_values((pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
+                               + commissions(t)) for t in pdn.periods(0, proj_len())))
 
 
 def epv_prem_unit_pp():
@@ -1821,7 +1821,7 @@ def epv_prem_unit_pp():
     annuity the equivalence premium is divided by, and on a 20년납 hundred-year contract it
     is where the waiver and the lapse assumption do all their work.
     """
-    return expressions.sum_values((pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in expressions.periods(0, prem_period_mths())))
+    return pdn.sum_values((pv_factor(t) * prem_discount_factor(t) * pols_pay(t) for t in pdn.periods(0, prem_period_mths())))
 
 
 def equiv_premium_mth_pp():
@@ -1866,7 +1866,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the month that failed.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_waiver_split_resid(t):
@@ -1881,7 +1881,7 @@ def check_waiver_split_resid(t):
 
 def check_waiver_split():
     """True when the paying and waived compartments sum to the in-force block, every month."""
-    return expressions.all_true((abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_waiver_split_resid(t)) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_exit_total_resid():
@@ -1892,7 +1892,7 @@ def check_exit_total_resid():
     global companion to the per-month roll-forward, and it is what catches a decrement that
     closes locally at every t and still loses mass at the ends.
     """
-    total = expressions.sum_values((pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in expressions.periods(0, proj_len())))
+    total = pdn.sum_values((pols_void(t) + pols_death(t) + pols_lapse(t) + pols_maturity(t) for t in pdn.periods(0, proj_len())))
     return total - pols_if_init()
 
 
@@ -1914,7 +1914,7 @@ def check_cover_at_birth_resid(t):
     """
     if born(t):
         return 0.0
-    return expressions.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
+    return pdn.sum_values((claims(t, k) for k in ("DISABILITY", "DIAGNOSIS", "SURGERY", "HOSPITAL", "EVENT",
                 "LIABILITY", "DEATH")))
 
 
@@ -1925,7 +1925,7 @@ def check_cover_at_birth():
     vacuous on a non-foetal model point, where ``birth_month()`` is zero, and that is the
     right behaviour: the same formula covers both.
     """
-    return expressions.all_true((abs(check_cover_at_birth_resid(t)) <= val_tol for t in expressions.periods(0, birth_month() + 1)))
+    return pdn.all_true((abs(check_cover_at_birth_resid(t)) <= val_tol for t in pdn.periods(0, birth_month() + 1)))
 
 
 def check_once_only_resid(t):
@@ -1946,7 +1946,7 @@ def check_once_only_resid(t):
 
 def check_once_only():
     """True when every 최초 1회한 ledger is a valid, non-increasing probability."""
-    return expressions.all_true((check_once_only_resid(t) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((check_once_only_resid(t) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_neonatal_term_resid(t):
@@ -1963,7 +1963,7 @@ def check_neonatal_term_resid(t):
 
 def check_neonatal_term():
     """True when the 태아 module pays inside its own terms and nowhere else."""
-    return expressions.all_true((abs(check_neonatal_term_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_neonatal_term_resid(t)) <= val_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_cv_floor_resid(t):
@@ -1989,7 +1989,7 @@ def check_cv_floor_resid(t):
 
 def check_cv_floor():
     """True when the surrender value obeys its form's floor in every projected month."""
-    return expressions.all_true((check_cv_floor_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((check_cv_floor_resid(t) <= val_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_av_bounds_resid(t):
@@ -2010,7 +2010,7 @@ def check_av_bounds_resid(t):
 
 def check_av_bounds():
     """True when the 계약자적립액 stays inside the bounds its own derivation allows."""
-    return expressions.all_true((check_av_bounds_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((check_av_bounds_resid(t) <= val_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_surr_chg_cap_resid(t):
@@ -2027,7 +2027,7 @@ def check_surr_chg_cap_resid(t):
 
 def check_surr_chg_cap():
     """True when the surrender charge stays inside the 표준해약공제액 at every duration."""
-    return expressions.all_true((check_surr_chg_cap_resid(t) <= val_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((check_surr_chg_cap_resid(t) <= val_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_acq_cost_cap_resid():
@@ -2066,7 +2066,7 @@ def check_refund_grid_resid(t):
 
 def check_refund_grid():
     """True when the 환급률 progression reproduces every published node it reaches."""
-    return expressions.all_true((abs(check_refund_grid_resid(t)) <= val_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_refund_grid_resid(t)) <= val_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_equiv_premium_resid():
@@ -2107,7 +2107,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured("disability"), 1.0)              # noqa: F821
-    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(0, proj_len())))
 
 
 # --- results ---
@@ -2125,7 +2125,7 @@ def result_cf():
     progression, published rather than dropped because the residual 적립부분 is a real
     quantity on a contract whose term ends earlier.
     """
-    ts = list(expressions.periods(0, proj_len()))
+    ts = list(pdn.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2158,7 +2158,7 @@ def result_pols():
     ``age`` is 보험나이 and ``age_man`` 만나이, printed side by side so that the offset a
     foetal contract carries for its whole life can be read off the table.
     """
-    ts = list(expressions.periods(0, proj_len()))
+    ts = list(pdn.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2187,7 +2187,7 @@ def result_val():
     ratio the supervisor regulates; on the anchor cell it reproduces the published grid at
     every node.
     """
-    ts = list(expressions.periods(0, proj_len()))
+    ts = list(pdn.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "cum_prem_pp": [cum_prem_pp(t) for t in ts],
@@ -2203,12 +2203,12 @@ def result_val():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 def prepared_mort_series_values(s):
     """Own public Series values; retain normal public Cell overrides."""
-    return inputs.table(mort_series(s).to_frame(name="value"), preserve_scalar_types=True)
+    return pdn.table(mort_series(s).to_frame(name="value"), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2262,8 +2262,4 @@ val_tol = 1e-07
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")
