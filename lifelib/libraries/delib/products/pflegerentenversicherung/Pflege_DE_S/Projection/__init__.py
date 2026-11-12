@@ -973,7 +973,7 @@ def pols_grad(t, g):
     if k <= 0:
         return pols_entry(t, g)
     total = 0.0
-    for h in pdn.periods(max(1, g - 1), min(5, g + 1) + 1):
+    for h in range(max(1, g - 1), min(5, g + 1) + 1):
         w = pols_karenz(t, h, k)
         if w == 0.0:
             continue
@@ -1628,7 +1628,7 @@ def tar_pols_grad(t, g):
     if k <= 0:
         return tar_pols_act(t) * tar_p_act(t)[2] * inc_share(g)
     total = 0.0
-    for h in pdn.periods(max(1, g - 1), min(5, g + 1) + 1):
+    for h in range(max(1, g - 1), min(5, g + 1) + 1):
         w = tar_pols_karenz(t, h, k)
         if w == 0.0:
             continue
