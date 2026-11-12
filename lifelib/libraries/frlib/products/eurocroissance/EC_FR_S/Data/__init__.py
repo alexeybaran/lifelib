@@ -179,6 +179,46 @@ def tec_curve():
         index_col=["scenario", "year", "maturity"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_scenario_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(scenario_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_tec_curve_calculation_groups_2():
+    """Own original input values for calculation operations."""
+    return pdn.table(tec_curve(), groups=('scenario', 'year'), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_tec_curve_years():
+    """Own original input values for calculation operations."""
+    return pdn.index(tec_curve().index.get_level_values("year"))
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_scenario_table_index_selection_level_year():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(scenario_table().index.get_level_values("year"))
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -193,3 +233,5 @@ scenario_table_file = "scenario_table.csv"
 tec_curve_file = "tec_curve.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

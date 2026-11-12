@@ -163,6 +163,40 @@ def uc_scenario_table():
         index_col="scenario_id").sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_plancher_rate_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(plancher_rate_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_uc_scenario_table_calculation_rows():
+    """Own original input values for calculation operations."""
+    return pdn.table(uc_scenario_table().reset_index(), groups=(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_plancher_rate_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(plancher_rate_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -177,3 +211,5 @@ plancher_rate_table_file = "plancher_rate_table.csv"
 uc_scenario_table_file = "uc_scenario_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

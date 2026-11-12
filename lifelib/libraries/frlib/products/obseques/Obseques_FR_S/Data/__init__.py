@@ -186,6 +186,52 @@ def single_prem_table():
         index_col="age").sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_select_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(select_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_single_prem_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(single_prem_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_surr_scale_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(surr_scale_table(), groups=('scale',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_select_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(select_table().index)
+
+
+
+def prepared_single_prem_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(single_prem_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -202,3 +248,5 @@ surr_scale_file = "surr_scale_table.csv"
 single_prem_file = "single_prem_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

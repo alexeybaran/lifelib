@@ -180,6 +180,60 @@ def crd_rate_table():
         input_dir() / crd_rate_file, index_col="age")                # noqa: F821
 
 
+def prepared_franchise_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(franchise_table(),
+                        columns=('franchise_factor',),
+                        indexing='loc')
+
+
+
+def prepared_itt_termination_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(itt_termination_table(),
+                        columns=('itt_recovery_rate', 'itt_to_ipt_rate', 'itt_mort_rate'),
+                        indexing='loc')
+
+
+
+
+def prepared_mort_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(mort_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_itt_inception_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(itt_inception_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_crd_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(crd_rate_table(), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_franchise_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(franchise_table().index)
+
+
+
+def prepared_itt_termination_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(itt_termination_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -198,3 +252,5 @@ lapse_table_file = "lapse_table.csv"
 crd_rate_file = "crd_rate_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

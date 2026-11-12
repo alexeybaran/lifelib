@@ -160,6 +160,56 @@ def benefit_schedule():
         index_col=["schedule_id", "policy_year"])
 
 
+def prepared_premium_rate_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(premium_rate_table(),
+                        columns=('prem_rate',),
+                        indexing='loc')
+
+
+
+def prepared_freq_loading_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(freq_loading_table(),
+                        columns=('prem_freq_load', 'prem_freq_fee'),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_freq_loading_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_benefit_schedule_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(benefit_schedule(), groups=('schedule_id',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_freq_loading_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(freq_loading_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -176,3 +226,5 @@ freq_loading_file = "freq_loading_table.csv"
 benefit_schedule_file = "benefit_schedule.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

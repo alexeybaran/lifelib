@@ -202,6 +202,90 @@ def revision_table():
         input_dir() / revision_file, index_col="policy_year")        # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_prevalence_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(prevalence_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+
+def prepared_cause_mix_index():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.index(cause_mix_table().index)
+
+
+def prepared_cause_shares():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.record(cause_mix_table()["share"], preserve_scalar_types=True)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_reduction_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(reduction_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_revision_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(revision_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_severity_share_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(severity_share_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_mort_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(mort_table().index)
+
+
+
+def prepared_reduction_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(reduction_table().index)
+
+
+
+def prepared_revision_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(revision_table().index)
+
+
+def prepared_cause_mix_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(cause_mix_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -222,3 +306,5 @@ reduction_file = "reduction_table.csv"
 revision_file = "revision_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

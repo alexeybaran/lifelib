@@ -187,6 +187,38 @@ def annuity_factor_table():
         index_col=["sex", "age"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_annuity_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(annuity_factor_table(),
+                        columns=('annuity_factor',),
+                        indexing='loc')
+
+
+def prepared_allocation_grid_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(allocation_grid(), groups=('allocation_profile',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_exit_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(exit_table(), groups=('compartment',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_allocation_grid_index_selection_level_0():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(allocation_grid().index.get_level_values(0))
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -201,3 +233,5 @@ exit_table_file = "exit_table.csv"
 annuity_factor_file = "annuity_factor.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")
