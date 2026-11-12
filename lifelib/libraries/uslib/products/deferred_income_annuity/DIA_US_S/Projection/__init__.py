@@ -332,8 +332,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    """The selected model point."""
+    return data.model_point_table().slice(point_id)     # noqa: F821
 
 
 def age_at_entry(life):
@@ -378,7 +378,7 @@ def reduction_trigger():
     v = model_point()["reduction_trigger"]
     if v not in ("either", "primary"):
         raise ValueError("invalid reduction_trigger")
-    return v
+    return ReductionTrigger[v]
 
 
 def market_type():
@@ -417,7 +417,7 @@ def payout_form():
     independently.
     """
     f = income_form()
-    return "LO" if f in ("LO", "LO_ROP") else f
+    return PayoutForm["LO" if f == "LO_ROP" else f]
 
 
 def db_form():
@@ -431,7 +431,7 @@ def db_form():
     v = model_point()["db_form"]
     if v not in ("ROP", "NONE"):
         raise ValueError("invalid db_form")
-    return v
+    return DeathBenefit[v]
 
 
 def certain_period():
@@ -457,7 +457,7 @@ def payment_timing():
     v = model_point()["timing"]
     if v not in ("arrears", "advance"):
         raise ValueError("invalid timing")
-    return v
+    return PaymentTiming[v]
 
 
 def cola_rate():
@@ -499,7 +499,7 @@ def mort_basis():
     v = model_point()["mort_basis"]
     if v not in ("anchor", "generational"):
         raise ValueError("invalid mort_basis")
-    return v
+    return MortalityBasis[v]
 
 
 def factor_basis():
@@ -513,7 +513,7 @@ def factor_basis():
     v = model_point()["factor_basis"]
     if v not in ("table", "formula"):
         raise ValueError("invalid factor_basis")
-    return v
+    return FactorBasis[v]
 
 
 def purchase_rate_dp():
@@ -525,7 +525,7 @@ def purchase_rate_dp():
     returning ``None``, so every "not set" on this Space is a negative sentinel.
     """
     v = model_point()["purchase_rate_dp"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
 
 
 def other_qlac_premium():
@@ -545,8 +545,8 @@ def premium_schedule():
     period" [S2][S3][S4][R13] - so the schedule is a separate long table rather than a
     fixed set of model point columns.
     """
-    tbl = data.premium_schedule_table()                              # noqa: F821
-    return tbl[tbl["point_id"] == point_id].sort_values("premium_mth")  # noqa: F821
+    groups = data.premium_schedule_table()                        # noqa: F821
+    return groups.get(point_id, groups.slice(None))               # noqa: F821
 
 
 def premium_by_mth():
@@ -556,15 +556,30 @@ def premium_by_mth():
     than a DataFrame filter in every one of the projected months.
     """
     out = {}
-    for _, r in premium_schedule().iterrows():
+    tbl = premium_schedule()
+    for key in tbl.index:
+        r = tbl.slice(key)
         k = int(r["premium_mth"])
         out[k] = out.get(k, 0.0) + float(r["premium_amt"])
     return out
 
 
+def premium_amounts() -> "modelx_helpers.immutable_inputs.Table":
+    """The original per-month premium amounts in a native-readable table."""
+    amounts = premium_by_mth()
+    return pdn.Table(amounts, ((value,) for value in amounts.values()), ("premium_amt",))
+
+
+def last_premium_month():
+    """The final month present in the original premium schedule."""
+    return max(premium_by_mth(), default=-1)
+
+
 def premium_pp(t):
     """P_k: the premium per contract paid at the **start** of month t; 0 if none falls."""
-    return premium_by_mth().get(t, 0.0)
+    if t > last_premium_month():
+        return 0.0
+    return premium_amounts().lookup_float(t, "premium_amt", 0.0)
 
 
 def cum_premium_pp(t):
@@ -658,7 +673,7 @@ def adjust_mth():
     named deterministically on the model point instead, and is off by default.
     """
     v = model_point()["adjust_mth"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
 
 
 def adjust_start_mth():
@@ -668,7 +683,7 @@ def adjust_start_mth():
     inside the maximum deferral and the maximum income start age [S1][S2][S3][S4].
     """
     v = model_point()["adjust_start_mth"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
 
 
 def income_start_mth():
@@ -709,7 +724,7 @@ def accel_mth():
     deterministically on the model point and is off by default.
     """
     v = model_point()["accel_mth"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
 
 
 def commute_mth():
@@ -720,13 +735,23 @@ def commute_mth():
     implemented, for the same reason as the other two options.
     """
     v = model_point()["commute_mth"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
 
 
 def commute_frac():
     """The fraction of the remaining guaranteed payments commuted; up to 100% [S4][R13]."""
     v = model_point()["commute_frac"]
-    return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
+    return 0.0 if pdn.isna(v) else float(v)                           # noqa: F821
+
+
+def mortality_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
+    """The original mortality table for the selected life’s sex."""
+    return data.mort_table().slice(sex(life))                          # noqa: F821
+
+
+def base_mortality_at_age(x, life):
+    """The base table rate for this attained age and covered life."""
+    return mortality_schedule(life).lookup_float(x, "mort_rate")
 
 
 def mort_rate_base(t, life):
@@ -742,22 +767,31 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[(x, sex(life)), "mort_rate"])  # noqa: F821
+    return base_mortality_at_age(x, life)
+
+
+def improvement_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
+    """The original improvement table for the selected life’s sex."""
+    return data.improvement_scale().slice(sex(life))                   # noqa: F821
+
+
+def improvement_at_age(x, life):
+    """The improvement table rate for this attained age and covered life."""
+    return improvement_schedule(life).lookup_float(x, "improvement_rate")
 
 
 def improvement_rate(t, life):
     """G2_x: the generational improvement rate for ``life`` in the year containing t.
 
     The shipped scale is an illustrative **[std]** stand-in for Projection Scale G2 and
-    is read only when ``mort_basis() == "generational"``.  Scaling it is the notes' first
+    is read only when ``mort_basis() == MortalityBasis.generational``.  Scaling it is the notes' first
     listed sensitivity: Scale G2 is fixed and dated, and the 2020-2024 payout experience
     study says it has over-projected improvement [R15][REG-R61].
     """
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 0.0
-    return float(                                                    # noqa: F821
-        data.improvement_scale().loc[(x, sex(life)), "improvement_rate"])
+    return improvement_at_age(x, life)
 
 
 def mort_rate(t, life):
@@ -773,9 +807,8 @@ def mort_rate(t, life):
     study being cited without a factor [R15][REG-R61].
     """
     q = mort_rate_base(t, life)
-    if mort_basis() == "generational":
-        k = calendar_year(t) - mort_table_year                       # noqa: F821
-        q = q * (1.0 - improvement_rate(t, life)) ** k
+    if mort_basis() == MortalityBasis.generational:
+        q = q * (1.0 - improvement_rate(t, life)) ** (calendar_year(t) - mort_table_year)
     return min(1.0, mort_ae_factor * q)                              # noqa: F821
 
 
@@ -881,6 +914,21 @@ def surv_to_income_start(t):
     return lives_if(income_start_mth_at(t), 1) / base
 
 
+def payment_interval():
+    """Months between scheduled payments at the policy's selected frequency."""
+    return 12 // payment_freq()
+
+
+def pricing_payment_first_offset():
+    """Months from the income start to the first pricing instalment."""
+    return 0 if payment_timing() == PaymentTiming.advance else payment_interval()
+
+
+def pricing_payment_limit(start_mth):
+    """The exclusive instalment number at the mortality horizon."""
+    return (horizon_mths() - start_mth - pricing_payment_first_offset()) // payment_interval() + 2
+
+
 def annuity_factor(start_mth, guar_mths, int_rate, from_mth):
     """The APV at month ``from_mth`` of $1 per annum of income beginning at ``start_mth``.
 
@@ -911,10 +959,8 @@ def annuity_factor(start_mth, guar_mths, int_rate, from_mth):
     which is age-driven, rather than by ``proj_len()``, which the pricing feeds.  Do not
     "tidy" ``last`` to ``proj_len() - 1``; it would move golden values.
     """
-    v = 1.0 / (1.0 + int_rate)
-    m = payment_freq()
-    step = 12 // m
-    adv = payment_timing() == "advance"
+    v: float = 1.0 / (1.0 + int_rate)
+    weight: float = 1.0 / payment_freq()
     l1f = lives_if(from_mth, 1)
     if l1f <= 0.0:
         return 0.0
@@ -928,26 +974,24 @@ def annuity_factor(start_mth, guar_mths, int_rate, from_mth):
         p_start = q1 + q2 - q1 * q2
     else:
         p_start = q1
-    last = horizon_mths()
-    total = 0.0
-    k = 1
-    while True:
-        off = (k - 1) * step if adv else k * step
-        s = start_mth + off
-        if s > last:
-            break
+    step = payment_interval()
+    first_offset = pricing_payment_first_offset()
+    limit = pricing_payment_limit(start_mth)
+    total: float = 0.0
+    for k in range(1, limit):
+        s = start_mth + first_offset + (k - 1) * step
         cert = p_start if k * step <= guar_mths else 0.0
         p1 = lives_if(s, 1) / l1f
         if jt and l2f > 0.0:
             p2 = lives_if(s, 2) / l2f
-            if trig == "either":
+            if trig == ReductionTrigger.either:
                 lf = p1 * p2 + dlt * (p1 + p2 - 2.0 * p1 * p2)
             else:
                 lf = p1 + dlt * (1.0 - p1) * p2
         else:
             lf = p1
-        total += (1.0 / m) * v ** ((s - from_mth) / 12.0) * max(cert, lf)
-        k += 1
+        years: float = (s - from_mth) / 12.0
+        total += weight * v ** years * max(cert, lf)
     return total
 
 
@@ -963,9 +1007,9 @@ def guarantee_mths_pricing():
     (6) is not implemented.
     """
     f = payout_form()
-    if f == "PC":
+    if f == PayoutForm.PC:
         return float(12 * certain_period())
-    if f == "LO":
+    if f == PayoutForm.LO:
         return 0.0
     cp = sum(premium_by_mth().values())
     n = 0.0
@@ -996,10 +1040,10 @@ def payout_factor():
     payout factors for this product and the Compact does not require the basis to be
     disclosed at all [R13 SS1.B(1)(a)].
     """
-    if factor_basis() == "formula":
+    if factor_basis() == FactorBasis.formula:
         return payout_factor_calc()
-    key = (age(income_start_mth(), 1), sex(1), payout_form())
-    return float(data.payout_factor_table().loc[key, "payout_factor"])  # noqa: F821
+    key = (age(income_start_mth(), 1), sex(1), PayoutForm(payout_form()).name)
+    return data.payout_factor_table().lookup_float(key, "payout_factor")  # noqa: F821
 
 
 def rop_factor_calc(t):
@@ -1025,7 +1069,7 @@ def rop_factor_calc(t):
     On a single-life contract ``l_last`` **is** the primary curve, so this changes
     nothing on the worked example.
     """
-    if db_form() != "ROP":
+    if db_form() != DeathBenefit.ROP:
         return 0.0
     end = income_start_mth_at(t)
     base = lives_if_last(t)
@@ -1052,12 +1096,12 @@ def rop_factor(t):
     four decimals on the fifteen-year slice; both readings are shipped and a test pins
     the gap open.  See the Space docstring.
     """
-    if db_form() != "ROP":
+    if db_form() != DeathBenefit.ROP:
         return 0.0
-    if factor_basis() == "formula":
+    if factor_basis() == FactorBasis.formula:
         return rop_factor_calc(t)
     key = (age(t, 1), sex(1), int(round(deferral_yrs(t))))
-    return float(data.rop_factor_table().loc[key, "rop_factor"])     # noqa: F821
+    return data.rop_factor_table().lookup_float(key, "rop_factor")     # noqa: F821
 
 
 def annuity_factor_def(t):
@@ -1068,7 +1112,7 @@ def annuity_factor_def(t):
     survival times a payout APV - so a joint model point must use the *formula* basis,
     where the whole deferred stream is valued in one pass by :func:`annuity_factor`.
     """
-    if factor_basis() == "table":
+    if factor_basis() == FactorBasis.table:
         if is_joint():
             raise ValueError("factor_basis 'table' is single-life only")
         return (pricing_disc_factor(deferral_yrs(t))
@@ -1132,7 +1176,7 @@ def annual_income(t):
     including a slice bought at its start.  Income is **additive across slices** and each
     slice is fully guaranteed from the moment its premium is paid [R13 SS3.H(1)].
     """
-    b = annual_income(t - 1) if t > 0 else 0.0
+    b: float = annual_income(t - 1) if t > 0 else 0.0
     if t == adjust_mth():
         b = b * adjust_income_factor()
     p = premium_pp(t)
@@ -1151,9 +1195,9 @@ def guarantee_yrs():
     the *kernel* uses before ``B`` is known.
     """
     f = payout_form()
-    if f == "PC":
+    if f == PayoutForm.PC:
         return float(certain_period())
-    if f == "LO":
+    if f == PayoutForm.LO:
         return 0.0
     t = income_start_mth()
     b = annual_income(t)
@@ -1180,6 +1224,14 @@ def phase(t):
     return "PAYOUT" if is_payout(t) else "DEFERRAL"
 
 
+def payment_due_offset(t):
+    """The payment-date offset used by the original frequency test."""
+    offset = t - income_start_mth()
+    if payment_timing() == PaymentTiming.arrears:
+        return offset + 1
+    return offset
+
+
 def is_payment_mth(t):
     """Whether an instalment falls in month t.
 
@@ -1191,10 +1243,8 @@ def is_payment_mth(t):
     """
     if not is_payout(t):
         return False
-    step = 12 // payment_freq()
-    off = t - income_start_mth()
-    if payment_timing() == "arrears":
-        return (off + 1) % step == 0
+    step = payment_interval()
+    off = payment_due_offset(t)
     return off % step == 0
 
 
@@ -1206,7 +1256,17 @@ def payment_surv_mth(t):
     for advance payments understates the liability by about one period's mortality per
     payment.
     """
-    return t + 1 if payment_timing() == "arrears" else t
+    return t + 1 if payment_timing() == PaymentTiming.arrears else t
+
+
+def payout_year_index(t):
+    """Completed payout years, negative before income starts."""
+    return (t - income_start_mth()) // 12
+
+
+def cola_factor_for_year(year):
+    """The original compound escalation for a completed payout year."""
+    return (1.0 + cola_rate()) ** year
 
 
 def cola_factor(t):
@@ -1215,10 +1275,10 @@ def cola_factor(t):
     Fixed compound, on each anniversary of the income start date, elected at issue and
     irrevocable [S2][S3][S4].  One in the deferral and in the first payout year.
     """
-    d = t - income_start_mth()
-    if d < 0:
+    year = payout_year_index(t)
+    if year < 0:
         return 1.0
-    return (1.0 + cola_rate()) ** (d // 12)
+    return cola_factor_for_year(year)
 
 
 def annuity_pp_sched(t):
@@ -1260,8 +1320,8 @@ def certain_mths_refund():
     """
     t0 = income_start_mth()
     cp = cum_premium_pp(t0)
-    step = 12 // payment_freq()
-    t = t0 if payment_timing() == "advance" else t0 + step - 1
+    step = payment_interval()
+    t = t0 if payment_timing() == PaymentTiming.advance else t0 + step - 1
     last = horizon_mths()
     while t <= last:
         if cum_annuity_pp(t) >= cp:
@@ -1279,9 +1339,9 @@ def certain_mths_eff():
     *pricing* only, and carrying that into the projection would pay the guarantee twice.
     """
     f = payout_form()
-    if f == "PC":
+    if f == PayoutForm.PC:
         return 12 * certain_period()
-    if f == "IR":
+    if f == PayoutForm.IR:
         return certain_mths_refund()
     return 0
 
@@ -1316,7 +1376,7 @@ def payment_factor_life(t):
         return l1
     l2 = lives_if(s, 2)
     d = survivor_pct()
-    if reduction_trigger() == "either":
+    if reduction_trigger() == ReductionTrigger.either:
         return l1 * l2 + d * (l1 + l2 - 2.0 * l1 * l2)
     return l1 + d * (1.0 - l1) * l2
 
@@ -1366,8 +1426,13 @@ def refund_balance(t):
     t0 = income_start_mth()
     if t < t0:
         return 0.0
-    adv = payment_timing() == "advance" and is_payment_mth(t)
+    adv = payment_timing() == PaymentTiming.advance and is_payment_mth(t)
     return max(0.0, cum_premium_pp(t0) - cum_annuity_pp(t if adv else t - 1))
+
+
+def accel_blackout_end():
+    """The last month covered by the original acceleration suspension."""
+    return accel_mth() + accel_months - 1                           # noqa: F821
 
 
 def accel_blackout(t):
@@ -1381,7 +1446,7 @@ def accel_blackout(t):
     a = accel_mth()
     if a < 0:
         return False
-    return a < t <= a + accel_months - 1                             # noqa: F821
+    return a < t <= accel_blackout_end()
 
 
 def accel_cost():
@@ -1574,8 +1639,8 @@ def annuity_payments(t):
     measures - and the months they would have fallen in pay nothing.
     """
     w = commute_weight(t)
-    total = pols_if_init() * (annuity_pp(t) * (payment_factor(t) - w)
-                              + annuity_pp_paid(t) * w)
+    total: float = pols_if_init() * (annuity_pp(t) * (payment_factor(t) - w)
+                                    + annuity_pp_paid(t) * w)
     a = accel_mth()
     if a >= 0 and t == a:
         for j in range(1, accel_months):                             # noqa: F821
@@ -1595,19 +1660,19 @@ def claim_pp(t, kind):
     refund and period certain deliver their guarantee as continued payments through the
     certain floor rather than as a lump sum.
     """
-    if kind == "DEATH":
-        if is_payout(t) or db_form() != "ROP":
+    if kind == Claim.DEATH:
+        if is_payout(t) or db_form() != DeathBenefit.ROP:
             return 0.0
         return cum_premium_pp(t)
-    if kind == "REFUND":
-        if not is_payout(t) or payout_form() != "CR":
+    if kind == Claim.REFUND:
+        if not is_payout(t) or payout_form() != PayoutForm.CR:
             return 0.0
         return refund_balance(t)
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
-    """Expected claim outgo in month t; ``kind=None`` totals every kind.
+def claims(t, kind):
+    """Expected claim outgo in month t; ``kind=Claim.ALL`` totals every kind.
 
     Weighted by :func:`lives_death_last`, the death that ends the contract: on a joint
     contract the first death leaves the contract running on the option chosen at issue
@@ -1615,8 +1680,8 @@ def claims(t, kind=None):
     The two kinds are mutually exclusive by construction - ``"DEATH"`` is zero from the
     income start month and ``"REFUND"`` is zero before it.
     """
-    if kind is None:
-        return claims(t, "DEATH") + claims(t, "REFUND")
+    if kind == Claim.ALL:
+        return claims(t, Claim.DEATH) + claims(t, Claim.REFUND)
     return pols_if_init() * lives_death_last(t) * claim_pp(t, kind)
 
 
@@ -1633,9 +1698,14 @@ def premiums(t):
     return pols_if_init() * premium_pp(t) * lives_if_last(t)
 
 
+def inflation_factor_for_year(year):
+    """The original expense inflation factor for a contract year."""
+    return (1.0 + inflation_rate) ** (year - 1)                      # noqa: F821
+
+
 def inflation_factor(t):
     """The expense escalation factor in month t: ``(1 + g)^(y(t) - 1)``."""
-    return (1.0 + inflation_rate) ** (policy_year(t) - 1)            # noqa: F821
+    return inflation_factor_for_year(policy_year(t))
 
 
 def expenses(t):
@@ -1658,7 +1728,7 @@ def liability_outgo(t):
     contract has no cash surrender value at any time before the income start date and
     none after [S1][S2][R13 SS3.P].
     """
-    return annuity_payments(t) + claims(t) + commutations(t) + expenses(t)
+    return annuity_payments(t) + claims(t, Claim.ALL) + commutations(t) + expenses(t)
 
 
 def liability_cf(t):
@@ -1727,7 +1797,7 @@ def qlac_flags():
         out.append("commutation on a QLAC")
     if accel_mth() >= 0:
         out.append("payment acceleration on a QLAC")
-    if payout_form() not in ("LO", "CR"):
+    if payout_form() not in (PayoutForm.LO, PayoutForm.CR):
         out.append("income form not permitted on a QLAC")
     return out
 
@@ -1872,7 +1942,7 @@ def lives_if_ann(y):
     return lives_if_last(12 * y)
 
 
-def claims_ann(y, kind=None):
+def claims_ann(y, kind):
     """Expected claim outgo over policy year y; the notes' ``E[DB]`` when kind="DEATH".
 
     The monthly cash flows summed over the twelve months of the year.  Because ``CP`` is
@@ -1907,7 +1977,7 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims": [claims(t) for t in ts],
+            "claims": [claims(t, Claim.ALL) for t in ts],
             "commutations": [commutations(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1958,8 +2028,8 @@ def result_annual():
             "cum_premium_pp": [cum_premium_pp(12 * y - 1) for y in ys],
             "annual_income": [annual_income(12 * y - 1) for y in ys],
             "lives_if": [lives_if_ann(y) for y in ys],
-            "claims_death": [claims_ann(y, "DEATH") for y in ys],
-            "claims_refund": [claims_ann(y, "REFUND") for y in ys],
+            "claims_death": [claims_ann(y, Claim.DEATH) for y in ys],
+            "claims_refund": [claims_ann(y, Claim.REFUND) for y in ys],
             "annuity_payments": [annuity_payments_ann(y) for y in ys],
         },
         index=pd.Index(ys, name="policy_year"),                      # noqa: F821
@@ -2004,3 +2074,23 @@ qlac_premium_limit = 210000.0
 qlac_max_start_age = 85
 
 pd = ("Module", "pandas")
+
+
+
+Claim = ("Pickle", 1)
+
+PaymentTiming = ("Pickle", 2)
+
+ReductionTrigger = ("Pickle", 3)
+
+MortalityBasis = ("Pickle", 4)
+
+FactorBasis = ("Pickle", 5)
+
+PayoutForm = ("Pickle", 6)
+
+DeathBenefit = ("Pickle", 7)
+
+enum_definitions = ("Pickle", 8)
+
+pdn = ("Module", "modelx_helpers.pdn")

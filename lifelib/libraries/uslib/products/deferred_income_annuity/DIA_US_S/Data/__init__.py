@@ -88,55 +88,67 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    values = pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(values, rows=True, report=True)
 
 
 def premium_schedule_table():
     """The premium schedules of every model point, from *premium_schedule.csv*.
 
     Long format, one row per premium slice, keyed by ``point_id`` - deliberately not
-    indexed, so that selecting a contract's rows returns a DataFrame whether it has one
-    slice or many.
+    indexed in the CSV. The internal table groups the original rows by point ID and
+    keeps the same payment-month order and report metadata.
     """
-    return pd.read_csv(input_dir() / premium_schedule_file)           # noqa: F821
+    values = pd.read_csv(input_dir() / premium_schedule_file)        # noqa: F821
+    groups = {}
+    for key, rows in values.groupby("point_id", sort=False):
+        groups[key] = pdn.table(rows.sort_values("premium_mth"), rows=True,
+                                preserve_scalar_types=True)
+    empty = values.iloc[[]].sort_values("premium_mth")
+    groups[None] = pdn.table(empty, rows=True, preserve_scalar_types=True)
+    return pdn.Record(groups)
 
 
 def mort_table():
     """The base annuitant mortality table by age and sex, read from *mort_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("mort_rate",))
 
 
 def improvement_scale():
     """The generational improvement scale by age and sex, from *improvement_scale.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / improvement_scale_file, index_col=["age", "sex"])  # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("improvement_rate",))
 
 
-def payout_factor_table():
+def payout_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The illustrative payout annuity factors, from *payout_factor_table.csv*.
 
     Keyed by ``(income_start_age, sex, payout_form)``; the value is
     ``a^(m)_y(f; i_p)``, the APV at the income start age of $1 per annum of income.
     **[std]** - no insurer publishes payout factors for this product.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / payout_factor_file,                            # noqa: F821
         index_col=["income_start_age", "sex", "payout_form"])
+    return pdn.table(values, preserve_scalar_types=True)
 
 
-def rop_factor_table():
+def rop_factor_table() -> "modelx_helpers.immutable_inputs.Table":
     """The illustrative return-of-premium factors, from *rop_factor_table.csv*.
 
     Keyed by ``(issue_age, sex, deferral_years)``; the value is ``A_rop(x, d; i_p)``,
     the APV at the premium date of $1 payable at the end of the month of death within a
     ``d``-year deferral.  **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / rop_factor_file,                               # noqa: F821
         index_col=["issue_age", "sex", "deferral_years"])
+    return pdn.table(values, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -155,3 +167,5 @@ payout_factor_file = "payout_factor_table.csv"
 rop_factor_file = "rop_factor_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

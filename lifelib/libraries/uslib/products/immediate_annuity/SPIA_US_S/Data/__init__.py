@@ -70,27 +70,31 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table():
+def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    values = pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
+    return pdn.table(values, rows=True, report=True)
 
 
 def mort_table():
     """The base annuitant mortality table by age and sex, read from *mort_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("mort_rate",))
 
 
 def improvement_scale():
     """The generational improvement scale by age and sex, from *improvement_scale.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / improvement_scale_file, index_col=["age", "sex"])  # noqa: F821
+    return pdn.table(values, groups=values.index.names[1:], columns=("improvement_rate",))
 
 
-def surr_charge_table():
+def surr_charge_table() -> "modelx_helpers.immutable_inputs.Table":
     """The commutation surrender-charge scale by contract year, from *surr_charge_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
+    values = pd.read_csv(                                              # noqa: F821
         input_dir() / surr_charge_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(values)
 
 
 # ---------------------------------------------------------------------------
@@ -105,3 +109,5 @@ improvement_scale_file = "improvement_scale.csv"
 surr_charge_file = "surr_charge_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

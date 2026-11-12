@@ -31,11 +31,21 @@ live, in :data:`EXTRA_POINT_ASSERTIONS`.
 import math
 import re
 from collections import Counter
+from enum import EnumMeta
+import pickle
 
 import modelx as mx
 import pytest
+from modelx_helpers.immutable_inputs import Table
+from modelx_helpers import numeric_math
+from modelx_helpers.typed_inputs import EnumDefinitions
 
 from us_registry import INPUT_FILES, MODELS, model_path
+
+
+def model_point_ids(model):
+    table = model.Data.model_point_table()
+    return list(table["keys"] if isinstance(table, Table) else table.index)
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -163,16 +173,22 @@ def test_the_name_carries_the_country_tag(name):
     assert "_US_" in name, f"{name} does not carry the _US country tag"
 
 
-def test_model_folder_holds_formulas_only(name):
-    """Inputs are external: the model folder carries no data of any kind.
+def test_model_folder_keeps_inputs_external(name):
+    """Saved models can carry code References. Input data lives beside the model.
 
-    No IOSpec (``_data/``), no embedded CSVs, no pickles — only the serialized formulas.
-    This is the ``annuallife/TradLife_A`` layout, as opposed to ``basiclife/BasicTerm_S``,
-    which stores its inputs inside the model.
+    The serializer may record enum definitions and registered scalar math functions.
     """
     folder = model_path(name)
-    assert not (folder / "_data").exists()
-    for pattern in ("*.pickle", "*.csv", "*.xlsx", "*.xls"):
+    enum_file = folder / "_data/data.pickle"
+    if enum_file.exists():
+        with enum_file.open("rb") as stream:
+            refs = pickle.load(stream)
+        scalar_math = (numeric_math.erf, numeric_math.exp, numeric_math.isinf, numeric_math.log, numeric_math.sqrt)
+        assert refs and all(isinstance(value, (EnumMeta, EnumDefinitions))
+                            or any(value is function for function in scalar_math) for value in refs.values())
+    assert list(folder.rglob("*.pickle")) == ([enum_file] if enum_file.exists() else [])
+    assert not (folder / "_data").exists() or list((folder / "_data").iterdir()) == [enum_file]
+    for pattern in ("*.csv", "*.xlsx", "*.xls"):
         assert not list(folder.rglob(pattern)), f"{name}: data inside the model folder"
     assert {p.name for p in folder.iterdir() if p.is_file()} == {
         "__init__.py", "_system.json"}
@@ -223,7 +239,7 @@ def test_projection_is_parameterized_by_point_id(model):
 
 def test_projection_shares_one_data_space(model):
     """``data`` resolves to the single Data Space from every ItemSpace."""
-    ids = list(model.Data.model_point_table().index)
+    ids = model_point_ids(model)
     assert model.Projection[ids[0]].data is model.Data
     if len(ids) > 1:
         assert model.Projection[ids[0]].data is model.Projection[ids[1]].data
@@ -358,7 +374,7 @@ def test_lapse_rate_is_the_annual_rate(name, model):
     if "lapse_rate_mth" not in cells:
         pytest.skip(f"{name} has no monthly lapse rate")
     assert "lapse_rate" in cells, "lapse_rate_mth exists without an annual lapse_rate"
-    proj = model.Projection[list(model.Data.model_point_table().index)[0]]
+    proj = model.Projection[model_point_ids(model)[0]]
     for t in (0, 12, 24):
         if t < proj.proj_len():
             ann, mth = proj.lapse_rate(t), proj.lapse_rate_mth(t)
@@ -375,7 +391,7 @@ def test_lapse_rate_is_the_annual_rate(name, model):
 
 def test_result_cf_column_conventions(model):
     """One column vocabulary across the library, so two models can be read side by side."""
-    proj = model.Projection[list(model.Data.model_point_table().index)[0]]
+    proj = model.Projection[model_point_ids(model)[0]]
     columns = list(proj.result_cf().columns)
     for col in columns:
         assert re.fullmatch(r"[a-z][a-z0-9_]*", col), f"{col} is not lower_snake_case"
@@ -392,7 +408,7 @@ def test_net_cf_is_income_positive(model):
     ``net_cf`` is its negative - so ``result_cf()["net_cf"]`` can be compared and summed
     across the library without checking which product it came from.
     """
-    proj = model.Projection[list(model.Data.model_point_table().index)[0]]
+    proj = model.Projection[model_point_ids(model)[0]]
     if "liability_cf" not in model.Projection.cells:
         pytest.skip("no notes-orientation companion cells")
     df = proj.result_cf()
@@ -518,7 +534,7 @@ def test_every_model_point_projects(name, model):
               if c.startswith("check_") and not c.endswith("_resid")]
     extra = EXTRA_POINT_ASSERTIONS.get(name)
     columns = None
-    for point_id in model.Data.model_point_table().index:
+    for point_id in model_point_ids(model):
         proj = model.Projection[point_id]
         exempt = CHECK_EXEMPTIONS.get((name, point_id), frozenset())
         df = proj.result_cf()
@@ -577,7 +593,7 @@ def test_inputs_are_read_once_not_once_per_model_point(name, model, read_log):
     file that stops being read drops out of the ``Counter`` instead of failing, and a
     shortened sweep passes with less coverage rather than louder.
     """
-    for point_id in model.Data.model_point_table().index:
+    for point_id in model_point_ids(model):
         model.Projection[point_id].result_cf()
 
     parent = str(model_path(name).parent).replace("\\", "/")
@@ -606,7 +622,7 @@ def test_round_trip_is_stable(name, model, tmp_path):
     import shutil
 
     src = model_path(name)
-    point_id = list(model.Data.model_point_table().index)[0]
+    point_id = model_point_ids(model)[0]
     before = model.Projection[point_id].result_cf()
     before_doc = model.Projection.doc
 

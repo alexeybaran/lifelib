@@ -29,6 +29,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
+from lifelib.libraries.uslib.products.fixed_indexed_annuity.categories import Claim
 
 MODEL_PATH = LIB / "products/fixed_indexed_annuity/FIA_US_S"
 
@@ -367,7 +368,7 @@ def test_the_income_stream_survives_exhaustion(anchor):
         assert anchor.index_credit_pp(t) == 0.0        # steps 1-3 are skipped
         assert anchor.lapse_rate(t) == 0.0             # lapse is impossible [S1][S9]
         assert anchor.lapse_rate_mth(t) == 0.0         # ... in every month of the year
-        assert anchor.claim_pp(t, "DEATH") == 0.0      # no death benefit
+        assert anchor.claim_pp(t, Claim.DEATH) == 0.0      # no death benefit
         assert anchor.surr_benefit_pp(t) == 0.0        # no surrender value
         assert anchor.income_payments(t) == pytest.approx(
             10144.16 * anchor.pols_if(t), abs=CENT)    # weighted by who reaches it
@@ -619,9 +620,9 @@ def test_pitfall_mva_sign_collar_and_scope(anchor, fixed_indexed_annuity):
     # Never on the death benefit: it is max(AV, MGV), with no charge and no adjustment,
     # and that holds in every month, not only at the anniversary.
     for t in (anniv(9), anniv(9) - 5):
-        assert anchor.claim_pp(t, "DEATH") == pytest.approx(
+        assert anchor.claim_pp(t, Claim.DEATH) == pytest.approx(
             max(anchor.av_pp(t), anchor.mgsv_pp(t)), abs=EXACT)
-        assert anchor.claim_pp(t, "DEATH") > anchor.claim_pp(t, "LAPSE")
+        assert anchor.claim_pp(t, Claim.DEATH) > anchor.claim_pp(t, Claim.LAPSE)
     # Never below the nonforfeiture minimum: the collar and then the floor.
     for year in range(8, 12):
         t = anniv(year)
@@ -1081,12 +1082,12 @@ def test_the_model_point_provenance_names_the_schedule_it_points_at(
     wd = fixed_indexed_annuity.Data.withdrawal_table()
     p = fixed_indexed_annuity.Projection[8]
     t = anniv(3)
-    assert mp.loc[8, "wd_schedule_id"] == "preexercise"
-    amount = float(wd.loc[("preexercise", 2), "wd_amount"])
+    assert mp.lookup(8, "wd_schedule_id") == "preexercise"
+    amount = wd.lookup_float(("preexercise", 2), "wd_amount")
     assert p.duration(t) == 2
     assert amount == pytest.approx(60000.00, abs=CENT)
     assert p.wd_pp(t) == pytest.approx(amount, abs=CENT)
-    provenance = mp.loc[8, "provenance"]
+    provenance = mp.lookup(8, "provenance")
     assert "$60,000" in provenance
     assert "$20,000" not in provenance
 
@@ -1116,7 +1117,7 @@ def test_the_monthly_decrement_rates_compound_to_the_annual_ones(fixed_indexed_a
     a different assumption.  Dividing by twelve instead would overstate it, and the error
     grows with the rate.
     """
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         for t in range(p.entry_mth(), p.proj_len(), 37):
             q, w = p.mort_rate(t), p.lapse_rate(t)
@@ -1187,7 +1188,7 @@ def test_no_contractual_cash_moves_between_anniversaries(fixed_indexed_annuity):
     annual = ("wd_pp", "index_credit_pp", "rider_charge_pp", "rollup_pp", "stack_pp",
               "withdrawals", "wd_guar", "wd_excess", "income_payments",
               "fixed_interest_ann_pp", "wd_charge_pp", "wd_clawback_pp", "wd_mva_pp")
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         for t in range(p.entry_mth(), p.proj_len()):
             if p.is_anniv(t):
@@ -1252,7 +1253,7 @@ def test_inforce_rollforward_closes(fixed_indexed_annuity):
     every projected ``t`` - and ``check_pols_roll_fwd_resid(t)`` is the signed residual a
     debugging session needs when it fails.
     """
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         assert p.check_pols_roll_fwd() is True, point_id
         for t in range(p.entry_mth(), p.proj_len()):
@@ -1262,7 +1263,7 @@ def test_inforce_rollforward_closes(fixed_indexed_annuity):
 
 def test_account_value_rollforward_closes(fixed_indexed_annuity):
     """The account value roll-forward closes on every model point, including at depletion."""
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         assert p.check_av_roll_fwd() is True, point_id
         for t in range(p.entry_mth(), p.proj_len()):
@@ -1303,7 +1304,7 @@ def test_the_stack_uses_the_gross_index_credit_not_the_starved_one(
 
 def test_withdrawals_partition_into_the_three_ledger_lines(fixed_indexed_annuity):
     """withdrawals = guaranteed + excess + post-depletion income, in every month."""
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         for t in range(p.entry_mth(), p.proj_len()):
             assert p.withdrawals(t) == pytest.approx(
@@ -1323,7 +1324,7 @@ def test_internal_transfers_are_not_cash_flows(anchor):
     assert "index_credit" not in df.columns
     assert anchor.rider_charge_pp(A8) > 0.0   # it exists, it just is not a ledger line
     assert anchor.net_cf(A8) == pytest.approx(
-        anchor.premiums(A8) - anchor.withdrawals(A8) - anchor.claims(A8)
+        anchor.premiums(A8) - anchor.withdrawals(A8) - anchor.claims(A8, Claim.ALL)
         - anchor.commissions(A8) - anchor.expenses(A8) - anchor.premium_taxes(A8),
         abs=EXACT)
 
@@ -1408,7 +1409,7 @@ def test_the_pols_if_column_is_the_weight_on_its_own_row(fixed_indexed_annuity):
     row.  With an end-of-period ``pols_if`` the printed count would be the one *after*
     the decrements, so the column would not reconcile with the row it sits on.
     """
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         df = p.result_cf()
         for t in range(p.entry_mth(), p.proj_len()):
@@ -1479,9 +1480,9 @@ def test_invalid_timing_and_kind_arguments_raise(anchor):
                  lambda: anchor.pols_if_at(A8, "BOM"),
                  lambda: anchor.av_at(A8, "BOM")):
         raises_value_error(call, "invalid timing")
-    for call in (lambda: anchor.claim_pp(A8, "ANNUITIZATION"),
-                 lambda: anchor.claim_from_av_pp(A8, "ANNUITIZATION"),
-                 lambda: anchor.pols_decr(A8, "ANNUITIZATION")):
+    for call in (lambda: anchor.claim_pp(A8, -1),
+                 lambda: anchor.claim_from_av_pp(A8, -1),
+                 lambda: anchor.pols_decr(A8, -1)):
         raises_value_error(call, "invalid kind")
 
 
@@ -1503,7 +1504,7 @@ def test_maturity_is_confined_to_the_horizon(anchor):
 
 
 def test_inforce_is_a_decreasing_probability(fixed_indexed_annuity):
-    for point_id in fixed_indexed_annuity.Data.model_point_table().index:
+    for point_id in fixed_indexed_annuity.Data.model_point_table()["keys"]:
         p = fixed_indexed_annuity.Projection[point_id]
         for t in range(p.entry_mth(), p.proj_len()):
             assert 0.0 <= p.pols_if(t) <= 1.0, (point_id, t)
@@ -1520,7 +1521,7 @@ def test_the_model_point_table_ships_the_nine_switch_combinations(
     model in the library. What is left here is the count, which is this product's own
     statement about what the shipped table covers.
     """
-    assert len(fixed_indexed_annuity.Data.model_point_table()) == 9
+    assert len(fixed_indexed_annuity.Data.model_point_table()["keys"]) == 9
 
 
 def test_the_model_name_matches_the_product_folder(fixed_indexed_annuity):
@@ -1566,7 +1567,7 @@ def test_mortality_reads_the_age_entering_the_contract_year(anchor):
     assert anchor.age(A8) == 69                   # entering contract year 8
     assert anchor.exercise_age(A8) == 70          # ... and 70 at its anniversary
     assert anchor.mort_rate(A8) == pytest.approx(
-        float(table.loc[(69, "M"), "mort_rate"]), rel=1e-12)
+        table["M"].lookup_float(69, "mort_rate"), rel=1e-12)
     # The age is a property of the contract year, so it does not move inside one.
     assert all(anchor.age(t) == 69 for t in range(opens(8), A8 + 1))
     assert anchor.age(anchor.proj_len() - 1) == 120

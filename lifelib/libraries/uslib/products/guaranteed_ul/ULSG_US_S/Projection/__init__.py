@@ -307,8 +307,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    """The selected model point as an immutable row."""
+    return data.model_point_table().slice(point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -346,12 +346,18 @@ def premium_type():
     A first-class model point attribute because funding pattern drives both the
     guarantee trajectory and observed lapse behaviour [R8].
     """
-    return model_point()["premium_type"]
+    label = model_point()["premium_type"]
+    if label == "UNKNOWN":
+        raise KeyError(label)
+    return PremiumType[label]
 
 
 def premium_mode():
     """The premium mode: ``"A"``, ``"S"``, ``"Q"`` or ``"M"`` (EFT only) [S2]."""
-    return model_point()["premium_mode"]
+    label = model_point()["premium_mode"]
+    if label == "UNKNOWN":
+        raise KeyError(label)
+    return PremiumMode[label]
 
 
 def premium_pp_ann():
@@ -469,7 +475,7 @@ def coi_rate_dp():
     way for an admin system to carry a rate table and reproduces the notes' table.
     """
     o = model_point()["coi_rate_dp"]
-    return -1 if pd.isna(o) else int(o)                              # noqa: F821
+    return -1 if pdn.isna(o) else int(o)           # noqa: F821
 
 
 def duration_mth(t):
@@ -623,13 +629,13 @@ def premium_freq():
     is annual.
     """
     m = premium_mode()
-    if m == "A":
+    if m == PremiumMode.A:
         return 1
-    elif m == "S":
+    elif m == PremiumMode.S:
         return 2
-    elif m == "Q":
+    elif m == PremiumMode.Q:
         return 4
-    elif m == "M":
+    elif m == PremiumMode.M:
         return 12
     else:
         raise ValueError("invalid premium mode")
@@ -643,12 +649,12 @@ def is_premium_mth(t):
     ``TEN_PAY``  as ``LEVEL``, for the first ``ten_pay_years`` policy years **[std]**.
     """
     pt = premium_type()
-    if pt == "SINGLE":
+    if pt == PremiumType.SINGLE:
         return duration_mth(t) == 0
-    elif pt == "TEN_PAY":
+    elif pt == PremiumType.TEN_PAY:
         if duration(t) >= ten_pay_years:                             # noqa: F821
             return False
-    elif pt != "LEVEL":
+    elif pt != PremiumType.LEVEL:
         raise ValueError("invalid premium type")
     return duration_mth(t) % (12 // premium_freq()) == 0
 
@@ -671,9 +677,9 @@ def prem_persistency(t):
     account, the cumulative premium and the premium income all move together.
     """
     o = model_point()["prem_persistency_override"]
-    if not pd.isna(o):                                               # noqa: F821
+    if not pdn.isna(o):                            # noqa: F821
         return float(o)
-    return prem_persistency_ann if premium_type() == "LEVEL" else 1.0  # noqa: F821
+    return prem_persistency_ann if premium_type() == PremiumType.LEVEL else 1.0  # noqa: F821
 
 
 def premium_pp(t):
@@ -688,7 +694,7 @@ def premium_pp(t):
         return 0.0
     if not is_premium_mth(t):
         return 0.0
-    if premium_type() == "SINGLE":
+    if premium_type() == PremiumType.SINGLE:
         return premium_pp_ann() * prem_persistency(t)
     return premium_pp_ann() / premium_freq() * prem_persistency(t)
 
@@ -775,8 +781,8 @@ def corridor_factor(t):
     but it is the reason the death benefit is a ``max`` rather than the face amount.
     """
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[a, "corridor_factor"])
+    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
+    return tbl.lookup_float(a, "corridor_factor")
 
 
 def db_pp(t):
@@ -788,7 +794,7 @@ def db_pp(t):
     exhausted account cannot pull the death benefit below the face amount.
     """
     return max(sum_assured_at(t),
-               corridor_factor(t) * max(av_pp_at(t, "BEF_COI"), 0.0))
+               corridor_factor(t) * max(av_pp_at(t, Timing.BEF_COI), 0.0))
 
 
 def net_amt_at_risk(t):
@@ -804,7 +810,7 @@ def net_amt_at_risk(t):
     essentially the whole face amount, which is what dominates late-duration
     guaranteed UL cash flows.
     """
-    return max(0.0, db_pp(t) / naar_factor() - max(av_pp_at(t, "BEF_COI"), 0.0))
+    return max(0.0, db_pp(t) / naar_factor() - max(av_pp_at(t, Timing.BEF_COI), 0.0))
 
 
 def sg_net_amt_at_risk(t):
@@ -816,7 +822,12 @@ def sg_net_amt_at_risk(t):
     the shadow cost of insurance.
     """
     return max(0.0, db_pp(t) / sg_naar_factor()
-               - max(sg_pp_at(t, "BEF_COI"), 0.0))
+               - max(sg_pp_at(t, Timing.BEF_COI), 0.0))
+
+
+def coi_table() -> "modelx_helpers.immutable_inputs.Table":
+    """The original COI table for this policy's sex and underwriting class."""
+    return data.coi_rates().slice(sex(), rate_class())
 
 
 def coi_rate_scale():
@@ -827,7 +838,8 @@ def coi_rate_scale():
     covers the anchor cell M / StdNT over attained ages 45-121 only; a model point on
     any other cell, or a younger attained age, needs the table extended first.
     """
-    return data.coi_rates().loc[(sex(), rate_class())]["coi_rate_guar_ann"]  # noqa: F821
+    group = data.coi_rates().slice(sex(), rate_class())
+    return pdn.to_pandas(pdn.column(group, "coi_rate_guar_ann", report=True))
 
 
 def coi_rate_guar(t):
@@ -840,9 +852,9 @@ def coi_rate_guar(t):
     to be stated in the policy [R3]; carriers do not publish them, so the shipped
     scale is illustrative **[std]**, not the 2017 CSO table [REG-R17].
     """
-    scale = coi_rate_scale()
-    a = min(age(t), int(scale.index.max()))
-    return float(scale[a]) / 12
+    scale = coi_table()
+    a = min(age(t), scale.index.max_int())
+    return scale.lookup_float(a, "coi_rate_guar_ann") / 12
 
 
 def coi_rate(t):
@@ -959,7 +971,7 @@ def maint_fee_taken_pp(t):
     The expense charges are deducted before the cost of insurance, so they are met
     first out of the balance standing after the premium and the withdrawal.
     """
-    return min(maint_fee_pp(t), max(av_pp_at(t, "BEF_FEE"), 0.0))
+    return min(maint_fee_pp(t), max(av_pp_at(t, Timing.BEF_FEE), 0.0))
 
 
 def coi_taken_pp(t):
@@ -968,7 +980,7 @@ def coi_taken_pp(t):
     The cost of insurance is deducted last, so it absorbs the shortfall first: this is
     the term that goes unpaid in the guarantee-support regime.
     """
-    return min(coi_pp(t), max(av_pp_at(t, "BEF_COI"), 0.0))
+    return min(coi_pp(t), max(av_pp_at(t, Timing.BEF_COI), 0.0))
 
 
 def mth_deduction_taken_pp(t):
@@ -1073,16 +1085,16 @@ def av_pp_at(t, timing):
 
     The end-of-month balance ``AV_t`` is :func:`av_pp`.
     """
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return av_pp_init() if t == 0 else av_pp(t - 1)
-    elif timing == "BEF_WD":
-        return av_pp_at(t, "BEF_PREM") + prem_to_av_pp(t)
-    elif timing == "BEF_FEE":
-        return av_pp_at(t, "BEF_WD") - wd_pp(t) - wd_fee_pp(t)
-    elif timing == "BEF_COI":
-        return av_pp_at(t, "BEF_FEE") - maint_fee_pp(t)
-    elif timing == "BEF_INV":
-        return max(0.0, av_pp_at(t, "BEF_COI") - coi_pp(t))
+    elif timing == Timing.BEF_WD:
+        return av_pp_at(t, Timing.BEF_PREM) + prem_to_av_pp(t)
+    elif timing == Timing.BEF_FEE:
+        return av_pp_at(t, Timing.BEF_WD) - wd_pp(t) - wd_fee_pp(t)
+    elif timing == Timing.BEF_COI:
+        return av_pp_at(t, Timing.BEF_FEE) - maint_fee_pp(t)
+    elif timing == Timing.BEF_INV:
+        return max(0.0, av_pp_at(t, Timing.BEF_COI) - coi_pp(t))
     else:
         raise ValueError("invalid timing")
 
@@ -1099,8 +1111,8 @@ def inv_income_pp(t):
     With the account value exhausted the credit is zero, which is why the worked
     example shows no interest from policy month 304 (``t = 3`` on the anchor).
     """
-    loaned = loan_bal_pp_at(t, "BEF_INT")
-    unloaned = av_pp_at(t, "BEF_INV") - loaned
+    loaned = loan_bal_pp_at(t, Timing.BEF_INT)
+    unloaned = av_pp_at(t, Timing.BEF_INV) - loaned
     return unloaned * inv_return_mth(t) + loaned * loan_cr_rate_mth()
 
 
@@ -1118,7 +1130,7 @@ def av_pp(t):
     floor unconditionally is a **[std]** deviation that moves no cash flow but does
     leave this cells running after the policy has gone.  :func:`av_pp_at` sets out why.
     """
-    return av_pp_at(t, "BEF_INV") + inv_income_pp(t)
+    return av_pp_at(t, Timing.BEF_INV) + inv_income_pp(t)
 
 
 def av_at(t, timing):
@@ -1129,7 +1141,7 @@ def av_at(t, timing):
     values as :func:`av_pp_at`, plus ``"EOM"`` for the closing balance before
     decrements.
     """
-    if timing == "EOM":
+    if timing == Timing.EOM:
         return av_pp(t) * pols_if(t)
     return av_pp_at(t, timing) * pols_if(t)
 
@@ -1148,7 +1160,7 @@ def av_change(t):
 
     ``av_at(t + 1, "BEF_PREM") - av_at(t, "BEF_PREM")``, following ``CashValue_SE``.
     """
-    return av_at(t + 1, "BEF_PREM") - av_at(t, "BEF_PREM")
+    return av_at(t + 1, Timing.BEF_PREM) - av_at(t, Timing.BEF_PREM)
 
 
 def loan_bal_pp_at(t, timing):
@@ -1165,7 +1177,7 @@ def loan_bal_pp_at(t, timing):
 
     The end-of-month balance ``L_t`` is :func:`loan_bal_pp`.
     """
-    if timing == "BEF_INT":
+    if timing == Timing.BEF_INT:
         return loan_bal_init() if t == 0 else loan_bal_pp(t - 1)
     else:
         raise ValueError("invalid timing")
@@ -1183,7 +1195,7 @@ def loan_bal_pp(t):
     and from the surrender value; the shadow account itself is not reduced by it
     [S4][S2].
     """
-    return loan_bal_pp_at(t, "BEF_INT") * (1 + loan_rate_mth())
+    return loan_bal_pp_at(t, Timing.BEF_INT) * (1 + loan_rate_mth())
 
 
 def sg_pp_at(t, timing):
@@ -1213,16 +1225,16 @@ def sg_pp_at(t, timing):
         catch-up shortfall, and flooring it destroys :func:`catch_up_prem_pp` and
         misprices restoration.
     """
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return sg_pp_init() if t == 0 else sg_pp(t - 1)
-    elif timing == "BEF_WD":
-        return sg_pp_at(t, "BEF_PREM") + prem_to_sg_pp(t)
-    elif timing == "BEF_FEE":
-        return sg_pp_at(t, "BEF_WD") - wd_pp(t)
-    elif timing == "BEF_COI":
-        return sg_pp_at(t, "BEF_FEE") - sg_maint_fee_pp(t)
-    elif timing == "BEF_INV":
-        return sg_pp_at(t, "BEF_COI") - sg_coi_pp(t)
+    elif timing == Timing.BEF_WD:
+        return sg_pp_at(t, Timing.BEF_PREM) + prem_to_sg_pp(t)
+    elif timing == Timing.BEF_FEE:
+        return sg_pp_at(t, Timing.BEF_WD) - wd_pp(t)
+    elif timing == Timing.BEF_COI:
+        return sg_pp_at(t, Timing.BEF_FEE) - sg_maint_fee_pp(t)
+    elif timing == Timing.BEF_INV:
+        return sg_pp_at(t, Timing.BEF_COI) - sg_coi_pp(t)
     else:
         raise ValueError("invalid timing")
 
@@ -1233,7 +1245,7 @@ def sg_inv_income_pp(t):
     Credited on the post-deduction shadow balance with no floor and no loaned/unloaned
     split: the shadow account is notional and carries no loan of its own.
     """
-    return sg_pp_at(t, "BEF_INV") * sg_rate_mth()
+    return sg_pp_at(t, Timing.BEF_INV) * sg_rate_mth()
 
 
 def sg_pp(t):
@@ -1244,7 +1256,7 @@ def sg_pp(t):
     Notional throughout: it exists only to run the in-force test and is never payable
     [S2][S3].
     """
-    return sg_pp_at(t, "BEF_INV") + sg_inv_income_pp(t)
+    return sg_pp_at(t, Timing.BEF_INV) + sg_inv_income_pp(t)
 
 
 def sg_net_pp(t):
@@ -1280,7 +1292,7 @@ def is_guar_supported(t):
     whole death benefit.  ``L_{t-1}`` is the opening loan balance
     ``loan_bal_pp_at(t, "BEF_INT")``.
     """
-    return sg_pp_at(t, "BEF_INV") - loan_bal_pp_at(t, "BEF_INT") > 0
+    return sg_pp_at(t, Timing.BEF_INV) - loan_bal_pp_at(t, Timing.BEF_INT) > 0
 
 
 def catch_up_prem_pp(t):
@@ -1307,9 +1319,10 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    row = data.surr_charge_table().loc[surr_charge_id()]              # noqa: F821
-    init = float(row["sc_per_1000_init"])
-    yrs = float(row["runoff_years"])
+    tbl = data.surr_charge_table()                                   # noqa: F821
+    schedule = surr_charge_id()
+    init = tbl.lookup_float(schedule, "sc_per_1000_init")
+    yrs = tbl.lookup_float(schedule, "runoff_years")
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1363,7 +1376,7 @@ def is_shortfall(t):
     shortfall is forgone by the insurer and coverage continues; only when the guarantee
     has failed as well does it open the grace period.
     """
-    return av_pp_at(t, "BEF_COI") - coi_pp(t) < 0
+    return av_pp_at(t, Timing.BEF_COI) - coi_pp(t) < 0
 
 
 def cure_premium_pp(t):
@@ -1451,7 +1464,7 @@ def rop_ratio(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return float(data.rop_table().loc[a, "refund_ratio"])             # noqa: F821
+    return data.rop_table().lookup_float(a, "refund_ratio")             # noqa: F821
 
 
 def rop_rate(t):
@@ -1465,12 +1478,12 @@ def rop_rate(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return float(data.rop_table().loc[a, "exercise_rate"])            # noqa: F821
+    return data.rop_table().lookup_float(a, "exercise_rate")            # noqa: F821
 
 
 def class_factor():
     """The underwriting-class multiplier on the best-estimate mortality table **[std]**."""
-    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
+    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
 
 
 def mort_improve_rate(t):
@@ -1519,8 +1532,8 @@ def mort_rate(t):
     pushing the terminal rate past certainty.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
-    return min(1.0, float(tbl.loc[a, "mort_rate"]) * class_factor()
+    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
+    return min(1.0, tbl.lookup_float(a, "mort_rate") * class_factor()
                * mort_ae_factor * mort_improve_factor(t))            # noqa: F821
 
 
@@ -1544,8 +1557,8 @@ def lapse_rate_base(t):
     a paid data package, so the levels are a standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(tbl.index.max()))
-    return float(tbl.loc[y, "lapse_rate_ann"])
+    y = min(policy_year(t), tbl.index.max_int())
+    return tbl.lookup_float(y, "lapse_rate_ann")
 
 
 def lapse_rate_guar_mult():
@@ -1569,11 +1582,11 @@ def lapse_rate_pattern_mult():
     lapses for level-pay, lower for single-pay.
     """
     pt = premium_type()
-    if pt == "SINGLE":
+    if pt == PremiumType.SINGLE:
         return lapse_pattern_mult_single                             # noqa: F821
-    elif pt == "TEN_PAY":
+    elif pt == PremiumType.TEN_PAY:
         return lapse_pattern_mult_ten_pay                            # noqa: F821
-    elif pt == "LEVEL":
+    elif pt == PremiumType.LEVEL:
         return 1.0
     else:
         raise ValueError("invalid premium type")
@@ -1645,7 +1658,7 @@ def pols_if_at(t, timing):
     no maturity date, so nothing changes the policy count between BOM and the
     end-of-month decrements.
     """
-    if timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    if timing == Timing.BEF_MAT or timing == Timing.BEF_NB or timing == Timing.BEF_DECR:
         return pols_if(t)
     else:
         raise ValueError("invalid timing")
@@ -1721,23 +1734,23 @@ def claim_pp(t, kind):
     ``"WITHDRAWAL"``
         ``W_t``.  The $25 fee is retained by the insurer and is not part of the
         payment.  A withdrawal is not a claim -- the aggregate cash flow is
-        :func:`withdrawals`, not ``claims(t, "WITHDRAWAL")``, which raises -- but the
+        :func:`withdrawals`, not ``claims(t, Claim.WITHDRAWAL)``, which raises -- but the
         per-policy amount keeps its branch here because :func:`withdrawals` weights it.
 
     ``"GRACE"``
         Zero: a policy terminating in grace terminates without value [S7].
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return db_pp(t) - loan_bal_pp(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return ncsv_pp(t)
-    elif kind == "REFUND":
+    elif kind == Claim.REFUND:
         return max(0.0, min(rop_ratio(t) * cum_prem_pp(t),
                             rop_cap_rate * sum_assured_at(t))        # noqa: F821
                    - loan_bal_pp(t))
-    elif kind == "WITHDRAWAL":
+    elif kind == Claim.WITHDRAWAL:
         return wd_pp(t)
-    elif kind == "GRACE":
+    elif kind == Claim.GRACE:
         return 0.0
     else:
         raise ValueError("invalid kind")
@@ -1755,17 +1768,17 @@ def claims_from_av(t, kind):
     taken at BOM out of the account values of the policies still in force, and it is
     the same figure as :func:`withdrawals`.
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return av_pp(t) * pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return av_pp(t) * pols_lapse(t)
-    elif kind == "REFUND":
+    elif kind == Claim.REFUND:
         return av_pp(t) * pols_rop(t)
-    elif kind == "GRACE":
+    elif kind == Claim.GRACE:
         return av_pp(t) * pols_lapse_grace(t)
-    elif kind == "WITHDRAWAL":
+    elif kind == Claim.WITHDRAWAL:
         return withdrawals(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return 0.0
     else:
         raise ValueError("invalid kind")
@@ -1779,33 +1792,34 @@ def claims_over_av(t):
     the account value is zero and the charge is forgone, it is the whole face amount
     with no charge behind it.
     """
-    return (claim_pp(t, "DEATH") - av_pp(t)) * pols_death(t)
+    return (claim_pp(t, Claim.DEATH) - av_pp(t)) * pols_death(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Claim outgo in policy month t, optionally by ``kind``.
 
-    ``kind`` is ``"DEATH"``, ``"LAPSE"``, ``"REFUND"``, ``"GRACE"``, or ``None`` for
+    ``kind`` is ``"DEATH"``, ``"LAPSE"``, ``"REFUND"``, ``"GRACE"``, or ``Claim.ALL`` for
     the total.  Death claims are weighted by :func:`pols_death`, surrenders by
     :func:`pols_lapse` and refunds by :func:`pols_rop`, all end-of-month events.
 
     ``"WITHDRAWAL"`` is deliberately **not** a claim kind and raises: a partial
     withdrawal is a payment on the owner's election out of a policy that stays in
     force, so it is :func:`withdrawals`.  Keeping it out of this cells is what keeps
-    the ``kind is None`` total from double-counting it against the ``withdrawals``
+    the ``kind == Claim.ALL`` total from double-counting it against the ``withdrawals``
     column of :func:`result_cf`.
     """
-    if kind == "DEATH":
-        return claim_pp(t, "DEATH") * pols_death(t)
-    elif kind == "LAPSE":
-        return claim_pp(t, "LAPSE") * pols_lapse(t)
-    elif kind == "REFUND":
-        return claim_pp(t, "REFUND") * pols_rop(t)
-    elif kind == "GRACE":
+    if kind == Claim.DEATH:
+        return claim_pp(t, Claim.DEATH) * pols_death(t)
+    elif kind == Claim.LAPSE:
+        return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
+    elif kind == Claim.REFUND:
+        return claim_pp(t, Claim.REFUND) * pols_rop(t)
+    elif kind == Claim.GRACE:
         return 0.0
-    elif kind is None:
-        return sum(claims(t, k) for k in
-                   ("DEATH", "LAPSE", "REFUND", "GRACE"))
+    elif kind == Claim.ALL:
+        # The four claim kinds occupy the first four enum codes.
+        return sum(claims(t, claim_kind) for claim_kind in (
+            Claim.DEATH, Claim.LAPSE, Claim.REFUND, Claim.GRACE))
     else:
         raise ValueError("invalid kind")
 
@@ -1823,7 +1837,7 @@ def withdrawals(t):
     the base model and give no pattern, so the mechanics are implemented and the
     behaviour is left to the data **[std]**.
     """
-    return claim_pp(t, "WITHDRAWAL") * pols_if(t)
+    return claim_pp(t, Claim.WITHDRAWAL) * pols_if(t)
 
 
 def inflation_factor(t):
@@ -1878,7 +1892,7 @@ def margin_expense(t):
             + wd_fees(t)
             + maint_fee(t)
             + surr_charge(t)
-            + claims_from_av(t, "GRACE")
+            + claims_from_av(t, Claim.GRACE)
             - expenses(t)
             - premium_taxes(t))
 
@@ -1902,7 +1916,7 @@ def margin_rop(t):
     against the insurer whose cost depends on cumulative premiums against the reserve
     released.
     """
-    return (av_pp(t) - claim_pp(t, "REFUND")) * pols_rop(t)
+    return (av_pp(t) - claim_pp(t, Claim.REFUND)) * pols_rop(t)
 
 
 def net_cf(t):
@@ -1919,7 +1933,7 @@ def net_cf(t):
     credits and every shadow-account entry are internal transfers and do not appear --
     see :func:`check_margin` for how they reconcile.
     """
-    return (premiums(t) - claims(t) - withdrawals(t)
+    return (premiums(t) - claims(t, Claim.ALL) - withdrawals(t)
             - expenses(t) - premium_taxes(t))
 
 
@@ -2026,17 +2040,17 @@ def check_av_roll_fwd():
     """
     res = []
     for t in range(proj_len()):
-        av = (av_at(t, "BEF_PREM")
+        av = (av_at(t, Timing.BEF_PREM)
               + prem_to_av(t)
               - withdrawals(t)
               - wd_fees(t)
               - mth_deduction(t)
               + inv_income(t)
-              - claims_from_av(t, "DEATH")
-              - claims_from_av(t, "LAPSE")
-              - claims_from_av(t, "REFUND")
-              - claims_from_av(t, "GRACE"))
-        res.append(math.isclose(av_at(t + 1, "BEF_PREM"), av,        # noqa: F821
+              - claims_from_av(t, Claim.DEATH)
+              - claims_from_av(t, Claim.LAPSE)
+              - claims_from_av(t, Claim.REFUND)
+              - claims_from_av(t, Claim.GRACE))
+        res.append(math.isclose(av_at(t + 1, Timing.BEF_PREM), av,        # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-9))
     return all(res)
 
@@ -2057,7 +2071,7 @@ def check_sg_roll_fwd():
     """
     res = []
     for t in range(proj_len()):
-        sg = (sg_pp_at(t, "BEF_PREM") + prem_to_sg_pp(t) - wd_pp(t)
+        sg = (sg_pp_at(t, Timing.BEF_PREM) + prem_to_sg_pp(t) - wd_pp(t)
               - sg_deduction_pp(t) + sg_inv_income_pp(t))
         res.append(math.isclose(sg_pp(t), sg, rel_tol=1e-9, abs_tol=1e-9))  # noqa: F821
     return all(res)
@@ -2105,9 +2119,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_rop": [claims(t, "REFUND") for t in ts],
+            "claims_death": [claims(t, Claim.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Claim.LAPSE) for t in ts],
+            "claims_rop": [claims(t, Claim.REFUND) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2275,3 +2289,15 @@ solve_max_doublings = 40
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+Timing = ("Pickle", 1)
+
+Claim = ("Pickle", 2)
+
+PremiumType = ("Pickle", 3)
+
+PremiumMode = ("Pickle", 4)
+
+enum_definitions = ("Pickle", 5)
+
+pdn = ("Module", "modelx_helpers.pdn")
