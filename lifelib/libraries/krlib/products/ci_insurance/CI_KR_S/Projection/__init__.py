@@ -345,7 +345,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -360,7 +360,7 @@ def sex():
     incidence where the female rates are far below the male ones, and by the savings
     element, which is sex-neutral.
     """
-    v = model_point()["sex"]
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -375,7 +375,7 @@ def age_at_entry():
     CI source retrieved [S3] [S4] [R13] and is five years below the whole life chassis's
     15-65 ceiling.
     """
-    return int(model_point()["issue_age"])
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -388,7 +388,7 @@ def sum_assured():
     추가납입 are held at zero **[std]**, so ``SA`` is also the 기본사망보험금 of
     [S1 별표1 주7].
     """
-    return float(model_point()["sum_assured"])
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def pols_if_init():
@@ -398,7 +398,7 @@ def pols_if_init():
     library.  It is read from the model point rather than hard-coded so that a user can
     project a block by scaling one row.
     """
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def prem_term():
@@ -410,7 +410,7 @@ def prem_term():
     step and the acceleration can be observed separately.  The menu runs 5 to 30년납 in
     fives and 55 to 80세납, with 5년납 and 10년납 offered on the 기본환급형 only [S4].
     """
-    return int(model_point()["prem_term"])
+    return pdn.lookup_int(prepared_model_point(), "prem_term")
 
 
 def prem_period():
@@ -465,7 +465,7 @@ def premium_pp():
     implies, times the 저해지-to-기본환급형 form factor of 1.10224 published for one
     identical cell [S4], with 0.937 for the 무해지 form **[std]**.
     """
-    return float(model_point()["premium_annual"])
+    return pdn.lookup_float(prepared_model_point(), "premium_annual")
 
 
 def premium_mth_pp():
@@ -499,7 +499,7 @@ def accel_rate():
     excluded because it is not a pure acceleration: it extinguishes the death benefit and
     replaces it with a separately funded 유족위로금 [S4].
     """
-    a = float(model_point()["accel_rate"])
+    a = pdn.lookup_float(prepared_model_point(), "accel_rate")
     if not 0.0 < a < 1.0:
         raise ValueError("accel_rate must lie strictly between 0 and 1")
     return a
@@ -526,7 +526,7 @@ def resid_floor_mult():
     stated complement: on a long-surviving post-CI policy the account overtakes the nominal
     and the floor becomes the benefit.
     """
-    return float(model_point()["resid_floor_mult"])
+    return pdn.lookup_float(prepared_model_point(), "resid_floor_mult")
 
 
 def cv_floor_ratio():
@@ -544,7 +544,7 @@ def cv_floor_ratio():
     the premium was calculated on a 최적해지율, which is why the lapse assumption on this
     product is a supervisory matter [REG-R19] [REG-R27].
     """
-    k = float(model_point()["cv_floor_ratio"])
+    k = pdn.lookup_float(prepared_model_point(), "cv_floor_ratio")
     if not 0.0 <= k <= 1.0:
         raise ValueError("invalid cv_floor_ratio")
     return k
@@ -566,7 +566,7 @@ def first_year_scope():
     The modelling consequence is real — it requires the 중대한 암 incidence to be split
     into a breast component and the rest, which :func:`breast_share` supplies.
     """
-    v = model_point()["first_year_scope"]
+    v = pdn.lookup_object(prepared_model_point(), "first_year_scope")
     if v not in ("breast", "all"):
         raise ValueError("invalid first_year_scope")
     return v
@@ -606,7 +606,7 @@ def lapse_basis():
     profitability, and the resulting switching raised observed 표준형 lapse, which was fed
     back into the 무해지 assumption — 「악순환」 [REG-R27].
     """
-    v = model_point()["lapse_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "lapse_basis")
     if v not in ("log_linear", "table"):
         raise ValueError("invalid lapse_basis")
     return v
@@ -623,7 +623,7 @@ def mort_be_factor():
     to, because ``omega_age`` is the horizon of the table and a structural property of the
     projection rather than an experience assumption.
     """
-    return float(model_point()["mort_adj"])
+    return pdn.lookup_float(prepared_model_point(), "mort_adj")
 
 
 def ci_be_factor():
@@ -635,7 +635,7 @@ def ci_be_factor():
     far the weaker of the two.  0.75 on model point 9, removing a quarter of the rate as a
     stated **[std]** unwinding of the 안전할증 [R1].
     """
-    return float(model_point()["ci_adj"])
+    return pdn.lookup_float(prepared_model_point(), "ci_adj")
 
 
 def mort_ci_factor():
@@ -656,7 +656,7 @@ def mort_ci_factor():
     It is a model point column so that the sensitivity can be read directly, and model
     point 9 runs it at 2.00.
     """
-    return float(model_point()["mort_ci_factor"])
+    return pdn.lookup_float(prepared_model_point(), "mort_ci_factor")
 
 
 def waiver_rate(t):
@@ -680,7 +680,7 @@ def waiver_rate(t):
     """
     if t < 0 or t >= prem_period_mths():
         return 0.0
-    return float(model_point()["waiver_rate"])
+    return pdn.lookup_float(prepared_model_point(), "waiver_rate")
 
 
 def pol_loan_util():
@@ -692,7 +692,7 @@ def pol_loan_util():
     납입기간, where the base is the **suppressed** value — which is the configuration in
     which the CI carve-out's doubling of the limit is visible.
     """
-    return float(model_point()["pol_loan_util"])
+    return pdn.lookup_float(prepared_model_point(), "pol_loan_util")
 
 
 def pol_loan_year():
@@ -702,7 +702,7 @@ def pol_loan_year():
     already 0-based: it is a point on the anniversary clock, not an index into the frame,
     and it did not move when the frame did.
     """
-    return int(model_point()["pol_loan_year"])
+    return pdn.lookup_int(prepared_model_point(), "pol_loan_year")
 
 
 def omega_age():
@@ -714,8 +714,8 @@ def omega_age():
     not a transcription.  It is a hard model parameter and not a rounding: projecting a
     whole-life contract to 100 truncates the liability and projecting to 120 invents one.
     """
-    tbl = data.mort_table().loc[sex()]                               # noqa: F821
-    return int(tbl.index[tbl["mort_rate"] >= 1.0][0])
+    tbl = pdn.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
+    return int([a for a in pdn.keys(tbl) if pdn.lookup_float(tbl, a, "mort_rate") >= 1.0][0])
 
 
 def proj_years():
@@ -787,7 +787,7 @@ def mort_rate_at_age(y):
     :mod:`~.CI_KR_S.Data`.  This is the rate the pricing recursions use unadjusted:
     ``mort_be_factor`` is a lever on the *decrement*, not a change to the 산출방법서 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -906,8 +906,7 @@ def ci_rate_at_age(y, cause):
     """
     if y > ci_cover_end_age:                                         # noqa: F821
         return 0.0
-    return float(data.ci_incidence_table().loc[                      # noqa: F821
-        (sex(), y, cause), "ci_rate"])
+    return pdn.lookup_float(data.prepared_ci_incidence_table_loc(), (sex(), y, cause), 'ci_rate')
 
 
 def ci_wait_factor():
@@ -1111,8 +1110,7 @@ def lapse_rate_base(t):
     the subject of [REG-R27].
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(max(policy_year(t), 1), int(tbl.index.max())),
-                         "lapse_rate"])
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(max(policy_year(t), 1), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_ult():
@@ -1557,8 +1555,8 @@ def ci_cohort_ids(t):
     join at the start of the month after they accelerate, so no label ``> t`` can be
     populated at t.
     """
-    return ([-s for s in range(1, min(max(t, 0), 12) + 1)]
-            + list(range(1, max(t, 0) + 1)))
+    return ([-s for s in pdn.periods(1, min(max(t, 0), 12) + 1)]
+            + list(pdn.periods(1, max(t, 0) + 1)))
 
 
 def accel_benefit_pp(s):
@@ -1696,8 +1694,7 @@ def resid_db_total_pp(t):
         return resid_nom_total_pp(t)
     if floor >= resid_nom_max_pp(t):
         return floor * n
-    return sum(pols_if_ci_at(t, s) * resid_db_pp(t + 1, s)
-               for s in ci_cohort_ids(t))
+    return pdn.sum_values((pols_if_ci_at(t, s) * resid_db_pp(t + 1, s) for s in ci_cohort_ids(t)))
 
 
 def resid_db_avg_pp(t):
@@ -2057,8 +2054,7 @@ def claims(t, kind=None):
         return (claims(t, "CI") + claims(t, "DEATH") + claims(t, "DEATH_CI")
                 + claims(t, "LAPSE") + claims(t, "LAPSE_CI"))
     if kind == "CI":
-        return sum(pols_ci_in(t, s) * accel_benefit_pp(s)
-                   for s in (t + 1, -(t + 1)))
+        return pdn.sum_values((pols_ci_in(t, s) * accel_benefit_pp(s) for s in (t + 1, -(t + 1))))
     if kind == "DEATH":
         return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
     if kind == "DEATH_CI":
@@ -2072,9 +2068,8 @@ def claims(t, kind=None):
             return mort_rate_ci_mth(t) * (resid_db_total_pp(t) - loan * n)
         if loan >= max(resid_nom_max_pp(t), floor):
             return 0.0
-        return sum(pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
-                   * max(0.0, resid_db_pp(t + 1, s) - loan)
-                   for s in ci_cohort_ids(t))
+        return pdn.sum_values((pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
+                   * max(0.0, resid_db_pp(t + 1, s) - loan) for s in ci_cohort_ids(t)))
     if kind == "LAPSE":
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_lapse(t)
     if kind == "LAPSE_CI":
@@ -2185,8 +2180,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the total in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_ci_state_roll_fwd_resid(t):
@@ -2207,8 +2201,7 @@ def check_ci_state_roll_fwd_resid(t):
 
 def check_ci_state_roll_fwd():
     """True when both cohorts roll forward and the transition between them balances."""
-    return all(abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol  # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_ci_state_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_decrement_sum_resid(t):
@@ -2220,15 +2213,14 @@ def check_decrement_sum_resid(t):
     policy leaves by a death or a surrender in one of the two states and there is no
     residual population and no tail state anywhere in this model.
     """
-    exits = sum(pols_death(u) + pols_death_ci(u) + pols_lapse(u)
-                + pols_lapse_ci(u) for u in range(t + 1))
+    exits = pdn.sum_values((pols_death(u) + pols_death_ci(u) + pols_lapse(u)
+                + pols_lapse_ci(u) for u in pdn.periods(t + 1)))
     return pols_if(0) - exits - pols_if(t + 1)
 
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every month."""
-    return all(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_pol_val_roll_fwd_resid(t):
@@ -2254,8 +2246,7 @@ def check_pol_val_roll_fwd_resid(t):
 def check_pol_val_roll_fwd():
     """True when the 계약자적립액 rolls forward on its own basis in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_pol_val_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_accel_complement_resid(t):
@@ -2281,8 +2272,7 @@ def check_accel_complement_resid(t):
 def check_accel_complement():
     """True when the acceleration and its residual sum to the 기본보험금, every cohort."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_accel_complement_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_accel_complement_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_resid_floor_resid(t):
@@ -2317,8 +2307,7 @@ def check_resid_floor_resid(t):
 def check_resid_floor():
     """True when the residual death benefit is the maximum of its two limbs, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_resid_floor_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_resid_floor_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_cv_carve_out_resid(t):
@@ -2340,8 +2329,7 @@ def check_cv_carve_out_resid(t):
 def check_cv_carve_out():
     """True when the post-CI surrender value is never below the pre-CI one."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_cv_carve_out_resid(t)) <= tol
-               for t in range(proj_len() + 1))
+    return pdn.all_true((abs(check_cv_carve_out_resid(t)) <= tol for t in pdn.periods(proj_len() + 1)))
 
 
 def check_loan_roll_fwd_resid(t):
@@ -2359,8 +2347,7 @@ def check_loan_roll_fwd_resid(t):
 def check_loan_roll_fwd():
     """True when the loan balance accumulates at ``j_L`` in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_loan_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len() - 1))
+    return pdn.all_true((abs(check_loan_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len() - 1)))
 
 
 def check_net_cf_resid(t):
@@ -2380,8 +2367,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -2396,7 +2382,7 @@ def result_cf():
     ``net_cf`` and the acceleration can be read apart from the death benefit it
     accelerates.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2424,7 +2410,7 @@ def result_pols():
     ``mort_rate``, ``ci_rate`` and ``lapse_rate``, which hold the figures the sources
     tabulate.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2461,7 +2447,7 @@ def result_val():
     ``resid_db_avg_pp`` against ``resid_nominal_pp`` at any duration shows how far the 105%
     account floor has taken over the residual.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pol_val_pp": [pol_val_pp(t + 1) for t in ts],
@@ -2477,6 +2463,11 @@ def result_val():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2539,3 +2530,5 @@ val_tol = 1e-08
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

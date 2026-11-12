@@ -223,6 +223,50 @@ def av_table():
         index_col=["curve", "key"]).sort_index()
 
 
+def prepared_basis_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(basis_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_neonatal_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(neonatal_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_incidence_table_calculation_groups_2():
+    """Own original input values for calculation operations."""
+    return pdn.table(incidence_table(), groups=('cause', 'sex'), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_av_table_calculation_groups_1():
+    """Own original input values for calculation operations."""
+    return pdn.table(av_table(), groups=('curve',), rows=False, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_neonatal_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(neonatal_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -241,3 +285,5 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

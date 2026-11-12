@@ -248,6 +248,73 @@ def oop_ceiling_table():
         input_dir() / oop_ceiling_file, index_col="decile")          # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_oop_ceiling_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(oop_ceiling_table(),
+                        columns=('ceiling',),
+                        indexing='loc')
+
+
+
+def prepared_claim_shape_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(claim_shape_table(),
+                        columns=('share', 'claim_amount'),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_utilisation_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(utilisation_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_severity_table_calculation_groups_1():
+    """Own original input values for calculation operations."""
+    return pdn.table(severity_table(), groups=('stream',), rows=False, preserve_scalar_types=False)
+
+
+def prepared_claim_shape_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(claim_shape_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_mort_table_index_selection_level_age():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(mort_table().index.get_level_values("age"))
+
+
+
+def prepared_utilisation_table_index_selection_level_age_start():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(utilisation_table().index.get_level_values("age_start"))
+
+
+def prepared_claim_shape_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(claim_shape_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -266,3 +333,5 @@ claim_shape_file = "claim_shape_table.csv"
 oop_ceiling_file = "oop_ceiling_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

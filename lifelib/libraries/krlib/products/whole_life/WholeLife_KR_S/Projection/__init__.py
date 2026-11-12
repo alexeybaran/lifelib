@@ -321,7 +321,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
@@ -332,7 +332,7 @@ def sex():
     female issue-age ceiling is 3 to 8 years higher at the same payment term everywhere it
     is stated.
     """
-    v = model_point()["sex"]
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -349,7 +349,7 @@ def age_at_entry():
     is much lower than Japan's 80, and the minimum of 15 is statutory: 상법 제732조 voids a
     contract on the death of a person under 15.
     """
-    return int(model_point()["issue_age"])
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -361,7 +361,7 @@ def sum_assured():
     decrement.  The 체증형, 체감형, 전환나이-step and max(가입금액, premiums x ratio)
     shapes are all real in the market and all excluded from the composite.
     """
-    return float(model_point()["sum_assured"])
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def prem_term():
@@ -374,7 +374,7 @@ def prem_term():
     the suppressed period runs for life and the cliff never occurs; use :func:`prem_period`
     for the effective number of years.
     """
-    return int(model_point()["prem_term"])
+    return pdn.lookup_int(prepared_model_point(), "prem_term")
 
 
 def prem_period():
@@ -441,7 +441,7 @@ def premium_pp():
     at the anchor because 1억원 is well above the 3,000만원 threshold [S1]; a model applying
     the discount again would double-count it.
     """
-    return float(model_point()["premium_annual"])
+    return pdn.lookup_float(prepared_model_point(), "premium_annual")
 
 
 def prem_susp_ratio():
@@ -456,7 +456,7 @@ def prem_susp_ratio():
     product, and is best read as an illustration of returning the whole give-up as premium
     rather than as a market observation.
     """
-    return float(model_point()["prem_susp_ratio"])
+    return pdn.lookup_float(prepared_model_point(), "prem_susp_ratio")
 
 
 def cv_floor_ratio():
@@ -470,7 +470,7 @@ def cv_floor_ratio():
     design at exactly 50% sits at the threshold rather than under it [REG-R19].  The 0.30
     and 0.00 columns are shipped so the cliff can be seen at all three depths.
     """
-    k = float(model_point()["cv_floor_ratio"])
+    k = pdn.lookup_float(prepared_model_point(), "cv_floor_ratio")
     if not 0.0 <= k <= 1.0:
         raise ValueError("cv_floor_ratio must lie in [0, 1]")
     return k
@@ -483,7 +483,7 @@ def int_basis():
     complete cash values are 금리확정형 [S8], and the one full 약관 retrieved is a 유니버셜
     contract whose account mechanics belong to ``Pension_KR_S`` and ``VA_KR_S`` [S5].
     """
-    v = model_point()["int_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "int_basis")
     if v not in ("fixed", "linked"):
         raise ValueError("invalid int_basis")
     return v
@@ -500,7 +500,7 @@ def decl_rate():
     function of a yield curve.  The shipped value on the 금리연동형 point is 2.75%, the
     평균공시이율 in force before its 2026 fall to 2.50% [S10] [REG-R48].
     """
-    return float(model_point()["decl_rate"])
+    return pdn.lookup_float(prepared_model_point(), "decl_rate")
 
 
 def acc_int_rate():
@@ -520,8 +520,8 @@ def acc_int_rate():
 
 def lapse_basis():
     """The lapse basis in force: ``loglinear`` (the FSS 원칙모형) or ``flat``."""
-    v = model_point()["lapse_basis"]
-    if v not in tuple(data.lapse_table().index):                     # noqa: F821
+    v = pdn.lookup_object(prepared_model_point(), "lapse_basis")
+    if v not in tuple(pdn.keys(data.prepared_lapse_table_index_selection())):                     # noqa: F821
         raise ValueError("invalid lapse_basis")
     return v
 
@@ -537,7 +537,7 @@ def mort_be_factor():
     cells and not at all at female 20 - which brackets the
     level rather than fixing it.  A production basis would move claims proportionately.
     """
-    return float(model_point()["mort_be_factor"])
+    return pdn.lookup_float(prepared_model_point(), "mort_be_factor")
 
 
 def waiver_rate(t):
@@ -553,7 +553,7 @@ def waiver_rate(t):
     """
     if t < 0 or policy_year(t) > prem_end():
         return 0.0
-    return float(model_point()["waiver_rate"])
+    return pdn.lookup_float(prepared_model_point(), "waiver_rate")
 
 
 def waiver_rate_mth(t):
@@ -574,7 +574,7 @@ def loan_util():
     so both this and :func:`loan_year` are **[std]** model point inputs; the limit and the
     rate are sourced.
     """
-    return float(model_point()["loan_util"])
+    return pdn.lookup_float(prepared_model_point(), "loan_util")
 
 
 def loan_year():
@@ -590,7 +590,7 @@ def loan_year():
     year 1 is rejected: the draw is made off the value at the anniversary it falls on, and at
     ``d = 0`` there is none.
     """
-    v = int(model_point()["loan_year"])
+    v = pdn.lookup_int(prepared_model_point(), "loan_year")
     if v == 1:
         raise ValueError("loan_year must be 0 or at least 2")
     return v
@@ -607,7 +607,7 @@ def bonus_rate():
     it, because the supervisor requires an additional lapse of at least 30% at the bonus
     date [REG-R27].
     """
-    return float(model_point()["bonus_rate"])
+    return pdn.lookup_float(prepared_model_point(), "bonus_rate")
 
 
 def reduce_year():
@@ -624,7 +624,7 @@ def reduce_year():
     contract that is not a caveat but the main event — a reduction made during 납입기간 pays
     at ``k W(t)``, and on a 무해지 contract it pays nothing.
     """
-    v = int(model_point()["reduce_year"])
+    v = pdn.lookup_int(prepared_model_point(), "reduce_year")
     if v < 0:
         raise ValueError("reduce_year must be 0 or positive")
     return v
@@ -638,7 +638,7 @@ def reduce_frac():
     보험가입금액.  The 약관's own worked example restates 이미 납입한 보험료 by the ratio of
     the post- to the pre-reduction 계약자적립금 [S5 제20조].
     """
-    f = float(model_point()["reduce_frac"])
+    f = pdn.lookup_float(prepared_model_point(), "reduce_frac")
     if not 0.0 <= f < 1.0:
         raise ValueError("reduce_frac must lie in [0, 1)")
     return f
@@ -659,7 +659,7 @@ def reinstate_rate():
     module exists to produce is a lapse that is **not** paid a surrender value, which is the
     substantive effect.
     """
-    return float(model_point()["reinstate_rate"])
+    return pdn.lookup_float(prepared_model_point(), "reinstate_rate")
 
 
 def pols_if_init():
@@ -679,8 +679,8 @@ def omega_age():
     projecting a Korean whole life contract to 100 truncates the liability while projecting
     it to 120 invents one.  The 제10회 경험생명표's own terminal age is not public.
     """
-    tbl = data.mort_table().loc[sex()]                               # noqa: F821
-    return int(tbl.index[tbl["mort_rate"] >= 1.0][0])
+    tbl = pdn.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
+    return int([a for a in pdn.keys(tbl) if pdn.lookup_float(tbl, a, "mort_rate") >= 1.0][0])
 
 
 def proj_years():
@@ -744,7 +744,7 @@ def mort_rate_at_age(y):
     account construction uses, unadjusted: ``mort_be_factor`` is a best-estimate lever on
     the *decrement*, not a change to the 산출방법서 basis.
     """
-    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1295,10 +1295,10 @@ def lapse_rate_base(t):
     [S8], while the *valuation* basis above is much lower.  This is the single largest
     assumption gap on this product.
     """
-    row = data.lapse_table().loc[lapse_basis()]                      # noqa: F821
-    w1 = float(row["first_year_rate"])
-    wm = float(row["completion_rate"])
-    wu = float(row["ultimate_rate"])
+    row = pdn.row(data.prepared_lapse_table_rows(), lapse_basis())                      # noqa: F821
+    w1 = pdn.lookup_float(row, "first_year_rate")
+    wm = pdn.lookup_float(row, "completion_rate")
+    wu = pdn.lookup_float(row, "ultimate_rate")
     m = prem_period()
     y = policy_year(t)
     if y > m:
@@ -1602,7 +1602,7 @@ def claims(t, kind=None):
     given long enough, the sum assured, and none of them may produce a negative payment.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "REDUCTION"))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "REDUCTION")))
     if kind == "DEATH":
         return max(0.0, sum_assured_at(t) - loan_pp(t)) * pols_death(t)
     if kind == "LAPSE":
@@ -1718,8 +1718,7 @@ def check_pols_roll_fwd():
     test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the period that failed.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_decrement_sum_resid(t):
@@ -1730,15 +1729,14 @@ def check_decrement_sum_resid(t):
     because the table terminates, every policy leaves by one of them, ``l(T) = 0``, and
     there is no residual population and no tail state anywhere in this model.
     """
-    exits = sum(pols_death(u) + pols_lapse(u) for u in range(t + 1))
-    back = sum(pols_reinstate(u) for u in range(1, t + 2))
+    exits = pdn.sum_values((pols_death(u) + pols_lapse(u) for u in pdn.periods(t + 1)))
+    back = pdn.sum_values((pols_reinstate(u) for u in pdn.periods(1, t + 2)))
     return pols_if(0) + back - exits - pols_if(t + 1)
 
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every period."""
-    return all(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol     # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_pol_val_roll_fwd_resid(t):
@@ -1759,8 +1757,7 @@ def check_pol_val_roll_fwd_resid(t):
 def check_pol_val_roll_fwd():
     """True when the account rolls forward on its own basis in every period but the last."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_pol_val_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len() - 1))
+    return pdn.all_true((abs(check_pol_val_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len() - 1)))
 
 
 def check_pol_val_prosp_resid(d):
@@ -1799,8 +1796,7 @@ def check_pol_val_prosp():
     it was on the annual grid at every duration that is not the last year of a life table.
     """
     tol = 12.0 * val_tol * max(sum_assured(), 1.0)                   # noqa: F821
-    return all(abs(check_pol_val_prosp_resid(d)) <= tol
-               for d in range(1, proj_len()))
+    return pdn.all_true((abs(check_pol_val_prosp_resid(d)) <= tol for d in pdn.periods(1, proj_len())))
 
 
 def check_surr_chg_cap_resid(d):
@@ -1824,8 +1820,7 @@ def check_surr_chg_cap():
     included.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_surr_chg_cap_resid(d)) <= tol
-               for d in range(proj_len() + 1))
+    return pdn.all_true((abs(check_surr_chg_cap_resid(d)) <= tol for d in pdn.periods(proj_len() + 1)))
 
 
 def check_cv_cliff_resid(d):
@@ -1858,10 +1853,8 @@ def check_cv_cliff():
     stand and neither is asserted here as a ratio.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    ok = all(abs(check_cv_cliff_resid(d)) <= tol
-             for d in range(proj_len() + 1))
-    ok = ok and all(cv_pp(d) - bonus_pp(d) <= cv_std_pp(d) + tol
-                    for d in range(proj_len() + 1))
+    ok = pdn.all_true((abs(check_cv_cliff_resid(d)) <= tol for d in pdn.periods(proj_len() + 1)))
+    ok = ok and pdn.all_true((cv_pp(d) - bonus_pp(d) <= cv_std_pp(d) + tol for d in pdn.periods(proj_len() + 1)))
     if prem_term() > 0:
         m = prem_period_mths()
         ok = ok and abs(cv_pp(m) - bonus_pp(m) - cv_std_pp(m)) <= tol
@@ -1884,8 +1877,7 @@ def check_loan_roll_fwd_resid(t):
 def check_loan_roll_fwd():
     """True when the loan balance accumulates at the 보험계약대출이율 in every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_loan_roll_fwd_resid(t)) <= tol
-               for t in range(proj_len() - 1))
+    return pdn.all_true((abs(check_loan_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len() - 1)))
 
 
 def check_acq_cost_cap_resid(t):
@@ -1907,8 +1899,7 @@ def check_acq_cost_cap_resid(t):
 def check_acq_cost_cap():
     """True when the acquisition cost and the first-year commission are inside their caps."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_acq_cost_cap_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_acq_cost_cap_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1927,8 +1918,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every period."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1944,7 +1934,7 @@ def result_cf():
     because 감액 is universal on this chassis and is the only partial-surrender route Korea
     offers — 감액완납 and 연장정기보험 appear in no retrieved Korean document.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1963,7 +1953,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by the same 0-based t."""
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1996,7 +1986,7 @@ def result_val():
     the same table.  ``refund_ratio`` is the 환급률 the product is sold on and the ratio the
     supervisor regulates.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pol_val_pp": [pol_val_pp(t + 1) for t in ts],
@@ -2010,6 +2000,11 @@ def result_val():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2064,3 +2059,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-07
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

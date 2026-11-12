@@ -208,6 +208,54 @@ def av_table():
         input_dir() / av_table_file, index_col="runoff_fraction")    # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_lapse_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(lapse_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_prevalence_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(prevalence_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_dementia_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(dementia_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+
+def prepared_incidence_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(incidence_table(), groups=('sex',), preserve_scalar_types = True)
+
+
+def prepared_av_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(av_table(), preserve_scalar_types = True)
+
+
+def prepared_grade_share_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(grade_share_table(), groups=('grade',), preserve_scalar_types = True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -228,3 +276,5 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

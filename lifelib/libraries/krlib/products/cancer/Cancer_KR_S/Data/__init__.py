@@ -250,6 +250,69 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="segment")         # noqa: F821
 
 
+def prepared_survival_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(survival_table(),
+                        columns=('excess_hazard',),
+                        indexing='loc')
+
+
+
+def prepared_care_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(care_table(),
+                        columns=('treat_hazard_yr', 'hosp_days_adm'),
+                        indexing='loc')
+
+
+
+def prepared_tier_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(tier_table(),
+                        columns=('benefit_ratio',),
+                        indexing='loc')
+
+
+def prepared_care_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(care_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_tier_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(tier_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_incidence_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(incidence_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+
+def prepared_tier_share_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(tier_share_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -270,3 +333,5 @@ care_table_file = "care_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

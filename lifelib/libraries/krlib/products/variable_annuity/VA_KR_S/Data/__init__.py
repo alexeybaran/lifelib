@@ -190,6 +190,66 @@ def crediting_table():
     return pd.read_csv(input_dir() / crediting_file)                 # noqa: F821
 
 
+def prepared_fund_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(fund_table(),
+                        columns=('alloc', 'mgmt_fee'),
+                        indexing='at')
+
+
+
+def prepared_return_scenario_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(return_scenario(),
+                        columns=('gross_return',),
+                        indexing='at')
+
+
+
+def prepared_charge_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(charge_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('ann_mort_rate', 'mort_rate'),
+                        indexing='at')
+
+
+
+
+def prepared_fund_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(fund_table(), groups=('fund_set',), preserve_scalar_types = True)
+
+
+def prepared_fund_table_scalar_at():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(fund_table(), rows=False, indexing='at', preserve_scalar_types=True)
+
+
+def prepared_risk_prem_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(risk_prem_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_crediting_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(crediting_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(lapse_table(), groups=(), rows=False, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -210,3 +270,5 @@ return_scenario_file = "return_scenario.csv"
 crediting_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

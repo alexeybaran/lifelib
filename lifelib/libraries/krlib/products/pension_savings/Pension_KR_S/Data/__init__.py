@@ -236,6 +236,72 @@ def tax_table():
         input_dir() / tax_table_file, index_col="item")              # noqa: F821
 
 
+def prepared_pricing_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(pricing_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_expense_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(expense_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_tax_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(tax_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_anchor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_anchor_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+
+def prepared_decl_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(decl_rate_table(), groups=('scenario',), preserve_scalar_types = True)
+
+
+def prepared_guar_rate_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(guar_rate_table(), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(lapse_table(), groups=('basis', 'segment'), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_flat_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(lapse_table(), preserve_scalar_types = True)
+
+
+def prepared_mort_anchor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mort_anchor_table(), indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -258,3 +324,5 @@ expense_table_file = "expense_table.csv"
 tax_table_file = "tax_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")
