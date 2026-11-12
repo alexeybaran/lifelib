@@ -103,10 +103,9 @@ def premium_schedule_table():
     """
     values = pd.read_csv(input_dir() / premium_schedule_file)        # noqa: F821
     groups = {}
-    for key in values["point_id"].unique():
-        rows = values[values["point_id"] == key].sort_values("premium_mth")
-        if len(rows):
-            groups[key] = pdn.table(rows, rows=True, preserve_scalar_types=True)
+    for key, rows in values.groupby("point_id", sort=False):
+        groups[key] = pdn.table(rows.sort_values("premium_mth"), rows=True,
+                                preserve_scalar_types=True)
     empty = values.iloc[[]].sort_values("premium_mth")
     groups[None] = pdn.table(empty, rows=True, preserve_scalar_types=True)
     return pdn.Record(groups)
