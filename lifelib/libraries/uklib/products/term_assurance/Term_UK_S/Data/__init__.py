@@ -102,6 +102,31 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
+def prepared_select_factor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(select_factor_table(),
+                        columns=('factor',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -114,3 +139,5 @@ select_factor_file = "select_factor_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

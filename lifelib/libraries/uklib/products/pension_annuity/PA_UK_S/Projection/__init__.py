@@ -275,7 +275,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def purchase_price():
@@ -285,7 +285,7 @@ def purchase_price():
     cash flow: the projection carries no premium income.  It enters the projection only
     through value protection, where the guarantee is measured against it.
     """
-    return float(model_point()["purchase_price"])
+    return pdn.lookup_float(prepared_model_point(), "purchase_price")
 
 
 def age_at_entry(life):
@@ -295,18 +295,18 @@ def age_at_entry(life):
     **[std]**.
     """
     if life == 1:
-        return int(model_point()["annuitant_age"])
+        return pdn.lookup_int(prepared_model_point(), "annuitant_age")
     if life == 2 and is_joint():
-        return int(model_point()["dependant_age"])
+        return pdn.lookup_int(prepared_model_point(), "dependant_age")
     raise ValueError("invalid life")
 
 
 def sex(life):
     """The sex (M / F) of the annuitant or dependant."""
     if life == 1:
-        return model_point()["annuitant_sex"]
+        return pdn.lookup_object(prepared_model_point(), "annuitant_sex")
     if life == 2 and is_joint():
-        return model_point()["dependant_sex"]
+        return pdn.lookup_object(prepared_model_point(), "dependant_sex")
     raise ValueError("invalid life")
 
 
@@ -321,20 +321,20 @@ def rating_factor(life):
     through this multiplier rather than through any behavioural dynamic.
     """
     if life == 1:
-        return float(model_point()["rating_multiplier"])
+        return pdn.lookup_float(prepared_model_point(), "rating_multiplier")
     if life == 2 and is_joint():
-        return float(model_point()["dependant_rating"])
+        return pdn.lookup_float(prepared_model_point(), "dependant_rating")
     raise ValueError("invalid life")
 
 
 def is_joint():
     """True when the contract carries a dependant's income."""
-    return bool(model_point()["dependant_present"])
+    return pdn.lookup_bool(prepared_model_point(), "dependant_present")
 
 
 def dependant_pct():
     """delta: the dependant's percentage of the income; zero on a single-life contract."""
-    v = float(model_point()["dependant_pct"])
+    v = pdn.lookup_float(prepared_model_point(), "dependant_pct")
     if not is_joint():
         return 0.0
     return v
@@ -346,7 +346,7 @@ def overlap():
     ``False`` is the representative default and means the stream starts at the end of
     the guarantee, not at the annuitant's death.  See :func:`overlap_gate`.
     """
-    return bool(model_point()["overlap"])
+    return pdn.lookup_bool(prepared_model_point(), "overlap")
 
 
 def annual_income_init():
@@ -356,12 +356,12 @@ def annual_income_init():
     the model does not derive income from the purchase price and nothing in the
     projection consumes ``P`` except value protection.
     """
-    return float(model_point()["annual_income"])
+    return pdn.lookup_float(prepared_model_point(), "annual_income")
 
 
 def payment_freq():
     """m: payments per year, in {12, 4, 2, 1}."""
-    v = int(model_point()["frequency"])
+    v = pdn.lookup_int(prepared_model_point(), "frequency")
     if v not in (12, 4, 2, 1):
         raise ValueError("invalid frequency")
     return v
@@ -375,7 +375,7 @@ def payment_timing():
     understates the liability by roughly one period's mortality per payment, which is
     material at high ages.
     """
-    v = model_point()["timing"]
+    v = pdn.lookup_object(prepared_model_point(), "timing")
     if v not in ("arrears", "advance"):
         raise ValueError("invalid timing")
     return v
@@ -387,7 +387,7 @@ def proportion():
     Arrears only.  Without it - the representative default - nothing is paid for the
     final partial period, which is the more common contractual design.
     """
-    v = bool(model_point()["proportion"])
+    v = pdn.lookup_bool(prepared_model_point(), "proportion")
     if v and payment_timing() != "arrears":
         raise ValueError("proportion applies to arrears payments only")
     return v
@@ -399,7 +399,7 @@ def escalation_type():
     ``lpi5`` is RPI floored at zero and capped at 5%; ``rpi_catchup`` is a ratchet on
     the running peak of the RPI reference index.  See the Space docstring.
     """
-    v = model_point()["escalation_type"]
+    v = pdn.lookup_object(prepared_model_point(), "escalation_type")
     if v not in ("level", "fixed", "rpi_catchup", "lpi5"):
         raise ValueError("invalid escalation_type")
     return v
@@ -407,7 +407,7 @@ def escalation_type():
 
 def escalation_rate():
     """g: the fixed escalation rate, at most 10%; read only on the ``fixed`` basis."""
-    v = float(model_point()["escalation_rate"])
+    v = pdn.lookup_float(prepared_model_point(), "escalation_rate")
     if v > esc_fixed_cap:                                            # noqa: F821
         raise ValueError("fixed escalation exceeds the contractual cap")
     return v
@@ -419,12 +419,12 @@ def guarantee_mths():
     Instalments are certain for n months, escalating as if the annuitant were alive.
     Mutually exclusive with value protection in the representative design.
     """
-    return int(model_point()["guarantee_months"])
+    return pdn.lookup_int(prepared_model_point(), "guarantee_months")
 
 
 def vp_pct():
     """v: the value-protection percentage of the purchase price; 0 if not elected."""
-    return float(model_point()["vp_pct"])
+    return pdn.lookup_float(prepared_model_point(), "vp_pct")
 
 
 def vp_basis():
@@ -435,7 +435,7 @@ def vp_basis():
     balance nets both streams.  See the Space docstring for the approximation the second
     basis carries in a probability-weighted run.
     """
-    v = model_point()["vp_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "vp_basis")
     if v not in ("first_death", "last_survivor"):
         raise ValueError("invalid vp_basis")
     return v
@@ -450,7 +450,7 @@ def mort_basis():
     the notes' worked example - which is a scenario, not an expectation - reproduces
     exactly.  See the Space docstring.
     """
-    v = model_point()["mort_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "mort_basis")
     if v not in ("table", "scenario"):
         raise ValueError("invalid mort_basis")
     return v
@@ -465,8 +465,8 @@ def death_mth(life):
     death "in month 16" is decremented at the end of month 16, so ``lives_if(k, life)``
     is 1 up to ``k = 16`` and 0 from ``k = 17``.
     """
-    v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
-    return -1 if pd.isna(v) else int(v)                              # noqa: F821
+    v = pdn.lookup_object(prepared_model_point(), "death_mth_1" if life == 1 else "death_mth_2")
+    return -1 if pdn.is_missing(pd.isna, v) else int(v)                              # noqa: F821
 
 
 def start_year():
@@ -475,12 +475,12 @@ def start_year():
     The improvement exponent is ``calendar_year(t) - mort_table_year``, so this is what
     makes the mortality basis generational rather than period.
     """
-    return int(model_point()["start_year"])
+    return pdn.lookup_int(prepared_model_point(), "start_year")
 
 
 def pols_if_init():
     """Initial number of contracts in force; 1.0 on a single-contract model point."""
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration(t):
@@ -671,8 +671,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(life), x), "mort_rate"]) * annuitant_adj                # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate') * annuitant_adj                # noqa: F821
 
 
 def improve_rate(t, life):
@@ -911,7 +910,7 @@ def claims(t, kind=None):
         partial period.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("VP", "PROP"))
+        return pdn.sum_values((claims(t, k) for k in ("VP", "PROP")))
     if kind == "VP":
         if vp_pct() <= 0.0:
             return 0.0
@@ -1009,7 +1008,7 @@ def check_lives_roll_fwd_resid(k):
             built = 0.0 if (d >= 0 and k > d) else 1.0
         else:
             built = 1.0
-            for s in range(k):
+            for s in pdn.periods(k):
                 built *= 1.0 - mort_rate_mth(s, i)
         res += built - lives_if(k, i)
     return res
@@ -1024,8 +1023,7 @@ def check_lives_roll_fwd():
     every projected month and the close of the last one.  The signed residual of a
     failing time point stays available as :func:`check_lives_roll_fwd_resid`.
     """
-    return all(abs(check_lives_roll_fwd_resid(k)) < 1e-10
-               for k in range(proj_len() + 1))
+    return pdn.all_true((abs(check_lives_roll_fwd_resid(k)) < 1e-10 for k in pdn.periods(proj_len() + 1)))
 
 
 def check_payment_factor_resid(t):
@@ -1040,8 +1038,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return all(abs(check_payment_factor_resid(t)) < 1e-10
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_payment_factor_resid(t)) < 1e-10 for t in pdn.periods(proj_len())))
 
 
 def check_guarantee_xor():
@@ -1075,7 +1072,7 @@ def result_cf():
     ``net_cf`` is income-positive, the library-wide convention, and ``liability_cf`` is
     the technical notes' outgo-positive ``CF(t)``.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1097,7 +1094,7 @@ def result_pols():
     ``lives_if_1``, ``lives_if_2``, ``cum_annuity_all`` and ``vp_balance`` are the
     closing values of the month whose flows the same row of :func:`result_cf` carries.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t + 1, 1) for t in ts],
@@ -1112,6 +1109,11 @@ def result_pols():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1144,3 +1146,8 @@ expense_maint = 30.0
 inflation_rate = 0.03
 
 pd = ("Module", "pandas")
+
+
+
+
+pdn = ("Module", "modelx_helpers.pdn")

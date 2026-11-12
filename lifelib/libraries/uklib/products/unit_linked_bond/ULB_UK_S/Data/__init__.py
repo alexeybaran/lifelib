@@ -102,6 +102,23 @@ def surr_table():
         input_dir() / surr_table_file, index_col="policy_year")      # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_surr_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(surr_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_surr_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(surr_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -112,3 +129,5 @@ mort_table_file = "mort_table.csv"
 surr_table_file = "surr_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

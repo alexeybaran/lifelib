@@ -105,6 +105,18 @@ def lapse_table():
         index_col=["chassis", "policy_year"]).sort_index()
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+def prepared_lapse_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(lapse_table(), groups=('chassis',), rows=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -115,3 +127,5 @@ mort_table_file = "mort_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

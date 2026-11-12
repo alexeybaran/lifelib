@@ -96,6 +96,23 @@ def lapse_table():
         input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
+
+
+def prepared_ci_rate_table_generators(sex_, smoker_):
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(ci_rate_table().loc[(sex_, smoker_)], preserve_scalar_types = True)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -106,3 +123,5 @@ ci_rate_file = "ci_rate_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

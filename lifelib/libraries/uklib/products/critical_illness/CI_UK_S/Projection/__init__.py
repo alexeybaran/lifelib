@@ -268,7 +268,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def contract_type():
@@ -278,7 +278,7 @@ def contract_type():
     [S4][S11]; a premium-refund-on-death feature exists in some designs and is excluded
     **[std]**.
     """
-    v = model_point()["contract_type"]
+    v = pdn.lookup_object(prepared_model_point(), "contract_type")
     if v not in ("accelerated", "standalone"):
         raise ValueError("invalid contract_type")
     return v
@@ -293,7 +293,7 @@ def life_basis():
     published basis for splitting a joint first-event decrement into paying and
     non-paying parts, so the combination raises rather than inventing one.
     """
-    v = model_point()["life_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "life_basis")
     if v not in ("single", "joint_first_event"):
         raise ValueError("invalid life_basis")
     if v == "joint_first_event" and contract_type() == "standalone":
@@ -315,27 +315,27 @@ def age_at_entry(life=1):
     notes' listed pitfalls.
     """
     if life == 1:
-        return int(model_point()["age_at_entry"])
+        return pdn.lookup_int(prepared_model_point(), "age_at_entry")
     if life == 2 and is_joint():
-        return int(model_point()["joint_age"])
+        return pdn.lookup_int(prepared_model_point(), "joint_age")
     raise ValueError("invalid life")
 
 
 def sex(life=1):
     """The sex (M / F) of the first or second life."""
     if life == 1:
-        return model_point()["sex"]
+        return pdn.lookup_object(prepared_model_point(), "sex")
     if life == 2 and is_joint():
-        return model_point()["joint_sex"]
+        return pdn.lookup_object(prepared_model_point(), "joint_sex")
     raise ValueError("invalid life")
 
 
 def smoker(life=1):
     """The smoker status (NS / S) of the first or second life."""
     if life == 1:
-        return model_point()["smoker"]
+        return pdn.lookup_object(prepared_model_point(), "smoker")
     if life == 2 and is_joint():
-        return model_point()["joint_smoker"]
+        return pdn.lookup_object(prepared_model_point(), "joint_smoker")
     raise ValueError("invalid life")
 
 
@@ -345,12 +345,12 @@ def sum_assured():
     :func:`benefit_pp` ``(t, "MAIN")`` is the amount actually at risk in month t, which
     differs from this once the indexation option is elected.
     """
-    return float(model_point()["sum_assured"])
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def policy_term():
     """n: the term in years, 5-50 [S2][S5]; the policy also ends by the 75th birthday."""
-    return int(model_point()["policy_term"])
+    return pdn.lookup_int(prepared_model_point(), "policy_term")
 
 
 def cover_basis():
@@ -359,7 +359,7 @@ def cover_basis():
     Both exist on the term assurance chassis this product sits on and are implemented
     in ``Term_UK_S``; these notes scope them out **[std scope]**.
     """
-    v = model_point()["cover_basis"]
+    v = pdn.lookup_object(prepared_model_point(), "cover_basis")
     if v != "level":
         raise ValueError("invalid cover_basis")
     return v
@@ -367,7 +367,7 @@ def cover_basis():
 
 def premium_guarantee():
     """``guaranteed`` [S1] or ``reviewable``, which turns on the 5-yearly review cycle."""
-    v = model_point()["premium_guarantee"]
+    v = pdn.lookup_object(prepared_model_point(), "premium_guarantee")
     if v not in ("guaranteed", "reviewable"):
         raise ValueError("invalid premium_guarantee")
     return v
@@ -380,7 +380,7 @@ def premium_mth_pp():
     reference premium is constructed.  Profitability conclusions drawn from the worked
     example are meaningless.
     """
-    return float(model_point()["premium_mth"])
+    return pdn.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_mode():
@@ -389,12 +389,12 @@ def premium_mode():
     Inert: the grid is monthly and the notes carry the premium as a monthly amount
     either way.  Carried because the model point attribute table names it.
     """
-    return model_point()["premium_mode"]
+    return pdn.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def children_cover():
     """Whether children's cover is active; automatic on the composite product [S1]."""
-    return bool(model_point()["children_cover"])
+    return pdn.lookup_bool(prepared_model_point(), "children_cover")
 
 
 def indexation():
@@ -404,12 +404,12 @@ def indexation():
     model assumes full take-up while the option is active, so that rule is never
     reached and is not implemented.
     """
-    return bool(model_point()["indexation"])
+    return pdn.lookup_bool(prepared_model_point(), "indexation")
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -459,17 +459,17 @@ def pivot_interp(x, sex_, smoker_, column):
     **extrapolation** and should be read as one: the shipped pivots run 40 to 65, so a
     policy issued young or running long leaves the tabulated region.
     """
-    sub = data.ci_rate_table().loc[(sex_, smoker_)]                  # noqa: F821
-    ages = sorted(int(a) for a in sub.index)
+    sub = data.prepared_ci_rate_table_generators(sex_, smoker_)                  # noqa: F821
+    ages = sorted((int(a) for a in pdn.keys(sub)))
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = max(a for a in ages if a <= x)
-        hi = min(a for a in ages if a > x)
-    r_lo = float(sub.loc[lo, column])
-    r_hi = float(sub.loc[hi, column])
+        lo = pdn.max_value((a for a in ages if a <= x))
+        hi = min((a for a in ages if a > x))
+    r_lo = pdn.lookup_float(sub, lo, column)
+    r_hi = pdn.lookup_float(sub, hi, column)
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
 
 
@@ -720,7 +720,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return float(tbl.loc[min(y, int(tbl.index.max())), "lapse_rate"])
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate(t):
@@ -877,7 +877,7 @@ def claims(t, kind=None):
         the kind exists so that the zero is stated rather than inferred.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE"))
+        return pdn.sum_values((claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE")))
     if kind == "MAIN":
         return benefit_pp(t, "MAIN") * claim_rate_paid_mth(t) * pols_if(t)
     if kind == "AP":
@@ -958,8 +958,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_claim_split_resid(t):
@@ -988,8 +987,7 @@ def check_claim_split():
     tolerance is a Reference rather than a machine epsilon, and moving that Reference is
     how a user states how much of the artefact they will accept.
     """
-    return all(abs(check_claim_split_resid(t)) <= claim_split_tol    # noqa: F821
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_claim_split_resid(t)) <= claim_split_tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1001,7 +999,7 @@ def result_cf():
     ``claims_lapse`` is a column of zeros by product design - there is no surrender
     value - and is published rather than dropped.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1020,7 +1018,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by policy month ``t = 0 .. proj_len() - 1``."""
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1036,6 +1034,11 @@ def result_pols():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1094,3 +1097,8 @@ sel_lapse_ci_loading = 0.1
 claim_split_tol = 0.0001
 
 pd = ("Module", "pandas")
+
+
+
+
+pdn = ("Module", "modelx_helpers.pdn")

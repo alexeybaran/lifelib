@@ -237,7 +237,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -248,17 +248,17 @@ def age_at_entry():
     birthday; the difference is immaterial to a product whose death strain is a tenth of
     a percent of the fund.
     """
-    return int(model_point()["age_at_entry"])
+    return pdn.lookup_int(prepared_model_point(), "age_at_entry")
 
 
 def sex():
     """The sex (M / F) of the selected model point."""
-    return model_point()["sex"]
+    return pdn.lookup_object(prepared_model_point(), "sex")
 
 
 def lives():
     """``single``.  Joint last-death bonds are out of scope in this composite."""
-    v = model_point()["lives"]
+    v = pdn.lookup_object(prepared_model_point(), "lives")
     if v != "single":
         raise ValueError("invalid lives")
     return v
@@ -270,7 +270,7 @@ def premium():
     Top-ups are excluded from the base projection: a top-up is a new model point with
     its own premium, allowance clock and segments **[std]**.
     """
-    return float(model_point()["premium"])
+    return pdn.lookup_float(prepared_model_point(), "premium")
 
 
 def n_segments():
@@ -280,7 +280,7 @@ def n_segments():
     exact only while all segments stay identical - a segment surrender breaks the
     symmetry - and the composite keeps bond-level modelling and notes the approximation.
     """
-    return int(model_point()["n_segments"])
+    return pdn.lookup_int(prepared_model_point(), "n_segments")
 
 
 def db_uplift():
@@ -290,7 +290,7 @@ def db_uplift():
     death strain, which is the whole non-unit cost of mortality on this product.  Model
     point 5 is the anchor cell at 101% and exists to make that visible.
     """
-    return float(model_point()["db_uplift"])
+    return pdn.lookup_float(prepared_model_point(), "db_uplift")
 
 
 def amc_rate():
@@ -300,7 +300,7 @@ def amc_rate():
     and the insurer's provisions allow the charge to be increased.  It is the insurer's
     only material income line, so its level sets the whole result.
     """
-    return float(model_point()["amc_rate"])
+    return pdn.lookup_float(prepared_model_point(), "amc_rate")
 
 
 def further_costs_rate():
@@ -309,7 +309,7 @@ def further_costs_rate():
     Reduces the unit fund and is **not** insurer income - it is paid on as a fund
     expense.  Booking it as margin is a listed pitfall.
     """
-    return float(model_point()["further_costs_rate"])
+    return pdn.lookup_float(prepared_model_point(), "further_costs_rate")
 
 
 def tax_provision_rate():
@@ -322,7 +322,7 @@ def tax_provision_rate():
     relief and the minimum profits test, all of which create insurer-side tax strain or
     float that this proxy does not capture.
     """
-    return float(model_point()["tax_provision_rate"])
+    return pdn.lookup_float(prepared_model_point(), "tax_provision_rate")
 
 
 def wd_pattern():
@@ -333,7 +333,7 @@ def wd_pattern():
     product cap, and adviser charges consume the same tax allowance - so rational
     take-up gravitates to 5% inclusive of charges.
     """
-    v = model_point()["wd_pattern"]
+    v = pdn.lookup_object(prepared_model_point(), "wd_pattern")
     if v not in ("none", "allowance_5pct", "custom"):
         raise ValueError("invalid wd_pattern")
     return v
@@ -350,7 +350,7 @@ def wd_rate():
         return 0.0
     if p == "allowance_5pct":
         return wd_allowance_rate                                     # noqa: F821
-    return float(model_point()["wd_rate_custom"])
+    return pdn.lookup_float(prepared_model_point(), "wd_rate_custom")
 
 
 def oac_rate():
@@ -360,7 +360,7 @@ def oac_rate():
     reduce the fund and consume the policyholder's tax allowance, and they add nothing to
     the insurer's non-unit cash flow.  Treating them as income is a listed pitfall.
     """
-    return float(model_point()["oac_rate"])
+    return pdn.lookup_float(prepared_model_point(), "oac_rate")
 
 
 def gmdb_flag():
@@ -370,17 +370,17 @@ def gmdb_flag():
     the rider's charge scale is unpublished - so the **[std]** cost-of-insurance form
     used here is a guess.  Enable it only with its own sensitivity set.
     """
-    return bool(model_point()["gmdb_flag"])
+    return pdn.lookup_bool(prepared_model_point(), "gmdb_flag")
 
 
 def av_init_pp():
     """The unit fund at outset; the premium on a new-business cell."""
-    return float(model_point()["uf_init"])
+    return pdn.lookup_float(prepared_model_point(), "uf_init")
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def duration(t):
@@ -434,7 +434,7 @@ def fund_exhaust_mth():
     resolves.
     """
     last = horizon_mths()
-    for t in range(last):
+    for t in pdn.periods(last):
         if av_pp(t) <= 0.0:
             return t
     return last + 1
@@ -480,8 +480,7 @@ def mort_rate(t):
     to this product unless the guaranteed minimum death benefit rider is enabled.
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, float(data.mort_table().loc[                     # noqa: F821
-        (sex(), x), "mort_rate"]) * mort_be_factor)                  # noqa: F821
+    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -496,7 +495,7 @@ def surr_rate_base(t):
     """
     tbl = data.surr_table()                                          # noqa: F821
     y = policy_year(t)
-    return float(tbl.loc[min(y, int(tbl.index.max())), "surr_rate"])
+    return pdn.lookup_float(data.prepared_surr_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_surr_table_index_selection())))), "surr_rate")
 
 
 def return_12m(t):
@@ -841,7 +840,7 @@ def claims(t, kind=None):
     them against the fund - all except the death strain.  See the Space docstring.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "SURRENDER"))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "SURRENDER")))
     uf = av_pp_at(t, "AFT_WD")
     if kind == "DEATH":
         benefit = db_uplift() * uf
@@ -967,8 +966,7 @@ def check_av_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t, so
     one test can call the same check across every account-value model in the library.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) <= 1e-8
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in pdn.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -982,8 +980,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_unit_funding_resid(t):
@@ -999,8 +996,7 @@ def check_unit_funding_resid(t):
 
 def check_unit_funding():
     """True when every benefit is funded by unit cancellation plus the death strain."""
-    return all(abs(check_unit_funding_resid(t)) <= 1e-8
-               for t in range(proj_len()))
+    return pdn.all_true((abs(check_unit_funding_resid(t)) <= 1e-8 for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1013,7 +1009,7 @@ def result_cf():
     ``further_costs`` and ``tax_provisions`` are published precisely because they are
     **not** in ``net_cf``: they leave the unit fund and are paid on.
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1042,7 +1038,7 @@ def result_uf():
     month (``UF(t)``), the gross return, the tax provision, the charges, the withdrawal,
     and the fund at the end (``UF(t+1)``, as ``av_pp_end``).
     """
-    ts = list(range(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp": [av_pp(t) for t in ts],
@@ -1060,6 +1056,11 @@ def result_uf():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1098,3 +1099,8 @@ expense_maint = 60.0
 inflation_rate = 0.025
 
 pd = ("Module", "pandas")
+
+
+
+
+pdn = ("Module", "modelx_helpers.pdn")
