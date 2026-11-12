@@ -59,7 +59,7 @@ contractual 1-based label ``duration(t) + 1``. For a new-business point the note
 ``t`` and this ``t`` coincide.
 
 State cells are **closing balances**: :func:`av_pp` ``(t)``, :func:`fa_pp` ``(t)``,
-:func:`lca_pp` ``(t)``, :func:`loan_bal_pp` ``(t)``, :func:`seg_bal_pp` ``(t, m)``,
+:func:`lca_pp` ``(t)``, :func:`loan_bal_pp` ``(t)``, :func:`seg_bal_pp` ``(t, segment_age)``,
 :func:`sum_assured_at` ``(t)`` and the two cumulative-premium accumulators are the
 values at the **end** of month ``t`` (the notes' ``X_{t+1}``). The opening value of a
 month is the ``"BEF_PREM"`` timing (the notes' ``X_t``), which is the model point's
@@ -143,17 +143,17 @@ B_t                        loan_new_pp(t)                  New standard loan
 W_t + B_t                  draw_pp(t)                      The whole step-3 draw
 W^FA_t + B^FA_t            draw_from_fa_pp(t)              Step-3 draw sourced from FA
 W^seg_{k,t} + B^seg_{k,t}  draw_from_seg_pp(t)             Step-3 draw sourced from segments
-(segment k's share)        seg_wd_pp(t, m)                 Segment m's part of that draw
-(cumulative)               seg_wd_cum_pp(t, m)             Draws out of segment m to date
+(segment k's share)        seg_wd_pp(t, segment_age)       Segment m's part of that draw
+(cumulative)               seg_wd_cum_pp(t, segment_age)   Draws out of segment m to date
 FA_{t+1}                   fa_pp(t)                        Fixed (holding) account, end of month t
 FA_t                       fa_pp_at(t, "BEF_PREM")         Fixed account, start of month t
 (FA intra-month)           fa_pp_at(t, timing)             Fixed account by timing
-S_{k,t+1}                  seg_bal_pp(t, m)                Segment born at m, end of month t
+S_{k,t+1}                  seg_bal_pp(t, segment_age)      Segment born at m, end of month t
 Sweep_t                    sweep_pp(t)                     Sweep into a new segment
 S_{k,m_k}                  seg_new_pp(m)                   Segment balance at creation
 (sum of segments)          seg_bal_tot_pp(t)               All live segment balances
 (active pool)              seg_bal_active_pp(t)            Segments available to a draw
-(pro-rata share)           seg_share(t, m)                 Segment m's share of that pool
+(pro-rata share)           seg_share(t, segment_age)       Segment m's share of that pool
 (segment count)            seg_count(t)                    Live segments, at most 12
 w_ix                       index_alloc_rate()              Indexed allocation share
 I(t)                       index_level(t)                  Index level at monthiversary t
@@ -199,8 +199,8 @@ NAAR_t                     net_amt_at_risk(t)              Net amount at risk
 MD_t                       mth_deduction_pp(t)             Monthly deduction
 MD^FA_t                    mth_deduction_from_fa_pp(t)     Deduction sourced from FA
 MD^seg_{k,t}               mth_deduction_from_seg_pp(t)    Deduction sourced from segments
-(segment k's share)        seg_ded_pp(t, m)                Segment m's part of the deduction
-(cumulative)               seg_ded_cum_pp(t, m)            Deductions charged to segment m
+(segment k's share)        seg_ded_pp(t, segment_age)      Segment m's part of the deduction
+(cumulative)               seg_ded_cum_pp(t, segment_age) Deductions charged to segment m
 DB_t                       db_pp(t)                        Death benefit after corridor
 kappa_x                    corridor_factor(t)              IRC 7702(d) corridor factor
 SC_t                       surr_charge_pp(t)               Surrender charge scheduled
@@ -298,9 +298,11 @@ for the other quietly changes both answers.
 
 A segment is created at every monthiversary from the sweep and matures twelve months
 later, so between step 2 and step 7 of any month eleven segments are live and after the
-sweep twelve are -- the "up to 12 concurrent segments" of [S3][S4]. Segments are indexed
-by their creation month ``m``: :func:`seg_bal_pp` ``(t, m)`` is the balance at the end
-of month ``t`` of the segment born at ``m``, and is zero outside ``m <= t <= m + 11``.
+sweep twelve are -- the "up to 12 concurrent segments" of [S3][S4]. The segment Cells
+take ``segment_age = t - opening_month``. :func:`seg_bal_pp` ``(t, segment_age)`` is the
+balance at the end of month ``t`` of the segment opened at ``m = t - segment_age``.
+The age runs from zero through eleven for a live segment, so the age dimension stays
+bounded by the segment term as the projection horizon grows.
 
 Two properties of this arrangement are worth stating because the notes list both as
 pitfalls.
@@ -2140,7 +2142,7 @@ def check_seg_ladder():
 
     * at most ``seg_term_mth`` segments are live;
     * every segment that matured accounted for its creation balance exactly,
-      ``seg_new_pp(m) == seg_bal_pp(m + 11, m) + deductions + withdrawals`` -- nothing
+      ``seg_new_pp(m) == seg_bal_pp(m + 11, 11) + deductions + withdrawals`` -- nothing
       may appear in or vanish from a segment except a deduction, a withdrawal or a loan
       transfer, because segments earn no interim interest;
     * **every live segment balance is non-negative**;
