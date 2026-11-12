@@ -285,7 +285,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -511,7 +511,7 @@ def inception_rate(t):
     understated through exposure errors, and licensees must apply the CMI's indicative
     adjustments.
     """
-    sub = tables.subtable(tables.subtable(tables.subtable(data.prepared_inception_table_groups_3(), sex()), occ_class()), deferred_weeks())
+    sub = pdn.subtable(pdn.subtable(pdn.subtable(data.prepared_inception_table_groups_3(), sex()), occ_class()), deferred_weeks())
     ages = sorted((int(a) for a in pdn.keys(sub)))
     x = age(t)
     if x <= ages[0]:
@@ -519,7 +519,7 @@ def inception_rate(t):
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = expressions.max_value((a for a in ages if a <= x))
+        lo = pdn.max_value((a for a in ages if a <= x))
         hi = min((a for a in ages if a > x))
     r_lo = pdn.lookup_float(sub, lo, "inception_rate")
     r_hi = pdn.lookup_float(sub, hi, "inception_rate")
@@ -557,7 +557,7 @@ def rec_rate(z):
     feature of income protection terminations; the values are **[std]** proxies.
     """
     tbl = data.termination_table()                                   # noqa: F821
-    y = min(claim_dur_year(z), int(expressions.max_value(pdn.keys(data.prepared_termination_table_index_selection()))))
+    y = min(claim_dur_year(z), int(pdn.max_value(pdn.keys(data.prepared_termination_table_index_selection()))))
     return min(1.0, pdn.lookup_float(data.prepared_termination_table_scalar_loc(), y, "recovery_rate") / cycle_factor)  # noqa: F821
 
 
@@ -574,7 +574,7 @@ def mort_rate_sick(z):
     part of the shipped basis; it is also the smaller of the two termination causes.
     """
     tbl = data.termination_table()                                   # noqa: F821
-    y = min(claim_dur_year(z), int(expressions.max_value(pdn.keys(data.prepared_termination_table_index_selection()))))
+    y = min(claim_dur_year(z), int(pdn.max_value(pdn.keys(data.prepared_termination_table_index_selection()))))
     return pdn.lookup_float(data.prepared_termination_table_scalar_loc(), y, "mort_rate_sick")
 
 
@@ -605,7 +605,7 @@ def claim_rate_vectors():
     up and what a test asserts against; this is built *from* them, so there is still one
     definition of each rate.
     """
-    zs = expressions.periods(1, max_dur() + 1)
+    zs = pdn.periods(1, max_dur() + 1)
     rec = [rec_rate_mth(z) for z in zs]
     dth = [mort_rate_sick_mth(z) for z in zs]
     return rec, dth, [(1.0 - r) * (1.0 - d) for r, d in zip(rec, dth)]
@@ -702,7 +702,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(expressions.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate(t):
@@ -746,11 +746,11 @@ def sick_cohorts(t):
     if t == 0:
         seed = pols_if_init() if status() == "in_claim" else 0.0
         z0 = claim_duration_months() + 1
-        return [seed if z == z0 else 0.0 for z in expressions.periods(1, n + 1)]
+        return [seed if z == z0 else 0.0 for z in pdn.periods(1, n + 1)]
     prev = sick_cohorts(t - 1)
     surv = claim_rate_vectors()[2]
     out = [pols_inception(t - 1)]
-    for z in expressions.periods(1, n):
+    for z in pdn.periods(1, n):
         out.append(prev[z - 1] * surv[z - 1])
     return out
 
@@ -766,7 +766,7 @@ def pols_sick_dur(t, z):
 
 def pols_sick(t):
     """l_S(t): the total population in claim payment at the start of month t."""
-    return expressions.sum_values(sick_cohorts(t))
+    return pdn.sum_values(sick_cohorts(t))
 
 
 def pols_sick_surv(t):
@@ -778,7 +778,7 @@ def pols_sick_surv(t):
     """
     v = sick_cohorts(t)
     surv = claim_rate_vectors()[2]
-    return expressions.sum_values((a * b for (a, b) in expressions.zip_values((v, surv)) if a != 0.0))
+    return pdn.sum_values((a * b for (a, b) in pdn.zip_values((v, surv)) if a != 0.0))
 
 
 def pols_recovery(t):
@@ -789,7 +789,7 @@ def pols_recovery(t):
     """
     v = sick_cohorts(t)
     rec = claim_rate_vectors()[0]
-    return expressions.sum_values((a * b for (a, b) in expressions.zip_values((v, rec)) if a != 0.0))
+    return pdn.sum_values((a * b for (a, b) in pdn.zip_values((v, rec)) if a != 0.0))
 
 
 def pols_death_sick(t):
@@ -800,7 +800,7 @@ def pols_death_sick(t):
     """
     v = sick_cohorts(t)
     rec, dth, _ = claim_rate_vectors()
-    return expressions.sum_values((a * (1.0 - r) * d for (a, r, d) in expressions.zip_values((v, rec, dth)) if a != 0.0))
+    return pdn.sum_values((a * (1.0 - r) * d for (a, r, d) in pdn.zip_values((v, rec, dth)) if a != 0.0))
 
 
 def pols_exit(t):
@@ -979,7 +979,7 @@ def claims(t, kind=None):
     stated instead of inferred from a missing column.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("BENEFIT", "DEATH", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("BENEFIT", "DEATH", "LAPSE")))
     if kind == "BENEFIT":
         return claim_severity * amount_payable_pp(t) * pols_sick_surv(t)  # noqa: F821
     if kind in ("DEATH", "LAPSE"):
@@ -1034,7 +1034,7 @@ def pv_benefits():
     claims-in-payment liability the notes value.  See :func:`disc_factor` for why
     discounting appears in this model and nowhere else in the library.
     """
-    return expressions.sum_values((claims(t, "BENEFIT") * disc_factor(t) for t in expressions.periods(proj_len())))
+    return pdn.sum_values((claims(t, "BENEFIT") * disc_factor(t) for t in pdn.periods(proj_len())))
 
 
 def annuity_dis():
@@ -1073,7 +1073,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_states_resid(t):
@@ -1094,7 +1094,7 @@ def check_states():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_states_resid` gives the signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_states_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_benefit_max():
@@ -1118,7 +1118,7 @@ def result_cf():
     difference between the two columns is the population whose premiums are waived.
     Nothing here is discounted; see :func:`disc_factor`.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1137,7 +1137,7 @@ def result_cf():
 
 def result_states():
     """Result table of state movements and rates, indexed by ``t = 0 .. proj_len() - 1``."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_active": [pols_active(t) for t in ts],
@@ -1207,10 +1207,7 @@ disc_rate = 0.03
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "modelx_helpers.expressions")
 
 pdn = ("Module", "modelx_helpers.pdn")

@@ -230,7 +230,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def cell():
@@ -581,7 +581,7 @@ def crossover_mth():
     the tipping point is a pure stress dial and is off in the base run.
     """
     last = cessation_mths() if cessation_mths() > 0 else proj_len()
-    for t in expressions.periods(last):
+    for t in pdn.periods(last):
         if prem_cum_pp(t) > cover_pp(t):
             return t
     return -1
@@ -596,7 +596,7 @@ def lapse_rate_base(t):
     lapse study was retrieved - and on a product with no surrender value they are the
     single largest lever on the liability.
     """
-    tbl = tables.subtable(data.prepared_lapse_table_groups_1(), cell())                             # noqa: F821
+    tbl = pdn.subtable(data.prepared_lapse_table_groups_1(), cell())                             # noqa: F821
     y = policy_year(t)
     return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate"))
 
@@ -834,7 +834,7 @@ def claims(t, kind=None):
         cell; the kind exists so the zero is stated rather than inferred.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DEATH", "DEATH_PU", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "DEATH_PU", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * benefit_pp(t, "DEATH")
     if kind == "DEATH_PU":
@@ -926,7 +926,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_truncation():
@@ -951,7 +951,7 @@ def result_cf():
     zeros by product design - there is no surrender value - and is published rather than
     dropped.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -973,7 +973,7 @@ def result_pols():
 
     The same frame as :func:`result_cf`: ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1047,10 +1047,7 @@ comm_init_rate = 0.25
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "modelx_helpers.expressions")
 
 pdn = ("Module", "modelx_helpers.pdn")

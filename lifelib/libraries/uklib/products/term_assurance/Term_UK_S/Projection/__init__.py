@@ -334,7 +334,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def shape():
@@ -663,7 +663,7 @@ def lapse_rate_base(t):
     beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def rebroke_factor(t):
@@ -997,7 +997,7 @@ def claims(t, kind=None):
         than left to inference.  See the Space docstring.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DEATH", "FIB", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "FIB", "LAPSE")))
     if kind == "DEATH":
         if shape() == "fib":
             return fib_commute_rate() * benefit_pp(t) * pols_death(t)
@@ -1129,7 +1129,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_fib_ledger_resid(t):
@@ -1144,7 +1144,7 @@ def check_fib_ledger_resid(t):
     """
     if shape() != "fib":
         return 0.0
-    built = expressions.sum_values((pols_death(s) for s in expressions.periods(proj_start(), t + 1)))
+    built = pdn.sum_values((pols_death(s) for s in pdn.periods(proj_start(), t + 1)))
     return claims(t, "FIB") - (1.0 - fib_commute_rate()) * fib_income() * built
 
 
@@ -1154,7 +1154,7 @@ def check_fib_ledger():
     No argument, one bool over all t, the library-wide shape of a ``check_*`` cells;
     :func:`check_fib_ledger_resid` gives the signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_fib_ledger_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_start(), proj_len())))
+    return pdn.all_true((abs(check_fib_ledger_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def result_cf():
@@ -1167,7 +1167,7 @@ def result_cf():
     design - there is no surrender value - and is published rather than dropped; see
     the Space docstring.
     """
-    ts = list(expressions.periods(proj_start(), proj_len()))
+    ts = list(pdn.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1191,7 +1191,7 @@ def result_pols():
     two rate columns are the **monthly** decrements the projection actually applies;
     the annual rates they come from are :func:`mort_rate` and :func:`lapse_rate`.
     """
-    ts = list(expressions.periods(proj_start(), proj_len()))
+    ts = list(pdn.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1268,8 +1268,6 @@ wop_prem_loading = 0.05
 pd = ("Module", "pandas")
 
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "modelx_helpers.expressions")
 
 pdn = ("Module", "modelx_helpers.pdn")

@@ -268,7 +268,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def contract_type():
@@ -466,7 +466,7 @@ def pivot_interp(x, sex_, smoker_, column):
     elif x >= ages[-1]:
         lo, hi = ages[-2], ages[-1]
     else:
-        lo = expressions.max_value((a for a in ages if a <= x))
+        lo = pdn.max_value((a for a in ages if a <= x))
         hi = min((a for a in ages if a > x))
     r_lo = pdn.lookup_float(sub, lo, column)
     r_hi = pdn.lookup_float(sub, hi, column)
@@ -720,7 +720,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(expressions.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate(t):
@@ -877,7 +877,7 @@ def claims(t, kind=None):
         the kind exists so that the zero is stated rather than inferred.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE")))
     if kind == "MAIN":
         return benefit_pp(t, "MAIN") * claim_rate_paid_mth(t) * pols_if(t)
     if kind == "AP":
@@ -958,7 +958,7 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_claim_split_resid(t):
@@ -987,7 +987,7 @@ def check_claim_split():
     tolerance is a Reference rather than a machine epsilon, and moving that Reference is
     how a user states how much of the artefact they will accept.
     """
-    return expressions.all_true((abs(check_claim_split_resid(t)) <= claim_split_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_claim_split_resid(t)) <= claim_split_tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -999,7 +999,7 @@ def result_cf():
     ``claims_lapse`` is a column of zeros by product design - there is no surrender
     value - and is published rather than dropped.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1018,7 +1018,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by policy month ``t = 0 .. proj_len() - 1``."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1099,8 +1099,6 @@ claim_split_tol = 0.0001
 pd = ("Module", "pandas")
 
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "modelx_helpers.expressions")
 
 pdn = ("Module", "modelx_helpers.pdn")

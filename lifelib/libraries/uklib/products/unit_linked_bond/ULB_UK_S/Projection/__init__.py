@@ -237,7 +237,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def age_at_entry():
@@ -434,7 +434,7 @@ def fund_exhaust_mth():
     resolves.
     """
     last = horizon_mths()
-    for t in expressions.periods(last):
+    for t in pdn.periods(last):
         if av_pp(t) <= 0.0:
             return t
     return last + 1
@@ -495,7 +495,7 @@ def surr_rate_base(t):
     """
     tbl = data.surr_table()                                          # noqa: F821
     y = policy_year(t)
-    return pdn.lookup_float(data.prepared_surr_table_scalar_loc(), min(y, int(expressions.max_value(pdn.keys(data.prepared_surr_table_index_selection())))), "surr_rate")
+    return pdn.lookup_float(data.prepared_surr_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_surr_table_index_selection())))), "surr_rate")
 
 
 def return_12m(t):
@@ -840,7 +840,7 @@ def claims(t, kind=None):
     them against the fund - all except the death strain.  See the Space docstring.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DEATH", "SURRENDER")))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "SURRENDER")))
     uf = av_pp_at(t, "AFT_WD")
     if kind == "DEATH":
         benefit = db_uplift() * uf
@@ -966,7 +966,7 @@ def check_av_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t, so
     one test can call the same check across every account-value model in the library.
     """
-    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in pdn.periods(proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -980,7 +980,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_unit_funding_resid(t):
@@ -996,7 +996,7 @@ def check_unit_funding_resid(t):
 
 def check_unit_funding():
     """True when every benefit is funded by unit cancellation plus the death strain."""
-    return expressions.all_true((abs(check_unit_funding_resid(t)) <= 1e-8 for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_unit_funding_resid(t)) <= 1e-8 for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1009,7 +1009,7 @@ def result_cf():
     ``further_costs`` and ``tax_provisions`` are published precisely because they are
     **not** in ``net_cf``: they leave the unit fund and are paid on.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1038,7 +1038,7 @@ def result_uf():
     month (``UF(t)``), the gross return, the tax provision, the charges, the withdrawal,
     and the fund at the end (``UF(t+1)``, as ``av_pp_end``).
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp": [av_pp(t) for t in ts],
@@ -1101,8 +1101,6 @@ inflation_rate = 0.025
 pd = ("Module", "pandas")
 
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
 
-expressions = ("Module", "modelx_helpers.expressions")
 
 pdn = ("Module", "modelx_helpers.pdn")
