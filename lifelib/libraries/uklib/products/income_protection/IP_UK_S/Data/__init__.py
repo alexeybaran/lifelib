@@ -123,36 +123,36 @@ def lapse_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_termination_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(termination_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(termination_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_inception_table_groups_3():
     """Own labelled groups in original row and column order."""
-    return inputs.table(inception_table(), groups=('sex', 'occ_class', 'deferred_weeks'), rows=True, preserve_scalar_types=True)
+    return pdn.table(inception_table(), groups=('sex', 'occ_class', 'deferred_weeks'), rows=True, preserve_scalar_types=True)
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 
 def prepared_termination_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(termination_table().index)
+    return pdn.index(termination_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -170,4 +170,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

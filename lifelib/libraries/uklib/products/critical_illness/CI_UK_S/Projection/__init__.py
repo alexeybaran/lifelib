@@ -278,7 +278,7 @@ def contract_type():
     [S4][S11]; a premium-refund-on-death feature exists in some designs and is excluded
     **[std]**.
     """
-    v = tables.lookup_object(prepared_model_point(), "contract_type")
+    v = pdn.lookup_object(prepared_model_point(), "contract_type")
     if v not in ("accelerated", "standalone"):
         raise ValueError("invalid contract_type")
     return v
@@ -293,7 +293,7 @@ def life_basis():
     published basis for splitting a joint first-event decrement into paying and
     non-paying parts, so the combination raises rather than inventing one.
     """
-    v = tables.lookup_object(prepared_model_point(), "life_basis")
+    v = pdn.lookup_object(prepared_model_point(), "life_basis")
     if v not in ("single", "joint_first_event"):
         raise ValueError("invalid life_basis")
     if v == "joint_first_event" and contract_type() == "standalone":
@@ -315,27 +315,27 @@ def age_at_entry(life=1):
     notes' listed pitfalls.
     """
     if life == 1:
-        return tables.lookup_int(prepared_model_point(), "age_at_entry")
+        return pdn.lookup_int(prepared_model_point(), "age_at_entry")
     if life == 2 and is_joint():
-        return tables.lookup_int(prepared_model_point(), "joint_age")
+        return pdn.lookup_int(prepared_model_point(), "joint_age")
     raise ValueError("invalid life")
 
 
 def sex(life=1):
     """The sex (M / F) of the first or second life."""
     if life == 1:
-        return tables.lookup_object(prepared_model_point(), "sex")
+        return pdn.lookup_object(prepared_model_point(), "sex")
     if life == 2 and is_joint():
-        return tables.lookup_object(prepared_model_point(), "joint_sex")
+        return pdn.lookup_object(prepared_model_point(), "joint_sex")
     raise ValueError("invalid life")
 
 
 def smoker(life=1):
     """The smoker status (NS / S) of the first or second life."""
     if life == 1:
-        return tables.lookup_object(prepared_model_point(), "smoker")
+        return pdn.lookup_object(prepared_model_point(), "smoker")
     if life == 2 and is_joint():
-        return tables.lookup_object(prepared_model_point(), "joint_smoker")
+        return pdn.lookup_object(prepared_model_point(), "joint_smoker")
     raise ValueError("invalid life")
 
 
@@ -345,12 +345,12 @@ def sum_assured():
     :func:`benefit_pp` ``(t, "MAIN")`` is the amount actually at risk in month t, which
     differs from this once the indexation option is elected.
     """
-    return tables.lookup_float(prepared_model_point(), "sum_assured")
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def policy_term():
     """n: the term in years, 5-50 [S2][S5]; the policy also ends by the 75th birthday."""
-    return tables.lookup_int(prepared_model_point(), "policy_term")
+    return pdn.lookup_int(prepared_model_point(), "policy_term")
 
 
 def cover_basis():
@@ -359,7 +359,7 @@ def cover_basis():
     Both exist on the term assurance chassis this product sits on and are implemented
     in ``Term_UK_S``; these notes scope them out **[std scope]**.
     """
-    v = tables.lookup_object(prepared_model_point(), "cover_basis")
+    v = pdn.lookup_object(prepared_model_point(), "cover_basis")
     if v != "level":
         raise ValueError("invalid cover_basis")
     return v
@@ -367,7 +367,7 @@ def cover_basis():
 
 def premium_guarantee():
     """``guaranteed`` [S1] or ``reviewable``, which turns on the 5-yearly review cycle."""
-    v = tables.lookup_object(prepared_model_point(), "premium_guarantee")
+    v = pdn.lookup_object(prepared_model_point(), "premium_guarantee")
     if v not in ("guaranteed", "reviewable"):
         raise ValueError("invalid premium_guarantee")
     return v
@@ -380,7 +380,7 @@ def premium_mth_pp():
     reference premium is constructed.  Profitability conclusions drawn from the worked
     example are meaningless.
     """
-    return tables.lookup_float(prepared_model_point(), "premium_mth")
+    return pdn.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def premium_mode():
@@ -389,12 +389,12 @@ def premium_mode():
     Inert: the grid is monthly and the notes carry the premium as a monthly amount
     either way.  Carried because the model point attribute table names it.
     """
-    return tables.lookup_object(prepared_model_point(), "premium_mode")
+    return pdn.lookup_object(prepared_model_point(), "premium_mode")
 
 
 def children_cover():
     """Whether children's cover is active; automatic on the composite product [S1]."""
-    return tables.lookup_bool(prepared_model_point(), "children_cover")
+    return pdn.lookup_bool(prepared_model_point(), "children_cover")
 
 
 def indexation():
@@ -404,12 +404,12 @@ def indexation():
     model assumes full take-up while the option is active, so that rule is never
     reached and is not implemented.
     """
-    return tables.lookup_bool(prepared_model_point(), "indexation")
+    return pdn.lookup_bool(prepared_model_point(), "indexation")
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_len():
@@ -460,7 +460,7 @@ def pivot_interp(x, sex_, smoker_, column):
     policy issued young or running long leaves the tabulated region.
     """
     sub = data.prepared_ci_rate_table_generators(sex_, smoker_)                  # noqa: F821
-    ages = sorted((int(a) for a in expressions.keys(sub)))
+    ages = sorted((int(a) for a in pdn.keys(sub)))
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
     elif x >= ages[-1]:
@@ -468,8 +468,8 @@ def pivot_interp(x, sex_, smoker_, column):
     else:
         lo = expressions.max_value((a for a in ages if a <= x))
         hi = min((a for a in ages if a > x))
-    r_lo = expressions.lookup_float(sub, lo, column)
-    r_hi = expressions.lookup_float(sub, hi, column)
+    r_lo = pdn.lookup_float(sub, lo, column)
+    r_hi = pdn.lookup_float(sub, hi, column)
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
 
 
@@ -720,7 +720,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(expressions.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate(t):
@@ -1038,7 +1038,7 @@ def result_pols():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1098,8 +1098,9 @@ claim_split_tol = 0.0001
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
 
 inputs = ("Module", "modelx_helpers.pandas_inputs")
 
 expressions = ("Module", "modelx_helpers.expressions")
+
+pdn = ("Module", "modelx_helpers.pdn")

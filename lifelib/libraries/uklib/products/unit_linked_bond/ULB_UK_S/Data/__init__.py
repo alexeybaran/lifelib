@@ -104,19 +104,19 @@ def surr_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_surr_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(surr_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(surr_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_surr_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(surr_table().index)
+    return pdn.index(surr_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -130,4 +130,4 @@ surr_table_file = "surr_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

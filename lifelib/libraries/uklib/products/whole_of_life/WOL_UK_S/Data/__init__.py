@@ -108,14 +108,14 @@ def lapse_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_lapse_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
+    return pdn.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -129,4 +129,4 @@ lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")
