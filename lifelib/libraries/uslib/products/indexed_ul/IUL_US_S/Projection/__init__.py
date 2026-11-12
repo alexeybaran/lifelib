@@ -923,7 +923,8 @@ def corridor_factor(t):
     if qual_test() != "GPT":
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
-    return tbl.lookup_clamped_float(age(t), "corridor_factor", "both")
+    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
+    return tbl.lookup_float(a, "corridor_factor")
 
 
 def db_pp(t):
@@ -989,7 +990,8 @@ def coi_rate_guar(t):
     row.
     """
     scale = coi_schedule()
-    return scale.lookup_clamped_float(policy_year(t), "coi_rate_guar", "upper")
+    y = min(policy_year(t), scale.index.max_int())
+    return scale.lookup_float(y, "coi_rate_guar")
 
 
 def coi_rate(t):
@@ -1742,7 +1744,8 @@ def mort_rate(t):
     Ages beyond the table take its last row, where the rate is 1.0.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    return tbl.lookup_clamped_float(age(t), "mort_rate", "both") * class_factor() * mort_ae_factor  # noqa: F821
+    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
+    return tbl.lookup_float(a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1759,7 +1762,8 @@ def lapse_rate_base(t):
     behind a paid package.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return tbl.lookup_clamped_float(policy_year(t), "lapse_rate_ann", "upper")
+    y = min(policy_year(t), tbl.index.max_int())
+    return tbl.lookup_float(y, "lapse_rate_ann")
 
 
 def lapse_shock_year():

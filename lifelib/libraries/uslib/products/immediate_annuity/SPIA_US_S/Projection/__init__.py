@@ -1036,7 +1036,8 @@ def surr_charge_rate(y):
     """
     y = int(y)
     tbl = data.surr_charge_table()                                   # noqa: F821
-    return tbl.lookup_clamped_float(y, "surr_charge_rate", "both")
+    key = min(max(y, int(pdn.first_key(tbl))), tbl.index.max_int())
+    return tbl.lookup_float(key, "surr_charge_rate")
 
 
 def surr_charge(t):
