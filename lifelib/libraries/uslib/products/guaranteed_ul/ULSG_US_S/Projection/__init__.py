@@ -781,7 +781,7 @@ def corridor_factor(t):
     but it is the reason the death benefit is a ``max`` rather than the face amount.
     """
     tbl = data.corridor_factors()                                    # noqa: F821
-    return tbl.lookup_clamped_float(age(t), "corridor_factor", "both")
+    return tbl.lookup_clamped_float(age(t), "corridor_factor", clamp_lower=True)
 
 
 def db_pp(t):
@@ -852,7 +852,7 @@ def coi_rate_guar(t):
     scale is illustrative **[std]**, not the 2017 CSO table [REG-R17].
     """
     scale = coi_table()
-    return scale.lookup_clamped_float(age(t), "coi_rate_guar_ann", "upper") / 12
+    return scale.lookup_clamped_float(age(t), "coi_rate_guar_ann") / 12
 
 
 def coi_rate(t):
@@ -1530,7 +1530,7 @@ def mort_rate(t):
     pushing the terminal rate past certainty.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    return min(1.0, tbl.lookup_clamped_float(age(t), "mort_rate", "both") * class_factor()
+    return min(1.0, tbl.lookup_clamped_float(age(t), "mort_rate", clamp_lower=True) * class_factor()
                * mort_ae_factor * mort_improve_factor(t))            # noqa: F821
 
 
@@ -1554,7 +1554,7 @@ def lapse_rate_base(t):
     a paid data package, so the levels are a standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return tbl.lookup_clamped_float(policy_year(t), "lapse_rate_ann", "upper")
+    return tbl.lookup_clamped_float(policy_year(t), "lapse_rate_ann")
 
 
 def lapse_rate_guar_mult():
