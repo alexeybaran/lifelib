@@ -734,7 +734,7 @@ def index_perf(t):
 
 def norm_cdf(x):
     """N(x): the standard normal cumulative distribution function."""
-    return 0.5 * (1.0 + math_erf(x / math_sqrt(2.0)))                # noqa: F821
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))                # noqa: F821
 
 
 def bs_d1(spot, strike, tau_, rate, divy, vol):
@@ -745,16 +745,16 @@ def bs_d1(spot, strike, tau_, rate, divy, vol):
     the 4.00% and 2.00% market inputs enter as ``ln 1.04 = 3.9221%`` and
     ``ln 1.02 = 1.9803%`` exactly as the notes state.
     """
-    rate_cc = math_log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math_log(1.0 + divy)                                   # noqa: F821
-    return ((math_log(spot / strike) + (rate_cc - divy_cc + vol ** 2 / 2.0) * tau_)  # noqa: F821
-            / (vol * math_sqrt(tau_)))                               # noqa: F821
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
+    return ((math.log(spot / strike) + (rate_cc - divy_cc + vol ** 2 / 2.0) * tau_)  # noqa: F821
+            / (vol * math.sqrt(tau_)))                               # noqa: F821
 
 
 def bs_d2(spot, strike, tau_, rate, divy, vol):
     """Black-Scholes d2, ``d1 - sigma sqrt(tau)``."""
     return (bs_d1(spot, strike, tau_, rate, divy, vol)
-            - vol * math_sqrt(tau_))                                 # noqa: F821
+            - vol * math.sqrt(tau_))                                 # noqa: F821
 
 
 def bs_call(spot, strike, tau_, rate, divy, vol):
@@ -765,12 +765,12 @@ def bs_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(spot - strike, 0.0)
-    rate_cc = math_log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math_log(1.0 + divy)                                   # noqa: F821
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
-    return (spot * math_exp(-divy_cc * tau_) * norm_cdf(d_1)         # noqa: F821
-            - strike * math_exp(-rate_cc * tau_) * norm_cdf(d_2))    # noqa: F821
+    return (spot * math.exp(-divy_cc * tau_) * norm_cdf(d_1)         # noqa: F821
+            - strike * math.exp(-rate_cc * tau_) * norm_cdf(d_2))    # noqa: F821
 
 
 def bs_put(spot, strike, tau_, rate, divy, vol):
@@ -780,12 +780,12 @@ def bs_put(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(strike - spot, 0.0)
-    rate_cc = math_log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math_log(1.0 + divy)                                   # noqa: F821
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
-    return (strike * math_exp(-rate_cc * tau_) * norm_cdf(-d_2)      # noqa: F821
-            - spot * math_exp(-divy_cc * tau_) * norm_cdf(-d_1))     # noqa: F821
+    return (strike * math.exp(-rate_cc * tau_) * norm_cdf(-d_2)      # noqa: F821
+            - spot * math.exp(-divy_cc * tau_) * norm_cdf(-d_1))     # noqa: F821
 
 
 def bs_binary_call(spot, strike, tau_, rate, divy, vol):
@@ -798,8 +798,8 @@ def bs_binary_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return 1.0 if spot >= strike else 0.0
-    rate_cc = math_log(1.0 + rate)                                   # noqa: F821
-    return (math_exp(-rate_cc * tau_)                                # noqa: F821
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    return (math.exp(-rate_cc * tau_)                                # noqa: F821
             * norm_cdf(bs_d2(spot, strike, tau_, rate, divy, vol)))
 
 
@@ -965,7 +965,7 @@ def opt_component(t, leg, spot, tau_, mkt):
         return pr * bs_call(spot, i_s, tau_, rate, divy, vol) / i_s
     elif leg == OptionLeg.OTM_CALL:
         cap = cap_rate(t)
-        if math_isinf(cap):                                          # noqa: F821
+        if math.isinf(cap):                                          # noqa: F821
             return 0.0
         strike = i_s * (1.0 + cap / pr)
         return -pr * bs_call(spot, strike, tau_, rate, divy, vol) / i_s
@@ -1062,7 +1062,7 @@ def credit_rate_at(t, accrual):
     buff = buffer() * accrual
     if kind == CreditType.CAP:
         cap = cap_rate(t)
-        cap = cap if math_isinf(cap) else cap * accrual              # noqa: F821
+        cap = cap if math.isinf(cap) else cap * accrual              # noqa: F821
         return min(participation() * perf, cap) if perf >= 0.0 else min(0.0, perf + buff)
     elif kind == CreditType.STEP:
         return step_rate(t) * accrual if perf >= 0.0 else min(0.0, perf + buff)
@@ -1071,7 +1071,7 @@ def credit_rate_at(t, accrual):
         return edge if perf >= -buff else perf + buff
     elif kind == CreditType.FLOOR:
         cap = cap_rate(t)
-        cap = cap if math_isinf(cap) else cap * accrual              # noqa: F821
+        cap = cap if math.isinf(cap) else cap * accrual              # noqa: F821
         return min(max(perf, -floor_rate() * accrual), cap)
     else:
         raise ValueError("invalid crediting_type")
@@ -2386,13 +2386,3 @@ Timing = ("Pickle", 9)
 enum_definitions = ("Pickle", 10)
 
 pdn = ("Module", "modelx_helpers.pdn")
-
-math_erf = ("Pickle", 13)
-
-math_exp = ("Pickle", 14)
-
-math_isinf = ("Pickle", 15)
-
-math_log = ("Pickle", 16)
-
-math_sqrt = ("Pickle", 17)
