@@ -222,6 +222,55 @@ def freq_loading():
         input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
 
 
+def prepared_freq_loading_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(freq_loading(),
+                        columns=('load',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_accum_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table_accum(),
+                        columns=('qx',),
+                        indexing='at')
+
+
+
+def prepared_lapse_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(lapse_table(),
+                        columns=('lapse_rate', 'transfer_rate'),
+                        indexing='at')
+
+
+
+def prepared_income_schedule_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(income_schedule(),
+                        columns=('income',),
+                        indexing='at')
+
+
+
+def prepared_surplus_scenario_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(surplus_scenario(),
+                        columns=('decl_rate',),
+                        indexing='at')
+
+
+def prepared_annuity_mort_table_scalar_at():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
+
+
+def prepared_zulage_schedule_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -242,3 +291,5 @@ surplus_file = "surplus_scenario.csv"
 freq_loading_file = "freq_loading.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

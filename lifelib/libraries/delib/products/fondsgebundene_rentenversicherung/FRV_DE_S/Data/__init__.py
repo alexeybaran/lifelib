@@ -202,6 +202,48 @@ def rentenfaktor_table():
         index_col=["factor_id", "annuity_age"])
 
 
+def prepared_fund_scenario_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(fund_scenario_table(),
+                        columns=('ter_ann',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('qx_tariff',),
+                        indexing='loc')
+
+
+
+def prepared_lapse_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(lapse_table(),
+                        columns=('lapse_rate',),
+                        indexing='loc')
+
+
+
+def prepared_rentenfaktor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(rentenfaktor_table(),
+                        columns=('rentenfaktor_guar', 'rentenfaktor_curr'),
+                        indexing='loc')
+
+
+def prepared_charge_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_fund_scenario_table_scalar_loc():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(fund_scenario_table(), rows=False, indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -218,3 +260,5 @@ fund_scenario_file = "fund_scenario_table.csv"
 rentenfaktor_file = "rentenfaktor_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

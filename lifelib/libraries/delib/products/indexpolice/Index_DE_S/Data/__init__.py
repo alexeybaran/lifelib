@@ -235,6 +235,58 @@ def freq_load_table():
         input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
 
 
+def prepared_freq_load_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(freq_load_table(),
+                        columns=('freq_load',),
+                        indexing='loc')
+
+
+
+def prepared_surplus_rate_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(surplus_rate_table(),
+                        columns=('surplus_rate',),
+                        indexing='loc')
+
+
+
+def prepared_election_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(election_table(),
+                        columns=('w',),
+                        indexing='loc')
+
+
+
+def prepared_index_param_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(index_param_table(),
+                        columns=('cap', 'quote'),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('qx',),
+                        indexing='loc')
+
+
+
+def prepared_lapse_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(lapse_table(),
+                        columns=('lapse_rate',),
+                        indexing='loc')
+
+
+def prepared_index_return_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(index_return_table(), indexing='loc', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -255,3 +307,5 @@ lapse_file = "lapse_table.csv"
 freq_load_file = "freq_load_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

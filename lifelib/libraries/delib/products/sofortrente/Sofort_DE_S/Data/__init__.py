@@ -191,6 +191,47 @@ def hoechstrechnungszins_table():
         input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
 
 
+def prepared_surplus_scale_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(surplus_scale_table(),
+                        columns=('surplus_init_pct', 'surplus_growth'),
+                        indexing='loc')
+
+
+def prepared_hoechstrechnungszins_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(hoechstrechnungszins_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_improvement_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(improvement_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_hoechstrechnungszins_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(hoechstrechnungszins_table().index)
+
+
+
+def prepared_improvement_table_index_selection_level_age():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(improvement_table().index.get_level_values("age"))
+
+
+
+def prepared_mort_table_index_selection_level_age():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(mort_table().index.get_level_values("age"))
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -205,3 +246,5 @@ surplus_scale_file = "surplus_scale_table.csv"
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

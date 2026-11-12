@@ -231,12 +231,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
+    return pdn.lookup_str(prepared_model_point(), "policy_id")
 
 
 def single_prem():
@@ -248,7 +248,7 @@ def single_prem():
     around a representative 100 000 €, which is the unit the German market quotes an
     immediate annuity in — *Rente je 100 000 € Einmalbeitrag*.
     """
-    return float(model_point()["single_prem"])
+    return pdn.lookup_float(prepared_model_point(), "single_prem")
 
 
 def entry_age(life=1):
@@ -260,9 +260,9 @@ def entry_age(life=1):
     early.
     """
     if life == 1:
-        return int(model_point()["entry_age"])
+        return pdn.lookup_int(prepared_model_point(), "entry_age")
     if life == 2:
-        return int(model_point()["surv_age"])
+        return pdn.lookup_int(prepared_model_point(), "surv_age")
     raise ValueError("invalid life")
 
 
@@ -277,9 +277,9 @@ def birth_year(life=1):
     cohorts, which is this product's classic mortality error.
     """
     if life == 1:
-        return int(model_point()["birth_year"])
+        return pdn.lookup_int(prepared_model_point(), "birth_year")
     if life == 2:
-        return int(model_point()["surv_birth_year"])
+        return pdn.lookup_int(prepared_model_point(), "surv_birth_year")
     raise ValueError("invalid life")
 
 
@@ -295,9 +295,9 @@ def sex(life=1):
     portfolio sits above the population share.
     """
     if life == 1:
-        v = str(model_point()["sex"])
+        v = pdn.lookup_str(prepared_model_point(), "sex")
     elif life == 2:
-        v = str(model_point()["surv_sex"])
+        v = pdn.lookup_str(prepared_model_point(), "surv_sex")
     else:
         raise ValueError("invalid life")
     if v not in ("M", "F"):
@@ -314,7 +314,7 @@ def entry_year():
     *Höchstrechnungszins* vintage, which stays with the contract for life; see
     :func:`max_tariff_int_rate`.
     """
-    return int(model_point()["entry_year"])
+    return pdn.lookup_int(prepared_model_point(), "entry_year")
 
 
 def defer_mths():
@@ -327,7 +327,7 @@ def defer_mths():
     sum without a second mechanic.  No carrier's terms for the variant were established,
     so the base run leaves it off and model point 6 switches it on.
     """
-    return 12 * int(model_point()["defer_years"])
+    return 12 * pdn.lookup_int(prepared_model_point(), "defer_years")
 
 
 def guar_years():
@@ -340,7 +340,7 @@ def guar_years():
     name at one carrier and has a settable contractual minimum at another, so a
     *Sofortrente* with **no** guarantee period is a configuration rather than the default.
     """
-    return int(model_point()["guar_years"])
+    return pdn.lookup_int(prepared_model_point(), "guar_years")
 
 
 def refund_form():
@@ -352,7 +352,7 @@ def refund_form():
     cannot be defined by reference to a discretionary quantity; which reading a German
     carrier uses was not established, and the two diverge materially over twenty years.
     """
-    v = str(model_point()["refund_form"])
+    v = pdn.lookup_str(prepared_model_point(), "refund_form")
     if v not in ("none", "full"):
         raise ValueError("invalid refund_form")
     return v
@@ -367,7 +367,7 @@ def surv_pct():
     with its own condition set — which is why it is a gated leg here rather than a term in
     the main annuity's benefit formula.
     """
-    return float(model_point()["surv_pct"])
+    return pdn.lookup_float(prepared_model_point(), "surv_pct")
 
 
 def payment_freq():
@@ -378,7 +378,7 @@ def payment_freq():
     and no loading or discount for choosing one, was established, so this model prices
     them on the same basis and lets the timing of the instalments do the work.
     """
-    v = int(model_point()["payment_freq"])
+    v = pdn.lookup_int(prepared_model_point(), "payment_freq")
     if v not in (1, 2, 4, 12):
         raise ValueError("invalid payment_freq")
     return v
@@ -393,7 +393,7 @@ def payment_timing():
     assumption changes anyone would argue about, so model point 9 is the anchor cell in
     arrears and exists to make the difference measurable rather than assumed.
     """
-    v = str(model_point()["payment_timing"])
+    v = pdn.lookup_str(prepared_model_point(), "payment_timing")
     if v not in ("advance", "arrears"):
         raise ValueError("invalid payment_timing")
     return v
@@ -412,7 +412,7 @@ def tariff_int_rate():
     :func:`refund_pv`.  The published cash flows are undiscounted; a best estimate
     discounts them on the EIOPA curve, not on the tariff rate.
     """
-    return float(model_point()["tariff_int_rate"])
+    return pdn.lookup_float(prepared_model_point(), "tariff_int_rate")
 
 
 def surplus_form():
@@ -426,7 +426,7 @@ def surplus_form():
     intermediate on both axes.  All four distribute the same expected surplus and differ
     only in *when*.
     """
-    v = str(model_point()["surplus_form"])
+    v = pdn.lookup_str(prepared_model_point(), "surplus_form")
     if v not in ("none", "konstant", "teildynamisch", "volldynamisch"):
         raise ValueError("invalid surplus_form")
     return v
@@ -443,7 +443,7 @@ def annuity_pp_init():
     :func:`check_equivalence` returns True without asserting anything, because there is no
     equivalence here to assert.
     """
-    return float(model_point()["annuity_pp_init"])
+    return pdn.lookup_float(prepared_model_point(), "annuity_pp_init")
 
 
 def duration_mth_init():
@@ -454,7 +454,7 @@ def duration_mth_init():
     the acquisition expense — both of which happened before the valuation date and belong
     to a period this projection does not cover.
     """
-    return int(model_point()["duration_mth_init"])
+    return pdn.lookup_int(prepared_model_point(), "duration_mth_init")
 
 
 def pols_if_init():
@@ -463,7 +463,7 @@ def pols_if_init():
     Every cash flow is proportional to it, and it is the scale
     :func:`result_cf`'s first ``pols_if`` opens at.
     """
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def t_start():
@@ -584,9 +584,9 @@ def mort_rate_at_age(x, table_sex, basis):
         return (mix_male * mort_rate_at_age(x, "M", basis)           # noqa: F821
                 + (1.0 - mix_male) * mort_rate_at_age(x, "F", basis))   # noqa: F821
     tab = data.mort_table()                                          # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+    ages = pdn.keys(data.prepared_mort_table_index_selection_level_age())
+    xx = min(max(int(x), int(min(ages))), int(pdn.max_value(ages)))
+    return pdn.lookup_float(data.prepared_mort_table_scalar_loc(), (basis, table_sex, xx), "mort_rate")
 
 
 def improve_rate_at_age(x, basis):
@@ -599,9 +599,9 @@ def improve_rate_at_age(x, basis):
     forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
     """
     tab = data.improvement_table()                                   # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, xx), "improve_rate"])
+    ages = pdn.keys(data.prepared_improvement_table_index_selection_level_age())
+    xx = min(max(int(x), int(min(ages))), int(pdn.max_value(ages)))
+    return pdn.lookup_float(data.prepared_improvement_table_scalar_loc(), (basis, xx), "improve_rate")
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
@@ -792,7 +792,7 @@ def annuity_factor():
     v = 1.0 / (1.0 + tariff_int_rate())
     d = surv_pct()
     total = 0.0
-    for k in range(0, proj_len()):
+    for k in pdn.periods(0, proj_len()):
         if not is_payment_mth(k):
             continue
         g = certain_floor(k)
@@ -836,7 +836,7 @@ def annuity_pp_derived():
     disc = []
     dens = []
     paid = []
-    for t in range(0, proj_len()):
+    for t in pdn.periods(0, proj_len()):
         d = tariff_lives(t, 1) - tariff_lives(t + 1, 1)
         if d <= 0.0:
             continue
@@ -845,10 +845,10 @@ def annuity_pp_derived():
         paid.append(0 if t < fp else (t - fp) // p + 1)
     lo = 0.0
     hi = r_max
-    for it in range(solve_max_iter):                                 # noqa: F821
+    for it in pdn.periods(solve_max_iter):                                 # noqa: F821
         mid = 0.5 * (lo + hi)
         g = mid * a * load
-        for j in range(len(dens)):
+        for j in pdn.periods(len(dens)):
             g += disc[j] * dens[j] * max(sp - paid[j] * mid, 0.0)
         if g > target:
             hi = mid
@@ -876,7 +876,7 @@ def refund_pv():
     sp = single_prem()
     r = annuity_pp_derived()
     total = 0.0
-    for t in range(0, proj_len()):
+    for t in pdn.periods(0, proj_len()):
         d = tariff_lives(t, 1) - tariff_lives(t + 1, 1)
         if d <= 0.0:
             continue
@@ -897,9 +897,9 @@ def max_tariff_int_rate():
     """
     tab = data.hoechstrechnungszins_table()                          # noqa: F821
     y = entry_year()
-    for year_from in tab.index:
-        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
-            return float(tab.loc[year_from, "max_rate"])
+    for year_from in pdn.keys(data.prepared_hoechstrechnungszins_table_index_selection()):
+        if int(year_from) <= y <= pdn.lookup_int(data.prepared_hoechstrechnungszins_table_scalar_loc(), year_from, "year_to"):
+            return pdn.lookup_float(data.prepared_hoechstrechnungszins_table_scalar_loc(), year_from, "max_rate")
     raise ValueError("no Hoechstrechnungszins band covers entry_year")
 
 
@@ -909,8 +909,7 @@ def surplus_init_pct():
     Read from *surplus_scale_table.csv* at ``surplus_form()``.  **[std]** — no
     *Überschussanteilsatz* was established at any carrier for any year.
     """
-    return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_init_pct"])   # noqa: F821
+    return pdn.lookup_float(data.prepared_surplus_scale_table_loc(), surplus_form(), 'surplus_init_pct')   # noqa: F821
 
 
 def surplus_growth():
@@ -919,8 +918,7 @@ def surplus_growth():
     Read from *surplus_scale_table.csv* at ``surplus_form()``.  **[std]** — the shape is
     established and no level is.
     """
-    return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_growth"])   # noqa: F821
+    return pdn.lookup_float(data.prepared_surplus_scale_table_loc(), surplus_form(), 'surplus_growth')   # noqa: F821
 
 
 def annuity_guar_pp(t):
@@ -1098,7 +1096,7 @@ def annuity_payments(t, kind=None):
     rather than in a total.
     """
     if kind is None:
-        return sum(annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR"))
+        return pdn.sum_values((annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR")))
     if not is_payment_mth(t):
         return 0.0
     if kind == "ANNUITANT":
@@ -1129,7 +1127,7 @@ def claims(t, kind=None):
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("GUARANTEE", "REFUND"))
+        return pdn.sum_values((claims(t, k) for k in ("GUARANTEE", "REFUND")))
     if kind == "GUARANTEE":
         if not is_payment_mth(t):
             return 0.0
@@ -1234,8 +1232,7 @@ def check_net_cf():
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all(abs(check_net_cf_resid(t)) <= tol
-                    for t in range(t_start(), proj_len())))
+    return bool(pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len()))))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1268,15 +1265,13 @@ def check_lives_roll_fwd():
     a life that leaves and reappears fails here rather than in a cash flow.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    if not all(abs(check_lives_roll_fwd_resid(t)) <= tol
-               for t in range(t_start(), proj_len())):
+    if not pdn.all_true((abs(check_lives_roll_fwd_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len()))):
         return False
     lives = [1]
     if surv_pct() > 0.0:
         lives.append(2)
     for life in lives:
-        deaths = sum(lives_death(t, life)
-                     for t in range(t_start(), proj_len()))
+        deaths = pdn.sum_values((lives_death(t, life) for t in pdn.periods(t_start(), proj_len())))
         closure = (deaths + lives_if(proj_len(), life)
                    - lives_if(t_start(), life))
         if abs(closure) > tol:
@@ -1308,10 +1303,8 @@ def check_annuity_roll_fwd():
     *Überschussverwendung* ratchet rather than fluctuate.
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    stepped = all(abs(check_annuity_roll_fwd_resid(t)) <= tol
-                  for t in range(t_start(), proj_len()))
-    ratchet = all(annuity_pp(t) >= annuity_pp(t - 1) - tol
-                  for t in range(t_start() + 1, proj_len()))
+    stepped = pdn.all_true((abs(check_annuity_roll_fwd_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len())))
+    ratchet = pdn.all_true((annuity_pp(t) >= annuity_pp(t - 1) - tol for t in pdn.periods(t_start() + 1, proj_len())))
     return bool(stepped and ratchet)
 
 
@@ -1342,13 +1335,10 @@ def check_refund_run_off():
     """
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
     if refund_form() == "none":
-        return bool(all(refund_pp(t) == 0.0
-                        for t in range(t_start(), proj_len())))
-    if not all(abs(check_refund_run_off_resid(t)) <= tol
-               for t in range(t_start(), proj_len())):
+        return bool(pdn.all_true((refund_pp(t) == 0.0 for t in pdn.periods(t_start(), proj_len()))))
+    if not pdn.all_true((abs(check_refund_run_off_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len()))):
         return False
-    if not all(refund_pp(t) <= refund_pp(t - 1) + tol
-               for t in range(t_start() + 1, proj_len())):
+    if not pdn.all_true((refund_pp(t) <= refund_pp(t - 1) + tol for t in pdn.periods(t_start() + 1, proj_len()))):
         return False
     if refund_pp(proj_len() - 1) > tol:
         return False
@@ -1387,8 +1377,7 @@ def check_payment_factor_resid(t):
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
     tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all(abs(check_payment_factor_resid(t)) <= tol
-                    for t in range(t_start(), proj_len())))
+    return bool(pdn.all_true((abs(check_payment_factor_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len()))))
 
 
 def check_guarantee_certain_resid(t):
@@ -1412,8 +1401,7 @@ def check_guarantee_certain():
     there is nothing to be certain about.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return bool(all(abs(check_guarantee_certain_resid(t)) <= tol
-                    for t in range(t_start(), proj_len())))
+    return bool(pdn.all_true((abs(check_guarantee_certain_resid(t)) <= tol for t in pdn.periods(t_start(), proj_len()))))
 
 
 def check_equivalence_resid():
@@ -1495,7 +1483,7 @@ def result_cf():
     and no tail state: the annuitant's survival has reached zero and the guarantee has
     expired, so nothing remains to be paid.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(pdn.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1519,7 +1507,7 @@ def result_pols():
     and surplus parts, and the refund's run-off against the cumulative guaranteed
     instalments.
     """
-    ts = list(range(t_start(), proj_len()))
+    ts = list(pdn.periods(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t, 1) for t in ts],
@@ -1535,6 +1523,11 @@ def result_pols():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1571,3 +1564,5 @@ solve_tol = 1e-10
 solve_max_iter = 200
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

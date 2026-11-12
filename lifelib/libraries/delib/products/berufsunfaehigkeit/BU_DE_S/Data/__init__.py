@@ -205,6 +205,69 @@ def freq_loading_table():
         input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
 
 
+def prepared_occupation_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(occupation_table(),
+                        columns=('occ_factor',),
+                        indexing='loc')
+
+
+
+def prepared_freq_loading_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(freq_loading_table(),
+                        columns=('freq_load',),
+                        indexing='loc')
+
+
+
+def prepared_claim_duration_table_loc():
+    """Own claim-year calculation columns; follow the public source Cell cache."""
+    return pdn.table(claim_duration_table(),
+                        columns=('recov_rate', 'mort_dis_sel_factor'),
+                        indexing='loc')
+
+
+def prepared_freq_loading_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_inception_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(inception_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mortality_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mortality_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_inception_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(inception_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_mortality_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(mortality_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -223,3 +286,5 @@ lapse_file = "lapse_table.csv"
 freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

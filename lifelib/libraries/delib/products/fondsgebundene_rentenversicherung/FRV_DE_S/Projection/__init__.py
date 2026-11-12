@@ -360,12 +360,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
+    return pdn.lookup_object(prepared_model_point(), "policy_id")
 
 
 def sex():
@@ -377,7 +377,7 @@ def sex():
     reports it and because a reserving basis may still be sex-specific even where the
     tariff may not be.
     """
-    v = model_point()["sex"]
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -390,7 +390,7 @@ def entry_age():
     policy_year(t) - 1 = entry_age() + t // 12`` and the attained age in the last projected
     month, ``t = proj_len() - 1``, is ``annuity_age() - 1``.
     """
-    return int(model_point()["entry_age"])
+    return pdn.lookup_int(prepared_model_point(), "entry_age")
 
 
 def duration_init_m():
@@ -403,7 +403,7 @@ def duration_init_m():
     what that costs an insurer: nothing, because the charge and the commission it funded
     are both behind it.
     """
-    return int(model_point()["duration_init_m"])
+    return pdn.lookup_int(prepared_model_point(), "duration_init_m")
 
 
 def pols_if_init():
@@ -412,7 +412,7 @@ def pols_if_init():
     ``pols_if(proj_start()) == pols_if_init()`` exactly, which is the library's
     start-of-period convention asserted in the conventions suite.
     """
-    return float(model_point()["pols_if_init"])
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def annuity_age():
@@ -422,7 +422,7 @@ def annuity_age():
     **not** ``age(proj_len() - 1)``, which is one lower because the annuity begins at the
     end of the last projected month.
     """
-    return int(model_point()["annuity_age"])
+    return pdn.lookup_int(prepared_model_point(), "annuity_age")
 
 
 def prem_form():
@@ -433,7 +433,7 @@ def prem_form():
     acquisition charge is the *Zuzahlungskosten* rate levied once on receipt, which is
     what :func:`charge_acq_total` returns for it.
     """
-    v = model_point()["prem_form"]
+    v = pdn.lookup_object(prepared_model_point(), "prem_form")
     if v not in ("laufend", "einmal"):
         raise ValueError("invalid prem_form")
     return v
@@ -448,7 +448,7 @@ def prem_pp_base():
     a given month, after the frequency, the premium term, any *Beitragsfreistellung* and
     any *Beitragsdynamik*.
     """
-    return float(model_point()["prem_pp"])
+    return pdn.lookup_float(prepared_model_point(), "prem_pp")
 
 
 def prem_mode_months():
@@ -457,7 +457,7 @@ def prem_mode_months():
     It decides both which months carry a premium and how many acquisition instalments the
     sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.
     """
-    v = int(model_point()["prem_mode_months"])
+    v = pdn.lookup_int(prepared_model_point(), "prem_mode_months")
     if v not in (1, 3, 6, 12):
         raise ValueError("invalid prem_mode_months")
     return v
@@ -469,7 +469,7 @@ def prem_term_y():
     It caps both the premium stream and the acquisition window: a two-year premium term
     spreads the acquisition charge over 24 months, not 60.
     """
-    return int(model_point()["prem_term_y"])
+    return pdn.lookup_int(prepared_model_point(), "prem_term_y")
 
 
 def dynamik_rate():
@@ -480,7 +480,7 @@ def dynamik_rate():
     **not** raise :func:`beitragssumme`, because a real tariff re-zillmers each accepted
     increment over its own sixty months and an increment cannot be assumed at inception.
     """
-    return float(model_point()["dynamik_rate"])
+    return pdn.lookup_float(prepared_model_point(), "dynamik_rate")
 
 
 def pup_month():
@@ -497,7 +497,7 @@ def pup_month():
     and the *Risikobeitrag* continue by unit cancellation — which is why a paid-up
     unit-linked contract decays.
     """
-    return int(model_point()["pup_month"])
+    return pdn.lookup_int(prepared_model_point(), "pup_month")
 
 
 def db_form():
@@ -508,7 +508,7 @@ def db_form():
     (the composite, and the only shape with any corroboration in this library's corpus), a
     percentage of the fund, and a fixed *garantierte Mindesttodesfallleistung*.
     """
-    v = model_point()["db_form"]
+    v = pdn.lookup_object(prepared_model_point(), "db_form")
     if v not in ("fund", "prem_return", "pct_fund", "sum_assured"):
         raise ValueError("invalid db_form")
     return v
@@ -522,7 +522,7 @@ def db_pct():
     *Beitragsrückgewähr* one does.  Commonly quoted market values are 100 %, 105 % and
     110 %; none was established.
     """
-    return float(model_point()["db_pct"])
+    return pdn.lookup_float(prepared_model_point(), "db_pct")
 
 
 def sum_assured():
@@ -533,22 +533,22 @@ def sum_assured():
     shape that turns the contract into a savings-plus-term-cover package and the one whose
     risk charge grows without limit as the fund falls.
     """
-    return float(model_point()["sum_assured"])
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def charge_id():
     """The key into ``charge_table.csv`` naming this policy's charge scale."""
-    return model_point()["charge_id"]
+    return pdn.lookup_object(prepared_model_point(), "charge_id")
 
 
 def scenario_id():
     """The key into ``fund_scenario_table.csv`` naming this policy's return path."""
-    return model_point()["scenario_id"]
+    return pdn.lookup_object(prepared_model_point(), "scenario_id")
 
 
 def rentenfaktor_id():
     """The key into ``rentenfaktor_table.csv`` naming this policy's conversion factors."""
-    return model_point()["rentenfaktor_id"]
+    return pdn.lookup_object(prepared_model_point(), "rentenfaktor_id")
 
 
 def unit_price_init():
@@ -557,7 +557,7 @@ def unit_price_init():
     100.00 EUR on every new-business cell, which makes the unit counts readable; 118.40 on
     the in-force cell, where it is the price a *Standmitteilung* would report.
     """
-    return float(model_point()["unit_price_init"])
+    return pdn.lookup_float(prepared_model_point(), "unit_price_init")
 
 
 def units_init():
@@ -567,7 +567,7 @@ def units_init():
     *Fondsguthaben* of 22 496,00 EUR against 24 000,00 EUR of premiums paid, so the cell
     opens with a positive net amount at risk and a live *Risikobeitrag*.
     """
-    return float(model_point()["units_init"])
+    return pdn.lookup_float(prepared_model_point(), "units_init")
 
 
 def cum_prem_init():
@@ -576,7 +576,7 @@ def cum_prem_init():
     Seeds :func:`cum_prem_pp`.  Nonzero only on the in-force cell, where getting it wrong
     would silently mis-state the death benefit for the whole remaining term.
     """
-    return float(model_point()["cum_prem_init"])
+    return pdn.lookup_float(prepared_model_point(), "cum_prem_init")
 
 
 def topup_month():
@@ -586,7 +586,7 @@ def topup_month():
     ``t = 120``.  **Zero is the "none" sentinel** rather than the inception month, a
     *Zuzahlung* at inception being indistinguishable from a larger first *Beitrag*.
     """
-    return int(model_point()["topup_month"])
+    return pdn.lookup_int(prepared_model_point(), "topup_month")
 
 
 def topup_amount():
@@ -597,7 +597,7 @@ def topup_amount():
     raise :func:`beitragssumme`, for the same reason a *Beitragsdynamik* increment does
     not.
     """
-    return float(model_point()["topup_amount"])
+    return pdn.lookup_float(prepared_model_point(), "topup_amount")
 
 
 def wd_month():
@@ -606,7 +606,7 @@ def wd_month():
     A point on the frame's time axis, so it moved with the frame: model point 9 withdraws
     at ``t = 240``.  **Zero is the "none" sentinel** rather than the inception month.
     """
-    return int(model_point()["wd_month"])
+    return pdn.lookup_int(prepared_model_point(), "wd_month")
 
 
 def wd_amount():
@@ -616,7 +616,7 @@ def wd_amount():
     ``claims_wd``.  It is a partial surrender with a partial surrender's tax consequences,
     and it is settled by cancelling units at the closing *Anteilspreis*.
     """
-    return float(model_point()["wd_amount"])
+    return pdn.lookup_float(prepared_model_point(), "wd_amount")
 
 
 def ablauf_flag():
@@ -627,7 +627,7 @@ def ablauf_flag():
     arithmetically the same thing as a reallocation, and it is the honest representation
     of what is known: no ramp length, destination or opt-in rule was established.
     """
-    return bool(model_point()["ablauf_flag"])
+    return pdn.lookup_bool(prepared_model_point(), "ablauf_flag")
 
 
 def kapitalwahl():
@@ -640,7 +640,7 @@ def kapitalwahl():
     take-up rate was established**, so the base run annuitises and this is an election
     rather than an assumption.
     """
-    return bool(model_point()["kapitalwahl"])
+    return pdn.lookup_bool(prepared_model_point(), "kapitalwahl")
 
 
 # ----------------------------------------  the frame
@@ -695,7 +695,7 @@ def age(t):
 
 def charge_row():
     """The row of ``charge_table.csv`` for this policy's ``charge_id``."""
-    return data.charge_table().loc[charge_id()]                      # noqa: F821
+    return pdn.to_pandas(pdn.row(data.prepared_charge_table_rows(), charge_id()))                      # noqa: F821
 
 
 def alpha_rate():
@@ -706,7 +706,7 @@ def alpha_rate():
     than a guessed interior point, on the ground that a reference implementation should
     demonstrate the binding constraint.  Zero on the *Nettotarif*.
     """
-    return float(charge_row()["alpha_rate"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "alpha_rate"))
 
 
 def alpha_spread_months():
@@ -717,7 +717,7 @@ def alpha_spread_months():
     the *Beitragsverrechnung*: only one sixtieth may be withheld per month, so units are
     bought from the start and the surrender value is positive from the first month.
     """
-    return int(charge_row()["alpha_spread_months"])
+    return int(pdn.lookup_object(prepared_charge_row_values(), "alpha_spread_months"))
 
 
 def beta_rate():
@@ -727,7 +727,7 @@ def beta_rate():
     and it stops when premiums stop.  **[std]** at 4.00 % on the composite against an
     argued range of 2 % to 10 %; no carrier level was established.
     """
-    return float(charge_row()["beta_rate"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "beta_rate"))
 
 
 def gamma_rate_ann():
@@ -738,7 +738,7 @@ def gamma_rate_ann():
     policy decay, and — because it compounds against the whole accumulated fund — the
     dominant component of the reduction in yield on a long contract.
     """
-    return float(charge_row()["gamma_rate_ann"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "gamma_rate_ann"))
 
 
 def gamma_rate_mth():
@@ -760,7 +760,7 @@ def policy_fee_mth():
     *Fondsguthaben* — the reason insurers set a minimum fund below which
     *Beitragsfreistellung* is refused.
     """
-    return float(charge_row()["policy_fee_mth"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "policy_fee_mth"))
 
 
 def zuzahlung_charge_rate():
@@ -770,7 +770,7 @@ def zuzahlung_charge_rate():
     *beitragsbezogene* charge — it is not a regular *Beitrag* — and on a single-premium
     contract this rate is the whole of the acquisition charge, levied once on receipt.
     """
-    return float(charge_row()["zuzahlung_charge_rate"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "zuzahlung_charge_rate"))
 
 
 def stornoabzug_rate():
@@ -784,7 +784,7 @@ def stornoabzug_rate():
     non-zero one would be an unsourced number attached to a contested clause; 2.00 % on
     ``std_high``, the only shipped tariff that carries one.
     """
-    return float(charge_row()["stornoabzug_rate"])
+    return float(pdn.lookup_object(prepared_charge_row_values(), "stornoabzug_rate"))
 
 
 # ----------------------------------------  premium and the Beitragsverrechnung
@@ -976,8 +976,7 @@ def fund_return_gross_ann(t):
     ``glide_months`` months with a linear ramp down to ``mmkt_return_ann``, reaching the
     money-market rate exactly in the final month.
     """
-    base = data.fund_scenario_table().loc[                           # noqa: F821
-        (scenario_id(), policy_year(t)), "gross_return_ann"]
+    base = pdn.lookup_object(data.prepared_fund_scenario_table_scalar_loc(), (scenario_id(), policy_year(t)), "gross_return_ann")
     base = float(base)
     if not ablauf_flag():
         return base
@@ -997,8 +996,7 @@ def fund_ter_ann(t):
     explicitly double-counts the fund's costs; ignoring it overstates the policyholder's
     return.  0.45 % p.a. on the active composite fund, 0.15 % on the ETF.
     """
-    return float(data.fund_scenario_table().loc[                     # noqa: F821
-        (scenario_id(), policy_year(t)), "ter_ann"])
+    return pdn.lookup_float(data.prepared_fund_scenario_table_loc(), (scenario_id(), policy_year(t)), 'ter_ann')
 
 
 def fund_return_net_ann(t):
@@ -1270,7 +1268,7 @@ def mort_rate_tariff_at_age(x):
     prices its death charge on a death table and its conversion guarantee on an annuity
     table, and using one for both misprices one of them.
     """
-    return float(data.mort_table().loc[x, "qx_tariff"])              # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), x, 'qx_tariff')              # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -1333,7 +1331,7 @@ def lapse_rate_base(t):
     value is furthest below the premiums paid, and § 168 VVG makes the exit
     near-frictionless.
     """
-    return float(data.lapse_table().loc[policy_year(t), "lapse_rate"])   # noqa: F821
+    return pdn.lookup_float(data.prepared_lapse_table_loc(), policy_year(t), 'lapse_rate')   # noqa: F821
 
 
 def lapse_tax_step(t):
@@ -1739,8 +1737,7 @@ def rentenfaktor_guar():
     § 163 VVG with an independent *Treuhänder*'s confirmation is recorded as a model risk
     and not implemented.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_guar"])
+    return pdn.lookup_float(data.prepared_rentenfaktor_table_loc(), (rentenfaktor_id(), annuity_age()), 'rentenfaktor_guar')
 
 
 def rentenfaktor_curr():
@@ -1750,8 +1747,7 @@ def rentenfaktor_curr():
     injecting an unsourced uplift, and 12 % higher on ``rich_current``, where it visibly
     bites.  Both are **[std]**.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_curr"])
+    return pdn.lookup_float(data.prepared_rentenfaktor_table_loc(), (rentenfaktor_id(), annuity_age()), 'rentenfaktor_curr')
 
 
 def rentenfaktor_applied():
@@ -1801,7 +1797,7 @@ def gross_return_ref():
     on the base scenario.
     """
     prod = 1.0
-    for t in range(proj_start(), proj_len()):
+    for t in pdn.periods(proj_start(), proj_len()):
         prod *= (1.0 + fund_return_gross_ann(t)) ** (1.0 / 12.0)
     return prod ** (12.0 / (proj_len() - proj_start())) - 1.0
 
@@ -1823,14 +1819,14 @@ def irr_ann():
     n = proj_len()
     t0 = proj_start()
     flows = [(prem_pp(t) + topup_pp(t), (n - t) / 12.0)
-             for t in range(t0, n)]
-    flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in range(t0, n)]
+             for t in pdn.periods(t0, n)]
+    flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in pdn.periods(t0, n)]
     flows += [(av_pp(t0), (n - t0) / 12.0)]
     target = av_maturity_pp()
     lo, hi = -0.99, 5.0
-    for _ in range(200):
+    for _ in pdn.periods(200):
         mid = 0.5 * (lo + hi)
-        if sum(a * (1.0 + mid) ** m for a, m in flows) - target > 0.0:
+        if pdn.sum_values((a * (1.0 + mid) ** m for (a, m) in flows)) - target > 0.0:
             hi = mid
         else:
             lo = mid
@@ -1886,8 +1882,7 @@ def check_net_cf():
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t)))  # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t))) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_prem_split_resid(t):
@@ -1905,9 +1900,8 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
-    return all(abs(check_prem_split_resid(t))
-               <= val_tol * max(1.0, abs(premiums(t)))               # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_prem_split_resid(t))
+               <= val_tol * max(1.0, abs(premiums(t))) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_units_roll_fwd_resid(t):
@@ -1926,9 +1920,8 @@ def check_units_roll_fwd_resid(t):
 
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
-    return all(abs(check_units_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(units_pp(t)))               # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_units_roll_fwd_resid(t))
+               <= val_tol * max(1.0, abs(units_pp(t))) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1950,9 +1943,8 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
-    return all(abs(check_av_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR")))   # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_av_roll_fwd_resid(t))
+               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR"))) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_benefit_funding_resid(t):
@@ -1975,9 +1967,8 @@ def check_benefit_funding_resid(t):
 
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
-    return all(abs(check_benefit_funding_resid(t))
-               <= val_tol * max(1.0, abs(av_releases(t)))            # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_benefit_funding_resid(t))
+               <= val_tol * max(1.0, abs(av_releases(t))) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1996,9 +1987,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force count rolls forward exactly in every projected month."""
-    return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_start(), proj_len())))
 
 
 def check_acq_charge_resid(t):
@@ -2034,9 +2024,8 @@ def check_acq_charge_resid(t):
 
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
-    return all(abs(check_acq_charge_resid(t))
-               <= val_tol * max(1.0, charge_acq_total())             # noqa: F821
-               for t in range(proj_start(), proj_len()))
+    return pdn.all_true((abs(check_acq_charge_resid(t))
+               <= val_tol * max(1.0, charge_acq_total()) for t in pdn.periods(proj_start(), proj_len())))
 
 
 # ----------------------------------------  result tables
@@ -2059,7 +2048,7 @@ def result_cf():
     has a commission to publish.  ``liability_cf`` is ``net_cf`` outgo positive, published
     so the sign convention is verifiable in the frame.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(pdn.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2095,7 +2084,7 @@ def result_fund():
     *Standmitteilung* reports, which is not a coincidence — the statement's line items are
     this model's state vector.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(pdn.periods(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "unit_price": [unit_price(t) for t in ts],
@@ -2114,6 +2103,16 @@ def result_fund():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def prepared_model_point():
+    """Own policy fields while preserving public scalar types and dependencies."""
+    return pdn.record(model_point(), preserve_scalar_types=True)
+
+
+def prepared_charge_row_values():
+    """Own public Series values; retain normal public Cell overrides."""
+    return pdn.record(charge_row(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2154,3 +2153,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

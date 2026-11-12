@@ -231,6 +231,74 @@ def basis_table():
         input_dir() / basis_file, index_col="param")                 # noqa: F821
 
 
+def prepared_basis_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(basis_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+
+def prepared_benefit_scale_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(benefit_scale_table(),
+                        columns=('benefit_pct',),
+                        indexing='at')
+
+
+
+def prepared_mort_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='at')
+
+
+
+def prepared_care_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(care_table(),
+                        columns=('mort_mult', 'entry_share', 'det_rate', 'rec_rate'),
+                        indexing='at')
+
+
+
+def prepared_incidence_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(incidence_table(),
+                        columns=('inc_rate',),
+                        indexing='at')
+
+
+
+def prepared_lapse_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(lapse_table(),
+                        columns=('lapse_rate',),
+                        indexing='at')
+
+
+
+def prepared_surrender_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(surrender_table(),
+                        columns=('rkw_prem_ratio',),
+                        indexing='at')
+
+
+
+def prepared_expense_table_at():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(expense_table(),
+                        columns=('value',),
+                        indexing='at')
+
+
+def prepared_basis_table_scalar_at():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(basis_table(), indexing='at', preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -253,3 +321,5 @@ expense_file = "expense_table.csv"
 basis_file = "basis_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

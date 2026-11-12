@@ -507,9 +507,19 @@ def test_pitfall_3_the_two_mortality_bases_live_in_two_files(
     on an annuity table (DAV 2004 R); using one for both misprices one of them.
     """
     proj = fondsgebundene_rentenversicherung.Projection
-    readers = {nm: {f for f in ("data.mort_table(", "data.rentenfaktor_table(")
-                    if f in (proj.cells[nm].formula.source or "")}
+    # Prepared views retain the same two distinct public input dependencies.
+    families = {
+        "data.mort_table(": ("data.mort_table(", "data.prepared_mort_table_loc("),
+        "data.rentenfaktor_table(": ("data.rentenfaktor_table(", "data.prepared_rentenfaktor_table_loc("),
+    }
+    readers = {nm: {f for f, variants in families.items()
+                    if any(v in (proj.cells[nm].formula.source or "") for v in variants)}
                for nm in proj.cells}
+    for name, expected, other in (
+            ("prepared_mort_table_loc", "mort_table(", "rentenfaktor_table("),
+            ("prepared_rentenfaktor_table_loc", "rentenfaktor_table(", "mort_table(")):
+        source = fondsgebundene_rentenversicherung.Data.cells[name].formula.source
+        assert expected in source and other not in source
     assert readers["mort_rate_tariff_at_age"] == {"data.mort_table("}
     assert readers["rentenfaktor_guar"] == {"data.rentenfaktor_table("}
     assert readers["rentenfaktor_curr"] == {"data.rentenfaktor_table("}
