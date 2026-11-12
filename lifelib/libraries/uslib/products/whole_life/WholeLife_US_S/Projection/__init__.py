@@ -392,7 +392,10 @@ def sum_assured():
 
 def dividend_option():
     """The elected dividend option: PUA, CASH, ACCUM, REDUCE_PREM, or NONE for non-par."""
-    return model_point().lookup_enum("dividend_option", DividendOption, default=DividendOption.OTHER)
+    label = model_point()["dividend_option"]
+    if label == "OTHER":
+        raise KeyError(label)
+    return DividendOption[label]
 
 
 def premium_mode():

@@ -93,7 +93,7 @@ def surr_charge_table():
     schedules = pdn.table(pd.read_csv(                                         # noqa: F821
         input_dir() / surr_charge_file,                              # noqa: F821
         index_col=["schedule", "contract_year"]), columns=("surr_charge_rate",), groups=("schedule",))
-    return pdn.Record({Schedule.__members__.get(name, name): table for name, table in schedules.items()})
+    return pdn.Record({Schedule[name]: table for name, table in schedules.items()})
 
 
 def surr_charge_age_cap_table() -> "modelx_helpers.immutable_inputs.Table":

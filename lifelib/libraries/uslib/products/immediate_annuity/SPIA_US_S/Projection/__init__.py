@@ -924,11 +924,10 @@ def commute_disc_rate(t):
 
 def commute_discount_code():
     """The configured commutation discount convention."""
-    if commute_disc_convention == "compound":
-        return DiscountConvention.COMPOUND
-    if commute_disc_convention == "simple":
-        return DiscountConvention.SIMPLE
-    return DiscountConvention.INVALID
+    label = commute_disc_convention
+    if label not in ("compound", "simple"):
+        raise ValueError("invalid commute_disc_convention")
+    return DiscountConvention[label.upper()]
 
 
 def compound_discount_factor(rate, years):

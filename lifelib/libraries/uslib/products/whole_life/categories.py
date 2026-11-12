@@ -17,7 +17,8 @@ class Timing(IntEnum):
 
 
 class DividendOption(IntEnum):
-    OTHER = -1
+    NONE = -1
+    OTHER = NONE  # Historical code for nonparticipating policies.
     PUA = 0
     REDUCE_PREM = 1
     CASH = 2

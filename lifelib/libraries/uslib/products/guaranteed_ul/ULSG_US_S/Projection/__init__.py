@@ -346,12 +346,18 @@ def premium_type():
     A first-class model point attribute because funding pattern drives both the
     guarantee trajectory and observed lapse behaviour [R8].
     """
-    return model_point().lookup_enum("premium_type", PremiumType, default=PremiumType.UNKNOWN)
+    label = model_point()["premium_type"]
+    if label == "UNKNOWN":
+        raise KeyError(label)
+    return PremiumType[label]
 
 
 def premium_mode():
     """The premium mode: ``"A"``, ``"S"``, ``"Q"`` or ``"M"`` (EFT only) [S2]."""
-    return model_point().lookup_enum("premium_mode", PremiumMode, default=PremiumMode.UNKNOWN)
+    label = model_point()["premium_mode"]
+    if label == "UNKNOWN":
+        raise KeyError(label)
+    return PremiumMode[label]
 
 
 def premium_pp_ann():

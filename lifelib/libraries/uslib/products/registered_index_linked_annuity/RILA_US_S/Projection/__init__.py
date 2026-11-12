@@ -398,7 +398,10 @@ def crediting_type():
     that only one insurer in the sample offers and that needs a **four**-option
     replicating portfolio rather than three [S5].
     """
-    return CreditType.__members__.get(model_point()["crediting_type"], CreditType.INVALID)
+    label = model_point()["crediting_type"]
+    if label == "INVALID":
+        raise KeyError(label)
+    return CreditType[label]
 
 
 def declared_cap():
@@ -450,7 +453,10 @@ def iv_family():
     design [S1], which uses no option pricing; it predates AG 54's July 1, 2024 effective
     date [R2] and is carried as a tractable regression contrast, not as a live design.
     """
-    return InterimValueFamily.__members__.get(model_point()["iv_family"], InterimValueFamily.INVALID)
+    label = model_point()["iv_family"]
+    if label == "INVALID":
+        raise KeyError(label)
+    return InterimValueFamily[label]
 
 
 def amort_rule():
@@ -461,7 +467,10 @@ def amort_rule():
     time to expiry**. One insurer needs both, split by state [S3], so this is a
     configuration flag rather than a modelling opinion.
     """
-    return Amortization.__members__.get(model_point()["amort_rule"], Amortization.INVALID)
+    label = model_point()["amort_rule"]
+    if label == "INVALID":
+        raise KeyError(label)
+    return Amortization[label]
 
 
 def nge_reset():

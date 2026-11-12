@@ -417,7 +417,7 @@ def payout_form():
     independently.
     """
     f = income_form()
-    return PayoutForm.__members__.get("LO" if f in ("LO", "LO_ROP") else f, PayoutForm.INVALID)
+    return PayoutForm["LO" if f == "LO_ROP" else f]
 
 
 def db_form():

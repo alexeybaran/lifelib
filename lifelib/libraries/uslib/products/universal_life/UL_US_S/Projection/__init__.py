@@ -309,7 +309,10 @@ def db_option():
 
     Option C (return of premium) is out of scope in the product spec.
     """
-    return model_point().lookup_enum("db_option", DeathBenefitOption, default=DeathBenefitOption.OTHER)
+    label = model_point()["db_option"]
+    if label == "OTHER":
+        raise KeyError(label)
+    return DeathBenefitOption[label]
 
 
 def qual_test():
@@ -318,12 +321,18 @@ def qual_test():
     CVAT is out of scope in the product spec, so :func:`corridor_factor` raises on
     anything else rather than silently applying GPT corridor factors.
     """
-    return model_point().lookup_enum("qual_test", Qualification, default=Qualification.OTHER)
+    label = model_point()["qual_test"]
+    if label == "OTHER":
+        raise KeyError(label)
+    return Qualification[label]
 
 
 def premium_type():
     """The premium pattern: ``"LEVEL"``, ``"SINGLE"`` or ``"TARGET"`` **[std]**."""
-    return model_point().lookup_enum("premium_type", PremiumType, default=PremiumType.OTHER)
+    label = model_point()["premium_type"]
+    if label == "OTHER":
+        raise KeyError(label)
+    return PremiumType[label]
 
 
 def premium_pp_ann():
