@@ -1222,7 +1222,7 @@ def surr_charge_rate(t):
     retrieved source states.
     """
     grid = charge_rows()
-    return grid.lookup_clamped_float(duration(t), "surr_charge_rate")
+    return grid.lookup_clamped_float(duration(t), "surr_charge_rate", "upper")
 
 
 def wd_charge_pp(t):

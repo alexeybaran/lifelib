@@ -1212,7 +1212,7 @@ def surr_charge_rate(t):
     month of a year.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    return table.lookup_clamped_float(policy_year(t), "surr_charge_rate")
+    return table.lookup_clamped_float(policy_year(t), "surr_charge_rate", "upper")
 
 
 def vest_rate(t):
@@ -1223,7 +1223,7 @@ def vest_rate(t):
     clawback.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    return table.lookup_clamped_float(policy_year(t), "vest_rate")
+    return table.lookup_clamped_float(policy_year(t), "vest_rate", "upper")
 
 
 def rollup_rate(t):
