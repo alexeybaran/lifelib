@@ -513,8 +513,7 @@ def prem_persistency(t):
     """
     tbl = data.prem_persistency_table()                              # noqa: F821
     tbl = data.prem_persistency_table()                              # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "prem_persistency")
+    return tbl.lookup_clamped_float(policy_year(t), "prem_persistency", "upper")
 
 
 def premium_pp(t):
@@ -671,8 +670,7 @@ def corridor_factor(t):
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
     tbl = data.corridor_factors()                                   # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "corridor_factor")
+    return tbl.lookup_clamped_float(age(t), "corridor_factor", "both")
 
 
 def av_pp_db_basis(t):
@@ -765,8 +763,7 @@ def coi_rate_guar(t):
     from attained age 121.  Policy years beyond the table take its last row.
     """
     scale = coi_schedule()
-    y = min(policy_year(t), scale.index.max_int())
-    return scale.lookup_float(y, "coi_rate_guar")
+    return scale.lookup_clamped_float(policy_year(t), "coi_rate_guar", "upper")
 
 
 def coi_rate(t):
@@ -1141,8 +1138,7 @@ def mort_rate(t):
     """
     tbl = data.mort_table()                                          # noqa: F821
     tbl = data.mort_table()                                         # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
+    return tbl.lookup_clamped_float(age(t), "mort_rate", "both") * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1161,8 +1157,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     tbl = data.lapse_table()                                        # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "lapse_rate_ann")
+    return tbl.lookup_clamped_float(policy_year(t), "lapse_rate_ann", "upper")
 
 
 def lapse_shock_year():

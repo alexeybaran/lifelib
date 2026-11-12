@@ -558,8 +558,7 @@ def gross_return_mth(t, i):
     not a formula change.
     """
     tbl = scenario_schedule(i)
-    m = min(t, tbl.index.max_int())
-    return tbl.lookup_float(m, "gross_return_mth")
+    return tbl.lookup_clamped_float(t, "gross_return_mth", "upper")
 
 
 def scenario_schedule(i) -> "modelx_helpers.immutable_inputs.Table":
@@ -827,8 +826,7 @@ def prem_persistency_base(t):
     analogy -- no VUL-specific study was retrieved, which the notes flag.
     """
     tbl = data.prem_persistency_table()                              # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "prem_persistency")
+    return tbl.lookup_clamped_float(policy_year(t), "prem_persistency", "upper")
 
 
 def prem_persistency(t):
@@ -1010,8 +1008,7 @@ def corridor_factor_at(a):
     on every fifth anniversary, which the notes list among the modeling pitfalls.
     """
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(a, int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "corridor_factor")
+    return tbl.lookup_clamped_float(a, "corridor_factor", "both")
 
 
 def corridor_factor(t):
@@ -1117,8 +1114,7 @@ def coi_rate_guar_at(y):
     age 120 [S1][S2][S3][S4].  Policy years beyond the table take its last row.
     """
     scale = coi_schedule()
-    y = min(y, scale.index.max_int())
-    return min(scale.lookup_float(y, "coi_rate_guar"), coi_rate_cap)                        # noqa: F821
+    return min(scale.lookup_clamped_float(y, "coi_rate_guar", "upper"), coi_rate_cap)                        # noqa: F821
 
 
 def coi_rate_guar(t):
@@ -1697,8 +1693,7 @@ def mort_rate(t):
     shipped here are deliberately different.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
+    return tbl.lookup_clamped_float(age(t), "mort_rate", "both") * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1717,8 +1712,7 @@ def lapse_rate_base(t):
     standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "lapse_rate_ann")
+    return tbl.lookup_clamped_float(policy_year(t), "lapse_rate_ann", "upper")
 
 
 def lapse_shock_month():
