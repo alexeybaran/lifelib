@@ -188,7 +188,7 @@ def los_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
@@ -197,37 +197,37 @@ def prepared_mort_table_loc():
 
 def prepared_los_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(los_table(), groups=('band_start',), preserve_scalar_types = True)
+    return pdn.table(los_table(), groups=('band_start',), preserve_scalar_types = True)
 
 
 def prepared_los_index_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.index(los_table().index)
+    return pdn.index(los_table().index)
 
 
 def prepared_incidence_index_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.index(incidence_table().index)
+    return pdn.index(incidence_table().index)
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_mort_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
 
 
 def prepared_incidence_table_rows():
     """Own calculation selection; retain the public source dependency."""
-    return inputs.table(incidence_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+    return pdn.table(incidence_table(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -245,4 +245,4 @@ los_table_file = "los_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

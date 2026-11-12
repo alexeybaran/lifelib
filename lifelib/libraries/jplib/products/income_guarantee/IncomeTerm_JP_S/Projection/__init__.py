@@ -287,12 +287,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
     """The sex of the insured, ``M`` or ``F``; a rating factor and a table key."""
-    v = tables.lookup_object(prepared_model_point(), "sex")
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -308,7 +308,7 @@ def issue_age():
     mortality.  The bias is stated rather than corrected in the base run; the optional
     ``sqrt(q_x q_{x+1})`` shift belongs to the protection chassis and moves ``q`` **up**.
     """
-    v = tables.lookup_int(prepared_model_point(), "issue_age")
+    v = pdn.lookup_int(prepared_model_point(), "issue_age")
     if not 20 <= v <= 70:
         raise ValueError("issue_age outside the composite envelope 20-70")
     return v
@@ -322,7 +322,7 @@ def expiry_age():
     product the composite does not have, and :func:`term_m` is derived from this rather
     than read.
     """
-    v = tables.lookup_int(prepared_model_point(), "expiry_age")
+    v = pdn.lookup_int(prepared_model_point(), "expiry_age")
     if not 45 <= v <= 90:
         raise ValueError("expiry_age outside the composite envelope 45-90")
     if v <= issue_age():
@@ -345,7 +345,7 @@ def guar_m():
     Elected at issue and not changeable.  It is quoted in years and binds in months,
     which is one of the reasons this product cannot be run on an annual grid.
     """
-    v = tables.lookup_int(prepared_model_point(), "guar_m")
+    v = pdn.lookup_int(prepared_model_point(), "guar_m")
     if v not in (24, 60):
         raise ValueError("guar_m outside the composite menu {24, 60}")
     return v
@@ -353,7 +353,7 @@ def guar_m():
 
 def annuity_mth():
     """A: the 年金月額, JPY per month; ¥50,000 minimum in ¥10,000 steps."""
-    v = tables.lookup_float(prepared_model_point(), "annuity_mth")
+    v = pdn.lookup_float(prepared_model_point(), "annuity_mth")
     if v < 50000.0 or round(v) % 10000 != 0:
         raise ValueError("annuity_mth below the ¥50,000 floor or off the ¥10,000 step")
     return v
@@ -370,8 +370,8 @@ def rate_class():
     at issue and cannot be changed later, which is what gives the selective-lapsation
     module its mechanism.
     """
-    v = tables.lookup_object(prepared_model_point(), "rate_class")
-    if v not in expressions.keys(data.prepared_rate_class_table_index_selection()):                       # noqa: F821
+    v = pdn.lookup_object(prepared_model_point(), "rate_class")
+    if v not in pdn.keys(data.prepared_rate_class_table_index_selection()):                       # noqa: F821
         raise ValueError("unknown rate_class " + str(v))
     return v
 
@@ -386,7 +386,7 @@ def class_factor():
     premium quoted for the cheapest of them.  The four are given an internal structure
     rather than four free numbers — see :func:`check_class_factor_norm`.
     """
-    return tables.lookup_float(data.prepared_rate_class_table_loc(), rate_class(), 'class_factor')
+    return pdn.lookup_float(data.prepared_rate_class_table_loc(), rate_class(), 'class_factor')
 
 
 def premium_mth_pp():
@@ -399,7 +399,7 @@ def premium_mth_pp():
     model points the rate is likewise published.  Where no published cell exists the
     value is **[std]**; ``model.md`` says which is which.
     """
-    return tables.lookup_float(prepared_model_point(), "premium_monthly")
+    return pdn.lookup_float(prepared_model_point(), "premium_monthly")
 
 
 def premium_mode():
@@ -411,7 +411,7 @@ def premium_mode():
     payment period.  No 前納 or frequency discount is applied, because the discount is
     insurer-set and unpublished **[std scope]**.
     """
-    v = tables.lookup_object(prepared_model_point(), "premium_mode")
+    v = pdn.lookup_object(prepared_model_point(), "premium_mode")
     if v not in ("monthly", "semiannual", "annual"):
         raise ValueError("invalid premium_mode")
     return v
@@ -424,7 +424,7 @@ def prem_mode_months():
 
 def commutation():
     """Whether claims are settled by a full 一括受取 lump sum; false in the base run."""
-    return tables.lookup_bool(prepared_model_point(), "commutation")
+    return pdn.lookup_bool(prepared_model_point(), "commutation")
 
 
 def living_needs():
@@ -434,7 +434,7 @@ def living_needs():
     is a product fact; what is switched off in the base run is the **[std]**
     acceleration incidence, which no retrieved document gives.
     """
-    return tables.lookup_bool(prepared_model_point(), "living_needs")
+    return pdn.lookup_bool(prepared_model_point(), "living_needs")
 
 
 def wop():
@@ -445,7 +445,7 @@ def wop():
     180 days to a 別表4 身体障害の状態.  Disease-based waiver is a rider only and is out of
     scope.
     """
-    return tables.lookup_bool(prepared_model_point(), "wop")
+    return pdn.lookup_bool(prepared_model_point(), "wop")
 
 
 def reinstatement():
@@ -455,7 +455,7 @@ def reinstatement():
     interest.  Japanese policies really do come back, which is a genuine difference from
     the UK composite in ``uklib``, where a lapsed policy terminates finally.
     """
-    return tables.lookup_bool(prepared_model_point(), "reinstatement")
+    return pdn.lookup_bool(prepared_model_point(), "reinstatement")
 
 
 def pols_if_init():
@@ -526,7 +526,7 @@ def mort_rate_base(t):
     separate 高度障害 incidence on top of the table double-counts the benefit, and the two
     annuities are contractually mutually exclusive in any case.
     """
-    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')
 
 
 def sel_lapse_factor(t):
@@ -593,7 +593,7 @@ def lapse_rate(t):
     if t < 0 or t > term_m() - 1:
         return 0.0
     tbl = data.lapse_table()                                         # noqa: F821
-    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -859,7 +859,7 @@ def annuities_ended(t):
     """
     n, g = term_m(), guar_m()
     if t == n:
-        return expressions.sum_values((annuities_open(s) for s in expressions.periods(0, n - g + 1)))
+        return pdn.sum_values((annuities_open(s) for s in pdn.periods(0, n - g + 1)))
     if t > n:
         return annuities_open(t - g)
     return 0.0
@@ -972,7 +972,7 @@ def claims(t, kind=None):
         the kind exists so the zero is stated rather than left to inference.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("ANNUITY", "COMMUTATION", "LIVING_NEEDS", "LAPSE")))
     if kind == "ANNUITY":
         return annuity_mth() * annuities_if(t)
     if kind == "COMMUTATION":
@@ -1097,7 +1097,7 @@ def check_pols_roll_fwd():
     one test can call the same check across every model.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(term_m())))
 
 
 def check_annuity_ledger_resid(t):
@@ -1112,7 +1112,7 @@ def check_annuity_ledger_resid(t):
     lo = 0 if t <= n - 1 else t - g + 1
     hi = min(t, n - 1)
     direct = 0.0
-    for s in expressions.periods(max(0, lo), hi + 1):
+    for s in pdn.periods(max(0, lo), hi + 1):
         direct += annuities_open(s)
     return annuities_if(t) - direct
 
@@ -1123,7 +1123,7 @@ def check_annuity_ledger():
     No argument, one bool over all t; :func:`check_annuity_ledger_resid` gives the
     signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_annuity_ledger_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_annuity_total_resid(t):
@@ -1137,14 +1137,14 @@ def check_annuity_total_resid(t):
     """
     n, g = term_m(), guar_m()
     built = 0.0
-    for s in expressions.periods(min(t, n - 1) + 1):
+    for s in pdn.periods(min(t, n - 1) + 1):
         built += annuities_open(s) * (min(t, max(n - 1, s + g - 1)) - s + 1)
     return annuities_cum(t) - built
 
 
 def check_annuity_total():
     """True when the instalments due to date reconcile in every projected month."""
-    return expressions.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_pay_count_resid(t):
@@ -1160,7 +1160,7 @@ def check_pay_count_resid(t):
 
 def check_pay_count():
     """True when the instalment count and the stream end date agree in every month."""
-    return expressions.all_true((abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m())))
+    return pdn.all_true((abs(check_pay_count_resid(t)) <= roll_fwd_tol for t in pdn.periods(term_m())))
 
 
 def check_expired_cover_resid(t):
@@ -1179,7 +1179,7 @@ def check_expired_cover_resid(t):
 
 def check_expired_cover():
     """True when nothing is charged to the in-force population past the policy term."""
-    return expressions.all_true((abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in expressions.periods(term_m(), proj_len())))
+    return pdn.all_true((abs(check_expired_cover_resid(t)) <= roll_fwd_tol for t in pdn.periods(term_m(), proj_len())))
 
 
 def check_class_factor_norm_resid(t):
@@ -1194,9 +1194,9 @@ def check_class_factor_norm_resid(t):
     with the other ``check_*_resid`` cells.
     """
     tbl = data.prepared_rate_class_table_calculation()
-    products = [a * b for a, b in zip(expressions.column(tbl, "class_factor"), expressions.column(tbl, "mix_weight"))]                                    # noqa: F821
-    return float(expressions.sum_f64(v for v in products if not tables.is_missing(pd.isna, v))
-                 / expressions.sum_f64(v for v in expressions.column(tbl, "mix_weight") if not tables.is_missing(pd.isna, v)) - 1.0)
+    products = [a * b for a, b in zip(pdn.column(tbl, "class_factor"), pdn.column(tbl, "mix_weight"))]                                    # noqa: F821
+    return float(pdn.sum_f64(v for v in products if not pdn.is_missing(pd.isna, v))
+                 / pdn.sum_f64(v for v in pdn.column(tbl, "mix_weight") if not pdn.is_missing(pd.isna, v)) - 1.0)
 
 
 def check_class_factor_norm():
@@ -1231,7 +1231,7 @@ def check_net_cf():
     bool over all t, with the signed residual of the month that failed at
     :func:`check_net_cf_resid`.
     """
-    return expressions.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1261,7 +1261,7 @@ def result_cf():
     the policy term: the last rows carry annuity instalments and their administration
     expense alone.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1286,7 +1286,7 @@ def result_pols():
 
     Same frame as :func:`result_cf`: ``t`` runs ``0 ... proj_len() - 1``.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1309,7 +1309,7 @@ def result_pols():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1365,8 +1365,4 @@ cash_tol = 1e-06
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

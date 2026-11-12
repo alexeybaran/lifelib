@@ -324,7 +324,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def shape():
@@ -336,7 +336,7 @@ def shape():
     to US dollars each month, is a different cash-flow object and is out of scope; a
     model point naming it is rejected here.
     """
-    v = tables.lookup_object(prepared_model_point(), "shape")
+    v = pdn.lookup_object(prepared_model_point(), "shape")
     if v not in ("LEVEL", "SINGLE"):
         raise ValueError("invalid shape: " + str(v))
     return v
@@ -344,7 +344,7 @@ def shape():
 
 def sex():
     """The sex (M / F) of the insured; the two are rated separately [S2]."""
-    v = tables.lookup_object(prepared_model_point(), "sex")
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex: " + str(v))
     return v
@@ -358,7 +358,7 @@ def issue_age():
     (nearest-birthday) basis and is read here at the 満年齢 attained age with no
     adjustment **[std]**, as the savings chassis does.
     """
-    return tables.lookup_int(prepared_model_point(), "issue_age")
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def currency():
@@ -368,7 +368,7 @@ def currency():
     the composite is built on are USD tables, so the reference implementation writes
     USD and rejects anything else by name rather than silently pricing it.
     """
-    v = tables.lookup_object(prepared_model_point(), "currency")
+    v = pdn.lookup_object(prepared_model_point(), "currency")
     if v != "USD":
         raise ValueError("only USD is in scope: " + str(v))
     return v
@@ -380,7 +380,7 @@ def sum_assured():
     On the SINGLE shape it equals the 一時払保険料 at issue and never binds, because that
     shape's death benefit is ``max(積立金, 解約返戻金)`` with no sum assured above the fund.
     """
-    return tables.lookup_float(prepared_model_point(), "sum_assured")
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def premium_mth_pp():
@@ -392,12 +392,12 @@ def premium_mth_pp():
     exactly that cell, and the same booklet publishes 225.00 for the 低解約返戻金特則 form.
     Zero on the SINGLE shape.
     """
-    return tables.lookup_float(prepared_model_point(), "premium_mth")
+    return pdn.lookup_float(prepared_model_point(), "premium_mth")
 
 
 def single_premium():
     """The 一時払保険料 in US dollars on the SINGLE shape; zero on the LEVEL shape."""
-    return tables.lookup_float(prepared_model_point(), "single_premium")
+    return pdn.lookup_float(prepared_model_point(), "single_premium")
 
 
 def prem_months():
@@ -406,7 +406,7 @@ def prem_months():
     ``0`` denotes 終身払, for which no 払込満了 exists; :func:`prem_months_eff` resolves it
     against the projection horizon.  ``240`` on the anchor cell is 60歳払込満了.
     """
-    return tables.lookup_int(prepared_model_point(), "prem_months")
+    return pdn.lookup_int(prepared_model_point(), "prem_months")
 
 
 def credit_rate():
@@ -418,7 +418,7 @@ def credit_rate():
     the declared-rate history is not machine-fetchable.  On the SINGLE shape it is a
     rate actually declared in the market and fixed for the whole 積立利率適用期間.
     """
-    return tables.lookup_float(prepared_model_point(), "credit_rate")
+    return pdn.lookup_float(prepared_model_point(), "credit_rate")
 
 
 def guar_floor():
@@ -428,7 +428,7 @@ def guar_floor():
     also defines the 増加死亡保険金額 benchmark; 0.01% on the SINGLE shape, which is a floor
     in name only because that shape resets its rate every 積立利率適用期間.
     """
-    return tables.lookup_float(prepared_model_point(), "guar_floor")
+    return pdn.lookup_float(prepared_model_point(), "guar_floor")
 
 
 def rate_period_y():
@@ -438,7 +438,7 @@ def rate_period_y():
     rate table is published, and the reconstruction in :func:`mva_rate` is anchored on
     that table.
     """
-    return tables.lookup_int(prepared_model_point(), "rate_period_y")
+    return pdn.lookup_int(prepared_model_point(), "rate_period_y")
 
 
 def mva_delta(t):
@@ -450,7 +450,7 @@ def mva_delta(t):
     charges a small positive adjustment.  Model point 4 runs it at -1.0%, where the
     adjustment turns negative and *raises* the surrender value.
     """
-    return tables.lookup_float(prepared_model_point(), "mva_delta")
+    return pdn.lookup_float(prepared_model_point(), "mva_delta")
 
 
 def low_cv():
@@ -460,7 +460,7 @@ def low_cv():
     contract, which has no 払込満了 — a model point combining the two is rejected here
     rather than given an arbitrary release date.
     """
-    v = tables.lookup_bool(prepared_model_point(), "low_cv")
+    v = pdn.lookup_bool(prepared_model_point(), "low_cv")
     if v and shape() == "LEVEL" and prem_months() == 0:
         raise ValueError("低解約返戻金特則 has no 払込満了 to release at on a 終身払 contract")
     return v
@@ -473,7 +473,7 @@ def idb_ratchet():
     is **[unverified]** and carried as a switch.  It is on in the base run and makes no
     difference there, because the uplift is identically zero at the floor.
     """
-    return tables.lookup_bool(prepared_model_point(), "idb_ratchet")
+    return pdn.lookup_bool(prepared_model_point(), "idb_ratchet")
 
 
 def idb_basis():
@@ -490,7 +490,7 @@ def idb_basis():
         premiums, on the same charge basis: :func:`av0_pro_pp`.  See the Space
         docstring for why this is the switch and not the base.
     """
-    v = tables.lookup_object(prepared_model_point(), "idb_basis")
+    v = pdn.lookup_object(prepared_model_point(), "idb_basis")
     if v not in ("fund", "prospective"):
         raise ValueError("invalid idb_basis: " + str(v))
     return v
@@ -509,7 +509,7 @@ def target_on():
     whose documents carry it could not be fetched at all.  The *mechanic* is verified;
     only the name is not.
     """
-    v = tables.lookup_bool(prepared_model_point(), "target_on")
+    v = pdn.lookup_bool(prepared_model_point(), "target_on")
     if v and shape() != "SINGLE":
         raise ValueError("the target-value rider is a SINGLE-shape option")
     return v
@@ -522,7 +522,7 @@ def target_g():
     two-and-a-half-year average holding period can actually reach.  The target is
     measured against the yen-converted premium, so a weaker yen alone can trigger it.
     """
-    return tables.lookup_float(prepared_model_point(), "target_g")
+    return pdn.lookup_float(prepared_model_point(), "target_g")
 
 
 def target_action():
@@ -533,7 +533,7 @@ def target_action():
     the hit and the same product immediately re-sold to the same customer.  The
     contract and the evidence disagree and the choice is the user's.
     """
-    v = tables.lookup_object(prepared_model_point(), "target_action")
+    v = pdn.lookup_object(prepared_model_point(), "target_action")
     if v not in ("convert", "surrender", "none"):
         raise ValueError("invalid target_action: " + str(v))
     if target_on() and v == "none":
@@ -547,7 +547,7 @@ def dyn_lapse():
     SINGLE shape only, because the yen profit it keys on is measured against a single
     premium actually paid at a known rate.
     """
-    v = tables.lookup_bool(prepared_model_point(), "dyn_lapse")
+    v = pdn.lookup_bool(prepared_model_point(), "dyn_lapse")
     if v and shape() != "SINGLE":
         raise ValueError("dynamic surrender is specified on the SINGLE shape only")
     return v
@@ -561,7 +561,7 @@ def apl_on():
     model point carrying a premium-default decrement is modelling a contract that does
     not exist, and is rejected here.
     """
-    v = tables.lookup_bool(prepared_model_point(), "apl_on")
+    v = pdn.lookup_bool(prepared_model_point(), "apl_on")
     if v and shape() == "SINGLE":
         raise ValueError("the APL is structurally absent on the SINGLE shape")
     return v
@@ -569,12 +569,12 @@ def apl_on():
 
 def yen_in():
     """Whether the 円入金特約 is attached, so premiums are paid in yen at ``e + s``."""
-    return tables.lookup_bool(prepared_model_point(), "yen_in")
+    return pdn.lookup_bool(prepared_model_point(), "yen_in")
 
 
 def yen_out():
     """Whether the 円支払特約 is attached, so benefits are paid in yen at ``e - s``."""
-    return tables.lookup_bool(prepared_model_point(), "yen_out")
+    return pdn.lookup_bool(prepared_model_point(), "yen_out")
 
 
 def fx_ttm():
@@ -584,7 +584,7 @@ def fx_ttm():
     this library models contractual cash flows, not an FX view, and a projected
     currency path would be an economic assumption dressed as a product feature.
     """
-    return tables.lookup_float(prepared_model_point(), "fx_ttm")
+    return pdn.lookup_float(prepared_model_point(), "fx_ttm")
 
 
 def fx_spread():
@@ -595,12 +595,12 @@ def fx_spread():
     carrier warns that a loss can arise with no exchange-rate movement at all.  Zero
     where neither yen rider is attached.
     """
-    return tables.lookup_float(prepared_model_point(), "fx_spread")
+    return pdn.lookup_float(prepared_model_point(), "fx_spread")
 
 
 def fx_path():
     """Whether :func:`fx_rate` reads the path table instead of holding ``fx_ttm`` flat."""
-    return tables.lookup_bool(prepared_model_point(), "fx_path")
+    return pdn.lookup_bool(prepared_model_point(), "fx_path")
 
 
 def mort_be_factor():
@@ -610,7 +610,7 @@ def mort_be_factor():
     best-estimate basis is a **[std]** adjustment of it.  This lever moves
     :func:`mort_rate` and must never move :func:`coi_rate`; see the Space docstring.
     """
-    return tables.lookup_float(prepared_model_point(), "mort_adj")
+    return pdn.lookup_float(prepared_model_point(), "mort_adj")
 
 
 def omega_age():
@@ -619,8 +619,8 @@ def omega_age():
     109 male and 113 female on 生保標準生命表2018（死亡保険用）.  It is read off the table
     rather than hard-coded, so replacing the table moves the horizon with it.
     """
-    tbl = tables.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
-    return int(min((a for a in expressions.keys(tbl) if tables.lookup_float(tbl, a, "mort_rate") >= 1.0)))
+    tbl = pdn.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
+    return int(min((a for a in pdn.keys(tbl) if pdn.lookup_float(tbl, a, "mort_rate") >= 1.0)))
 
 
 def proj_len():
@@ -676,7 +676,7 @@ def coi_rate(t):
     margin.  It is a pricing element the insurer sets in its 算出方法書, so ``mort_be_factor``
     does not touch it.  Includes 高度障害, which the published death rate already carries.
     """
-    return tables.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
 
 
 def coi_rate_mth(t):
@@ -712,9 +712,9 @@ def lapse_rate_base(t):
     4 / 3%, rests on no public evidence at all and is a **[std]** judgement.  Policy
     years beyond the table take its last row.
     """
-    tbl = tables.subtable(data.prepared_lapse_table_calculation_groups_1(), shape())
-    y = min(policy_year(t), int(tables.last_key(tbl)))
-    return tables.lookup_float(tbl, y, "lapse_rate")
+    tbl = pdn.subtable(data.prepared_lapse_table_calculation_groups_1(), shape())
+    y = min(policy_year(t), int(pdn.last_key(tbl)))
+    return pdn.lookup_float(tbl, y, "lapse_rate")
 
 
 def lapse_dyn_factor(t):
@@ -774,7 +774,7 @@ def charge_param(item):
     低解約返戻金割合 ramp, the three constants of the 市場価格調整 reconstruction and the two
     特別積立金 rates.
     """
-    return tables.lookup_float(data.prepared_charge_table_loc(), (shape(), item), 'value')  # noqa: F821
+    return pdn.lookup_float(data.prepared_charge_table_loc(), (shape(), item), 'value')  # noqa: F821
 
 
 def prem_charge_rate(t):
@@ -1127,7 +1127,7 @@ def fx_rate(t):
     if not fx_path():
         return fx_ttm()
     tbl = data.fx_path_table()                                       # noqa: F821
-    return tables.lookup_float(data.prepared_fx_path_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_fx_path_table_index_selection())))), "fx_ttm")
+    return pdn.lookup_float(data.prepared_fx_path_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_fx_path_table_index_selection())))), "fx_ttm")
 
 
 def premium_jpy0():
@@ -1170,7 +1170,7 @@ def target_month():
     """
     if not target_on():
         return proj_len() + 1
-    for t in expressions.periods(target_dead_zone_mths, proj_len() + 1):           # noqa: F821
+    for t in pdn.periods(target_dead_zone_mths, proj_len() + 1):           # noqa: F821
         if target_hit(t):
             return t
     return proj_len() + 1
@@ -1579,10 +1579,10 @@ def check_pols_roll_fwd():
     tol = roll_fwd_tol * max(pols_if_init, 1.0)                      # noqa: F821
     if abs(pols_if(proj_len())) > tol:
         return False
-    total = expressions.sum_values((pols_death(t) + pols_lapse(t) + pols_target(t) for t in expressions.periods(proj_len())))
+    total = pdn.sum_values((pols_death(t) + pols_lapse(t) + pols_target(t) for t in pdn.periods(proj_len())))
     if abs(total - pols_if_init) > tol:                              # noqa: F821
         return False
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1604,7 +1604,7 @@ def check_av_roll_fwd():
     of the month that failed.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_cv_ledger_resid(t):
@@ -1635,7 +1635,7 @@ def check_cv_ledger():
     rebuild is independent of the cells that produce the claim.
     """
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return expressions.all_true((abs(check_cv_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_cv_ledger_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_net_cf_resid(t):
@@ -1656,7 +1656,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published columns add to :func:`net_cf` in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured())                     # noqa: F821
-    return expressions.all_true((abs(check_net_cf_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def check_fx_ledger_resid(t):
@@ -1673,7 +1673,7 @@ def check_fx_ledger_resid(t):
 def check_fx_ledger():
     """True when the three-rate yen translation closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, sum_assured() * fx_rate(0))        # noqa: F821
-    return expressions.all_true((abs(check_fx_ledger_resid(t)) <= tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_fx_ledger_resid(t)) <= tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1688,7 +1688,7 @@ def result_cf():
     benefit on the same row is valued.  ``conversions`` is a column of zeros on every
     model point without the target rider.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1711,7 +1711,7 @@ def result_cf():
 
 def result_pols():
     """Result table of policy counts and decrement rates, indexed by policy month t."""
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1735,7 +1735,7 @@ def result_av():
     the uplift measured against it, the three charges, and the three factors that stand
     between the 積立金 and the 解約返戻金.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "av_pp": [av_pp(t) for t in ts],
@@ -1756,7 +1756,7 @@ def result_av():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1804,8 +1804,4 @@ comm_trail_years = 7
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

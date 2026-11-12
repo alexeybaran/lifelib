@@ -181,37 +181,37 @@ def hosp_stay_table():
 
 def prepared_survival_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(survival_table(),
+    return pdn.table(survival_table(),
                         columns=('surv_5y',),
                         indexing='loc')
 
 
 def prepared_incidence_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(incidence_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(incidence_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_mort_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
 
 
 
 def prepared_sex_factor_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(sex_factor_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(sex_factor_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_mort_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
 
 
 def prepared_hosp_stay_table_calculation():
@@ -226,25 +226,25 @@ def prepared_hosp_stay_table_calculation():
             values.append((basis, cutoff, selected["days"].iloc[-1]))
     prepared = pd.DataFrame(values, columns=("basis", "age_from", "days"))
     prepared = prepared.assign(days=pd.Series([value[2] for value in values], dtype=object))
-    return inputs.table(prepared.set_index(["basis", "age_from"]),
+    return pdn.table(prepared.set_index(["basis", "age_from"]),
                         groups=("basis",), preserve_scalar_types=True)
 
 
 def prepared_incidence_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(incidence_table().index)
+    return pdn.index(incidence_table().index)
 
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 
 def prepared_sex_factor_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(sex_factor_table().index)
+    return pdn.index(sex_factor_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -266,4 +266,4 @@ hosp_stay_file = "hosp_stay_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

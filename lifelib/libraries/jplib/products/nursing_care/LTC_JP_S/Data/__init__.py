@@ -179,7 +179,7 @@ def grade_share_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
@@ -187,7 +187,7 @@ def prepared_mort_table_loc():
 
 def prepared_prevalence_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(prevalence_table(),
+    return pdn.table(prevalence_table(),
                         columns=('value',),
                         indexing='loc')
 
@@ -195,7 +195,7 @@ def prepared_prevalence_table_loc():
 
 def prepared_grade_share_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(grade_share_table(),
+    return pdn.table(grade_share_table(),
                         columns=('share_ge',),
                         indexing='loc')
 
@@ -204,17 +204,17 @@ def prepared_grade_share_table_loc():
 
 def prepared_mort_index_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.index(mort_table().index)
+    return pdn.index(mort_table().index)
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -232,4 +232,4 @@ grade_share_file = "grade_share_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

@@ -160,24 +160,24 @@ def benefit_schedule_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_benefit_schedule_table_calculation():
     """Own original input values for calculation operations."""
-    return inputs.table(benefit_schedule_table().reset_index(), groups=(), rows=False, preserve_scalar_types=True)
+    return pdn.table(benefit_schedule_table().reset_index(), groups=(), rows=False, preserve_scalar_types=True)
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -193,4 +193,4 @@ benefit_schedule_file = "benefit_schedule_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

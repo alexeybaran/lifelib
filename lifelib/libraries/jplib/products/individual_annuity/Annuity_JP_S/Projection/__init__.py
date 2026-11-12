@@ -317,12 +317,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def sex():
     """The annuitant's sex, ``M`` or ``F``; a rating factor on both mortality tables."""
-    v = tables.lookup_object(prepared_model_point(), "sex")
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -334,12 +334,12 @@ def issue_age():
     The basis 標準生命表2018 is built for.  A model ageing its points on 満年齢 must say so
     and say what it does about the half-year difference; this one does not.
     """
-    return tables.lookup_int(prepared_model_point(), "issue_age")
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def premium_term_y():
     """m: the 保険料払込期間 in years; at least ten under the 税制適格特約 [R10]."""
-    return tables.lookup_int(prepared_model_point(), "premium_term_y")
+    return pdn.lookup_int(prepared_model_point(), "premium_term_y")
 
 
 def defer_gap_y():
@@ -348,7 +348,7 @@ def defer_gap_y():
     Zero is a valid model point and a different product; 払込満了 and 年金支払開始日 are
     different dates and collapsing them moves the 年金原資 by several per cent.
     """
-    return tables.lookup_int(prepared_model_point(), "defer_gap_y")
+    return pdn.lookup_int(prepared_model_point(), "defer_gap_y")
 
 
 def annuity_start_age():
@@ -358,7 +358,7 @@ def annuity_start_age():
     point where it does not, because two spellings of one date is how a projection
     silently annuitises on the wrong year.
     """
-    v = tables.lookup_int(prepared_model_point(), "annuity_start_age")
+    v = pdn.lookup_int(prepared_model_point(), "annuity_start_age")
     if v != issue_age() + premium_term_y() + defer_gap_y():
         raise ValueError("annuity_start_age is not issue_age + m + d")
     return v
@@ -370,7 +370,7 @@ def premium_pp():
     There is no review right [S2] [S4] [S5] [S6], so the insurer has no unilateral
     repricing lever and all ``m`` premiums are inside the contract boundary.
     """
-    return tables.lookup_float(prepared_model_point(), "premium_pp")
+    return pdn.lookup_float(prepared_model_point(), "premium_pp")
 
 
 def payout_form():
@@ -381,7 +381,7 @@ def payout_form():
     force at the 年金支払開始日 [S2] [S9]; holding it at the issue basis is a **[std]**
     assumption and the reason base-run take-up is zero.
     """
-    v = tables.lookup_object(prepared_model_point(), "payout_form")
+    v = pdn.lookup_object(prepared_model_point(), "payout_form")
     if v not in ("certain", "life_guar"):
         raise ValueError("invalid payout_form")
     return v
@@ -389,12 +389,12 @@ def payout_form():
 
 def payout_term_y():
     """k: the 確定年金 payment period in years; 10 or 15 under the 税制適格特約 [R10] [R16]."""
-    return tables.lookup_int(prepared_model_point(), "payout_term_y")
+    return pdn.lookup_int(prepared_model_point(), "payout_term_y")
 
 
 def guar_term_y():
     """g: the guarantee period of the 保証期間付終身年金 form, in years [S4] [R16]."""
-    return tables.lookup_int(prepared_model_point(), "guar_term_y")
+    return pdn.lookup_int(prepared_model_point(), "guar_term_y")
 
 
 def db_ratio():
@@ -404,7 +404,7 @@ def db_ratio():
     on the model point rather than in a code branch because a tontine is the same chassis
     with a different death-benefit ratio under the same surrender ceiling.
     """
-    return tables.lookup_float(prepared_model_point(), "db_ratio")
+    return pdn.lookup_float(prepared_model_point(), "db_ratio")
 
 
 def tax_rider():
@@ -414,7 +414,7 @@ def tax_rider():
     start age of 60 or more, a payment period of ten years or more, no cash refund of a
     減額 — so it validates the model point and then does nothing else here.
     """
-    v = tables.lookup_bool(prepared_model_point(), "tax_rider")
+    v = pdn.lookup_bool(prepared_model_point(), "tax_rider")
     if v and (premium_term_y() < 10 or annuity_start_age() < 60
               or (payout_form() == "certain" and payout_term_y() < 10)
               or (payout_form() == "life_guar" and guar_term_y() < 10)):
@@ -424,12 +424,12 @@ def tax_rider():
 
 def apl_on():
     """Whether the 自動振替貸付 module is switched on; false in the base run [S4] [REG-R14]."""
-    return tables.lookup_bool(prepared_model_point(), "apl_on")
+    return pdn.lookup_bool(prepared_model_point(), "apl_on")
 
 
 def loan_on():
     """Whether the 契約者貸付 module is switched on; false in the base run [S4] [S11]."""
-    return tables.lookup_bool(prepared_model_point(), "loan_on")
+    return pdn.lookup_bool(prepared_model_point(), "loan_on")
 
 
 def commute_rate():
@@ -439,7 +439,7 @@ def commute_rate():
     offers the election at ``t = n`` only **[std]**, which is where the published factor
     table is richest and where the arithmetic against the 年金原資 is checkable.
     """
-    return tables.lookup_float(prepared_model_point(), "commute_rate")
+    return pdn.lookup_float(prepared_model_point(), "commute_rate")
 
 
 def div_rate():
@@ -449,7 +449,7 @@ def div_rate():
     the 税制適格特約 the accumulated dividend may never be withdrawn before annuitisation and
     must be applied as a single premium increasing the 基本年金額 [S1] [S2] [R10].
     """
-    return tables.lookup_float(prepared_model_point(), "div_rate")
+    return pdn.lookup_float(prepared_model_point(), "div_rate")
 
 
 def rate_new():
@@ -458,7 +458,7 @@ def rate_new():
     Flat over the projection on the shipped points.  Equal to :func:`int_rate_defer` in
     the base run, which makes :func:`lapse_dyn_factor` exactly 1.
     """
-    return tables.lookup_float(prepared_model_point(), "rate_new")
+    return pdn.lookup_float(prepared_model_point(), "rate_new")
 
 
 # --- Derived model point quantities ----------------------------------------
@@ -565,12 +565,12 @@ def pricing_basis(item):
     them carries a ``provenance`` tag in the CSV rather than sitting as an untagged
     constant in a formula.
     """
-    return tables.lookup_float(data.prepared_pricing_table_loc(), item, 'value')            # noqa: F821
+    return pdn.lookup_float(data.prepared_pricing_table_loc(), item, 'value')            # noqa: F821
 
 
 def expense_basis(item):
     """One row of the best-estimate cash expense and commission table, as a float."""
-    return tables.lookup_float(data.prepared_expense_table_loc(), item, 'value')            # noqa: F821
+    return pdn.lookup_float(data.prepared_expense_table_loc(), item, 'value')            # noqa: F821
 
 
 def int_rate_defer():
@@ -640,10 +640,10 @@ def omega_age(table):
     truncated to 1 there.
     """
     rows = data.prepared_mort_anchor_table_calculation()
-    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    keys = [key for key in pdn.keys(rows) if pdn.lookup_object(rows, key, "table") == table and pdn.lookup_object(rows, key, "sex") == sex()]
     if not keys:
         raise KeyError((table, sex()))
-    return tables.lookup_int(rows, keys[0], "omega_age")
+    return pdn.lookup_int(rows, keys[0], "omega_age")
 
 
 def mort_rate_at_age(table, x):
@@ -654,7 +654,7 @@ def mort_rate_at_age(table, x):
     """
     if x >= omega_age(table):
         return 1.0
-    return tables.lookup_float(data.prepared_mort_table_loc(), (table, sex(), x), 'mort_rate')  # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (table, sex(), x), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_base(t):
@@ -715,11 +715,11 @@ def lapse_rate_base(t):
     tbl = data.prepared_lapse_table_flat_generators()                                         # noqa: F821
     d = duration(t)
     if d >= annuitisation_y() - 1:
-        return expressions.lookup_float(tbl, ("pre_annuitisation", 0), "lapse_rate")
+        return pdn.lookup_float(tbl, ("pre_annuitisation", 0), "lapse_rate")
     if d >= premium_term_y():
-        return expressions.lookup_float(tbl, ("defer_gap", 0), "lapse_rate")
-    seg = expressions.lookup_object(data.prepared_lapse_table_generators(), "premium_paying")
-    return expressions.lookup_float(seg, expressions.max_value((y for y in expressions.keys(seg) if y <= d)), "lapse_rate")
+        return pdn.lookup_float(tbl, ("defer_gap", 0), "lapse_rate")
+    seg = pdn.lookup_object(data.prepared_lapse_table_generators(), "premium_paying")
+    return pdn.lookup_float(seg, pdn.max_value((y for y in pdn.keys(seg) if y <= d)), "lapse_rate")
 
 
 def lapse_dyn_factor(t):
@@ -1208,8 +1208,8 @@ def commute_factor(j):
     if j <= 0:
         return 0.0
     tbl = data.commute_factor_table()                                # noqa: F821
-    if j <= int(expressions.max_value(expressions.keys(data.prepared_commute_factor_table_index_selection()))):
-        return tables.lookup_float(data.prepared_commute_factor_table_scalar_loc(), j, "factor")
+    if j <= int(pdn.max_value(pdn.keys(data.prepared_commute_factor_table_index_selection()))):
+        return pdn.lookup_float(data.prepared_commute_factor_table_scalar_loc(), j, "factor")
     i = pricing_basis("commute_int_rate")
     return (1.0 - (1.0 + i) ** (-j)) / i * (1.0 + i)
 
@@ -1417,7 +1417,7 @@ def claims(t, kind=None):
         the 年金の一括払 lump sums at the 年金支払開始日; zero in the base run.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE", "COMMUTATION")))
+        return pdn.sum_values((claims(t, k) for k in ("ANNUITY", "DEATH", "LAPSE", "COMMUTATION")))
     if kind == "ANNUITY":
         return annuity_pp(t) * (pols_if(t) - pols_commute(t))
     if kind == "DEATH":
@@ -1525,7 +1525,7 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1540,7 +1540,7 @@ def check_lives_roll_fwd_resid(t):
 
 def check_lives_roll_fwd():
     """True when the survivorship roll-forward closes in every projected month."""
-    return expressions.all_true((abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_lives_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
 
 
 def check_fund_resid(s):
@@ -1570,7 +1570,7 @@ def check_fund():
     here rather than silently misstate the 年金原資.
     """
     scale = max(1.0, annuity_fund_pp())
-    return expressions.all_true((abs(check_fund_resid(s)) <= roll_fwd_tol * scale for s in expressions.periods(0, proj_years())))
+    return pdn.all_true((abs(check_fund_resid(s)) <= roll_fwd_tol * scale for s in pdn.periods(0, proj_years())))
 
 
 def check_cv_cap_resid(t):
@@ -1598,8 +1598,8 @@ def check_cv_cap():
     that is allowed past the ceiling: clipping :func:`av_pp` instead of :func:`cv_pp` would
     pass this check and destroy the 年金原資.
     """
-    return expressions.all_true((check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
-        1.0, db_pp(annuitisation_y())) for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((check_cv_cap_resid(t) >= -roll_fwd_tol * max(              # noqa: F821
+        1.0, db_pp(annuitisation_y())) for t in pdn.periods(0, proj_len())))
 
 
 def check_annuity_total_resid(t):
@@ -1626,9 +1626,9 @@ def check_annuity_total():
     """
     n = annuitisation_t()
     guaranteed = (payout_term_y() if payout_form() == "certain" else guar_term_y())
-    total = expressions.sum_values((annuity_pp(t) for t in expressions.periods(n, n + 12 * guaranteed)))
+    total = pdn.sum_values((annuity_pp(t) for t in pdn.periods(n, n + 12 * guaranteed)))
     scale = max(1.0, annuity_amount_pp())
-    return (expressions.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
+    return (pdn.all_true((abs(check_annuity_total_resid(t)) <= roll_fwd_tol * scale for t in pdn.periods(0, proj_len())))
             and abs(total - guaranteed * annuity_amount_pp())
             <= roll_fwd_tol * scale)
 
@@ -1648,7 +1648,7 @@ def check_net_cf_resid(t):
 def check_net_cf():
     """True when the published cash flow columns add up to :func:`net_cf` in every month."""
     scale = max(1.0, premium_pp())
-    return expressions.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale for t in pdn.periods(0, proj_len())))
 
 
 def mort_anchor_ages(table):
@@ -1659,10 +1659,10 @@ def mort_anchor_ages(table):
     construction is fitted to.
     """
     rows = data.prepared_mort_anchor_table_calculation()
-    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    keys = [key for key in pdn.keys(rows) if pdn.lookup_object(rows, key, "table") == table and pdn.lookup_object(rows, key, "sex") == sex()]
     if not keys:
         raise KeyError((table, sex()))
-    return [int(a) for a in sorted(tables.lookup_object(rows, key, "age") for key in keys)]
+    return [int(a) for a in sorted(pdn.lookup_object(rows, key, "age") for key in keys)]
 
 
 def makeham_coeff(table):
@@ -1674,13 +1674,13 @@ def makeham_coeff(table):
     死亡保険用 is graduated log-linearly instead; see :func:`mort_rate_graduated`.
     """
     rows = data.prepared_mort_anchor_table_calculation()
-    keys = [key for key in expressions.keys(rows) if tables.lookup_object(rows, key, "table") == table and tables.lookup_object(rows, key, "sex") == sex()]
+    keys = [key for key in pdn.keys(rows) if pdn.lookup_object(rows, key, "table") == table and pdn.lookup_object(rows, key, "sex") == sex()]
     if not keys:
         raise KeyError((table, sex()))
     
-    keys = [key for age_value, key in sorted((tables.lookup_object(rows, key, "age"), key) for key in keys)]
-    ages = [tables.lookup_int(rows, key, "age") for key in keys]
-    mus = [-math.log(1.0 - tables.lookup_float(rows, key, "mort_rate")) for key in keys]
+    keys = [key for age_value, key in sorted((pdn.lookup_object(rows, key, "age"), key) for key in keys)]
+    ages = [pdn.lookup_int(rows, key, "age") for key in keys]
+    mus = [-math.log(1.0 - pdn.lookup_float(rows, key, "mort_rate")) for key in keys]
     h = ages[1] - ages[0]
     ch = (mus[2] - mus[1]) / (mus[1] - mus[0])
     c = ch ** (1.0 / h)
@@ -1707,7 +1707,7 @@ def mort_rate_graduated(table, x):
     ages = mort_anchor_ages(table)
     if x in ages:
         return mort_rate_at_age(table, x)
-    lo = expressions.max_value((a for a in ages if a < x))
+    lo = pdn.max_value((a for a in ages if a < x))
     hi = min((a for a in ages if a > x))
     q_lo = math.log(mort_rate_at_age(table, lo))                     # noqa: F821
     q_hi = math.log(mort_rate_at_age(table, hi))                     # noqa: F821
@@ -1737,7 +1737,7 @@ def check_mort_graduation():
     ``mort_table.csv`` and ``mort_anchor_table.csv`` still agree with each other — the
     死亡保険用 rates log-linear between their anchors, the 年金開始後用 rates on the Makeham law.
     """
-    return expressions.all_true((abs(check_mort_graduation_resid(t)) <= 1e-15 for t in expressions.periods(0, proj_len())))
+    return pdn.all_true((abs(check_mort_graduation_resid(t)) <= 1e-15 for t in pdn.periods(0, proj_len())))
 
 
 # --- Results ---------------------------------------------------------------
@@ -1768,7 +1768,7 @@ def result_cf():
     contingency is a product fact and is stated rather than inferred.  The death
     contingency has its own column here, ``claims_death``, carrying the 死亡給付金.
     """
-    ts = list(expressions.periods(0, proj_len()))
+    ts = list(pdn.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1806,7 +1806,7 @@ def result_pols():
     on this grid happens at a **month**, the elapsed month 149 on the anchor cell, and not
     merely somewhere inside a policy year.
     """
-    ts = list(expressions.periods(0, proj_len()))
+    ts = list(pdn.periods(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1848,21 +1848,21 @@ def lapse_rate_mean(weighting="count"):
     count [R15] [REG-R31].  Calibrating a count model directly against the published number
     without saying which weighting is meant mis-states the deferral decrement.
     """
-    ys = expressions.periods(0, annuitisation_y())
+    ys = pdn.periods(0, annuitisation_y())
     if weighting == "count":
         w = [pols_if(12 * y) for y in ys]
     elif weighting == "fund":
         w = [av_pp(y) for y in ys]
     else:
         raise ValueError("invalid weighting")
-    num = expressions.sum_values((wt * lapse_rate(12 * y) for (wt, y) in expressions.zip_values((w, ys))))
-    den = expressions.sum_values(w)
+    num = pdn.sum_values((wt * lapse_rate(12 * y) for (wt, y) in pdn.zip_values((w, ys))))
+    den = pdn.sum_values(w)
     return num / den if den else 0.0
 
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1878,8 +1878,4 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")
