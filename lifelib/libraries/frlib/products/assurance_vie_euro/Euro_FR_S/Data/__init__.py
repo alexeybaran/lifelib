@@ -145,30 +145,30 @@ def fin_rate_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_fin_rate_table_groups_1():
     """Own labelled groups in original row and column order."""
-    return inputs.table(fin_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
+    return pdn.table(fin_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
 
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 def prepared_fin_rate_scenarios():
     """Own the original financial-scenario index level, including unused labels."""
-    return inputs.index(fin_rate_table().index.levels[0])
+    return pdn.index(fin_rate_table().index.levels[0])
 
 
 # ---------------------------------------------------------------------------
@@ -184,4 +184,4 @@ fin_rate_file = "fin_rate_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

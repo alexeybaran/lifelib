@@ -182,7 +182,7 @@ def crd_rate_table():
 
 def prepared_franchise_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(franchise_table(),
+    return pdn.table(franchise_table(),
                         columns=('franchise_factor',),
                         indexing='loc')
 
@@ -190,7 +190,7 @@ def prepared_franchise_table_loc():
 
 def prepared_itt_termination_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(itt_termination_table(),
+    return pdn.table(itt_termination_table(),
                         columns=('itt_recovery_rate', 'itt_to_ipt_rate', 'itt_mort_rate'),
                         indexing='loc')
 
@@ -199,39 +199,39 @@ def prepared_itt_termination_table_loc():
 
 def prepared_mort_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(mort_table(), groups=('sex',), preserve_scalar_types = True)
+    return pdn.table(mort_table(), groups=('sex',), preserve_scalar_types = True)
 
 
 def prepared_itt_inception_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(itt_inception_table(), groups=('sex',), preserve_scalar_types = True)
+    return pdn.table(itt_inception_table(), groups=('sex',), preserve_scalar_types = True)
 
 
 def prepared_crd_rate_table_generators():
     """Own generator inputs; depend on the unchanged public source Cell."""
-    return inputs.table(crd_rate_table(), preserve_scalar_types = True)
+    return pdn.table(crd_rate_table(), preserve_scalar_types = True)
 
 
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
-    return inputs.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
 
 def prepared_franchise_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(franchise_table().index)
+    return pdn.index(franchise_table().index)
 
 
 
 def prepared_itt_termination_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(itt_termination_table().index)
+    return pdn.index(itt_termination_table().index)
 
 
 
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
-    return inputs.index(lapse_table().index)
+    return pdn.index(lapse_table().index)
 
 
 # ---------------------------------------------------------------------------
@@ -253,4 +253,4 @@ crd_rate_file = "crd_rate_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

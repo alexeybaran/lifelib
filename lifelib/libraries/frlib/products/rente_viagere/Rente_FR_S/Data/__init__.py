@@ -117,14 +117,14 @@ def reversion_coeff_table():
 
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
-    return inputs.table(mort_table(),
+    return pdn.table(mort_table(),
                         columns=('mort_rate',),
                         indexing='loc')
 
 
 def prepared_reversion_coeff_table_calculation():
     """Own original input values for calculation operations."""
-    return inputs.table(reversion_coeff_table(), groups=(), rows=False, preserve_scalar_types=True)
+    return pdn.table(reversion_coeff_table(), groups=(), rows=False, preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -138,4 +138,4 @@ reversion_coeff_file = "reversion_coeff_table.csv"
 
 pd = ("Module", "pandas")
 
-inputs = ("Module", "modelx_helpers.pandas_inputs")
+pdn = ("Module", "modelx_helpers.pdn")

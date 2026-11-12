@@ -449,12 +449,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return tables.lookup_object(prepared_model_point(), "policy_id")
+    return pdn.lookup_object(prepared_model_point(), "policy_id")
 
 
 def premium_form():
@@ -467,7 +467,7 @@ def premium_form():
     structural lever in the model and the reason a *provision mathématique* exists on one
     form and not the other.
     """
-    v = tables.lookup_object(prepared_model_point(), "premium_form")
+    v = pdn.lookup_object(prepared_model_point(), "premium_form")
     if v not in ("revisable", "constante"):
         raise ValueError("invalid premium_form")
     return v
@@ -483,7 +483,7 @@ def benefit_shape():
     :func:`benefit_factor`, which is the honest failure: the schedule is missing, not the
     formula.
     """
-    v = tables.lookup_object(prepared_model_point(), "benefit_shape")
+    v = pdn.lookup_object(prepared_model_point(), "benefit_shape")
     if v not in ("constant", "decreasing"):
         raise ValueError("invalid benefit_shape")
     return v
@@ -491,7 +491,7 @@ def benefit_shape():
 
 def benefit_schedule_id():
     """The key into *benefit_schedule.csv* naming this policy's benefit schedule."""
-    return tables.lookup_object(prepared_model_point(), "benefit_schedule_id")
+    return pdn.lookup_object(prepared_model_point(), "benefit_schedule_id")
 
 
 def sex():
@@ -504,7 +504,7 @@ def sex():
     basis is sex-dependent while the tariff may not be; ``products/rente_viagere/`` meets
     the same tension from the other side.
     """
-    v = tables.lookup_object(prepared_model_point(), "sex")
+    v = pdn.lookup_object(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -518,7 +518,7 @@ def smoker():
     a formula: no French insurer publishes a smoker loading, or any *surprime* scale at
     all, so there is nothing to look up.
     """
-    v = tables.lookup_object(prepared_model_point(), "smoker")
+    v = pdn.lookup_object(prepared_model_point(), "smoker")
     if v not in ("N", "S"):
         raise ValueError("invalid smoker")
     return v
@@ -535,7 +535,7 @@ def issue_age():
     policy anniversary instead, so an implementation on real dates carries a fractional
     offset of at most one year **[std]**.
     """
-    return tables.lookup_int(prepared_model_point(), "issue_age")
+    return pdn.lookup_int(prepared_model_point(), "issue_age")
 
 
 def sum_assured():
@@ -547,7 +547,7 @@ def sum_assured():
     210 € against 250 € of acquisition expense **[std]** — on small capitals the expense
     assumption, not mortality, decides whether the cell is viable.
     """
-    return tables.lookup_float(prepared_model_point(), "sum_assured")
+    return pdn.lookup_float(prepared_model_point(), "sum_assured")
 
 
 def cover_end_age():
@@ -555,7 +555,7 @@ def cover_end_age():
 
     Nothing is payable at that boundary: no maturity value, no renewal, no conversion.
     """
-    return tables.lookup_int(prepared_model_point(), "cover_end_age")
+    return pdn.lookup_int(prepared_model_point(), "cover_end_age")
 
 
 def ptia_end_age():
@@ -564,12 +564,12 @@ def ptia_end_age():
     Earlier in five of the eight retrieved carriers, and the model treats it as a hard
     gate on the attained age rather than a taper; see :func:`ptia_rate`.
     """
-    return tables.lookup_int(prepared_model_point(), "ptia_end_age")
+    return pdn.lookup_int(prepared_model_point(), "ptia_end_age")
 
 
 def premium_rate_id():
     """The key into *premium_rate_table.csv* naming this policy's rate card."""
-    return tables.lookup_object(prepared_model_point(), "premium_rate_id")
+    return pdn.lookup_object(prepared_model_point(), "premium_rate_id")
 
 
 def rating_factor():
@@ -581,7 +581,7 @@ def rating_factor():
     on borrower cover, which bounds a standard rate from above rather than giving one.
     Model point 5 carries 1.50 **[std]**.
     """
-    return tables.lookup_float(prepared_model_point(), "rating_factor")
+    return pdn.lookup_float(prepared_model_point(), "rating_factor")
 
 
 def prem_freq():
@@ -591,8 +591,8 @@ def prem_freq():
     a percentage loading and a fixed euro fee — and they must not be conflated; see
     :func:`prem_pp`.
     """
-    v = tables.lookup_object(prepared_model_point(), "prem_freq")
-    if v not in expressions.keys(data.prepared_freq_loading_table_index_selection()):                     # noqa: F821
+    v = pdn.lookup_object(prepared_model_point(), "prem_freq")
+    if v not in pdn.keys(data.prepared_freq_loading_table_index_selection()):                     # noqa: F821
         raise ValueError("no fractionation loading for prem_freq " + str(v))
     return v
 
@@ -604,7 +604,7 @@ def level_premium():
     ``P_lev`` by equivalence and model point 3 supplies 3 900,00 € directly, so both
     branches of :func:`prem_level_pp` are exercised.
     """
-    return tables.lookup_float(prepared_model_point(), "level_premium")
+    return pdn.lookup_float(prepared_model_point(), "level_premium")
 
 
 def waiting_period_y():
@@ -614,7 +614,7 @@ def waiting_period_y():
     pays nothing.  See the Space docstring for the arithmetic, which is **[std]**, and
     model point 9, which switches it on for one year.
     """
-    return tables.lookup_int(prepared_model_point(), "waiting_period_y")
+    return pdn.lookup_int(prepared_model_point(), "waiting_period_y")
 
 
 def accident_multiplier():
@@ -625,7 +625,7 @@ def accident_multiplier():
     another — not a uniform uplift on every claim.  With ``acc_share = 0`` in the base run
     it has **no effect on any cash flow**, which is the invariance model point 6 asserts.
     """
-    return tables.lookup_float(prepared_model_point(), "accident_multiplier")
+    return pdn.lookup_float(prepared_model_point(), "accident_multiplier")
 
 
 def issue_date():
@@ -636,7 +636,7 @@ def issue_date():
     :func:`issue_age` and nothing else.  A real-dates implementation would need this cells
     and would carry the fractional offset :func:`issue_age` describes.
     """
-    return tables.lookup_object(prepared_model_point(), "issue_date")
+    return pdn.lookup_object(prepared_model_point(), "issue_date")
 
 
 def pols_if_init():
@@ -742,7 +742,7 @@ def prem_rate(t):
     flat across the twelve months of a policy year, like everything else contractual
     here.  The grid itself is a 2019-2021 edition — use it for shape, not for level.
     """
-    base = tables.lookup_float(data.prepared_premium_rate_table_loc(), (premium_rate_id(), age(t)), 'prem_rate')
+    base = pdn.lookup_float(data.prepared_premium_rate_table_loc(), (premium_rate_id(), age(t)), 'prem_rate')
     return base * (1.0 + tariff_drift) ** duration(t)                # noqa: F821
 
 
@@ -753,7 +753,7 @@ def prem_freq_load():
     embedded in the cotisation TTC, and one of only three disclosed charge figures in the
     whole source corpus.
     """
-    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_load')
+    return pdn.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_load')
 
 
 def prem_freq_fee():
@@ -764,7 +764,7 @@ def prem_freq_fee():
     applying the fractionation loading and then billing the fee on top of it as a
     percentage, overstates premium income.  See :func:`prem_pp`.
     """
-    return tables.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_fee')
+    return pdn.lookup_float(data.prepared_freq_loading_table_loc(), prem_freq(), 'prem_freq_fee')
 
 
 def prem_instalments():
@@ -777,7 +777,7 @@ def prem_instalments():
     made the fractionation loading a charge for a service the model never rendered.  On
     the monthly grid it drives :func:`prem_cycle` and :func:`prem_inst_pp`.
     """
-    return tables.lookup_int(data.prepared_freq_loading_table_scalar_loc(), prem_freq(), "instalments")
+    return pdn.lookup_int(data.prepared_freq_loading_table_scalar_loc(), prem_freq(), "instalments")
 
 
 def prem_cycle():
@@ -852,7 +852,7 @@ def tariff_annuity():
     not.  Summed over ``range(proj_len_y())``: the equivalence is annual, so it is struck
     over policy years and is unchanged by the monthly grid.
     """
-    return expressions.sum_values((disc_factor(y) * pols_tariff(y) for y in expressions.periods(proj_len_y())))
+    return pdn.sum_values((disc_factor(y) * pols_tariff(y) for y in pdn.periods(proj_len_y())))
 
 
 def tariff_prem_pv():
@@ -863,7 +863,7 @@ def tariff_prem_pv():
     fixed *frais d'échéance* is deliberately outside it: the fee is the same amount under
     either premium form, so it neither belongs in the equivalence nor changes it.
     """
-    return expressions.sum_values((disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in expressions.periods(proj_len_y())))
+    return pdn.sum_values((disc_factor(y) * pols_tariff(y) * prem_tariff_pp(12 * y) for y in pdn.periods(proj_len_y())))
 
 
 def prem_level_pp():
@@ -940,7 +940,7 @@ def mort_rate_base(t):
     décès is not, and a shift applied to a table that was never homologated would be
     theatre in any case.
     """
-    return tables.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')    # noqa: F821
+    return pdn.lookup_float(data.prepared_mort_table_loc(), age(t), 'mort_rate')    # noqa: F821
 
 
 def sel_lapse_factor(t):
@@ -1094,7 +1094,7 @@ def lapse_rate_base(t):
     nothing to forfeit.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return tables.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(expressions.max_value(expressions.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
 
 
 def shock_lapse_factor(t):
@@ -1267,8 +1267,8 @@ def benefit_factor(t):
     does not carry fails here, which is the honest failure: the schedule is missing, not
     the formula.
     """
-    rows = tables.subtable(data.prepared_benefit_schedule_groups_1(), benefit_schedule_id())        # noqa: F821
-    return float(tables.lookup_object(rows, min(policy_year(t), int(tables.last_key(rows))), "benefit_factor"))
+    rows = pdn.subtable(data.prepared_benefit_schedule_groups_1(), benefit_schedule_id())        # noqa: F821
+    return float(pdn.lookup_object(rows, min(policy_year(t), int(pdn.last_key(rows))), "benefit_factor"))
 
 
 def benefit_pp(t):
@@ -1398,7 +1398,7 @@ def claims(t, kind=None):
         :func:`check_no_cash_value`.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "PTIA", "LAPSE")))
     if kind == "DEATH":
         return pols_death(t) * (
             suicide_factor(t) * benefit_death_pp(t) + accident_extra_pp(t))
@@ -1555,8 +1555,8 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return expressions.all_true((abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_decrement_closure_resid(t):
@@ -1577,7 +1577,7 @@ def check_decrement_closure_resid(t):
     reappears in force** — the arithmetic form of paying the capital twice, which is this
     product's first-order failure mode and which the cash flows alone would not reveal.
     """
-    exits = expressions.sum_values((pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in expressions.periods(t + 1)))
+    exits = pdn.sum_values((pols_death(s) + pols_ptia(s) + pols_lapse(s) for s in pdn.periods(t + 1)))
     return exits + pols_if(t + 1) - pols_if_init()
 
 
@@ -1588,8 +1588,8 @@ def check_decrement_closure():
     :func:`check_decrement_closure_resid` gives the signed residual of the month that
     failed.
     """
-    return expressions.all_true((abs(check_decrement_closure_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_decrement_closure_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
 
 
 def check_ptia_gate_resid(t):
@@ -1620,7 +1620,7 @@ def check_ptia_gate():
     No argument, one bool over all t;  :func:`check_ptia_gate_resid` gives the signed
     residual of the month that failed.
     """
-    return expressions.all_true((abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_ptia_gate_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def check_no_cash_value_resid(t):
@@ -1643,7 +1643,7 @@ def check_no_cash_value():
     No argument, one bool over all t;  :func:`check_no_cash_value_resid` gives the signed
     residual of the month that failed.
     """
-    return expressions.all_true((abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in expressions.periods(proj_len())))
+    return pdn.all_true((abs(check_no_cash_value_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
 
 
 def result_cf():
@@ -1662,7 +1662,7 @@ def result_cf():
     the view the notes' worked example is stated on and the one to lay beside the
     annual-step model this replaced.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1697,10 +1697,10 @@ def result_cf_annual():
     over the worked configuration against the annual grid's 10 396,90 €, and 2 666,69 € of
     expense against 2 676,38 €.  That gap is the point of the finer grid.
     """
-    monthly = inputs.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in expressions.keys(monthly)]
-    annual = expressions.group_sum(monthly, years, first=('pols_if',))
-    return expressions.to_pandas(annual, index_name='policy_year')
+    monthly = pdn.table(result_cf(), report=True)
+    years = [duration(t) + 1 for t in pdn.keys(monthly)]
+    annual = pdn.group_sum(monthly, years, first=('pols_if',))
+    return pdn.to_pandas(annual, index_name='policy_year')
 
 
 def result_pols():
@@ -1714,7 +1714,7 @@ def result_pols():
     in it.  ``prem_pp`` is likewise the year's annual cotisation and ``prem_inst_pp`` the
     instalment collected in the month.
     """
-    ts = list(expressions.periods(proj_len()))
+    ts = list(pdn.periods(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1738,7 +1738,7 @@ def result_pols():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1782,8 +1782,4 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")

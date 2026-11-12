@@ -512,17 +512,17 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return inputs.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the model point; printed, never used in a formula."""
-    return tables.lookup_str(prepared_model_point(), "policy_id")
+    return pdn.lookup_str(prepared_model_point(), "policy_id")
 
 
 def sex():
     """The sex (M / F) of the member, the key into the mortality and annuity tables."""
-    v = tables.lookup_str(prepared_model_point(), "sex")
+    v = pdn.lookup_str(prepared_model_point(), "sex")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
@@ -536,7 +536,7 @@ def age_init():
     applied with the annexed *décalage d'âge* age shifts, which the shipped proxy does
     not reproduce.
     """
-    return tables.lookup_int(prepared_model_point(), "age")
+    return pdn.lookup_int(prepared_model_point(), "age")
 
 
 def retirement_age():
@@ -547,7 +547,7 @@ def retirement_age():
     grid.  It is the single most important number on the model point: it sets both the
     length of the projection and, through ``years_to_horizon``, every year's target mix.
     """
-    return tables.lookup_int(prepared_model_point(), "retirement_age")
+    return pdn.lookup_int(prepared_model_point(), "retirement_age")
 
 
 def duration_ifo():
@@ -558,7 +558,7 @@ def duration_ifo():
     anniversary of the first *versement*, not of the projection start.  The anchor cell
     carries 2, so its window closes after two projected years rather than five.
     """
-    return tables.lookup_int(prepared_model_point(), "duration_ifo")
+    return pdn.lookup_int(prepared_model_point(), "duration_ifo")
 
 
 def compartment():
@@ -570,7 +570,7 @@ def compartment():
     from the main-residence early-release case, which is the only discretionary limb of
     the seven, so ``exit_table.csv`` carries a lower ``early_release_rate`` for them.
     """
-    v = tables.lookup_str(prepared_model_point(), "compartment")
+    v = pdn.lookup_str(prepared_model_point(), "compartment")
     if v not in ("c1", "c2", "c3"):
         raise ValueError("invalid compartment")
     return v
@@ -584,8 +584,8 @@ def allocation_profile():
     against a hard-coded list, so adding an insurer profile to ``allocation_grid.csv``
     is enough to make it usable.
     """
-    v = tables.lookup_str(prepared_model_point(), "allocation_profile")
-    if v not in set(expressions.keys(data.prepared_allocation_grid_index_selection_level_0())):  # noqa: F821
+    v = pdn.lookup_str(prepared_model_point(), "allocation_profile")
+    if v not in set(pdn.keys(data.prepared_allocation_grid_index_selection_level_0())):  # noqa: F821
         raise ValueError("allocation_profile not in allocation_grid.csv")
     return v
 
@@ -596,17 +596,17 @@ def premium_init():
     Zero on a cell that has stopped contributing — a c2 or c3 compartment reached by an
     incoming transfer holds acquired rights and receives nothing further.
     """
-    return tables.lookup_float(prepared_model_point(), "premium")
+    return pdn.lookup_float(prepared_model_point(), "premium")
 
 
 def av_euro_init():
     """The per-policy euro-support balance carried into the projection."""
-    return tables.lookup_float(prepared_model_point(), "av_euro_init")
+    return pdn.lookup_float(prepared_model_point(), "av_euro_init")
 
 
 def av_uc_init():
     """The per-policy *unités de compte* balance carried into the projection."""
-    return tables.lookup_float(prepared_model_point(), "av_uc_init")
+    return pdn.lookup_float(prepared_model_point(), "av_uc_init")
 
 
 def death_floor_init():
@@ -617,7 +617,7 @@ def death_floor_init():
     return is *negative* carries a base **above** its balance, which is the only state in
     which the floor bites; model point 10 is that cell.
     """
-    return tables.lookup_float(prepared_model_point(), "death_floor_init")
+    return pdn.lookup_float(prepared_model_point(), "death_floor_init")
 
 
 def death_floor_flag():
@@ -626,7 +626,7 @@ def death_floor_flag():
     Included as standard in two sampled contracts, optional in three and an age-rated
     rider in one, so it is a model point column rather than a product constant.
     """
-    return tables.lookup_bool(prepared_model_point(), "death_floor_flag")
+    return pdn.lookup_bool(prepared_model_point(), "death_floor_flag")
 
 
 def exit_form():
@@ -637,7 +637,7 @@ def exit_form():
     rights may be delivered no other way — and a model point that says otherwise raises
     here rather than projecting a settlement the contract cannot make.
     """
-    v = tables.lookup_str(prepared_model_point(), "exit_form")
+    v = pdn.lookup_str(prepared_model_point(), "exit_form")
     if v not in ("capital_single", "capital_staged", "annuity", "mixed"):
         raise ValueError("invalid exit_form")
     if compartment() == "c3" and v != "annuity":
@@ -654,7 +654,7 @@ def annuity_share():
     ``mixed`` election must be strictly between the two ends; at either end it is one of
     the pure forms and should say so.
     """
-    theta = tables.lookup_float(prepared_model_point(), "annuity_share")
+    theta = pdn.lookup_float(prepared_model_point(), "annuity_share")
     form = exit_form()
     if form == "mixed":
         if not 0.0 < theta < 1.0:
@@ -673,7 +673,7 @@ def capital_instalments():
     changes :func:`capital_instalment_pp` and nothing else — see the Space docstring on
     why staged capital is settled at the horizon.
     """
-    j = tables.lookup_int(prepared_model_point(), "capital_instalments")
+    j = pdn.lookup_int(prepared_model_point(), "capital_instalments")
     if j < 1:
         raise ValueError("capital_instalments must be at least 1")
     if j > 1 and exit_form() != "capital_staged":
@@ -690,7 +690,7 @@ def deduction_elected():
     the insurer pays.  It appears in no recursion in this Space and exists so a
     downstream tax layer can find it.
     """
-    return tables.lookup_bool(prepared_model_point(), "deduction_elected")
+    return pdn.lookup_bool(prepared_model_point(), "deduction_elected")
 
 
 def mort_basis():
@@ -705,7 +705,7 @@ def mort_basis():
     is set so that ``mort_be_factor x q(M, 52)`` is exactly 0.00500.  They diverge after
     that, because a table has a slope and a placeholder does not.
     """
-    v = tables.lookup_str(prepared_model_point(), "mort_basis")
+    v = pdn.lookup_str(prepared_model_point(), "mort_basis")
     if v not in ("flat", "table"):
         raise ValueError("invalid mort_basis")
     return v
@@ -718,12 +718,12 @@ def mort_rate_flat():
     basis, and the one published rate card in the sample is a *gross premium* scale on a
     no-underwriting death rider, which must not be read as one.
     """
-    return tables.lookup_float(prepared_model_point(), "mort_rate_flat")
+    return pdn.lookup_float(prepared_model_point(), "mort_rate_flat")
 
 
 def pols_if_init():
     """l-(0): the in-force probability carried in; 1.0 on a single-policy model point."""
-    return tables.lookup_float(prepared_model_point(), "pols_if_init")
+    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
 
 
 def proj_years():
@@ -862,9 +862,9 @@ def alloc_euro(t):
     Years beyond the last row of the grid take that row, which is the ``k > 10`` band in
     the shipped file.
     """
-    grid = tables.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(tables.last_key(grid))))
-    return float(tables.lookup_object(grid, k, "euro_share"))
+    grid = pdn.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
+    k = max(1, min(years_to_horizon(t), int(pdn.last_key(grid))))
+    return float(pdn.lookup_object(grid, k, "euro_share"))
 
 
 def alloc_uc(t):
@@ -874,9 +874,9 @@ def alloc_uc(t):
     whose rows do not close is caught by :func:`check_glide_path_closes` instead of being
     silently half-ignored.
     """
-    grid = tables.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(tables.last_key(grid))))
-    return float(tables.lookup_object(grid, k, "uc_share"))
+    grid = pdn.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
+    k = max(1, min(years_to_horizon(t), int(pdn.last_key(grid))))
+    return float(pdn.lookup_object(grid, k, "uc_share"))
 
 
 def premium_pp(t):
@@ -1307,7 +1307,7 @@ def mort_rate(t):
     if mort_basis() == "flat":
         return mort_rate_flat()
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, tables.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1345,9 +1345,9 @@ def early_release_rate(t):
     the 0-based :func:`duration` — and compartment 3 carries a lower rate because the
     main-residence limb is closed to it.
     """
-    tbl = tables.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
-    d = max(1, min(plan_year(t), int(tables.last_key(tbl))))
-    return float(tables.lookup_object(tbl, d, "early_release_rate"))
+    tbl = pdn.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
+    d = max(1, min(plan_year(t), int(pdn.last_key(tbl))))
+    return float(pdn.lookup_object(tbl, d, "early_release_rate"))
 
 
 def early_release_rate_mth(t):
@@ -1383,9 +1383,9 @@ def transfer_out_rate(t):
     only: applied over a longer pre-anniversary run it is below 1 on average, and a
     calibration that spans one would have to rescale.
     """
-    tbl = tables.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
-    d = max(1, min(plan_year(t), int(tables.last_key(tbl))))
-    return float(tables.lookup_object(tbl, d, "transfer_out_rate"))
+    tbl = pdn.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
+    d = max(1, min(plan_year(t), int(pdn.last_key(tbl))))
+    return float(pdn.lookup_object(tbl, d, "transfer_out_rate"))
 
 
 def transfer_out_rate_mth(t):
@@ -1547,7 +1547,7 @@ def annuity_factor():
     No sampled insurer publishes an annuity rate card and TGH05 / TGF05 are not shipped,
     so the ladder is a placeholder to be replaced before any quantitative use.
     """
-    return tables.lookup_float(data.prepared_annuity_factor_table_loc(), (sex(), retirement_age()), 'annuity_factor')
+    return pdn.lookup_float(data.prepared_annuity_factor_table_loc(), (sex(), retirement_age()), 'annuity_factor')
 
 
 def capital_leg_pp():
@@ -1697,7 +1697,7 @@ def claims(t, kind=None):
     it carries its own line in :func:`result_cf`.
     """
     if kind is None:
-        return expressions.sum_values((claims(t, k) for k in ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY")))
+        return pdn.sum_values((claims(t, k) for k in ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY")))
     if kind == "DEATH":
         return claim_pp(t, kind) * pols_death(t)
     if kind == "EARLY_RELEASE":
@@ -1800,8 +1800,8 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return bool(expressions.all_true(
-        (abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in expressions.periods(proj_len()))))
+    return bool(pdn.all_true(
+        (abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len()))))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1830,7 +1830,7 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the account value roll-forward closes in every projected month."""
-    return bool(expressions.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in pdn.periods(proj_len()))))
 
 
 def check_floor_identity_resid(t):
@@ -1861,7 +1861,7 @@ def check_floor_identity_resid(t):
 
 def check_floor_identity():
     """True when the *garantie plancher* identity closes in every projected month."""
-    return bool(expressions.all_true((abs(check_floor_identity_resid(t)) <= 1e-8 for t in expressions.periods(proj_len()))))
+    return bool(pdn.all_true((abs(check_floor_identity_resid(t)) <= 1e-8 for t in pdn.periods(proj_len()))))
 
 
 def check_euro_share_min_resid(t):
@@ -1922,8 +1922,8 @@ def check_euro_share_min():
     on a de-risking switch puts the residual at ``-(1 - a) arb`` where the bound is zero,
     and fails here at the first band crossing.
     """
-    return bool(expressions.all_true(
-        (check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8 for t in expressions.periods(proj_len()) if is_plan_boy(t))))
+    return bool(pdn.all_true(
+        (check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8 for t in pdn.periods(proj_len()) if is_plan_boy(t))))
 
 
 def check_glide_path_closes():
@@ -1937,7 +1937,7 @@ def check_glide_path_closes():
     distinct row of the grid a projection touches is read exactly once; the other eleven
     months of each plan year return the same row.
     """
-    return bool(expressions.all_true((abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12 for t in expressions.periods(proj_len()) if is_plan_boy(t))))
+    return bool(pdn.all_true((abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12 for t in pdn.periods(proj_len()) if is_plan_boy(t))))
 
 
 def check_commutation_identity():
@@ -1968,7 +1968,7 @@ def check_horizon():
     n = proj_len()
     if premium_pp(n) != 0.0 or years_to_horizon(n) != 0:
         return False
-    maturity_mths = [t for t in expressions.periods(n) if pols_maturity(t) > 0.0]
+    maturity_mths = [t for t in pdn.periods(n) if pols_maturity(t) > 0.0]
     return bool(maturity_mths == [n - 1])
 
 
@@ -1989,7 +1989,7 @@ def result_cf():
     :func:`result_cf_annual` sums this frame into plan years so that it can be laid beside
     the annual-step model it replaced.
     """
-    ts = list(expressions.periods(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(pdn.periods(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2040,10 +2040,10 @@ def result_cf_annual():
     the plan-year start.  ``liability_cf`` and ``net_cf`` follow them.  That gap is the
     point of the finer grid.
     """
-    monthly = inputs.table(result_cf(), report=True)
-    years = [duration_mth(t) // 12 for t in expressions.keys(monthly)]
-    annual = expressions.group_sum(monthly, years, first=('pols_if',), last=('av_pp',))
-    return expressions.to_pandas(annual, index_name='t_year')
+    monthly = pdn.table(result_cf(), report=True)
+    years = [duration_mth(t) // 12 for t in pdn.keys(monthly)]
+    annual = pdn.group_sum(monthly, years, first=('pols_if',), last=('av_pp',))
+    return pdn.to_pandas(annual, index_name='t_year')
 
 
 def result_state():
@@ -2066,7 +2066,7 @@ def result_state():
     are one period apart: ``result_state()["pols_if_eoy"].loc[t]`` equals
     ``result_cf()["pols_if"].loc[t + 1]``.
     """
-    ts = list(expressions.periods(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(pdn.periods(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "years_to_horizon": [years_to_horizon(t) for t in ts],
@@ -2102,7 +2102,7 @@ def result_state_annual():
     Every figure in it reproduces the annual-step model's to floating point, which is what
     lets the notes' worked example stay in the notes and still be asserted.
     """
-    years = list(expressions.periods(proj_years()))
+    years = list(pdn.periods(proj_years()))
     bom = [12 * y for y in years]                    # the rebalancing month
     eom = [12 * y + 11 for y in years]               # the anniversary month
     return pd.DataFrame(                                             # noqa: F821
@@ -2158,7 +2158,7 @@ def result_settlement():
 
 def prepared_model_point():
     """Own policy fields while preserving public scalar types and dependencies."""
-    return inputs.record(model_point(), preserve_scalar_types=True)
+    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2206,8 +2206,4 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-tables = ("Module", "modelx_helpers.typed_inputs")
-
-inputs = ("Module", "modelx_helpers.pandas_inputs")
-
-expressions = ("Module", "modelx_helpers.expressions")
+pdn = ("Module", "modelx_helpers.pdn")
