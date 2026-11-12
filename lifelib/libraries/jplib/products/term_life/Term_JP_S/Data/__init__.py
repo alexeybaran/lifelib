@@ -177,6 +177,53 @@ def prem_anchor_table():
     return tbl[tbl["is_anchor"] == 1].set_index("sex")
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_prem_anchor_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(prem_anchor_table(),
+                        columns=('policy_fee_m',),
+                        indexing='loc')
+
+
+def prepared_prem_anchor_table_rows():
+    """Own pandas-style rows for repeated calculation selection."""
+    return pdn.table(prem_anchor_table(), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_prem_rate_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_prem_rate_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(prem_rate_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -189,3 +236,5 @@ lapse_table_file = "lapse_table.csv"
 prem_rate_file = "prem_rate_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

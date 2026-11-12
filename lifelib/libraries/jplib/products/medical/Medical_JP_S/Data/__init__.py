@@ -186,6 +186,50 @@ def los_table():
         index_col=["band_start", "stay_days"])
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+
+def prepared_los_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(los_table(), groups=('band_start',), preserve_scalar_types = True)
+
+
+def prepared_los_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.index(los_table().index)
+
+
+def prepared_incidence_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.index(incidence_table().index)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_incidence_table_rows():
+    """Own calculation selection; retain the public source dependency."""
+    return pdn.table(incidence_table(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -200,3 +244,5 @@ incidence_table_file = "incidence_table.csv"
 los_table_file = "los_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

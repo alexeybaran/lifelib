@@ -179,6 +179,74 @@ def hosp_stay_table():
         input_dir() / hosp_stay_file)                                # noqa: F821
 
 
+def prepared_survival_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(survival_table(),
+                        columns=('surv_5y',),
+                        indexing='loc')
+
+
+def prepared_incidence_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(incidence_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_mort_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
+
+
+
+def prepared_sex_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(sex_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_table_groups_1():
+    """Own labelled groups in original row and column order."""
+    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+
+
+def prepared_hosp_stay_table_calculation():
+    """Own exact filter-then-quicksort selections at every input age boundary."""
+    frame = hosp_stay_table()
+    frame["days"]  # Validate the source column even when there are no rows.
+    values = []
+    for basis in frame["basis"].drop_duplicates():
+        rows = frame[frame["basis"] == basis]
+        for cutoff in sorted(rows["age_from"].dropna().unique()):
+            selected = rows[rows["age_from"] <= cutoff].sort_values("age_from")
+            values.append((basis, cutoff, selected["days"].iloc[-1]))
+    prepared = pd.DataFrame(values, columns=("basis", "age_from", "days"))
+    prepared = prepared.assign(days=pd.Series([value[2] for value in values], dtype=object))
+    return pdn.table(prepared.set_index(["basis", "age_from"]),
+                        groups=("basis",), preserve_scalar_types=True)
+
+
+def prepared_incidence_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(incidence_table().index)
+
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
+
+def prepared_sex_factor_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(sex_factor_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -197,3 +265,5 @@ lapse_table_file = "lapse_table.csv"
 hosp_stay_file = "hosp_stay_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

@@ -177,6 +177,46 @@ def grade_share_table():
         input_dir() / grade_share_file, index_col="grade")           # noqa: F821
 
 
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+def prepared_prevalence_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(prevalence_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_grade_share_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(grade_share_table(),
+                        columns=('share_ge',),
+                        indexing='loc')
+
+
+
+
+def prepared_mort_index_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.index(mort_table().index)
+
+
+def prepared_lapse_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_lapse_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(lapse_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -191,3 +231,5 @@ prevalence_file = "prevalence_table.csv"
 grade_share_file = "grade_share_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")

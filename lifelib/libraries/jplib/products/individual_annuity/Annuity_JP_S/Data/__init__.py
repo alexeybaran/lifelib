@@ -197,6 +197,56 @@ def commute_factor_table():
         index_col="remaining_years")
 
 
+def prepared_pricing_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(pricing_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_expense_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(expense_table(),
+                        columns=('value',),
+                        indexing='loc')
+
+
+
+def prepared_mort_table_loc():
+    """Own calculation columns; follow the public source Cell cache."""
+    return pdn.table(mort_table(),
+                        columns=('mort_rate',),
+                        indexing='loc')
+
+
+
+
+def prepared_lapse_table_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(lapse_table(), groups=('segment',), preserve_scalar_types = True)
+
+
+def prepared_lapse_table_flat_generators():
+    """Own generator inputs; depend on the unchanged public source Cell."""
+    return pdn.table(lapse_table(), preserve_scalar_types = True)
+
+
+def prepared_commute_factor_table_scalar_loc():
+    """Own original column scalars for calculation lookup."""
+    return pdn.table(commute_factor_table(), indexing='loc', preserve_scalar_types=True)
+
+
+def prepared_mort_anchor_table_calculation():
+    """Own original input values for calculation operations."""
+    return pdn.table(mort_anchor_table().reset_index(), groups=(), rows=False, preserve_scalar_types=True)
+
+
+def prepared_commute_factor_table_index_selection():
+    """Own original labels and multiplicity for calculation traversal."""
+    return pdn.index(commute_factor_table().index)
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -215,3 +265,5 @@ expense_table_file = "expense_table.csv"
 commute_factor_file = "commute_factor_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")
