@@ -1546,7 +1546,8 @@ def check_pols_roll_fwd():
     signed residual of the month that failed. The tolerance scales with pols_if_init(),
     since the residual is an accumulation of rounding on that many policies.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in range(proj_start(), proj_len()))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
+               for t in range(proj_start(), proj_len()))
 
 
 def check_pua_roll_fwd_resid(t):
@@ -1569,7 +1570,8 @@ def check_pua_roll_fwd():
     check_pua_roll_fwd_resid(t) gives the signed residual. The tolerance is relative to
     the block itself, which reaches six figures of face on a compounding projection.
     """
-    return all(abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0) for t in range(proj_start(), proj_len()))
+    return all(abs(check_pua_roll_fwd_resid(t)) <= 1e-9 * max(pua_face(t), 1.0)
+               for t in range(proj_start(), proj_len()))
 
 
 # ---------------------------------------------------------------------------

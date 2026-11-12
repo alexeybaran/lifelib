@@ -1830,7 +1830,8 @@ def check_lives_roll_fwd():
     Mortality is the only decrement here, so a failure means the last-survivor
     construction and the per-life recursion have come apart.
     """
-    return all(abs(check_lives_roll_fwd_resid(t)) < 1e-12 for t in range(proj_len()))
+    return all(abs(check_lives_roll_fwd_resid(t)) < 1e-12
+               for t in range(proj_len()))
 
 
 def check_income_roll_fwd_resid(t):
@@ -1858,7 +1859,8 @@ def check_income_roll_fwd():
     tolerance is absolute rather than relative because ``B`` is a currency amount that
     only ever steps, never accrues.
     """
-    return all(abs(check_income_roll_fwd_resid(t)) < 1e-9 for t in range(proj_len()))
+    return all(abs(check_income_roll_fwd_resid(t)) < 1e-9
+               for t in range(proj_len()))
 
 
 def check_payment_factor_resid(t):
@@ -1879,7 +1881,8 @@ def check_payment_factor():
     rather than tolerant: the identity is arithmetical, so any residual at all is a
     defect and not a rounding artefact.
     """
-    return all(check_payment_factor_resid(t) == 0.0 for t in range(proj_len()))
+    return all(check_payment_factor_resid(t) == 0.0
+               for t in range(proj_len()))
 
 
 def check_commutation_value_resid(t):
@@ -1925,7 +1928,8 @@ def check_commutation_value():
     Trivially ``True`` on a contract that never commutes, which is the base run - the
     residual is identically zero away from the exercise month.
     """
-    return all(abs(check_commutation_value_resid(t)) < 1e-6 for t in range(proj_len()))
+    return all(abs(check_commutation_value_resid(t)) < 1e-6
+               for t in range(proj_len()))
 
 
 def lives_if_ann(y):

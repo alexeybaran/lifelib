@@ -2143,7 +2143,8 @@ def check_av_roll_fwd():
     this library, so one test can call the same check across every model;
     :func:`check_av_roll_fwd_resid` gives the signed residual of a month that fails.
     """
-    return all(abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol() for t in range(proj_len()))
+    return all(abs(check_av_roll_fwd_resid(t)) <= roll_fwd_tol()
+               for t in range(proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2164,7 +2165,8 @@ def check_pols_roll_fwd():
     The counts are probabilities of order 1, so the tolerance is absolute rather than the
     currency-scaled :func:`roll_fwd_tol`.
     """
-    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-12 for t in range(proj_len()))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-12
+               for t in range(proj_len()))
 
 
 def check_term_end_identity_resid(t):
@@ -2189,7 +2191,8 @@ def check_term_end_identity():
     :func:`check_term_end_identity_resid` gives the signed residual of a term end that
     fails. This is the check the notes ask for by name.
     """
-    return all(abs(check_term_end_identity_resid(t)) <= roll_fwd_tol() for t in range(proj_len()))
+    return all(abs(check_term_end_identity_resid(t)) <= roll_fwd_tol()
+               for t in range(proj_len()))
 
 
 def result_cf():
