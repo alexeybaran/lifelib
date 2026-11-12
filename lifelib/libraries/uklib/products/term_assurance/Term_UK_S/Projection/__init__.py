@@ -578,6 +578,11 @@ def select_factor(t):
     return pdn.lookup_float(data.prepared_select_factor_table_loc(), d, 'factor')        # noqa: F821
 
 
+def mortality_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
+    """The attained-age mortality schedule for the selected covered life."""
+    return data.prepared_mortality_schedules().slice(sex(life), smoker(life))  # noqa: F821
+
+
 def mort_rate_base(t, life=1):
     """The annual mortality table rate for ``life`` at its attained age in month t.
 
@@ -585,7 +590,12 @@ def mort_rate_base(t, life=1):
     than a separate cover [S1][S6][S8]; the 16-Series tables the shipped table proxies
     are graduated on that basis [R10].
     """
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), age(t, life)), 'mort_rate')
+    try:
+        return mortality_schedule(life).lookup_float(age(t, life), 'mort_rate')
+    except KeyError:
+        # Report a missing row with the full key from the original table.
+        return pdn.lookup_float(data.prepared_mort_table_loc(),
+                                (sex(life), smoker(life), age(t, life)), 'mort_rate')  # noqa: F821
 
 
 def mort_rate_life(t, life=1):
@@ -662,8 +672,8 @@ def lapse_rate_base(t):
     1-based policy year, read at :func:`policy_year` ``(t) = t // 12 + 1``; policy years
     beyond the table take its last row.
     """
-    tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return data.prepared_lapse_table_scalar_loc().lookup_float(      # noqa: F821
+        min(policy_year(t), data.lapse_last_year()), "lapse_rate")    # noqa: F821
 
 
 def rebroke_factor(t):

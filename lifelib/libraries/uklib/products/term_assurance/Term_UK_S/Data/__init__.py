@@ -117,7 +117,13 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
-def prepared_lapse_table_scalar_loc():
+def prepared_mortality_schedules():
+    """Own an attained-age mortality table for each sex and smoker status."""
+    return pdn.table(mort_table(), columns=('mort_rate',),
+                     groups=('sex', 'smoker'), report=True)
+
+
+def prepared_lapse_table_scalar_loc() -> "modelx_helpers.immutable_inputs.Table":
     """Own original column scalars for calculation lookup."""
     return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
 
@@ -125,6 +131,11 @@ def prepared_lapse_table_scalar_loc():
 def prepared_lapse_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
     return pdn.index(lapse_table().index)
+
+
+def lapse_last_year():
+    """The largest policy-year key in the original lapse index."""
+    return int(pdn.max_value(pdn.keys(prepared_lapse_table_index_selection())))
 
 
 # ---------------------------------------------------------------------------

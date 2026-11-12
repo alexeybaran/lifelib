@@ -436,6 +436,11 @@ def mort_improve_factor(t):
     return (1.0 - mort_improvement) ** duration(t)                   # noqa: F821
 
 
+def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The attained-age mortality schedule for this policy's categories."""
+    return data.prepared_mortality_schedules().slice(mort_basis(), sex(), smoker())  # noqa: F821
+
+
 def mort_rate(t):
     """q(y): the annual mortality rate applied in the policy year containing month t.
 
@@ -443,7 +448,12 @@ def mort_rate(t):
     improvement factor, capped at 1.  Both shipped bases are **[std]** proxies shaped
     like the tables the notes name and are not published tables.
     """
-    q = pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), age(t)), 'mort_rate')
+    try:
+        q = mortality_schedule().lookup_float(age(t), 'mort_rate')
+    except KeyError:
+        # Report a missing row with the full key from the original table.
+        q = pdn.lookup_float(data.prepared_mort_table_loc(),
+                             (mort_basis(), sex(), smoker(), age(t)), 'mort_rate')  # noqa: F821
     return min(1.0, q * mort_loading() * mort_improve_factor(t))
 
 
@@ -587,6 +597,16 @@ def crossover_mth():
     return -1
 
 
+def lapse_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The original lapse table for this policy's cell."""
+    return pdn.subtable(data.prepared_lapse_table_groups_1(), cell())  # noqa: F821
+
+
+def lapse_last_year():
+    """The largest policy-year key in this policy's lapse schedule."""
+    return int(pdn.last_key(lapse_schedule()))
+
+
 def lapse_rate_base(t):
     """The table annual lapse rate in month t **[std]**, before the crossover stress.
 
@@ -596,9 +616,7 @@ def lapse_rate_base(t):
     lapse study was retrieved - and on a product with no surrender value they are the
     single largest lever on the liability.
     """
-    tbl = pdn.subtable(data.prepared_lapse_table_groups_1(), cell())                             # noqa: F821
-    y = policy_year(t)
-    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate"))
+    return lapse_schedule().lookup_float(min(policy_year(t), lapse_last_year()), "lapse_rate")
 
 
 def lapse_rate(t):

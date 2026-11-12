@@ -113,6 +113,12 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def prepared_mortality_schedules():
+    """Own an attained-age table for each mortality basis, sex and smoker status."""
+    return pdn.table(mort_table(), columns=('mort_rate',),
+                     groups=('basis', 'sex', 'smoker'), report=True)
+
+
 def prepared_lapse_table_groups_1():
     """Own labelled groups in original row and column order."""
     return pdn.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
