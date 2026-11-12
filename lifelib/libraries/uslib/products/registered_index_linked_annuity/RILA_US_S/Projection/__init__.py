@@ -995,8 +995,8 @@ def opt_portfolio(t, spot, tau_, mkt):
     reproduce ``IA(1 + g)`` exactly, the strike set or the notional convention is wrong;
     :func:`check_term_end_identity` tests it.
     """
-    return sum((opt_component(t, opt_leg_code_at(position), spot, tau_, mkt)
-                   for position in range(opt_leg_count())), 0.0)
+    return sum(opt_component(t, opt_leg_code_at(position), spot, tau_, mkt)
+               for position in range(opt_leg_count()))
 
 
 def opt_portfolio_abs(t, spot, tau_, mkt):
@@ -1006,8 +1006,8 @@ def opt_portfolio_abs(t, spot, tau_, mkt):
     prospectus quantifies the trading cost provision; the base must be stated whenever the
     factor is recalibrated.
     """
-    return sum((abs(opt_component(t, opt_leg_code_at(position), spot, tau_, mkt))
-                   for position in range(opt_leg_count())), 0.0)
+    return sum(abs(opt_component(t, opt_leg_code_at(position), spot, tau_, mkt))
+               for position in range(opt_leg_count()))
 
 
 def opt_budget(t):
