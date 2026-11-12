@@ -22,17 +22,27 @@ and the acquisition commission are beginning-of-month flows of ``t = 0``.
 The notes' own "Known modeling pitfalls" list is a test list in disguise; there is one
 test per entry below.
 """
+import sys
+
 import modelx as mx
 import pandas as pd
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.fixed_deferred_annuity.adjusted_myga.formulas import (
+from lifelib.libraries.uslib.products.fixed_deferred_annuity.enums import (
     AvTiming, Cap, FreeRule, Kind, MgsvWithdrawal, MvaFamily, PolTiming, Renewal,
 )
 from modelx_helpers import pdn
 
 MODEL_PATH = LIB / "products/fixed_deferred_annuity/MYGA_US_S"
+
+
+def test_missing_enum_dependency_fails_to_load(monkeypatch):
+    module = AvTiming.__module__
+    monkeypatch.setitem(sys.modules, module, None)
+    with pytest.raises(ModuleNotFoundError, match=module):
+        mx.read_model(MODEL_PATH)
+
 
 # Half a cent, plus a hair.  The notes round half-up for display and AV(23) =
 # 104,920.025 sits exactly on the boundary (shown as 104,920.03), so a strict 0.005 would

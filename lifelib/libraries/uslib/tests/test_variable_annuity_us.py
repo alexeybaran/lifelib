@@ -26,17 +26,27 @@ is asserted twice, on two model points that reach that state by different routes
 The notes' "Known modeling pitfalls" list is a test list in disguise; there is one test
 per entry below.
 """
+import sys
+
 import modelx as mx
 import pandas as pd
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.variable_annuity.adjusted_va.formulas import (
+from lifelib.libraries.uslib.products.variable_annuity.enums import (
     AvTiming, BenefitTiming, FeeResetRule, GmdbOption, Kind, PolTiming, RollupRule, StepupBasis,
 )
 from modelx_helpers import pdn
 
 MODEL_PATH = LIB / "products/variable_annuity/VA_US_S"
+
+
+def test_missing_enum_dependency_fails_to_load(monkeypatch):
+    module = AvTiming.__module__
+    monkeypatch.setitem(sys.modules, module, None)
+    with pytest.raises(ModuleNotFoundError, match=module):
+        mx.read_model(MODEL_PATH)
+
 
 CENT = 0.005            # money displayed to 2 d.p.
 WEIGHT = 5e-7           # value weights displayed to 6 d.p.
