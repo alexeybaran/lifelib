@@ -1379,7 +1379,8 @@ def expenses(t):
 def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted."""
     if kind == Claim.ALL:
-        return sum((claims(t, code) for code in range(3)), 0.0)      # noqa: F821
+        return sum((claims(t, claim_kind) for claim_kind in (
+            Claim.DEATH, Claim.LAPSE, Claim.MATURITY)), 0.0)
     elif kind == Claim.DEATH:
         return claim_pp(t, Claim.DEATH) * pols_death(t)
     elif kind == Claim.LAPSE:

@@ -1347,7 +1347,7 @@ def claims(t, kind):
     elif kind == Claim.LAPSE:
         return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
     elif kind == Claim.ALL:
-        return sum((claims(t, code) for code in range(2)), 0.0)
+        return sum((claims(t, claim_kind) for claim_kind in (Claim.DEATH, Claim.LAPSE)), 0.0)
     else:
         raise ValueError("invalid kind")
 

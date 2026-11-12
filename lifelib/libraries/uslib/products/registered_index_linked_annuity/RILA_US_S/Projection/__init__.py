@@ -1657,7 +1657,8 @@ def wd_alloc_pp(t, bucket):
     """
     if wd_pp(t) <= 0.0:
         return 0.0
-    total = sum((wd_bucket_value_pp(t, code) for code in range(3)), 0.0)
+    total = sum((wd_bucket_value_pp(t, bucket_kind) for bucket_kind in (
+        Bucket.OPTION, Bucket.FIXED, Bucket.HOLDING)), 0.0)
     if total <= 0.0:
         return 0.0
     return wd_pp(t) * wd_bucket_value_pp(t, bucket) / total

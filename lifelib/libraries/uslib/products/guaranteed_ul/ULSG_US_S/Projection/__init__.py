@@ -1818,7 +1818,8 @@ def claims(t, kind):
         return 0.0
     elif kind == Claim.ALL:
         # The four claim kinds occupy the first four enum codes.
-        return sum(claims(t, code) for code in range(4))
+        return sum(claims(t, claim_kind) for claim_kind in (
+            Claim.DEATH, Claim.LAPSE, Claim.REFUND, Claim.GRACE))
     else:
         raise ValueError("invalid kind")
 
