@@ -438,7 +438,15 @@ def mort_improve_factor(t):
 
 def mortality_table_rate(x):
     """The selected basis, sex and smoker rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), x), 'mort_rate')
+    try:
+        return mortality_schedule().lookup_float(x, 'mort_rate')
+    except KeyError:
+        return pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), x), 'mort_rate')
+
+
+def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The attained-age mortality rates for this policy's basis."""
+    return data.mortality_schedules().slice(mort_basis(), sex(), smoker())
 
 
 def mort_rate(t):

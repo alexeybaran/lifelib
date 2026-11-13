@@ -106,6 +106,11 @@ def lapse_table():
         index_col=["cell", "policy_year"]).sort_index()
 
 
+def mortality_schedules():
+    """Own the attained-age rate for each combination of mortality labels."""
+    return pdn.table(mort_table(), columns=('mort_rate',), groups=('basis', 'sex', 'smoker'))
+
+
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(mort_table(),

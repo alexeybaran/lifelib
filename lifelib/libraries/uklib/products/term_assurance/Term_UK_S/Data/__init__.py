@@ -110,6 +110,11 @@ def prepared_select_factor_table_loc():
 
 
 
+def mortality_schedules():
+    """Own the attained-age rate for each combination of mortality labels."""
+    return pdn.table(mort_table(), columns=('mort_rate',), groups=('sex', 'smoker'))
+
+
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(mort_table(),

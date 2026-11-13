@@ -102,6 +102,11 @@ def surr_table():
         input_dir() / surr_table_file, index_col="policy_year")      # noqa: F821
 
 
+def mortality_schedules():
+    """Own the attained-age rate for each combination of mortality labels."""
+    return pdn.table(mort_table(), columns=('mort_rate',), groups=('sex',))
+
+
 def prepared_mort_table_loc():
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(mort_table(),
