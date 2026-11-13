@@ -689,7 +689,11 @@ def improve_rate(t, life):
     choice of long-term improvement rate is the single most sensitive judgment in UK
     annuity valuation, and the CMI model carries no default recommendation for it.
     """
-    x = age(t, life)
+    return improvement_at_age(age(t, life))
+
+
+def improvement_at_age(x):
+    """The attained-age factor shared across the policy year."""
     if x <= improve_flat_age:                                        # noqa: F821
         return improve_rate_base                                     # noqa: F821
     if x >= improve_taper_age:                                       # noqa: F821
@@ -730,7 +734,12 @@ def mort_rate(t, life):
 
 def mort_rate_mth(t, life):
     """q_m = 1 - (1 - q_rated)^(1/12): the monthly mortality rate **[std]**."""
-    return 1.0 - (1.0 - mort_rate(t, life)) ** (1.0 / 12.0)
+    return monthly_mortality_in_year(duration(t), life)
+
+
+def monthly_mortality_in_year(year, life):
+    """Convert the constant annual rate once per policy year and life."""
+    return 1.0 - (1.0 - mort_rate(12 * year, life)) ** (1.0 / 12.0)
 
 
 def lives_if(k, life):
