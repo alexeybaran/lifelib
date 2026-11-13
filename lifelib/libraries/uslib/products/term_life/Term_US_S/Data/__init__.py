@@ -67,7 +67,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def premium_rates():
@@ -77,10 +77,11 @@ def premium_rates():
     0-based projection index; ``Projection.premium_pp_ann(t)`` looks it up at
     ``policy_year(t) = duration(t) + 1``, the policy year containing month ``t``.
     """
-    rates = pd.read_csv(                                             # noqa: F821
-        input_dir() / premium_rates_file,                            # noqa: F821
-        index_col=["plan", "sex", "rate_class", "band", "policy_year"])
-    return pdn.table(rates, columns=("premium_pp",), groups=rates.index.names[:-1])  # noqa: F821
+    frame = pd.read_csv(input_dir() / premium_rates_file)                     # noqa: F821
+    frame["plan"] = [Plan[name] for name in frame["plan"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index(["plan", "sex", "rate_class", "band", "policy_year"]))
 
 
 def mort_table():
@@ -90,12 +91,14 @@ def mort_table():
 
 def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
+    frame = pd.read_csv(input_dir() / class_factor_file)             # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index("rate_class"))
 
 
 def shock_lapse_table():
     """The shock-lapse buckets by jump ratio, read from *shock_lapse_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / shock_lapse_file), rows=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / shock_lapse_file))  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -114,3 +117,9 @@ shock_lapse_file = "shock_lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Plan = ("Pickle", 1)
+
+Sex = ("Pickle", 2)
+
+RateClass = ("Pickle", 3)

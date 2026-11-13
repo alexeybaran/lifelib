@@ -190,8 +190,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)      # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                          # noqa: F821
 
 
 def age_at_entry():
@@ -201,17 +201,17 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def rate_class():
     """The underwriting class of the selected model point."""
-    return model_point()["rate_class"]
+    return RateClass[model_point()["rate_class"]]
 
 
 def plan():
     """The plan code of the selected model point (T10 / T20 / T30)."""
-    return model_point()["plan"]
+    return Plan[model_point()["plan"]]
 
 
 def sum_assured():
@@ -237,7 +237,7 @@ def band():
 
 def policy_term():
     """The level premium period in years, from the plan code."""
-    return int(plan()[1:])
+    return int(plan())
 
 
 def proj_len():
@@ -326,9 +326,9 @@ def prem_due(t):
     return duration_mth(t) % prem_cycle() == 0
 
 
-def premium_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The premium table for this policy's plan, sex, class and band."""
-    return data.premium_rates().slice(plan(), sex(), rate_class(), band())  # noqa: F821
+def premium_schedule():
+    """The premium rates of this policy's plan, sex, class and band, by policy year."""
+    return data.premium_rates().loc[(plan(), sex(), rate_class(), band())]   # noqa: F821
 
 
 def premium_pp_ann(t):
@@ -340,7 +340,8 @@ def premium_pp_ann(t):
     and it is that instalment — not ``AP`` — that :func:`commissions` and
     :func:`premium_taxes` are charged on.
     """
-    return premium_schedule().lookup_float(policy_year(t), "premium_pp")
+    sub = premium_schedule()
+    return float(sub.loc[policy_year(t), "premium_pp"])
 
 
 def premium_pp(t):
@@ -371,7 +372,7 @@ def plt_mort_factor_init_formula():
 def plt_mort_factor_init():
     """M(1) actually used: the model point's override if given, else the formula."""
     o = model_point()["plt_mort_factor_override"]
-    return plt_mort_factor_init_formula() if pdn.isna(o) else float(o)  # noqa: F821
+    return plt_mort_factor_init_formula() if pd.isna(o) else float(o)  # noqa: F821
 
 
 def plt_mort_factor(d):
@@ -386,12 +387,12 @@ def plt_mort_factor(d):
 
 def class_factor():
     """Underwriting-class multiplier on the base mortality table **[std]**."""
-    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
+    return float(data.class_factor_table().loc[rate_class(), "factor"])      # noqa: F821
 
 
 def mort_rate_base(t):
     """Base-table **annual** mortality rate at the attained age in month t, ``age(t)``."""
-    return data.mort_table().lookup_float(age(t), "mort_rate")       # noqa: F821
+    return float(data.mort_table().loc[age(t), "mort_rate"])                 # noqa: F821
 
 
 def mort_rate(t):
@@ -417,12 +418,10 @@ def mort_rate_mth(t):
 def shock_lapse_rate():
     """Shock lapse at the end of the level period, by jump-ratio bucket **[std]**."""
     j = jump_ratio()
-    tbl = data.shock_lapse_table()                                   # noqa: F821
-    keys = list(tbl.index)
-    for key in keys:
-        if tbl.lookup_float(key, "jump_lo") < j <= tbl.lookup_float(key, "jump_hi"):
-            return tbl.lookup_float(key, "shock_lapse_rate")
-    return tbl.lookup_float(keys[-1], "shock_lapse_rate")
+    for _, r in data.shock_lapse_table().iterrows():                        # noqa: F821
+        if r["jump_lo"] < j <= r["jump_hi"]:
+            return float(r["shock_lapse_rate"])
+    return float(data.shock_lapse_table().iloc[-1]["shock_lapse_rate"])     # noqa: F821
 
 
 def lapse_rate(t):
@@ -651,10 +650,11 @@ def result_cf_annual():
     than at the anniversary, and so not on ``net_cf``. That gap is the point of the finer
     grid — see the Space docstring.
     """
-    monthly = pdn.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in monthly.index]
-    annual = pdn.group_sum(monthly, years, first=('pols_if',))
-    return pdn.to_pandas(annual, index_name="policy_year")
+    df = result_cf()
+    years = pd.Index([duration(t) + 1 for t in df.index], name="policy_year")
+    out = df.drop(columns="pols_if").groupby(years).sum()
+    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -688,4 +688,10 @@ conv_rate_final = 0.0
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Plan = ("Pickle", 1)
+
+Sex = ("Pickle", 2)
+
+RateClass = ("Pickle", 3)
+
+enum_definitions = ("Pickle", 4)
