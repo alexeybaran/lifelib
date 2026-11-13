@@ -873,11 +873,26 @@ def cum_annuity_pp(k, kind):
     if k <= 0:
         return 0.0
     if kind == "ANNUITANT":
-        return cum_annuity_pp(k - 1, kind) + annuity_pp(k - 1)
+        return cum_annuitant_pp(k)
     if kind == "ALL":
-        paid = annuity_pp(k - 1) * (payment_factor(k - 1) + dependant_factor(k - 1))
-        return cum_annuity_pp(k - 1, kind) + paid
+        return cum_all_annuity_pp(k)
     raise ValueError("invalid kind")
+
+
+def cum_annuitant_pp(k):
+    """Cumulative scheduled instalments on the annuitant alone."""
+    if k <= 0:
+        return 0.0
+    return cum_annuitant_pp(k - 1) + annuity_pp(k - 1)
+
+
+def cum_all_annuity_pp(k):
+    """Cumulative scheduled instalments on the annuitant and dependant."""
+    if k <= 0:
+        return 0.0
+    t = k - 1
+    paid = annuity_pp(t) * (payment_factor(t) + dependant_factor(t))
+    return cum_all_annuity_pp(t) + paid
 
 
 def vp_balance(k):
@@ -889,8 +904,13 @@ def vp_balance(k):
     """
     if vp_pct() <= 0.0:
         return 0.0
-    kind = "ANNUITANT" if vp_basis() == "first_death" else "ALL"
-    return max(0.0, vp_pct() * purchase_price() - cum_annuity_pp(k, kind))
+    paid = cum_annuitant_pp(k) if is_first_death_vp() else cum_all_annuity_pp(k)
+    return max(0.0, vp_pct() * purchase_price() - paid)
+
+
+def is_first_death_vp():
+    """Whether the value-protection trigger is the annuitant's death."""
+    return vp_basis() == "first_death"
 
 
 def annuity_payments(t):
@@ -924,24 +944,42 @@ def claims(t, kind=None):
         partial period.
     """
     if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("VP", "PROP")))
+        return claims_total(t)
     if kind == "VP":
-        if vp_pct() <= 0.0:
-            return 0.0
-        density = (lives_death(t, 1) if vp_basis() == "first_death"
-                   else lives_death_last(t))
-        measured_at = (t + 1 if (payment_timing() == "advance" and is_payment_mth(t))
-                       else t)
-        return pols_if_init() * density * vp_balance(measured_at)
+        return claims_value_protection(t)
     if kind == "PROP":
-        if not proportion():
-            return 0.0
-        nxt = next_payment_mth(t)
-        if nxt < 0:
-            return 0.0
-        accrual = (mths_since_payment(t) + 0.5) / (12.0 / payment_freq())
-        return pols_if_init() * lives_death(t, 1) * accrual * annuity_pp(nxt)
+        return claims_proportionate(t)
     raise ValueError("invalid kind")
+
+
+def claims_value_protection(t):
+    """Expected value-protection lump sum in month t."""
+    if vp_pct() <= 0.0:
+        return 0.0
+    density = lives_death(t, 1) if is_first_death_vp() else lives_death_last(t)
+    measured_at = t + 1 if is_advance_payment() and is_payment_mth(t) else t
+    return pols_if_init() * density * vp_balance(measured_at)
+
+
+def claims_proportionate(t):
+    """Expected final part-period payment in month t."""
+    if not proportion():
+        return 0.0
+    nxt = next_payment_mth(t)
+    if nxt < 0:
+        return 0.0
+    accrual = (mths_since_payment(t) + 0.5) / (12.0 / payment_freq())
+    return pols_if_init() * lives_death(t, 1) * accrual * annuity_pp(nxt)
+
+
+def is_advance_payment():
+    """Whether instalments are paid at the start of the payment month."""
+    return payment_timing() == "advance"
+
+
+def claims_total(t):
+    """Combined value-protection and proportionate payments in month t."""
+    return claims_value_protection(t) + claims_proportionate(t)
 
 
 def pols_if(t):
@@ -986,7 +1024,7 @@ def liability_cf(t):
     paid at outset, before the first projected month - and no surrender outgo, because
     the contract has no surrender value at any time.
     """
-    return annuity_payments(t) + claims(t) + expenses(t)
+    return annuity_payments(t) + claims_total(t) + expenses(t)
 
 
 def net_cf(t):
