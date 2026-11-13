@@ -128,8 +128,8 @@ def model_point_table():
     ``provenance`` column: a model point is a configuration rather than an assumption, and
     its columns are one contract's own terms.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table():
@@ -143,9 +143,11 @@ def mort_table():
     A **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what its
     anchor is and what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["basis", "sex", "age"])
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / mort_table_file)                               # noqa: F821
+    frame["basis"] = [Basis[name] for name in frame["basis"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["basis", "sex", "age"]))
 
 
 def improvement_table():
@@ -156,9 +158,10 @@ def improvement_table():
     than being applied on top of a period rate keyed to the projection year.  A **[std]**
     proxy; DAV 2004 R's own trend is not public.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / improvement_file,                              # noqa: F821
-        index_col=["basis", "age"])
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / improvement_file)                              # noqa: F821
+    frame["basis"] = [Basis[name] for name in frame["basis"]]
+    return pdn.table(frame.set_index(["basis", "age"]))
 
 
 def surplus_scale_table():
@@ -174,8 +177,10 @@ def surplus_scale_table():
     outset and rising with each declaration.  The four forms are **not** calibrated to
     equal present value here, and a user who needs them to be must do that calibration.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / surplus_scale_file)                            # noqa: F821
+    frame["surplus_form"] = [SurplusForm[name] for name in frame["surplus_form"]]
+    return pdn.table(frame.set_index("surplus_form"))
 
 
 def hoechstrechnungszins_table():
@@ -187,49 +192,8 @@ def hoechstrechnungszins_table():
     than against today's rate.  The cap is an upper bound and not the tariff rate: a
     carrier may price below it, and one in the corpus is observed doing so.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
-
-
-def prepared_surplus_scale_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(surplus_scale_table(),
-                        columns=('surplus_init_pct', 'surplus_growth'),
-                        indexing='loc')
-
-
-def prepared_hoechstrechnungszins_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(hoechstrechnungszins_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_improvement_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(improvement_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_hoechstrechnungszins_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(hoechstrechnungszins_table().index)
-
-
-
-def prepared_improvement_table_index_selection_level_age():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(improvement_table().index.get_level_values("age"))
-
-
-
-def prepared_mort_table_index_selection_level_age():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(mort_table().index.get_level_values("age"))
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / hoechstrechnungszins_file, index_col="year_from"))   # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -248,3 +212,9 @@ hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Basis = ("Pickle", 2)
+
+SurplusForm = ("Pickle", 3)
