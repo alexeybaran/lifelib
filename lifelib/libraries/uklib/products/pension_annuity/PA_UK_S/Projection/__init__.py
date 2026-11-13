@@ -663,7 +663,7 @@ def mths_since_payment(t):
 
 def mortality_table_rate(x, life):
     """The selected life's table rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate')
+    return data.prepared_mort_table_loc().lookup_float((sex(life), x), 'mort_rate')
 
 
 def mort_rate_base(t, life):

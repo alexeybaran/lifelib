@@ -438,7 +438,7 @@ def mort_improve_factor(t):
 
 def mortality_table_rate(x):
     """The selected basis, sex and smoker rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), x), 'mort_rate')
+    return data.prepared_mort_table_loc().lookup_float((mort_basis(), sex(), smoker(), x), 'mort_rate')
 
 
 def mort_rate(t):
