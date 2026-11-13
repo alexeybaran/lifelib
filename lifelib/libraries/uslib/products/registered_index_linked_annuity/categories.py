@@ -74,3 +74,8 @@ class Amortization(IntEnum):
     INVALID = -1
     straight_line = 0
     updated_expiry = 1
+
+
+class Sex(IntEnum):
+    M = 0
+    F = 1

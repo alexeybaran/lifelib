@@ -98,17 +98,16 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    values = pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
-    return pdn.table(values, rows=True, report=True)
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))   # noqa: F821
 
 
 def mort_table():
     """Annual mortality by attained age and sex, read from *mort_table.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
-    return pdn.table(values, groups=values.index.names[1:], columns=("mort_rate",))
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["age", "sex"]))
 
 
 def market_scenario():
@@ -120,25 +119,17 @@ def market_scenario():
     row of the same scenario. ``month_end`` is a time in policy months from the Issue Date
     (``0`` at issue), one more than the index of the projection month it closes.
     """
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / market_scenario_file,                          # noqa: F821
-        index_col=["scenario_id", "month_end"])
-    return pdn.table(values, groups=values.index.names[:-1],
-                        columns=tuple(field.name for field in market_categories.MarketField))
+    return pdn.table(pd.read_csv(input_dir() / market_scenario_file, index_col=["scenario_id", "month_end"]))   # noqa: F821
 
 
-def surr_charge_table() -> "modelx_helpers.immutable_inputs.Table":
+def surr_charge_table():
     """The withdrawal charge schedule by complete contract year, from *surr_charge_table.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / surr_charge_file, index_col="contract_year")   # noqa: F821
-    return pdn.table(values)
+    return pdn.table(pd.read_csv(input_dir() / surr_charge_file, index_col="contract_year"))   # noqa: F821
 
 
-def guar_min_rate_table() -> "modelx_helpers.immutable_inputs.Table":
+def guar_min_rate_table():
     """The guaranteed minimum Cap, Step and Edge rates by term, from *guar_min_rate_table.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / guar_min_rate_file, index_col="term_years")    # noqa: F821
-    return pdn.table(values)
+    return pdn.table(pd.read_csv(input_dir() / guar_min_rate_file, index_col="term_years"))   # noqa: F821
 
 
 def lapse_table():
@@ -148,9 +139,7 @@ def lapse_table():
     Reference on ``Projection`` and the year it lands in is derived from
     *surr_charge_table.csv*, so the two cannot drift apart.
     """
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="contract_year")         # noqa: F821
-    return pdn.table(values)
+    return pdn.table(pd.read_csv(input_dir() / lapse_file, index_col="contract_year"))   # noqa: F821
 
 
 def withdrawal_table():
@@ -160,10 +149,7 @@ def withdrawal_table():
     at, on the same clock as *market_scenario.csv*; a month end with no row takes no
     withdrawal.
     """
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / withdrawal_file,                               # noqa: F821
-        index_col=["wd_schedule_id", "month_end"])
-    return pdn.table(values, groups=values.index.names[:-1], columns=("wd_amount",))
+    return pdn.table(pd.read_csv(input_dir() / withdrawal_file, index_col=["wd_schedule_id", "month_end"]))   # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +171,6 @@ withdrawal_file = "withdrawal_table.csv"
 
 pd = ("Module", "pandas")
 
-market_categories = ("Module", "lifelib.libraries.uslib.products.registered_index_linked_annuity.categories")
-
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
