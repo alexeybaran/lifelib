@@ -116,8 +116,8 @@ def model_point_table():
     *configuration* — one policy's own terms — rather than an assumption, and that is the
     single exemption from the library's second ruling.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def benefit_scale_table():
@@ -130,9 +130,9 @@ def benefit_scale_table():
     fixed by German statute; it is carried for comparison, since a *Pflegerente* written
     by a *Lebensversicherer* cannot be a *geförderter Tarif*.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / benefit_scale_file,                            # noqa: F821
-        index_col=["staffel_id", "pflegegrad"])
+        index_col=["staffel_id", "pflegegrad"]))
 
 
 def mort_table():
@@ -143,8 +143,9 @@ def mort_table():
     rates a replacement must preserve.  In-care mortality is not tabulated: it is this
     rate's force multiplied by ``mort_mult`` from *care_table.csv*.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def incidence_table():
@@ -154,8 +155,9 @@ def incidence_table():
     active state for care; the grade actually entered is drawn from ``entry_share`` in
     *care_table.csv*, because entry is not uniformly at the lowest grade.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_file, index_col=["sex", "age"])      # noqa: F821
+    frame = pd.read_csv(input_dir() / incidence_file)                # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def care_table():
@@ -171,8 +173,8 @@ def care_table():
     9 / 44 / 27 / 14 / 6 %: entrants skew lower than the stock because deterioration moves
     people up over a spell, and using the stock as the entry mix is a listed pitfall.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / care_file, index_col="pflegegrad")             # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / care_file, index_col="pflegegrad"))             # noqa: F821
 
 
 def lapse_table():
@@ -183,8 +185,8 @@ def lapse_table():
     profile is argued from the *Zillmerung* — the *Rückkaufswert* is near zero for the
     first years, so an early lapse is expensive to the policyholder.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
 
 
 def surrender_table():
@@ -200,8 +202,8 @@ def surrender_table():
     zero, and the § 169 Abs. 3 VVG five-year spread floor, which is why it turns positive
     in year three — and no cited level, because none was established.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / surrender_file, index_col="policy_year"))       # noqa: F821
 
 
 def expense_table():
@@ -213,8 +215,9 @@ def expense_table():
     payment made) and ``expense_infl`` (annual).  All five levels are **[std]**; only the
     25 ‰ ceiling the first is set exactly at is cited.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / expense_file, index_col="item")                # noqa: F821
+    frame = pd.read_csv(input_dir() / expense_file)                  # noqa: F821
+    frame["item"] = [ExpenseItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index("item"))
 
 
 def basis_table():
@@ -227,76 +230,9 @@ def basis_table():
     margins ``inc_margin``, ``det_margin``, ``rec_margin``, ``care_mort_margin`` and
     ``act_mort_margin``.  Only the *Rechnungszins* is cited; everything else is **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / basis_file, index_col="param")                 # noqa: F821
-
-
-def prepared_basis_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(basis_table(),
-                        columns=('value',),
-                        indexing='at')
-
-
-
-def prepared_benefit_scale_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(benefit_scale_table(),
-                        columns=('benefit_pct',),
-                        indexing='at')
-
-
-
-def prepared_mort_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='at')
-
-
-
-def prepared_care_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(care_table(),
-                        columns=('mort_mult', 'entry_share', 'det_rate', 'rec_rate'),
-                        indexing='at')
-
-
-
-def prepared_incidence_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(incidence_table(),
-                        columns=('inc_rate',),
-                        indexing='at')
-
-
-
-def prepared_lapse_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(lapse_table(),
-                        columns=('lapse_rate',),
-                        indexing='at')
-
-
-
-def prepared_surrender_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(surrender_table(),
-                        columns=('rkw_prem_ratio',),
-                        indexing='at')
-
-
-
-def prepared_expense_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(expense_table(),
-                        columns=('value',),
-                        indexing='at')
-
-
-def prepared_basis_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(basis_table(), indexing='at', preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / basis_file)                    # noqa: F821
+    frame["param"] = [BasisParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index("param"))
 
 
 # ---------------------------------------------------------------------------
@@ -323,3 +259,9 @@ basis_file = "basis_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+BasisParam = ("Pickle", 2)
+
+ExpenseItem = ("Pickle", 3)
