@@ -1031,22 +1031,32 @@ def claims(t, kind=None):
 def claims_by_kind(t, kind):
     """Calculate claims with keys 0 (death), 1 (family income benefit), 2 (lapse)."""
     if kind == 0:
-        if shape() == "fib":
-            return fib_commute_rate() * benefit_pp(t) * pols_death(t)
-        return benefit_pp(t) * pols_death(t)
+        return claims_death(t)
     if kind == 1:
-        if shape() != "fib":
-            return 0.0
-        return ((1.0 - fib_commute_rate()) * fib_income()
-                * (pols_death(t) + fib_cum(t)))
+        return claims_family_income(t)
     if kind == 2:
         return 0.0
     raise ValueError("invalid kind")
 
 
+def claims_death(t):
+    """Expected lump-sum death or terminal illness claim in month t."""
+    if shape() == "fib":
+        return fib_commute_rate() * benefit_pp(t) * pols_death(t)
+    return benefit_pp(t) * pols_death(t)
+
+
+def claims_family_income(t):
+    """Expected uncommuted family income instalment in month t."""
+    if shape() != "fib":
+        return 0.0
+    return ((1.0 - fib_commute_rate()) * fib_income()
+            * (pols_death(t) + fib_cum(t)))
+
+
 def claims_total(t):
-    """Sum death, family income benefit and lapse outgo in that order."""
-    return pdn.sum_values(claims_by_kind(t, kind) for kind in range(3))
+    """Combined lump-sum and family income outgo. Lapse pays zero."""
+    return claims_death(t) + claims_family_income(t)
 
 
 def claim_expenses(t):
