@@ -34,3 +34,17 @@ class PremiumType(IntEnum):
     SINGLE = 0
     LEVEL = 1
     TARGET = 2
+
+
+class Sex(IntEnum):
+    M = 0
+    F = 1
+
+
+class RateClass(IntEnum):
+    PPlusNT = 0
+    PNT = 1
+    StdPlusNT = 2
+    StdNT = 3
+    PTob = 4
+    StdTob = 5

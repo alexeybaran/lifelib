@@ -280,8 +280,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)     # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def age_at_entry():
@@ -291,12 +291,12 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def rate_class():
     """The underwriting class of the selected model point (one of six)."""
-    return model_point()["rate_class"]
+    return RateClass[model_point()["rate_class"]]
 
 
 def sum_assured():
@@ -309,10 +309,7 @@ def db_option():
 
     Option C (return of premium) is out of scope in the product spec.
     """
-    label = model_point()["db_option"]
-    if label == "OTHER":
-        raise KeyError(label)
-    return DeathBenefitOption[label]
+    return DeathBenefitOption[model_point()["db_option"]]
 
 
 def qual_test():
@@ -321,18 +318,12 @@ def qual_test():
     CVAT is out of scope in the product spec, so :func:`corridor_factor` raises on
     anything else rather than silently applying GPT corridor factors.
     """
-    label = model_point()["qual_test"]
-    if label == "OTHER":
-        raise KeyError(label)
-    return Qualification[label]
+    return Qualification[model_point()["qual_test"]]
 
 
 def premium_type():
     """The premium pattern: ``"LEVEL"``, ``"SINGLE"`` or ``"TARGET"`` **[std]**."""
-    label = model_point()["premium_type"]
-    if label == "OTHER":
-        raise KeyError(label)
-    return PremiumType[label]
+    return PremiumType[model_point()["premium_type"]]
 
 
 def premium_pp_ann():
@@ -512,9 +503,8 @@ def prem_persistency(t):
     levels are a standardization.
     """
     tbl = data.prem_persistency_table()                              # noqa: F821
-    tbl = data.prem_persistency_table()                              # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "prem_persistency")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "prem_persistency"])
 
 
 def premium_pp(t):
@@ -557,6 +547,11 @@ def premiums(t):
     return premium_pp(t) * pols_if(t)
 
 
+def wd_pp_amount():
+    """The model point's constant monthly withdrawal amount."""
+    return float(model_point()["wd_pp"])
+
+
 def wd_pp(t):
     """W(t): the partial withdrawal per policy at BOM of policy month t.
 
@@ -570,7 +565,7 @@ def wd_pp(t):
         return 0.0
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return wd_pp_amount()
 
 
 def wd_used_year(t):
@@ -670,9 +665,8 @@ def corridor_factor(t):
     if qual_test() != Qualification.GPT:
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
-    tbl = data.corridor_factors()                                   # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "corridor_factor")
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return float(tbl.loc[a, "corridor_factor"])
 
 
 def av_pp_db_basis(t):
@@ -741,11 +735,6 @@ def net_amt_at_risk(t):
     return max(0.0, db_pp(t) / naar_factor() - av_pp_db_basis(t))
 
 
-def coi_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The guaranteed COI table for the policy's sex, class and issue age."""
-    return data.coi_rates().slice(sex(), rate_class(), age_at_entry())     # noqa: F821
-
-
 def coi_rate_scale():
     """The guaranteed maximum monthly COI scale for this model point's cell.
 
@@ -754,7 +743,7 @@ def coi_rate_scale():
     shipped table covers the specimen anchor cell M / StdNT / 35 only; a model point
     on any other cell needs the table extended first.
     """
-    return pdn.to_pandas(pdn.column(coi_schedule(), "coi_rate_guar", report=True))
+    return data.coi_rates().loc[(sex(), rate_class(), age_at_entry())]     # noqa: F821
 
 
 def coi_rate_guar(t):
@@ -764,9 +753,9 @@ def coi_rate_guar(t):
     anchor years **[std]**; it grades to 1000/12 at attained ages 112-120 and to zero
     from attained age 121.  Policy years beyond the table take its last row.
     """
-    scale = coi_schedule()
-    y = min(policy_year(t), scale.index.max_int())
-    return scale.lookup_float(y, "coi_rate_guar")
+    scale = coi_rate_scale()
+    y = min(policy_year(t), int(scale.index.max()))
+    return float(scale.loc[y, "coi_rate_guar"])
 
 
 def coi_rate(t):
@@ -975,6 +964,18 @@ def av_change(t):
     return av_at(t + 1, Timing.BEF_PREM) - av_at(t, Timing.BEF_PREM)
 
 
+def surr_charge_init():
+    """The schedule's initial surrender charge per $1,000 of face."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["sc_per_1000_init"])
+
+
+def surr_charge_runoff_years():
+    """The schedule's run-off period in years."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["runoff_years"])
+
+
 def surr_charge_rate(t):
     """SC per $1,000 of initial face in policy month t **[std amount; mechanics [S3]]**.
 
@@ -987,10 +988,8 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    tbl = data.surr_charge_table()                                  # noqa: F821
-    schedule = surr_charge_id()
-    init = tbl.lookup_float(schedule, "sc_per_1000_init")
-    yrs = tbl.lookup_float(schedule, "runoff_years")
+    init = surr_charge_init()
+    yrs = surr_charge_runoff_years()
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1127,7 +1126,7 @@ def is_mec(t):
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
+    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
 
 
 def mort_rate(t):
@@ -1140,9 +1139,8 @@ def mort_rate(t):
     row, where the rate is 1.0.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    tbl = data.mort_table()                                         # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return float(tbl.loc[a, "mort_rate"]) * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1160,9 +1158,8 @@ def lapse_rate_base(t):
     standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    tbl = data.lapse_table()                                        # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "lapse_rate_ann")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate_ann"])
 
 
 def lapse_shock_year():
@@ -1177,7 +1174,7 @@ def lapse_shock_year():
     """
     if not has_surr_charge():
         return 0
-    return data.surr_charge_table().lookup_int(surr_charge_id(), "runoff_years") + 1  # noqa: F821
+    return int(data.surr_charge_table().loc[surr_charge_id(), "runoff_years"]) + 1  # noqa: F821
 
 
 def lapse_rate_sc_mult(t):
@@ -1331,13 +1328,13 @@ def claims_over_av(t):
 
 
 def claims(t, kind):
-    """Claim outgo in policy month t, by ``kind``.
+    """Claim outgo in policy month t, optionally by ``kind``.
 
-    ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``Claim.ALL`` for the total.  Death claims
+    ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``None`` for the total.  Death claims
     are weighted by :func:`pols_death` and surrenders by :func:`pols_lapse`, both
     end-of-month events.
 
-    Partial withdrawals are **not** here, neither as a ``kind`` nor in the ``Claim.ALL``
+    Partial withdrawals are **not** here, neither as a ``kind`` nor in the ``None``
     total: a withdrawal is a payment on the owner's election rather than a claim, and
     is :func:`withdrawals`.  So ``claims(t)`` is the death and surrender total only,
     and :func:`net_cf` subtracts the withdrawal row separately.
@@ -1347,7 +1344,7 @@ def claims(t, kind):
     elif kind == Claim.LAPSE:
         return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
     elif kind == Claim.ALL:
-        return sum((claims(t, claim_kind) for claim_kind in (Claim.DEATH, Claim.LAPSE)), 0.0)
+        return sum(claims(t, k) for k in (Claim.DEATH, Claim.LAPSE))
     else:
         raise ValueError("invalid kind")
 
@@ -1637,16 +1634,18 @@ pd = ("Module", "pandas")
 
 math = ("Module", "math")
 
-Claim = ("Pickle", 1)
+Claim = ("Pickle", 3)
 
-Timing = ("Pickle", 2)
+Timing = ("Pickle", 4)
 
-DeathBenefitOption = ("Pickle", 3)
+DeathBenefitOption = ("Pickle", 5)
 
-Qualification = ("Pickle", 4)
+Qualification = ("Pickle", 6)
 
-PremiumType = ("Pickle", 5)
+PremiumType = ("Pickle", 7)
 
-enum_definitions = ("Pickle", 6)
+Sex = ("Pickle", 1)
 
-pdn = ("Module", "modelx_helpers.pdn")
+RateClass = ("Pickle", 2)
+
+enum_definitions = ("Pickle", 8)
