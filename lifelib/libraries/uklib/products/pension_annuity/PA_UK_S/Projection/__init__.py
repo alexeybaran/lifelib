@@ -546,7 +546,7 @@ def is_payment_mth(t):
     if t < 0:
         return False
     step = 12 // payment_freq()
-    if payment_timing() == "arrears":
+    if not is_advance_payment():
         return (t + 1) % step == 0
     return t % step == 0
 
@@ -560,7 +560,7 @@ def payment_surv_mth(t):
     survival for advance payments understates the liability by about one period's
     mortality per payment.
     """
-    return t + 1 if payment_timing() == "arrears" else t
+    return t if is_advance_payment() else t + 1
 
 
 def rpi_index(a):
@@ -742,6 +742,11 @@ def monthly_mortality_in_year(year, life):
     return 1.0 - (1.0 - mort_rate(12 * year, life)) ** (1.0 / 12.0)
 
 
+def is_scenario_mortality():
+    """Whether survival follows the model point's specified death months."""
+    return mort_basis() == "scenario"
+
+
 def lives_if(k, life):
     """l(k): the probability that ``life`` is alive at time k, k = 0 at the start date.
 
@@ -758,7 +763,7 @@ def lives_if(k, life):
         return 0.0
     if k <= 0:
         return 1.0
-    if mort_basis() == "scenario":
+    if is_scenario_mortality():
         d = death_mth(life)
         return 0.0 if (d >= 0 and k > d) else 1.0
     return lives_if(k - 1, life) * (1.0 - mort_rate_mth(k - 1, life))
