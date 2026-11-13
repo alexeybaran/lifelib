@@ -28,7 +28,11 @@ lookup form when the actual scalar type matters.
 ## Give the compiler a representative sample
 
 Use the same types, table layouts, key types and formula branches that the
-production book uses. Integer-indexed dense Cells admit the range covered by
+production book uses. modelx Cells cache their results by default. Mark a
+Cell as uncached in modelx if its formula needs to run on every call.
+The compiler chooses the storage representation for a cached Cell.
+
+Cached native signed-integer coordinates admit the range covered by
 the sample, including observed negative indices. For a longer horizon, sample
 it or declare the necessary upper extent using `cells_param_size` in the
 Space's translation spec. For example, `{'cells_param_size': {'t': 361}}`
@@ -58,9 +62,11 @@ provider for suitable arguments without that cached binding.
 In the compiled package, open `_mx_admission.json` and find the consumer Cell.
 `native_helpers` lists linked provider operations, `native_numeric_helpers`
 lists numeric specializations, and `native_reductions` counts admitted typed
-loops. `return_type` shows the Cell's generated representation. `cache` and
-`dense_logical_domain` show the storage choice and the accepted dense ranges,
-with exclusive upper bounds.
+loops. `return_type` shows the Cell's generated representation. `cache` shows
+the storage choice. `dense_logical_domain` and `associative_logical_domain`
+show the accepted integer ranges, with exclusive upper bounds. The optional
+`dense_window` spec setting selects the physical dense region within an
+admitted domain and leaves the Cell's authored cacheability unchanged.
 
 The `reasons` field identifies Cells missed by the sample and names the source
 when a matched read `requires Data in export locked_spaces`. For a sampled
