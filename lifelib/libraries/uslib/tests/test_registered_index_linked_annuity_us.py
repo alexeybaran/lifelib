@@ -248,22 +248,22 @@ def test_midterm_amortization_and_the_mva_factor(anchor, scenario_b):
     figure derived from it requires (1.04/1.05)^3 = 0.9716998.  The model reproduces the
     dollars, and this test pins the factor that actually produces them.
     """
-    assert anchor.budget_amort_pp(35) == pytest.approx(BUDGET_AT_MIDTERM, abs=CENT)
-    unadjusted = anchor.inv_amt_basis_pp(35) - anchor.budget_amort_pp(35)
+    assert anchor.budget_amort_pp(35, Timing.BEF_ROLL) == pytest.approx(BUDGET_AT_MIDTERM, abs=CENT)
+    unadjusted = anchor.inv_amt_basis_pp(35) - anchor.budget_amort_pp(35, Timing.BEF_ROLL)
     assert unadjusted == pytest.approx(FIXED_LEG_UNADJUSTED, abs=CENT)
     assert anchor.mva_factor(35) == pytest.approx((1.04 / 1.05) ** 3, rel=1e-12)
     assert anchor.mva_factor(35) == pytest.approx(0.9716998, abs=5e-8)
-    assert unadjusted - anchor.fixed_proxy_pp(35) == pytest.approx(MVA_COST, abs=CENT)
+    assert unadjusted - anchor.fixed_proxy_pp(35, Timing.BEF_ROLL) == pytest.approx(MVA_COST, abs=CENT)
     # The same fixed leg serves both scenarios: it does not depend on the index.
-    assert scenario_b.fixed_proxy_pp(35) == pytest.approx(
-        anchor.fixed_proxy_pp(35), abs=1e-9)
+    assert scenario_b.fixed_proxy_pp(35, Timing.BEF_ROLL) == pytest.approx(
+        anchor.fixed_proxy_pp(35, Timing.BEF_ROLL), abs=1e-9)
 
 
 def test_interim_values_without_the_rate_move(anchor, scenario_b):
     """Without the 100 bp rise the interim values would be 119,171.01 and 87,490.73."""
     for p, expected in ((anchor, IV_A1_NO_RATE_MOVE), (scenario_b, IV_B1_NO_RATE_MOVE)):
-        no_move = (p.inv_amt_basis_pp(35) - p.budget_amort_pp(35)
-                   + p.deriv_proxy_pp(35) - p.trading_cost_pp(35))
+        no_move = (p.inv_amt_basis_pp(35) - p.budget_amort_pp(35, Timing.BEF_ROLL)
+                   + p.deriv_proxy_pp(35, Timing.BEF_ROLL) - p.trading_cost_pp(35, Timing.BEF_ROLL))
         assert no_move == pytest.approx(expected, abs=CENT)
 
 
@@ -275,7 +275,7 @@ def test_the_short_put_subtracts_even_when_the_index_is_up(anchor):
     the Term Start Date" [S2].
     """
     assert anchor.index_perf(35) > 0.0
-    assert anchor.opt_component_pp(35, OptionLeg.OTM_PUT) == pytest.approx(-2726.33, abs=CENT)
+    assert anchor.opt_component_pp(35, OptionLeg.OTM_PUT, Timing.BEF_ROLL) == pytest.approx(-2726.33, abs=CENT)
 
 
 def test_the_proportional_withdrawal_rule(scenario_b):
@@ -313,8 +313,8 @@ def test_homogeneity_the_interim_value_falls_by_exactly_the_cash(scenario_b):
 
     scale = scenario_b.inv_amt_pp(35) / scenario_b.inv_amt_pp_at(35, Timing.BEF_WD)
     for leg in scenario_b.opt_legs():
-        assert scenario_b.opt_component_pp(35, leg, "AFT_WD") == pytest.approx(
-            scenario_b.opt_component_pp(35, leg, "BEF_ROLL") * scale, rel=1e-12)
+        assert scenario_b.opt_component_pp(35, leg, Timing.AFT_WD) == pytest.approx(
+            scenario_b.opt_component_pp(35, leg, Timing.BEF_ROLL) * scale, rel=1e-12)
     for cells in ("fixed_proxy_pp", "deriv_proxy_pp", "trading_cost_pp",
                   "budget_amort_pp"):
         before = getattr(scenario_b, cells)(35, "BEF_ROLL")
@@ -357,7 +357,7 @@ def test_term_end_identity_holds_for_every_crediting_type(rila, point_id):
     assert ends
     for t in ends:
         assert p.check_term_end_identity_resid(t) == pytest.approx(0.0, abs=1e-9)
-        assert p.trading_cost_pp(t) == 0.0
+        assert p.trading_cost_pp(t, Timing.BEF_ROLL) == 0.0
         assert p.iv_ratio(t) == 1.0
     # the same check with no argument, which is how the library calls it
     assert p.check_term_end_identity() is True
@@ -486,8 +486,8 @@ def test_the_pre_ag54_engine_reproduces_its_own_worked_example(rila):
     assert p.credit_rate_accrued(5) == pytest.approx(0.05, abs=RATE)
     assert p.interim_value_pp_at(5, Timing.BEF_ROLL) == pytest.approx(52500.00, abs=CENT)
     # and it carries no derivative proxy or trading cost at all
-    assert p.deriv_proxy_pp(5) == 0.0
-    assert p.trading_cost_pp(5) == 0.0
+    assert p.deriv_proxy_pp(5, Timing.BEF_ROLL) == 0.0
+    assert p.trading_cost_pp(5, Timing.BEF_ROLL) == 0.0
 
 
 def test_family_c_is_family_a_with_the_mva_factor_set_to_one(rila):
@@ -978,7 +978,7 @@ def test_the_trading_cost_is_a_free_parameter_on_a_stated_base(anchor):
     gross = sum(abs(anchor.opt_component(
         0, leg, anchor.index_level(0), anchor.tau(0), MarketQuote.CURRENT))
         for leg in anchor.opt_legs())
-    assert anchor.trading_cost_pp(0) == pytest.approx(
+    assert anchor.trading_cost_pp(0, Timing.BEF_ROLL) == pytest.approx(
         0.001 * 100000.0 * gross, rel=1e-12)
     # the $33.07 the notes' opening row shows is the term-start instant, pinned by
     # test_worked_example_row_0_at_the_term_start_instant
@@ -990,7 +990,7 @@ def test_the_interim_value_is_not_floored(scenario_b):
     contract" [S2]."""
     assert scenario_b.interim_value_pp_at(35, Timing.BEF_ROLL) < scenario_b.inv_amt_pp_at(
         35, Timing.BEF_ROLL)
-    assert scenario_b.deriv_proxy_pp(35) < 0.0        # the derivative proxy is negative
+    assert scenario_b.deriv_proxy_pp(35, Timing.BEF_ROLL) < 0.0        # the derivative proxy is negative
     assert scenario_b.iv_ratio(35) < 1.0
     # and the Account Value follows it down rather than being held at the notional
     assert scenario_b.av_pp(35) < scenario_b.premium_pp()

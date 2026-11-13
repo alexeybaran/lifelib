@@ -1239,15 +1239,15 @@ def iv_notional_pp(t, timing):
     of the interim value scales by the same factor, which is exactly why the interim value
     then falls by precisely the cash withdrawn.
     """
-    if timing == "BEF_ROLL":
+    if timing == Timing.BEF_ROLL:
         return inv_amt_basis_pp(t)
-    elif timing == "AFT_WD":
+    elif timing == Timing.AFT_WD:
         return inv_amt_pp(t)
     else:
         raise ValueError("invalid timing")
 
 
-def opt_component_pp(t, leg, timing="BEF_ROLL"):
+def opt_component_pp(t, leg, timing):
     """The currency value of one replicating-portfolio leg, per contract.
 
     The notional at ``timing`` times the per-unit leg value at the current market state.
@@ -1257,22 +1257,22 @@ def opt_component_pp(t, leg, timing="BEF_ROLL"):
         t, leg, index_level(t), tau(t), MarketQuote.CURRENT)
 
 
-def fixed_proxy_pp(t, timing="BEF_ROLL"):
+def fixed_proxy_pp(t, timing):
     """F_k(t): the Fixed Income Asset Proxy in currency, per contract."""
     return iv_notional_pp(t, timing) * fixed_proxy_factor(t)
 
 
-def budget_amort_pp(t, timing="BEF_ROLL"):
+def budget_amort_pp(t, timing):
     """B_k(t): the amortized initial option budget in currency, per contract."""
     return iv_notional_pp(t, timing) * budget_amort_factor(t)
 
 
-def deriv_proxy_pp(t, timing="BEF_ROLL"):
+def deriv_proxy_pp(t, timing):
     """D_k(t): the Derivative Asset Proxy in currency, per contract."""
     return iv_notional_pp(t, timing) * deriv_proxy_factor(t)
 
 
-def trading_cost_pp(t, timing="BEF_ROLL"):
+def trading_cost_pp(t, timing):
     """TC_k(t): the trading cost provision in currency, per contract."""
     return iv_notional_pp(t, timing) * trading_cost_factor(t)
 
@@ -2254,12 +2254,12 @@ def result_iv():
         "index_level": [index_level(t) for t in ts],
         "index_perf": [index_perf(t) for t in ts],
         "tau": [tau(t) for t in ts],
-        "fixed_proxy_pp": [fixed_proxy_pp(t) for t in ts],
+        "fixed_proxy_pp": [fixed_proxy_pp(t, Timing.BEF_ROLL) for t in ts],
     }
     for leg in opt_legs():
-        out[leg.name.lower()] = [opt_component_pp(t, leg) for t in ts]
-    out["deriv_proxy_pp"] = [deriv_proxy_pp(t) for t in ts]
-    out["trading_cost_pp"] = [trading_cost_pp(t) for t in ts]
+        out[leg.name.lower()] = [opt_component_pp(t, leg, Timing.BEF_ROLL) for t in ts]
+    out["deriv_proxy_pp"] = [deriv_proxy_pp(t, Timing.BEF_ROLL) for t in ts]
+    out["trading_cost_pp"] = [trading_cost_pp(t, Timing.BEF_ROLL) for t in ts]
     out["interim_value_pp"] = [interim_value_pp_at(t, Timing.BEF_ROLL) for t in ts]
     out["inv_amt_pp"] = [inv_amt_pp_at(t, Timing.BEF_ROLL) for t in ts]
     return pd.DataFrame(out, index=pd.Index(ts, name="t"))           # noqa: F821
