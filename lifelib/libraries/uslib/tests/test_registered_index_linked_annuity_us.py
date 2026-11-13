@@ -35,9 +35,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.registered_index_linked_annuity.categories import (
-    Amortization, Bucket, Claim, CreditType, InterimValueFamily, MarketQuote, OptionLeg, Timing,
-)
+from lifelib.libraries.uslib.products.registered_index_linked_annuity.enums import Amortization, Bucket, Claim, CreditType, InterimValueFamily, MarketQuote, OptionLeg, Timing
 
 MODEL_PATH = LIB / "products/registered_index_linked_annuity/RILA_US_S"
 
@@ -167,8 +165,8 @@ def test_worked_example_row(rila, label):
     assert p.opt_component_pp(t, OptionLeg.OTM_PUT, timing) == pytest.approx(otmp, abs=CENT)
     assert p.deriv_proxy_pp(t, timing) == pytest.approx(deriv, abs=CENT)
     assert p.trading_cost_pp(t, timing) == pytest.approx(tcost, abs=CENT)
-    assert p.interim_value_pp_at(t, Timing[timing]) == pytest.approx(value, abs=ROUNDED)
-    assert p.inv_amt_pp_at(t, Timing[timing]) == pytest.approx(notional, abs=ROUNDED)
+    assert p.interim_value_pp_at(t, timing) == pytest.approx(value, abs=ROUNDED)
+    assert p.inv_amt_pp_at(t, timing) == pytest.approx(notional, abs=ROUNDED)
 
 
 def test_worked_example_tau_column(anchor):
@@ -194,7 +192,7 @@ def test_option_budget_and_fixed_leg(anchor):
 
 def test_option_budget_decomposes_as_the_notes_print_it(anchor):
     """Pi(100, 6) = 0.215679 - 0.033445 - 0.081602 = 0.100632."""
-    legs = {leg.name: anchor.opt_component(0, leg, 100.0, 6.0, MarketQuote.TERM_START)
+    legs = {leg: anchor.opt_component(0, leg, 100.0, 6.0, MarketQuote.TERM_START)
             for leg in anchor.opt_legs()}
     assert legs["ATM_CALL"] == pytest.approx(0.215679, abs=5e-7)
     assert legs["OTM_CALL"] == pytest.approx(-0.033445, abs=5e-7)
@@ -230,7 +228,7 @@ def test_worked_example_row_0_at_the_term_start_instant(anchor):
 
     for leg in anchor.opt_legs():
         value = ia * anchor.opt_component(0, leg, i_s, term, MarketQuote.TERM_START)
-        assert value == pytest.approx(TERM_START[leg.name], abs=CENT)
+        assert value == pytest.approx(TERM_START[leg], abs=CENT)
 
     deriv = ia * anchor.opt_budget(0)               # D = beta x IA at tau = T
     fixed = ia * (1.0 - anchor.opt_budget(0))       # B = beta x IA and the MVA factor is 1
@@ -419,7 +417,7 @@ def test_step_and_edge_discontinuities_are_not_smoothed(rila):
 def test_floor_needs_four_options_not_three(rila):
     """The floor design buys back an out-of-the-money put so the short exposure stops [S5]."""
     p = _point(rila, 6)
-    assert p.opt_legs() == (OptionLeg.ATM_CALL, OptionLeg.OTM_CALL, OptionLeg.ATM_PUT, OptionLeg.FLOOR_PUT)
+    assert p.opt_legs() == ("ATM_CALL", "OTM_CALL", "ATM_PUT", "FLOOR_PUT")
     assert p.credit_rate_term(35) == pytest.approx(-0.10, abs=RATE)   # R = -20%, f = 10%
     # the bought-back put is the only positive-signed put in the set
     assert p.opt_component(35, OptionLeg.FLOOR_PUT, 80.0, 0.5, MarketQuote.CURRENT) > 0.0
@@ -1082,7 +1080,7 @@ def test_the_documented_timing_arguments_are_the_ones_the_cells_accept(rila, anc
         assert len(timings) == 4
         for timing in timings:
             assert f'``"{timing}"``' in doc, f"{timing} is not in the timing rubric"
-            arg_of(24, Timing[timing])              # must not raise
+            arg_of(24, timing)                      # must not raise
     assert "BEF_TERM_SURR" in doc and "BEF_TERM/" not in doc
 
 
@@ -1115,17 +1113,17 @@ def test_the_family_b_free_parameters_are_disclosed_as_std(rila):
 
 def test_invalid_arguments_raise(anchor):
     """Every string-argument cells rejects an unknown value, as CashValue_SE does."""
-    for call in (lambda: anchor.inv_amt_pp_at(1, -1),
-                 lambda: anchor.interim_value_pp_at(1, -1),
-                 lambda: anchor.av_pp_at(1, -1),
-                 lambda: anchor.pols_if_at(1, -1),
-                 lambda: anchor.claim_pp(1, -1),
-                 lambda: anchor.pols_decr(1, -1),
-                 lambda: anchor.roll_share(-1),
-                 lambda: anchor.guar_min_rate(CreditType.INVALID),
+    for call in (lambda: anchor.inv_amt_pp_at(1, "NOPE"),
+                 lambda: anchor.interim_value_pp_at(1, "NOPE"),
+                 lambda: anchor.av_pp_at(1, "NOPE"),
+                 lambda: anchor.pols_if_at(1, "NOPE"),
+                 lambda: anchor.claim_pp(1, "NOPE"),
+                 lambda: anchor.pols_decr(1, "NOPE"),
+                 lambda: anchor.roll_share("NOPE"),
+                 lambda: anchor.guar_min_rate("NOPE"),
                  lambda: anchor.iv_notional_pp(1, "NOPE"),
-                 lambda: anchor.opt_component(1, -1, 100.0, 1.0, MarketQuote.CURRENT),
-                 lambda: anchor.opt_component(1, OptionLeg.ATM_CALL, 100.0, 1.0, -1),
-                 lambda: anchor.wd_bucket_value_pp(1, -1)):
+                 lambda: anchor.opt_component(1, "NOPE", 100.0, 1.0, MarketQuote.CURRENT),
+                 lambda: anchor.opt_component(1, OptionLeg.ATM_CALL, 100.0, 1.0, "NOPE"),
+                 lambda: anchor.wd_bucket_value_pp(1, "NOPE")):
         with pytest.raises(Exception):
             call()

@@ -348,8 +348,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)     # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
@@ -364,7 +364,7 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def premium_pp():
@@ -398,10 +398,7 @@ def crediting_type():
     that only one insurer in the sample offers and that needs a **four**-option
     replicating portfolio rather than three [S5].
     """
-    label = model_point()["crediting_type"]
-    if label == "INVALID":
-        raise KeyError(label)
-    return CreditType[label]
+    return CreditType[model_point()["crediting_type"]]
 
 
 def declared_cap():
@@ -453,10 +450,7 @@ def iv_family():
     design [S1], which uses no option pricing; it predates AG 54's July 1, 2024 effective
     date [R2] and is carried as a tractable regression contrast, not as a live design.
     """
-    label = model_point()["iv_family"]
-    if label == "INVALID":
-        raise KeyError(label)
-    return InterimValueFamily[label]
+    return InterimValueFamily[model_point()["iv_family"]]
 
 
 def amort_rule():
@@ -467,10 +461,7 @@ def amort_rule():
     time to expiry**. One insurer needs both, split by state [S3], so this is a
     configuration flag rather than a modelling opinion.
     """
-    label = model_point()["amort_rule"]
-    if label == "INVALID":
-        raise KeyError(label)
-    return Amortization[label]
+    return Amortization[model_point()["amort_rule"]]
 
 
 def nge_reset():
@@ -507,7 +498,7 @@ def wd_schedule_id():
 
 def is_uncapped():
     """True when the model point leaves ``declared_cap`` blank [S2]."""
-    return pdn.isna(model_point()["declared_cap"])              # noqa: F821
+    return bool(pd.isna(model_point()["declared_cap"]))              # noqa: F821
 
 
 def policy_term():
@@ -643,6 +634,11 @@ def is_term_end(t):
     return term_elapsed_mth(t) == 12 * term_years()
 
 
+def market_table():
+    """The market scenario selected for this policy."""
+    return data.market_scenario().loc[scenario_id()]                 # noqa: F821
+
+
 def market_state(k, field):
     """Step-function lookup of column ``name`` in the model point's market scenario.
 
@@ -654,19 +650,19 @@ def market_state(k, field):
     path is one row. The index path is therefore piecewise constant between the scenario's
     own anchor months; that is a property of the deterministic scenario, not of the model.
     """
-    if 0 <= field < market_field_count():
-        return market_schedule().previous(k, field)
-    raise ValueError("invalid market field")
-
-
-def market_field_count():
-    """The number of numeric fields in the market input table."""
-    return len(MarketField)
-
-
-def market_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The market table for the selected scenario."""
-    return data.market_scenario().slice(scenario_id())                # noqa: F821
+    sub = market_table()
+    if field == MarketField.index_level:
+        return float(sub.loc[sub.index.asof(k), "index_level"])
+    elif field == MarketField.mvr:
+        return float(sub.loc[sub.index.asof(k), "mvr"])
+    elif field == MarketField.risk_free:
+        return float(sub.loc[sub.index.asof(k), "risk_free"])
+    elif field == MarketField.div_yield:
+        return float(sub.loc[sub.index.asof(k), "div_yield"])
+    elif field == MarketField.impl_vol:
+        return float(sub.loc[sub.index.asof(k), "impl_vol"])
+    else:
+        raise ValueError("invalid market field")
 
 
 def index_level(t):
@@ -732,19 +728,9 @@ def index_perf(t):
     return index_level(t) / index_at_term_start(t) - 1.0
 
 
-def normal_scale():
-    """The normal distribution scale shared by option valuations."""
-    return math.sqrt(2.0)                                           # noqa: F821
-
-
-def continuous_rate(rate):
-    """Convert an annual effective rate for use across the option valuations."""
-    return math.log(1.0 + rate)                                     # noqa: F821
-
-
 def norm_cdf(x):
     """N(x): the standard normal cumulative distribution function."""
-    return 0.5 * (1.0 + math.erf(x / normal_scale()))               # noqa: F821
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))                # noqa: F821
 
 
 def bs_d1(spot, strike, tau_, rate, divy, vol):
@@ -755,8 +741,8 @@ def bs_d1(spot, strike, tau_, rate, divy, vol):
     the 4.00% and 2.00% market inputs enter as ``ln 1.04 = 3.9221%`` and
     ``ln 1.02 = 1.9803%`` exactly as the notes state.
     """
-    rate_cc = continuous_rate(rate)
-    divy_cc = continuous_rate(divy)
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
     return ((math.log(spot / strike) + (rate_cc - divy_cc + vol ** 2 / 2.0) * tau_)  # noqa: F821
             / (vol * math.sqrt(tau_)))                               # noqa: F821
 
@@ -775,8 +761,8 @@ def bs_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(spot - strike, 0.0)
-    rate_cc = continuous_rate(rate)
-    divy_cc = continuous_rate(divy)
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
     return (spot * math.exp(-divy_cc * tau_) * norm_cdf(d_1)         # noqa: F821
@@ -790,8 +776,8 @@ def bs_put(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(strike - spot, 0.0)
-    rate_cc = continuous_rate(rate)
-    divy_cc = continuous_rate(divy)
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
     return (strike * math.exp(-rate_cc * tau_) * norm_cdf(-d_2)      # noqa: F821
@@ -808,7 +794,7 @@ def bs_binary_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return 1.0 if spot >= strike else 0.0
-    rate_cc = continuous_rate(rate)
+    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
     return (math.exp(-rate_cc * tau_)                                # noqa: F821
             * norm_cdf(bs_d2(spot, strike, tau_, rate, divy, vol)))
 
@@ -821,14 +807,13 @@ def guar_min_rate(kind):
     floored here [R5][REG-R26]; the floor mechanically raises the option budget and
     compresses the spread, which is why the table is a genuine tail exposure.
     """
-    table = data.guar_min_rate_table()                             # noqa: F821
-    years = term_years()
+    row = data.guar_min_rate_table().loc[term_years()]                # noqa: F821
     if kind == CreditType.CAP:
-        return table.lookup_float(years, "guar_min_cap")
+        return float(row["guar_min_cap"])
     elif kind == CreditType.STEP:
-        return table.lookup_float(years, "guar_min_step")
+        return float(row["guar_min_step"])
     elif kind == CreditType.EDGE:
-        return table.lookup_float(years, "guar_min_edge")
+        return float(row["guar_min_edge"])
     else:
         raise ValueError("invalid kind")
 
@@ -934,16 +919,6 @@ def opt_legs():
         raise ValueError("invalid crediting_type")
 
 
-def opt_leg_count():
-    """The number of legs in the option lineup."""
-    return len(opt_legs())
-
-
-def opt_leg_code_at(position):
-    """The leg at this position in the original option lineup."""
-    return opt_legs()[position]
-
-
 def opt_component(t, leg, spot, tau_, mkt):
     """The **signed** value of one replicating-portfolio leg, per unit of notional.
 
@@ -1005,8 +980,7 @@ def opt_portfolio(t, spot, tau_, mkt):
     reproduce ``IA(1 + g)`` exactly, the strike set or the notional convention is wrong;
     :func:`check_term_end_identity` tests it.
     """
-    return sum(opt_component(t, opt_leg_code_at(position), spot, tau_, mkt)
-               for position in range(opt_leg_count()))
+    return sum(opt_component(t, leg, spot, tau_, mkt) for leg in opt_legs())
 
 
 def opt_portfolio_abs(t, spot, tau_, mkt):
@@ -1016,8 +990,7 @@ def opt_portfolio_abs(t, spot, tau_, mkt):
     prospectus quantifies the trading cost provision; the base must be stated whenever the
     factor is recalibrated.
     """
-    return sum(abs(opt_component(t, opt_leg_code_at(position), spot, tau_, mkt))
-               for position in range(opt_leg_count()))
+    return sum(abs(opt_component(t, leg, spot, tau_, mkt)) for leg in opt_legs())
 
 
 def opt_budget(t):
@@ -1549,15 +1522,9 @@ def wd_scheduled_pp(t):
     reads key ``t + 1``: the worked example's $8,000 at the 3-year point sits at month end
     36 and is taken in month 35.
     """
-    return withdrawal_schedule().lookup_float(t + 1, "wd_amount", 0.0)
-
-
-def withdrawal_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The scheduled withdrawals for the selected policy schedule."""
-    try:
-        return data.withdrawal_table().slice(wd_schedule_id())         # noqa: F821
-    except KeyError:
-        return pdn.Table((), (), ("wd_amount",))
+    table = data.withdrawal_table()                                  # noqa: F821
+    key = (wd_schedule_id(), t + 1)
+    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
 
 
 def wd_behavioral_pp(t):
@@ -1618,12 +1585,11 @@ def surr_charge_rate(t):
     following a 6-year Term End Date on this chassis, which is why the charge-expiry shock
     lapse is applied there.
     """
-    return surr_charge_for_year(duration_eom(t))
-
-
-def surr_charge_for_year(key):
-    """The withdrawal-charge table entry for completed contract years."""
-    return data.surr_charge_table().lookup_float(key, "surr_charge_rate", 0.0)  # noqa: F821
+    table = data.surr_charge_table()                                 # noqa: F821
+    key = duration_eom(t)
+    if key not in table.index:
+        return 0.0
+    return float(table.loc[key, "surr_charge_rate"])
 
 
 def wd_charge_pp(t):
@@ -1667,8 +1633,7 @@ def wd_alloc_pp(t, bucket):
     """
     if wd_pp(t) <= 0.0:
         return 0.0
-    total = sum((wd_bucket_value_pp(t, bucket_kind) for bucket_kind in (
-        Bucket.OPTION, Bucket.FIXED, Bucket.HOLDING)), 0.0)
+    total = sum(wd_bucket_value_pp(t, b) for b in (Bucket.OPTION, Bucket.FIXED, Bucket.HOLDING))
     if total <= 0.0:
         return 0.0
     return wd_pp(t) * wd_bucket_value_pp(t, bucket) / total
@@ -1722,11 +1687,6 @@ def death_ben_pp(t):
     return av_pp(t)
 
 
-def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The annual mortality table for the model point’s sex."""
-    return data.mort_table().slice(sex())                             # noqa: F821
-
-
 def mort_rate(t):
     """The annual mortality rate at the attained age and sex, times the A/E factor.
 
@@ -1741,7 +1701,7 @@ def mort_rate(t):
     [REG-R65] and the payout chassis's 108.4% is annuitant-select and deliberately not
     imported.
     """
-    rate = mortality_schedule().lookup_float(age(t), "mort_rate")
+    rate = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])   # noqa: F821
     return rate * mort_ae_factor                                     # noqa: F821
 
 
@@ -1759,12 +1719,8 @@ def lapse_rate_base(t):
     shock enters separately as :func:`lapse_rate_sc_mult`, so the two are multiplicative
     and neither is baked into the other.
     """
-    return lapse_rate_for_year(policy_year(t))
-
-
-def lapse_rate_for_year(year):
-    """The published base lapse step for the contract year."""
-    return pdn.previous(data.lapse_table(), year, "lapse_rate_base")  # noqa: F821
+    table = data.lapse_table()                                       # noqa: F821
+    return float(table.loc[table.index.asof(policy_year(t)), "lapse_rate_base"])
 
 
 def lapse_shock_year():
@@ -1777,8 +1733,9 @@ def lapse_shock_year():
     following a Term End Date [S1][S2].
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    free = [cy for cy in table.index if table.lookup_float(cy, "surr_charge_rate") <= 0.0]
-    return (min(free) if free else table.index.max_int() + 1) + 1
+    free = [cy for cy in table.index
+            if float(table.loc[cy, "surr_charge_rate"]) <= 0.0]
+    return (min(free) if free else max(table.index) + 1) + 1
 
 
 def lapse_rate_sc_mult(t):
@@ -2002,7 +1959,7 @@ def withdrawals(t):
 
 
 def claims(t, kind):
-    """Benefit outgo in month t, for one ``kind`` or, with ``kind=Claim.ALL``, all three."""
+    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
     if kind == Claim.ALL:
         return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
@@ -2375,24 +2332,24 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-Amortization = ("Pickle", 1)
+Amortization = ("Pickle", 2)
 
-Bucket = ("Pickle", 2)
+Bucket = ("Pickle", 3)
 
-Claim = ("Pickle", 3)
+Claim = ("Pickle", 4)
 
-CreditType = ("Pickle", 4)
+CreditType = ("Pickle", 5)
 
-InterimValueFamily = ("Pickle", 5)
+InterimValueFamily = ("Pickle", 6)
 
-MarketField = ("Pickle", 6)
+MarketField = ("Pickle", 7)
 
-MarketQuote = ("Pickle", 7)
+MarketQuote = ("Pickle", 8)
 
-OptionLeg = ("Pickle", 8)
+OptionLeg = ("Pickle", 9)
 
-Timing = ("Pickle", 9)
+Timing = ("Pickle", 10)
 
-enum_definitions = ("Pickle", 10)
+Sex = ("Pickle", 1)
 
-pdn = ("Module", "modelx_helpers.pdn")
+enum_definitions = ("Pickle", 11)

@@ -3,7 +3,6 @@ from enum import IntEnum
 
 
 class Claim(IntEnum):
-    INVALID = -1
     DEATH = 0
     LAPSE = 1
     MATURITY = 2
@@ -19,7 +18,6 @@ class MarketField(IntEnum):
 
 
 class OptionLeg(IntEnum):
-    INVALID = -1
     ATM_CALL = 0
     OTM_CALL = 1
     OTM_PUT = 2
@@ -30,13 +28,11 @@ class OptionLeg(IntEnum):
 
 
 class MarketQuote(IntEnum):
-    INVALID = -1
     CURRENT = 0
     TERM_START = 1
 
 
 class Timing(IntEnum):
-    INVALID = -1
     BEF_CREDIT = 0
     BEF_ROLL = 1
     BEF_WD = 2
@@ -48,14 +44,12 @@ class Timing(IntEnum):
 
 
 class Bucket(IntEnum):
-    INVALID = -1
     OPTION = 0
     FIXED = 1
     HOLDING = 2
 
 
 class CreditType(IntEnum):
-    INVALID = -1
     CAP = 0
     STEP = 1
     EDGE = 2
@@ -63,7 +57,6 @@ class CreditType(IntEnum):
 
 
 class InterimValueFamily(IntEnum):
-    INVALID = -1
     portfolio = 0
     notional = 1
     delta = 2
@@ -71,6 +64,10 @@ class InterimValueFamily(IntEnum):
 
 
 class Amortization(IntEnum):
-    INVALID = -1
     straight_line = 0
     updated_expiry = 1
+
+
+class Sex(IntEnum):
+    M = 0
+    F = 1
