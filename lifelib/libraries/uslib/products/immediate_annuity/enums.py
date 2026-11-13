@@ -34,3 +34,8 @@ class MortBasis(IntEnum):
 class Kind(IntEnum):
     REFUND = 0
     ALL = 1
+
+
+class DiscConvention(IntEnum):
+    compound = 0
+    simple = 1

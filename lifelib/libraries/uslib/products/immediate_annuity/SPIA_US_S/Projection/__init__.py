@@ -925,9 +925,9 @@ def commuted_value(t):
         if inst == 0.0:
             continue
         yrs = (s - t) / 12.0
-        if conv == "compound":
+        if conv == DiscConvention.compound:
             v = (1.0 + j) ** (-yrs)
-        elif conv == "simple":
+        elif conv == DiscConvention.simple:
             v = max(0.0, 1.0 - j * yrs)
         else:
             raise ValueError("invalid commute_disc_convention")
@@ -1260,8 +1260,6 @@ commute_disc_rate_base = 0.04
 
 cmt10_shift = 0.0
 
-commute_disc_convention = "compound"
-
 commute_min_amount = 5000.0
 
 commute_min_payment = 100.0
@@ -1280,4 +1278,8 @@ MortBasis = ("Pickle", 5)
 
 Kind = ("Pickle", 6)
 
-enum_definitions = ("Pickle", 7)
+DiscConvention = ("Pickle", 7)
+
+commute_disc_convention = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)
