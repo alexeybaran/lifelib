@@ -543,6 +543,21 @@ def scenario_table():
     return data.rate_scenario().loc[scenario_id()]                   # noqa: F821
 
 
+def scenario_rate(t, field):
+    """Step-function lookup of column ``name`` in the model point's rate scenario.
+
+    Each row of *rate_scenario.csv* states the level that holds from its own month ``t``
+    until the next row of the same scenario, so a flat path is one row at ``t = 0``.
+    """
+    sub = scenario_table()
+    if field == RateColumn.mva_ref_yield:
+        return float(sub.loc[sub.index.asof(t), "mva_ref_yield"])
+    elif field == RateColumn.market_rate:
+        return float(sub.loc[sub.index.asof(t), "market_rate"])
+    else:
+        raise ValueError("invalid rate column")
+
+
 def market_rate(t):
     """MR(t): the market competitor rate driving renewal declarations and dynamic lapse.
 
@@ -550,8 +565,7 @@ def market_rate(t):
     50% A / 50% AA spread less the pricing spread [R2 6.B.5]; the model takes it as an
     exogenous input because the index is a state-filed variable **[std]**.
     """
-    sub = scenario_table()
-    return float(sub.loc[sub.index.asof(t), "market_rate"])
+    return scenario_rate(t, RateColumn.market_rate)
 
 
 def mva_ref_yield(t):
@@ -560,8 +574,7 @@ def mva_ref_yield(t):
     The source design is Barclay's US Credit Index with a state-varying formula [S8]; the
     model takes a scalar series rather than hard-coding an index.
     """
-    sub = scenario_table()
-    return float(sub.loc[sub.index.asof(t), "mva_ref_yield"])
+    return scenario_rate(t, RateColumn.mva_ref_yield)
 
 
 def credit_rate(t):
@@ -1750,6 +1763,8 @@ Kind = ("Pickle", 10)
 
 Schedule = ("Pickle", 1)
 
+RateColumn = ("Pickle", 11)
+
 Sex = ("Pickle", 2)
 
-enum_definitions = ("Pickle", 11)
+enum_definitions = ("Pickle", 12)
