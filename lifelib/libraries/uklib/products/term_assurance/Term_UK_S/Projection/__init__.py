@@ -607,10 +607,16 @@ def mort_rate_life(t, life=1):
     The table rate, then on the *select* basis the select factor and the **[std]** 75%
     proxy scaling, then the selective-lapsation loading.  Capped at 1.
     """
-    q = mort_rate_base(t, life)
+    return min(1.0, mortality_before_lapse_loading(duration(t), life) * sel_lapse_factor(t))
+
+
+def mortality_before_lapse_loading(year, life):
+    """Annual attained-age mortality including the select-duration adjustment."""
+    month = 12 * year
+    q = mort_rate_base(month, life)
     if mort_basis() == "select":
-        q = q * select_factor(t) * mort_scale                        # noqa: F821
-    return min(1.0, q * sel_lapse_factor(t))
+        q = q * select_factor(month) * mort_scale                    # noqa: F821
+    return q
 
 
 def mort_rate(t):
@@ -714,7 +720,12 @@ def lapse_rate_mth(t):
     would understate the decrement; the gap is wider here because the lapse rates are an
     order of magnitude larger than the mortality ones.
     """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
+    return monthly_lapse_in_year(duration(t))
+
+
+def monthly_lapse_in_year(year):
+    """Convert the annual rebroking-adjusted lapse rate once per policy year."""
+    return 1.0 - (1.0 - lapse_rate(12 * year)) ** (1.0 / 12.0)
 
 
 def pols_if(t):
@@ -1082,7 +1093,12 @@ def inflation_factor(t):
     Steps on the policy anniversary rather than monthly, which is how the notes write
     it: ``e(t) = 30 x 1.03^t`` with ``t`` the policy year.  1 in the first policy year.
     """
-    return (1.0 + inflation_rate) ** duration(t)                     # noqa: F821
+    return inflation_in_year(duration(t))
+
+
+def inflation_in_year(year):
+    """Expense inflation at the start of the policy year."""
+    return (1.0 + inflation_rate) ** year                            # noqa: F821
 
 
 def expenses(t):
