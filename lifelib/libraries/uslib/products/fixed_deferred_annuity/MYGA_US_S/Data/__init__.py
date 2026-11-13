@@ -76,7 +76,7 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)
 
@@ -96,7 +96,7 @@ def surr_charge_table():
     return pdn.group_record({Schedule[name]: table for name, table in schedules.items()})
 
 
-def surr_charge_age_cap_table() -> "modelx_helpers.immutable_inputs.Table":
+def surr_charge_age_cap_table():
     """The attained-age cap on the renewal surrender charge, from *surr_charge_age_cap.csv*."""
     return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / surr_charge_age_cap_file, index_col="age"), columns=("surr_charge_cap",))
@@ -127,7 +127,7 @@ def withdrawal_table():
         index_col=["wd_schedule_id", "t"]), columns=("wd_amount",), groups=("wd_schedule_id",))
 
 
-def mva_factor_table() -> "modelx_helpers.immutable_inputs.Table":
+def mva_factor_table():
     """The declared-differential MVA duration factors, from *mva_factor_table.csv*."""
     return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / mva_factor_file, index_col="years_remaining"), columns=("factor_lo", "factor_hi"))
