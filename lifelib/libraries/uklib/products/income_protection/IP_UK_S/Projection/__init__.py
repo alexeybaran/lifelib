@@ -611,6 +611,11 @@ def claim_rate_vectors():
     return rec, dth, [(1.0 - r) * (1.0 - d) for r, d in zip(rec, dth)]
 
 
+def claim_rate_buffers():
+    """Read-only numeric use of the same per-duration rates."""
+    return tuple(arrays.array("d", rates) for rates in claim_rate_vectors())
+
+
 def esc_rate():
     """j = min(max(RPI, 0), 10%): the escalation rate [S1][S2].
 
@@ -747,19 +752,20 @@ def sick_cohorts(t):
     terminates at the policy end date, the end of month ``proj_len() - 1``, without
     value, so there is no run-off tail for the roll-forward to reconcile against.
     """
+    return list(sick_cohort_buffer(t))
+
+
+def sick_cohort_buffer(t):
+    """The in-claim vector owned by this month’s Cell cache."""
     n = max_dur()
     if t < 0 or t >= proj_len():
-        return [0.0] * n
+        return arrays.array("d", [0.0]) * n
     if t == 0:
         seed = pols_if_init() if status() == "in_claim" else 0.0
         z0 = claim_duration_months() + 1
-        return [seed if z == z0 else 0.0 for z in pdn.periods(1, n + 1)]
-    prev = sick_cohorts(t - 1)
-    surv = claim_rate_vectors()[2]
-    out = [pols_inception(t - 1)]
-    for z in pdn.periods(1, n):
-        out.append(prev[z - 1] * surv[z - 1])
-    return out
+        return arrays.array("d", (seed if z == z0 else 0.0 for z in pdn.periods(1, n + 1)))
+    return pdn.shift_scale(sick_cohort_buffer(t - 1), claim_rate_buffers()[2],
+                           pols_inception(t - 1))
 
 
 def pols_sick_dur(t, z):
@@ -783,9 +789,7 @@ def pols_sick_surv(t):
     the benefit is paid on: the benefit is monthly in arrears, so a claim incepting at
     the end of month t is not paid until the end of month ``t + 1``.
     """
-    v = sick_cohorts(t)
-    surv = claim_rate_vectors()[2]
-    return pdn.sum_values((a * b for (a, b) in pdn.zip_values((v, surv)) if a != 0.0))
+    return pdn.sum_nonzero_products(sick_cohort_buffer(t), claim_rate_buffers()[2])
 
 
 def pols_recovery(t):
@@ -794,9 +798,7 @@ def pols_recovery(t):
     ``sum over z of l_S(t, z) rho_m(z)``.  Where they go depends on
     :func:`recovery_basis`.
     """
-    v = sick_cohorts(t)
-    rec = claim_rate_vectors()[0]
-    return pdn.sum_values((a * b for (a, b) in pdn.zip_values((v, rec)) if a != 0.0))
+    return pdn.sum_nonzero_products(sick_cohort_buffer(t), claim_rate_buffers()[0])
 
 
 def pols_death_sick(t):
@@ -1218,3 +1220,5 @@ pd = ("Module", "pandas")
 
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+arrays = ("Module", "array")
