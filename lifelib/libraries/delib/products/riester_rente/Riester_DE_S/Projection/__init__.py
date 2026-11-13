@@ -1081,6 +1081,11 @@ def income_ref(k):
     return policy_income_schedule().lookup_float(k - 1, "income")
 
 
+def policy_zulage_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The allowance drivers selected for this policy's household."""
+    return data.zulage_schedule_by_id().slice(zulage_id())
+
+
 def zulage_entitlement_pp(k):
     """Z*(k): the full § 84/85 *Altersvorsorgezulage* entitlement of contribution year k.
 
@@ -1093,11 +1098,11 @@ def zulage_entitlement_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    row = pdn.row(data.prepared_zulage_schedule_rows(), (zulage_id(), k))               # noqa: F821
-    return (grundzulage * float(pdn.lookup_object(row, "unmittelbar"))                  # noqa: F821
-            + kinderzulage_pre2008 * float(pdn.lookup_object(row, "n_kinder_pre2008"))  # noqa: F821
-            + kinderzulage_post2008 * float(pdn.lookup_object(row, "n_kinder_post2008"))  # noqa: F821
-            + berufseinsteiger_bonus * float(pdn.lookup_object(row, "bonus")))          # noqa: F821
+    schedule = policy_zulage_schedule()
+    return (grundzulage * schedule.lookup_float(k, "unmittelbar")              # noqa: F821
+            + kinderzulage_pre2008 * schedule.lookup_float(k, "n_kinder_pre2008")  # noqa: F821
+            + kinderzulage_post2008 * schedule.lookup_float(k, "n_kinder_post2008")  # noqa: F821
+            + berufseinsteiger_bonus * schedule.lookup_float(k, "bonus"))     # noqa: F821
 
 
 def mindesteigenbeitrag_pp(k):
