@@ -226,7 +226,7 @@ def pols_if_init():
 
 def premium_mode():
     """The premium mode of the selected model point: A, SA, Q or M [S6]."""
-    return model_point()["premium_mode"]
+    return PremiumMode[model_point()["premium_mode"]]
 
 
 def band():
@@ -235,9 +235,21 @@ def band():
     return 1 if f < 250000 else 2 if f < 500000 else 3 if f < 1000000 else 4
 
 
+def plan_term_years():
+    """The level premium period in years of the policy's plan code (D31: one branch per member)."""
+    if plan() == Plan.T10:
+        return 10
+    elif plan() == Plan.T20:
+        return 20
+    elif plan() == Plan.T30:
+        return 30
+    else:
+        raise ValueError("invalid plan")
+
+
 def policy_term():
     """The level premium period in years, from the plan code."""
-    return int(plan())
+    return plan_term_years()
 
 
 def proj_len():
@@ -295,13 +307,13 @@ def modal_factor():
     carrier's own scale drops in without a formula change.
     """
     m = premium_mode()
-    if m == "A":
+    if m == PremiumMode.A:
         return modal_factor_a                                        # noqa: F821
-    elif m == "SA":
+    elif m == PremiumMode.SA:
         return modal_factor_sa                                       # noqa: F821
-    elif m == "Q":
+    elif m == PremiumMode.Q:
         return modal_factor_q                                        # noqa: F821
-    elif m == "M":
+    elif m == PremiumMode.M:
         return modal_factor_m                                        # noqa: F821
     else:
         raise ValueError("invalid premium mode")
@@ -313,7 +325,7 @@ def prem_cycle():
     Arithmetic of the mode rather than an assumption, so it is written here rather than
     held in a Reference.
     """
-    return {"A": 12, "SA": 6, "Q": 3, "M": 1}[premium_mode()]
+    return {PremiumMode.A: 12, PremiumMode.SA: 6, PremiumMode.Q: 3, PremiumMode.M: 1}[premium_mode()]
 
 
 def prem_due(t):
@@ -694,4 +706,6 @@ Sex = ("Pickle", 2)
 
 RateClass = ("Pickle", 3)
 
-enum_definitions = ("Pickle", 4)
+PremiumMode = ("Pickle", 4)
+
+enum_definitions = ("Pickle", 5)

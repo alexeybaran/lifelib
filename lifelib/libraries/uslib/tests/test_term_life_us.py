@@ -18,6 +18,7 @@ import modelx as mx
 import pytest
 
 from us_registry import MODELS, LIB
+from lifelib.libraries.uslib.products.term_life.enums import PremiumMode
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -194,7 +195,7 @@ def test_premium_mode_drives_the_instalments(term_life):
     Reference rather than by a model point, because the specimen prices only this cell.
     """
     anchor = term_life.Projection[1]
-    assert anchor.premium_mode() == "A"
+    assert anchor.premium_mode() == PremiumMode.A
     assert anchor.modal_factor() == 1.0
     assert anchor.premium_pp(0) == 140.0
     assert all(anchor.premium_pp(t) == 0.0 for t in range(1, 12))
