@@ -643,7 +643,16 @@ def lapse_rate(t):
 
 def lapse_rate_mth(t):
     """w_m(y) = 1 - (1 - w)^(1/12): the monthly lapse rate **[std]**."""
+    if lapse_crossover_beta <= 0.0:                                 # noqa: F821
+        if cessation_mths() > 0 and t >= cessation_mths():
+            return 0.0
+        return monthly_unstressed_lapse(policy_year(t))
     return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
+
+
+def monthly_unstressed_lapse(year):
+    """Convert the base annual lapse rate once per contractual year."""
+    return 1.0 - (1.0 - min(1.0, lapse_schedule_rate(year))) ** (1.0 / 12.0)
 
 
 def pols_if(t):
