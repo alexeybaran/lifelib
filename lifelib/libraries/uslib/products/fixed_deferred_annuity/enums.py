@@ -57,7 +57,3 @@ class Kind(IntEnum):
 class RateColumn(IntEnum):
     mva_ref_yield = 0
     market_rate = 1
-
-class FactorColumn(IntEnum):
-    factor_lo = 0
-    factor_hi = 1

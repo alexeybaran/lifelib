@@ -283,7 +283,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return data.model_point_table().slice(point_id)
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
@@ -298,7 +298,7 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def tax_status():
@@ -483,27 +483,17 @@ def duration(t):
 
 def age(t):
     """The attained age (ANB) during month t, ``age_at_entry() + duration(t)``."""
-    return attained_age(duration(t))
-
-
-def attained_age(completed_years):
-    """The attained age for a completed policy year."""
-    return age_at_entry() + completed_years
-
-
-def guar_period_months():
-    """The guarantee period in months."""
-    return 12 * guar_period()
+    return age_at_entry() + duration(t)
 
 
 def gp_index(t):
     """The index of the guarantee period containing month t: 1 for ``t = 0 .. 12n - 1``."""
-    return t // guar_period_months() + 1
+    return t // (12 * guar_period()) + 1
 
 
 def gp_start_month(t):
     """The first month of the guarantee period containing month t; 0 for the first period."""
-    return guar_period_months() * (gp_index(t) - 1)
+    return 12 * guar_period() * (gp_index(t) - 1)
 
 
 def gp_end(t):
@@ -512,7 +502,7 @@ def gp_end(t):
     ``12 n gp_index(t) - (t + 1)``: 59 at ``t = 0`` and 0 at ``t = 12n - 1``, the month
     that ends the period.
     """
-    return guar_period_months() * gp_index(t) - (t + 1)
+    return 12 * guar_period() * gp_index(t) - (t + 1)
 
 
 def in_gp_window(t):
@@ -525,7 +515,7 @@ def in_gp_window(t):
     annuitization is elected. Under ``annual_redeclare`` there is exactly one window, at
     ``t = 12n``, the month after the initial term.
     """
-    n12 = guar_period_months()
+    n12 = 12 * guar_period()
     if t <= 0 or t % n12 != 0:
         return False
     if renewal_architecture() == Renewal.annual_redeclare:
@@ -540,7 +530,7 @@ def redeclare_month(t):
     guarantee period, under ``annual_redeclare`` the first month of the current contract
     year.
     """
-    n12 = guar_period_months()
+    n12 = 12 * guar_period()
     if t < n12:
         return 0
     if renewal_architecture() == Renewal.rollover:
@@ -548,18 +538,24 @@ def redeclare_month(t):
     return 12 * duration(t)
 
 
-def scenario_table() -> "modelx_helpers.immutable_inputs.Table":
+def scenario_table():
     """The rate scenario selected for this policy."""
-    return data.rate_scenario().slice(scenario_id())                   # noqa: F821
+    return data.rate_scenario().loc[scenario_id()]                   # noqa: F821
 
 
-def scenario_rate(t, name):
+def scenario_rate(t, field):
     """Step-function lookup of column ``name`` in the model point's rate scenario.
 
     Each row of *rate_scenario.csv* states the level that holds from its own month ``t``
     until the next row of the same scenario, so a flat path is one row at ``t = 0``.
     """
-    return scenario_table().previous(t, name)
+    sub = scenario_table()
+    if field == RateColumn.mva_ref_yield:
+        return float(sub.loc[sub.index.asof(t), "mva_ref_yield"])
+    elif field == RateColumn.market_rate:
+        return float(sub.loc[sub.index.asof(t), "market_rate"])
+    else:
+        raise ValueError("invalid rate column")
 
 
 def market_rate(t):
@@ -589,7 +585,7 @@ def credit_rate(t):
     run sets ``renewal_spread = 0``, so the credited rate equals the competitor rate and
     the dynamic lapse term is exactly zero.
     """
-    if t < guar_period_months():
+    if t < 12 * guar_period():
         return declared_rate_initial()
     return max(gmir(), market_rate(redeclare_month(t)) - renewal_spread)  # noqa: F821
 
@@ -638,24 +634,14 @@ def prem_to_av_pp(t):
     return av_pp_init() if t == 0 else 0.0
 
 
-def has_withdrawal_schedule():
-    """Whether the input contains the selected withdrawal schedule."""
-    return wd_schedule_id() in data.withdrawal_table()               # noqa: F821
-
-
-def withdrawal_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The selected schedule, indexed by the original policy month."""
-    return data.withdrawal_table().slice(wd_schedule_id())            # noqa: F821
-
-
 def wd_scheduled_pp(t):
     """The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.
 
     An exact-key lookup on ``(wd_schedule_id, t)`` with ``t`` the 0-based policy month.
     """
-    if not has_withdrawal_schedule():
-        return 0.0
-    return withdrawal_schedule().lookup_float(t, "wd_amount", 0.0)
+    table = data.withdrawal_table()                                  # noqa: F821
+    key = (wd_schedule_id(), t)
+    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
 
 
 def wd_pp(t):
@@ -841,11 +827,10 @@ def surr_charge_age_cap(t):
     """
     table = data.surr_charge_age_cap_table()                         # noqa: F821
     attained = age(t)
-    lo = int(min(table.index))
-    hi = table.index.max_int()
+    lo, hi = int(table.index.min()), int(table.index.max())
     if attained < lo:
         return 1.0
-    return table.lookup_float(min(attained, hi), "surr_charge_cap")
+    return float(table.loc[min(attained, hi), "surr_charge_cap"])
 
 
 def surr_charge_rate(t):
@@ -858,13 +843,11 @@ def surr_charge_rate(t):
     schedule = surr_charge_id(t)
     if schedule == Schedule.none or in_gp_window(t):
         return 0.0
-    if schedule not in data.surr_charge_table():                    # noqa: F821
-        return 0.0
-    key = surr_charge_year(t)
-    table = data.surr_charge_table().slice(schedule)                 # noqa: F821
+    key = (schedule, surr_charge_year(t))
+    table = data.surr_charge_table()                                 # noqa: F821
     if key not in table.index:
         return 0.0
-    return min(table.lookup_float(key, "surr_charge_rate"), surr_charge_age_cap(t))
+    return min(float(table.loc[key, "surr_charge_rate"]), surr_charge_age_cap(t))
 
 
 def mva_term(t):
@@ -877,7 +860,7 @@ def mva_term(t):
     serves as the geometric branch's ``tau``, which the notes define as days to maturity
     / 365.25. The two divisors differ in the sources; on exact twelfths they cannot.
     """
-    if renewal_architecture() == Renewal.annual_redeclare and t >= guar_period_months():
+    if renewal_architecture() == Renewal.annual_redeclare and t >= 12 * guar_period():
         return 0.0
     months_to_year_end = 12 * policy_year(t) - (t + 1)
     whole_years_left = guar_period() * gp_index(t) - policy_year(t)
@@ -937,7 +920,14 @@ def mva_duration_factor(t):
     table = data.mva_factor_table()                                  # noqa: F821
     column = ("factor_lo" if credit_rate(t) < mva_factor_rate_split  # noqa: F821
               else "factor_hi")
-    return table.interpolate_float(mva_term(t), column)
+    years = mva_term(t)
+    last = int(table.index.max())
+    lower = int(math.floor(years))                                   # noqa: F821
+    if lower >= last:
+        return float(table.loc[last, column])
+    f0 = float(table.loc[lower, column])
+    f1 = float(table.loc[lower + 1, column])
+    return f0 + (f1 - f0) * (years - lower)
 
 
 def mva_rate(t):
@@ -1106,16 +1096,6 @@ def tax_basis_pp(t):
     return opening - (wd_pp(t) - taxable_wd_pp(t))
 
 
-def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The original mortality scale selected by the policy's sex."""
-    return data.mort_table().slice(sex())                            # noqa: F821
-
-
-def mort_rate_for_year(completed_years):
-    """The annual mortality rate for a completed policy year."""
-    return mortality_schedule().lookup_float(attained_age(completed_years), "mort_rate")
-
-
 def mort_rate(t):
     """The annual mortality rate at the attained age and sex, from *mort_table.csv*.
 
@@ -1125,17 +1105,12 @@ def mort_rate(t):
     swap it in by repointing ``Data.mort_table_file``. Mortality is second-order on this
     product: death pays the full account value with no charge and no MVA.
     """
-    return mort_rate_for_year(duration(t))
+    return float(data.mort_table().loc[(age(t), sex()), "mort_rate"])   # noqa: F821
 
 
 def mort_rate_mth(t):
     """q(t): the monthly mortality rate, ``1 - (1 - q_x)^(1/12)``."""
-    return mort_rate_mth_for_year(duration(t))
-
-
-def mort_rate_mth_for_year(completed_years):
-    """The monthly mortality rate shared by months of the same policy year."""
-    return 1.0 - (1.0 - mort_rate_for_year(completed_years)) ** (1.0 / 12.0)
+    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
 def gmir_factor():
@@ -1437,7 +1412,7 @@ def withdrawals(t):
 
 
 def claims(t, kind):
-    """Benefit outgo in month t, for one ``kind`` or, with ``Kind.ALL``, all four."""
+    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all four."""
     if kind == Kind.ALL:
         return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
                 + claims(t, Kind.ANNUITIZATION) + claims(t, Kind.MATURITY))
@@ -1770,26 +1745,26 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-Renewal = ("Pickle", 1)
+Renewal = ("Pickle", 3)
 
-FreeRule = ("Pickle", 2)
+FreeRule = ("Pickle", 4)
 
-MgsvWithdrawal = ("Pickle", 3)
+MgsvWithdrawal = ("Pickle", 5)
 
-MvaFamily = ("Pickle", 4)
+MvaFamily = ("Pickle", 6)
 
-Cap = ("Pickle", 5)
+Cap = ("Pickle", 7)
 
-AvTiming = ("Pickle", 6)
+AvTiming = ("Pickle", 8)
 
-PolTiming = ("Pickle", 7)
+PolTiming = ("Pickle", 9)
 
-Kind = ("Pickle", 8)
+Kind = ("Pickle", 10)
 
-enum_definitions = ("Pickle", 9)
-
-Schedule = ("Pickle", 10)
+Schedule = ("Pickle", 1)
 
 RateColumn = ("Pickle", 11)
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 2)
+
+enum_definitions = ("Pickle", 12)

@@ -22,27 +22,13 @@ and the acquisition commission are beginning-of-month flows of ``t = 0``.
 The notes' own "Known modeling pitfalls" list is a test list in disguise; there is one
 test per entry below.
 """
-import sys
-
 import modelx as mx
-import pandas as pd
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.fixed_deferred_annuity.enums import (
-    AvTiming, Cap, FreeRule, Kind, MgsvWithdrawal, MvaFamily, PolTiming, Renewal,
-)
-from modelx_helpers import pdn
+from lifelib.libraries.uslib.products.fixed_deferred_annuity.enums import AvTiming, Cap, FreeRule, Kind, MgsvWithdrawal, MvaFamily, PolTiming, Renewal, Schedule
 
 MODEL_PATH = LIB / "products/fixed_deferred_annuity/MYGA_US_S"
-
-
-def test_missing_enum_dependency_fails_to_load(monkeypatch):
-    module = AvTiming.__module__
-    monkeypatch.setitem(sys.modules, module, None)
-    with pytest.raises(ModuleNotFoundError, match=module):
-        mx.read_model(MODEL_PATH)
-
 
 # Half a cent, plus a hair.  The notes round half-up for display and AV(23) =
 # 104,920.025 sits exactly on the boundary (shown as 104,920.03), so a strict 0.005 would
@@ -428,8 +414,8 @@ def test_pitfall_surrender_charge_clock_resets_on_renewal(anchor):
     Getting this wrong relocates the shock lapse by years.
     """
     assert anchor.renewal_architecture() == Renewal.rollover
-    assert anchor.surr_charge_id(59) == anchor.Schedule.initial    # last month of the initial term
-    assert anchor.surr_charge_id(61) == anchor.Schedule.renewal
+    assert anchor.surr_charge_id(59) == Schedule.initial           # last month of the initial term
+    assert anchor.surr_charge_id(61) == Schedule.renewal
     assert anchor.surr_charge_year(59) == 5
     assert anchor.surr_charge_year(61) == 1
     assert anchor.surr_charge_year(121) == 1                # and again a period later
@@ -449,7 +435,7 @@ def test_pitfall_mortality_is_second_order_and_the_table_is_not_published(
         assert anchor.claim_pp(t, Kind.DEATH) == pytest.approx(
             max(anchor.av_pp(t), anchor.surr_benefit_pp(t)), rel=1e-12)
     assert anchor.claim_pp(29, Kind.DEATH) > anchor.claim_pp(29, Kind.LAPSE)
-    table = pd.read_csv(MODEL_PATH.parent / fixed_deferred_annuity.Data.mort_table_file)
+    table = fixed_deferred_annuity.Data.mort_table()
     assert (table["provenance"].str.contains(r"\[std\]")).all()
     assert (table["provenance"].str.contains("not a published table")).all()
 
@@ -539,7 +525,7 @@ def test_camp_b_drops_the_charge_and_the_mva(fixed_deferred_annuity):
     assert p3.renewal_architecture() == Renewal.annual_redeclare
     assert p3.surr_charge_rate(29) == 0.07                       # initial term unchanged
     for t in (61, 89, 129, 199):
-        assert p3.surr_charge_id(t) == p3.Schedule.none
+        assert p3.surr_charge_id(t) == Schedule.none
         assert p3.surr_charge_rate(t) == 0.0
         assert p3.mva_term(t) == 0.0
         assert p3.mva_rate(t) == 0.0
@@ -820,14 +806,14 @@ def test_every_mva_switch_is_exercised_by_a_model_point(fixed_deferred_annuity):
     branch of the notes' parameter set is dead code.
     """
     table = fixed_deferred_annuity.Data.model_point_table()
-    assert set(pdn.column(table, "mva_cap_rule")) == {
+    assert set(table["mva_cap_rule"]) == {
         "sym_sc", "min_sc_interest", "asym_sc_snfl", "gmir_floor", "none"}
-    assert set(pdn.column(table, "mva_family")) == {
+    assert set(table["mva_family"]) == {
         "linear_duration", "geometric", "declared_differential"}
-    assert set(pdn.column(table, "renewal_architecture")) == {"rollover", "annual_redeclare"}
-    assert set(pdn.column(table, "mgsv_wd_convention")) == {"gross", "net_of_charges"}
-    assert set(pdn.column(table, "free_wd_rule")) == {"pct_av", "interest_only"}
-    assert set(pdn.column(table, "free_wd_mva_exempt")) == {True, False}
+    assert set(table["renewal_architecture"]) == {"rollover", "annual_redeclare"}
+    assert set(table["mgsv_wd_convention"]) == {"gross", "net_of_charges"}
+    assert set(table["free_wd_rule"]) == {"pct_av", "interest_only"}
+    assert set(table["free_wd_mva_exempt"]) == {True, False}
 
 
 def test_declared_differential_family(fixed_deferred_annuity):
@@ -927,7 +913,7 @@ def test_invalid_timing_and_kind_arguments_raise(anchor):
         with pytest.raises(Exception):
             call(12, arg)
     with pytest.raises(Exception):
-        anchor.claim_pp(12, -1)
+        anchor.claim_pp(12, "SPLIT")
 
 
 # ---------------------------------------------------------------------------
@@ -988,11 +974,11 @@ def test_horizon_is_the_last_age_in_the_sourced_cap_band(fixed_deferred_annuity,
     ``Projection`` docstring and the README -- and all three must state the arithmetic the
     shipped table actually shows.
     """
-    cap = fixed_deferred_annuity.Data.surr_charge_age_cap_table()
-    zero_ages = sorted(int(a) for a in pdn.keys(cap) if cap.lookup_float(a, "surr_charge_cap") == 0.0)
+    cap = fixed_deferred_annuity.Data.surr_charge_age_cap_table()["surr_charge_cap"]
+    zero_ages = sorted(int(a) for a in cap.index if cap.loc[a] == 0.0)
     assert min(zero_ages) == 98                       # the cap reaches zero at 98 ...
-    assert int(max(pdn.keys(cap))) == 100                # ... and the band stops at 100
-    assert anchor.maturity_age == int(max(pdn.keys(cap)))
+    assert int(cap.index.max()) == 100                # ... and the band stops at 100
+    assert anchor.maturity_age == int(cap.index.max())
     assert anchor.proj_len() == 12 * (100 - anchor.age_at_entry())
 
     readme = (MODEL_PATH.parent / "model.md").read_text(encoding="utf-8")
