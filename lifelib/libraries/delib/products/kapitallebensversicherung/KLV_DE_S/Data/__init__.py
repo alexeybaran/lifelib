@@ -139,8 +139,8 @@ def model_point_table():
     without a ``provenance`` column: a model point is a *configuration* — one policy's own
     terms — rather than an assumption, and that exemption is the only one in the library.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table():
@@ -150,9 +150,10 @@ def mort_table():
     not redistributed here.  See the Space docstring for the anchor that fixes it and for
     what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / mort_table_file)                               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def lapse_table():
@@ -163,8 +164,8 @@ def lapse_table():
     The ``policy_year`` key is the **contractual, 1-based** label, read through
     ``Projection.policy_year(t) = t + 1`` rather than by the 0-based ``t`` directly.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
 
 
 def surplus_rate_table():
@@ -177,9 +178,9 @@ def surplus_rate_table():
     ``policy_year`` key is the **contractual, 1-based** label, read through
     ``Projection.policy_year(t) = t + 1``.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / surplus_rate_file,                             # noqa: F821
-        index_col=["scenario_id", "policy_year"])
+        index_col=["scenario_id", "policy_year"]))
 
 
 def cost_table():
@@ -191,8 +192,8 @@ def cost_table():
     what the insurer expects to spend — because the difference between them **is** the
     *Kostenüberschuss*.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / cost_file, index_col="cost_id")                # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / cost_file, index_col="cost_id"))                # noqa: F821
 
 
 def freq_loading_table():
@@ -203,8 +204,10 @@ def freq_loading_table():
     unterjährige Zahlweise — an instalment of an annual *Versicherungsperiode* — and is
     inert where the sub-annual period is genuine.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / freq_loading_file)                             # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 def deckrv_table():
@@ -216,87 +219,8 @@ def deckrv_table():
     whole term**, which is why the German in-force book is a stack of cohorts and why they
     are keyed by ``issue_year`` rather than by projection year.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / deckrv_file, index_col="issue_year")           # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate_1st',),
-                        indexing='loc')
-
-
-
-def prepared_freq_loading_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_loading_table(),
-                        columns=('prem_freq_load',),
-                        indexing='loc')
-
-
-
-def prepared_cost_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(cost_table(),
-                        columns=('alpha_rate', 'beta_rate', 'gamma_rate', 'expense_infl', 'claim_expense'),
-                        indexing='loc')
-
-
-def prepared_cost_table_rows():
-    """Own pandas-style rows for repeated calculation selection."""
-    return pdn.table(cost_table(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_deckrv_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(deckrv_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_freq_loading_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_surplus_rate_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(surplus_rate_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_surplus_rate_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(surplus_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_deckrv_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(deckrv_table().index)
-
-
-
-def prepared_freq_loading_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(freq_loading_table().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / deckrv_file, index_col="issue_year"))           # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -319,3 +243,7 @@ deckrv_file = "deckrv_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+PremFreq = ("Pickle", 2)
