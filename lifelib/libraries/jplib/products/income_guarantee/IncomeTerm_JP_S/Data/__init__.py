@@ -112,8 +112,8 @@ def model_point_table():
     ``technical-notes.md``; the rest exercise the product's variants, its optional
     modules and its edge cases.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -125,9 +125,9 @@ def mort_table():
     anchors and which are interpolated.  Read as the *table* rate: the best-estimate
     factor and the rate class factor are applied in ``Projection.mort_rate``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def lapse_table():
@@ -138,8 +138,8 @@ def lapse_table():
     protection chassis because nothing product-specific exists — the national
     household survey does not break 収入保障保険 out at all.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def rate_class_table():
@@ -151,44 +151,9 @@ def rate_class_table():
     publishes, so every factor here is **[std]**.  The ``mix_weight`` column is the
     illustrative mix that normalizes the four factors to a mean of 1.000.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rate_class_file, index_col="rate_class")       # noqa: F821
-
-
-def prepared_rate_class_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(rate_class_table(),
-                        columns=('class_factor',),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_rate_class_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(rate_class_table().index)
-
-
-def prepared_rate_class_table_calculation():
-    """Own original input values for calculation operations."""
-    return pdn.table(rate_class_table(), groups=(), rows=False, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / rate_class_file)               # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index("rate_class"))                  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -205,3 +170,7 @@ rate_class_file = "rate_class_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+RateClass = ("Pickle", 2)
