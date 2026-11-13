@@ -814,8 +814,9 @@ def annuity_mort_rate(x, tau):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    qb = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "qx_base")
-    im = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "improvement")
+    rates = data.annuity_mortality_rates()
+    qb = rates.lookup_float(x, "qx_base")
+    im = rates.lookup_float(x, "improvement")
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 

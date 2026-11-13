@@ -276,6 +276,12 @@ def prepared_annuity_mort_table_scalar_at() -> "modelx_helpers.immutable_inputs.
     return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
 
 
+def annuity_mortality_rates() -> "modelx_helpers.immutable_inputs.Table":
+    """Own the two numerical columns used to value annuity survival."""
+    return pdn.table(annuity_mort_table(), columns=('qx_base', 'improvement'),
+                     indexing='at', preserve_scalar_types=True)
+
+
 def prepared_zulage_schedule_rows():
     """Own calculation selection; retain the public source dependency."""
     return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
