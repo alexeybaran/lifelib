@@ -593,6 +593,11 @@ def mort_rate_base(t, life=1):
     return mortality_table_rate(age(t, life), life)
 
 
+def is_select_mortality():
+    """Whether select-duration rates apply to the policy."""
+    return mort_basis() == "select"
+
+
 def mort_rate_life(t, life=1):
     """The annual mortality (incl. TI) rate applied to ``life`` in month t.
 
@@ -600,7 +605,7 @@ def mort_rate_life(t, life=1):
     proxy scaling, then the selective-lapsation loading.  Capped at 1.
     """
     q = mort_rate_base(t, life)
-    if mort_basis() == "select":
+    if is_select_mortality():
         q = q * select_factor(t) * mort_scale                        # noqa: F821
     return min(1.0, q * sel_lapse_factor(t))
 
@@ -889,6 +894,11 @@ def idx_prem_factor(t):
     return step ** max(0, duration(t) - duration(proj_start()))
 
 
+def is_annual_premium():
+    """Whether the policy pays on an annual schedule."""
+    return premium_mode() == "annual"
+
+
 def premium_pp(t):
     """P_m idx_p(t): the gross premium per policy due in month t.
 
@@ -898,7 +908,7 @@ def premium_pp(t):
     loaded by ``wop_prem_loading`` where the waiver rider is in force - a **[std]**
     placeholder, since the rider's extra premium is not published either.
     """
-    if premium_mode() == "annual":
+    if is_annual_premium():
         p = 12.0 * premium_mth_pp() if t % 12 == 0 else 0.0
     else:
         p = premium_mth_pp()
@@ -956,6 +966,16 @@ def annuity_certain_factor(m):
     return (1.0 - (1.0 + j) ** (-m / 12.0)) / ((1.0 + j) ** (1.0 / 12.0) - 1.0)
 
 
+def has_family_income_benefit():
+    """Whether the policy provides family income benefit."""
+    return shape() == "fib"
+
+
+def is_level_cover():
+    """Whether the policy provides a level lump sum."""
+    return shape() == "level"
+
+
 def fib_commute_pp(t):
     """CV: the commuted value of one FIB stream arising from a death in month t **[std]**.
 
@@ -963,7 +983,7 @@ def fib_commute_pp(t):
     runs out.  The annual grid had to place the death at mid-year, ``k = 12t + 6``; this
     grid knows the month.  Zero on the level and decreasing shapes.
     """
-    if shape() != "fib":
+    if not has_family_income_benefit():
         return 0.0
     return fib_income() * annuity_certain_factor(term_mths() - t)
 
@@ -977,10 +997,9 @@ def benefit_pp(t):
     value of the instalment stream, which is what a commuted claim pays; an uncommuted
     FIB claim has no lump sum at all and goes through ``claims(t, "FIB")`` instead.
     """
-    s = shape()
-    if s == "level":
+    if is_level_cover():
         return sum_assured() * idx_factor(t)
-    if s == "decreasing":
+    if not has_family_income_benefit():
         return benefit_sched(duration_mth(t))
     return fib_commute_pp(t)
 
@@ -1031,11 +1050,11 @@ def claims(t, kind=None):
 def claims_by_kind(t, kind):
     """Calculate claims with keys 0 (death), 1 (family income benefit), 2 (lapse)."""
     if kind == 0:
-        if shape() == "fib":
+        if has_family_income_benefit():
             return fib_commute_rate() * benefit_pp(t) * pols_death(t)
         return benefit_pp(t) * pols_death(t)
     if kind == 1:
-        if shape() != "fib":
+        if not has_family_income_benefit():
             return 0.0
         return ((1.0 - fib_commute_rate()) * fib_income()
                 * (pols_death(t) + fib_cum(t)))
@@ -1179,7 +1198,7 @@ def check_fib_ledger_resid(t):
     month-of-death instalment would show up here.  Zero by definition on the level and
     decreasing shapes, which have no ledger.
     """
-    if shape() != "fib":
+    if not has_family_income_benefit():
         return 0.0
     built = pdn.sum_values((pols_death(s) for s in pdn.periods(proj_start(), t + 1)))
     return claims(t, "FIB") - (1.0 - fib_commute_rate()) * fib_income() * built

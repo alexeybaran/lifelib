@@ -245,6 +245,11 @@ def cell():
     return v
 
 
+def is_over_50s_cover():
+    """Whether the policy uses the guaranteed-acceptance over-50s basis."""
+    return cell() == "O50"
+
+
 def age_at_entry():
     """The entry age of the selected model point, **age last birthday**.
 
@@ -409,7 +414,7 @@ def mort_basis():
     either cell the other's basis produces plausible-looking but wrong margins.  See the
     Space docstring.
     """
-    return "population" if cell() == "O50" else "assured"
+    return "population" if is_over_50s_cover() else "assured"
 
 
 def mort_loading():
@@ -420,7 +425,7 @@ def mort_loading():
     pricing basis, so the loading is a placeholder to be calibrated - and a deliberately
     modest one, since population mortality is already heavier than insured experience.
     """
-    return mort_loading_o50 if cell() == "O50" else mort_loading_uw  # noqa: F821
+    return mort_loading_o50 if is_over_50s_cover() else mort_loading_uw  # noqa: F821
 
 
 def mort_improve_factor(t):
@@ -822,17 +827,17 @@ def benefit_pp(t, kind):
 def benefit_pp_by_kind(t, kind):
     """Calculate a benefit with keys 0 (non-accidental), 1 (accidental), 2 (death), 3 (paid-up)."""
     if kind == 0:
-        if cell() == "O50" and in_moratorium(t):
+        if is_over_50s_cover() and in_moratorium(t):
             return prem_cum_pp(t)
         return cover_pp(t)
     if kind == 1:
-        if cell() != "O50":
+        if not is_over_50s_cover():
             return cover_pp(t)
         if in_moratorium(t):
             return cover_pp(t)
         return adb_multiplier() * cover_pp(t)
     if kind == 2:
-        if cell() == "O50":
+        if is_over_50s_cover():
             return ((1.0 - acc_share) * benefit_pp_by_kind(t, 0)    # noqa: F821
                     + acc_share * benefit_pp_by_kind(t, 1))         # noqa: F821
         if t < suicide_mths:                                         # noqa: F821
@@ -909,7 +914,7 @@ def claims_total(t):
 
 def expense_acq_pp():
     """The acquisition expense per policy at issue **[std]**: £150 on O50, £300 on UW."""
-    return expense_acq_o50 if cell() == "O50" else expense_acq_uw    # noqa: F821
+    return expense_acq_o50 if is_over_50s_cover() else expense_acq_uw    # noqa: F821
 
 
 def expense_maint_pp():
@@ -919,7 +924,7 @@ def expense_maint_pp():
     so the expense margin erodes mechanically over a twenty-year-plus horizon.  A
     per-policy expense error compounds accordingly.
     """
-    return expense_maint_o50 if cell() == "O50" else expense_maint_uw  # noqa: F821
+    return expense_maint_o50 if is_over_50s_cover() else expense_maint_uw  # noqa: F821
 
 
 def inflation_factor(t):
