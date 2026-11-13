@@ -1246,7 +1246,7 @@ def pols_if_at(t, timing):
     which *do* have a maturity or new business can specialize it without moving every
     caller.
     """
-    if timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    if timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         return pols_if(t)
     else:
         raise ValueError("invalid timing")
@@ -1648,4 +1648,6 @@ Sex = ("Pickle", 1)
 
 RateClass = ("Pickle", 2)
 
-enum_definitions = ("Pickle", 8)
+PolTiming = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)

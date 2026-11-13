@@ -45,3 +45,9 @@ class RateClass(IntEnum):
     StdNT = 3
     PTob = 4
     StdTob = 5
+
+
+class PolTiming(IntEnum):
+    BEF_MAT = 0
+    BEF_NB = 1
+    BEF_DECR = 2
