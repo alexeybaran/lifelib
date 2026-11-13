@@ -116,8 +116,8 @@ def model_point_table():
     notes' worked example; the other seven exercise the product's variants, its
     optional modules and its edge cases.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -132,9 +132,9 @@ def mort_table():
     The ``age`` key is an **attained age**, not a time index: ``Projection`` reads it at
     ``age(t) = issue_age() + t // 12``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def lapse_table():
@@ -149,8 +149,8 @@ def lapse_table():
     at the largest year in the table, so a whole-of-life projection does not run off
     the end of it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def prevalence_table():
@@ -161,8 +161,9 @@ def prevalence_table():
     ``prev_ceil``, ``prev_beta`` and ``prev_x_mid``.  The anchors are carried for
     provenance; the model reads the three fitted parameters.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / prevalence_file, index_col="param")            # noqa: F821
+    frame = pd.read_csv(input_dir() / prevalence_file)               # noqa: F821
+    frame["param"] = [PrevParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index("param"))                       # noqa: F821
 
 
 def grade_share_table():
@@ -173,48 +174,9 @@ def grade_share_table():
     codes for the seven-point certification scale; the model point columns
     ``grade_lump``, ``grade_annuity`` and ``grade_waiver`` hold them.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / grade_share_file, index_col="grade")           # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_prevalence_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(prevalence_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-def prepared_grade_share_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(grade_share_table(),
-                        columns=('share_ge',),
-                        indexing='loc')
-
-
-
-
-def prepared_mort_index_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.index(mort_table().index)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    frame = pd.read_csv(input_dir() / grade_share_file)              # noqa: F821
+    frame["grade"] = [Grade[name] for name in frame["grade"]]
+    return pdn.table(frame.set_index("grade"))                       # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -233,3 +195,9 @@ grade_share_file = "grade_share_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Grade = ("Pickle", 2)
+
+PrevParam = ("Pickle", 3)
