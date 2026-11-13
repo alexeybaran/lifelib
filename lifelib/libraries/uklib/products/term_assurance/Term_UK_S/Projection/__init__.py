@@ -686,6 +686,11 @@ def rebroke_factor(t):
     ``premium_market_ratio`` is a flat scalar, so the multiplier is level in ``t`` -
     a market premium path would be another input table.
     """
+    return flat_rebroke_factor()
+
+
+def flat_rebroke_factor():
+    """Rebroking assumptions are scalar for the entire projection."""
     return min(rebroke_cap, max(1.0, premium_market_ratio))          # noqa: F821
 
 
@@ -706,7 +711,13 @@ def lapse_rate_mth(t):
     would understate the decrement; the gap is wider here because the lapse rates are an
     order of magnitude larger than the mortality ones.
     """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
+    return monthly_lapse_in_year(policy_year(t))
+
+
+def monthly_lapse_in_year(year):
+    """Convert the annual lapse rate once per contractual policy year."""
+    annual = min(1.0, lapse_schedule_rate(year) * flat_rebroke_factor())
+    return 1.0 - (1.0 - annual) ** (1.0 / 12.0)
 
 
 def pols_if(t):
