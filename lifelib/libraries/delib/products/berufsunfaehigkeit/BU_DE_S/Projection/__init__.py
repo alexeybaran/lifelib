@@ -304,7 +304,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def status():
@@ -316,10 +316,7 @@ def status():
     price the contract: that always runs from inception as an active life, because the
     *Bruttobeitrag* was struck there.
     """
-    v = pdn.lookup_object(prepared_model_point(), "status")
-    if v not in ("aktiv", "leistung"):
-        raise ValueError("invalid status")
-    return v
+    return Status[model_point()["status"]]
 
 
 def entry_age():
@@ -330,7 +327,7 @@ def entry_age():
     here.  An implementation on real dates carries a fractional offset of at most one
     year.
     """
-    return pdn.lookup_int(prepared_model_point(), "entry_age")
+    return int(model_point()["entry_age"])
 
 
 def sex():
@@ -343,15 +340,12 @@ def sex():
     tariff embeds a mix assumption the insurer bears the risk of.  Model points 1 and 2
     differ in this attribute alone, and their frames are identical.
     """
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def berufsgruppe():
     """The occupational rating class, BG1 - BG5; the key into *occupation_table.csv*."""
-    return pdn.lookup_object(prepared_model_point(), "berufsgruppe")
+    return Berufsgruppe[model_point()["berufsgruppe"]]
 
 
 def occ_factor():
@@ -364,7 +358,8 @@ def occ_factor():
     model point three times the anchor's inception rate carries a premium slightly
     **below** three times the anchor's.
     """
-    return pdn.lookup_float(data.prepared_occupation_table_loc(), berufsgruppe(), 'occ_factor')
+    return float(data.occupation_table().loc[                        # noqa: F821
+        berufsgruppe(), "occ_factor"])
 
 
 def bu_rente_mth():
@@ -374,7 +369,7 @@ def bu_rente_mth():
     *Angemessenheitsgrenze* capping it at 60-70 % of gross income, which is a
     underwriting rule rather than a projection parameter and is not modelled.
     """
-    return pdn.lookup_float(prepared_model_point(), "bu_rente_mth")
+    return float(model_point()["bu_rente_mth"])
 
 
 def cover_end_age():
@@ -385,7 +380,7 @@ def cover_end_age():
     inception rate accelerates from the mid-forties and cutting the *Endalter* removes
     the most expensive years of cover.
     """
-    return pdn.lookup_int(prepared_model_point(), "cover_end_age")
+    return int(model_point()["cover_end_age"])
 
 
 def benefit_end_age():
@@ -397,7 +392,7 @@ def benefit_end_age():
     claim-maintenance cost are zero and **the disabled mass is held rather than deleted**,
     so both state identities still close.
     """
-    return pdn.lookup_int(prepared_model_point(), "benefit_end_age")
+    return int(model_point()["benefit_end_age"])
 
 
 def karenz_months():
@@ -408,7 +403,7 @@ def karenz_months():
     Cohorts at duration ``z <= K`` are *berufsunfaehig*, are **not** paid, and **still
     pay premium**, because the *Beitragsbefreiung* runs with the benefit **[std]**.
     """
-    return pdn.lookup_int(prepared_model_point(), "karenz_months")
+    return int(model_point()["karenz_months"])
 
 
 def leistungsdyn_rate():
@@ -417,7 +412,7 @@ def leistungsdyn_rate():
     Steps on each anniversary of the **onset**, not of the policy.  Compounding 2 % over
     a claim that can run thirty years raises the final payment to about 1.70x the first.
     """
-    return pdn.lookup_float(prepared_model_point(), "leistungsdyn_rate")
+    return float(model_point()["leistungsdyn_rate"])
 
 
 def premium_form():
@@ -431,10 +426,7 @@ def premium_form():
     reached, so a given increase buys less than proportional cover; the direction is
     recorded rather than corrected.
     """
-    v = pdn.lookup_object(prepared_model_point(), "premium_form")
-    if v not in ("level", "dynamik"):
-        raise ValueError("invalid premium_form")
-    return v
+    return PremiumForm[model_point()["premium_form"]]
 
 
 def beitragsdyn_rate():
@@ -445,9 +437,9 @@ def beitragsdyn_rate():
     treatment of an option whose decline behaviour no source quantifies, and it keeps the
     equivalence acyclic.
     """
-    if premium_form() == "level":
+    if premium_form() == PremiumForm.level:
         return 0.0
-    return pdn.lookup_float(prepared_model_point(), "beitragsdyn_rate")
+    return float(model_point()["beitragsdyn_rate"])
 
 
 def prem_mode():
@@ -456,10 +448,7 @@ def prem_mode():
     The key into *freq_loading_table.csv*, which supplies both the months between
     instalments and the *Ratenzahlungszuschlag*.
     """
-    v = pdn.lookup_object(prepared_model_point(), "prem_mode")
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_mode")
-    return v
+    return PremMode[model_point()["prem_mode"]]
 
 
 def prem_mode_months():
@@ -470,7 +459,8 @@ def prem_mode_months():
     0, 12, 24, ... and is twelve times as large.  Carrying the frequency as a parameter
     rather than smoothing it is the whole reason this model runs on a monthly grid.
     """
-    return pdn.lookup_int(data.prepared_freq_loading_table_scalar_loc(), prem_mode(), "prem_mode_months")
+    return int(data.freq_loading_table().loc[                        # noqa: F821
+        prem_mode(), "prem_mode_months"])
 
 
 def freq_load():
@@ -481,7 +471,8 @@ def freq_load():
     :func:`beitragsverrechnung` stays exactly the ratio the tariff quotes and the loading
     is invisible in the *Brutto* / *Zahl* split.
     """
-    return pdn.lookup_float(data.prepared_freq_loading_table_loc(), prem_mode(), 'freq_load')
+    return float(data.freq_loading_table().loc[                      # noqa: F821
+        prem_mode(), "freq_load"])
 
 
 def gross_prem_ann():
@@ -491,7 +482,7 @@ def gross_prem_ann():
     card; no German BU rate card of any kind was obtained for this library, so the
     derivation is the default and the override is the exception.
     """
-    return pdn.lookup_float(prepared_model_point(), "gross_prem_ann")
+    return float(model_point()["gross_prem_ann"])
 
 
 def beitragsverrechnung():
@@ -505,7 +496,7 @@ def beitragsverrechnung():
     *Bruttobeitrag* and no further, and across the recalled range collected premium moves
     by more than 40 % either way.
     """
-    return pdn.lookup_float(prepared_model_point(), "beitragsverrechnung")
+    return float(model_point()["beitragsverrechnung"])
 
 
 def risk_factor():
@@ -516,7 +507,7 @@ def risk_factor():
     projected above its own modelled cost.  Contrast :func:`occ_factor`, which loads the
     inception rate and so moves every claim and every decrement.
     """
-    return pdn.lookup_float(prepared_model_point(), "risk_factor")
+    return float(model_point()["risk_factor"])
 
 
 def au_klausel():
@@ -527,7 +518,7 @@ def au_klausel():
     :func:`au_uplift`, which ships at 1.00 everywhere, so the switch is demonstrably inert
     until a user supplies a number.
     """
-    return pdn.lookup_bool(prepared_model_point(), "au_klausel")
+    return bool(model_point()["au_klausel"])
 
 
 def au_uplift():
@@ -540,7 +531,7 @@ def au_uplift():
     """
     if not au_klausel():
         return 1.0
-    return pdn.lookup_float(prepared_model_point(), "au_uplift")
+    return float(model_point()["au_uplift"])
 
 
 def wiedereingliederung_months():
@@ -550,7 +541,7 @@ def wiedereingliederung_months():
     never returns to work and is paid nothing.  Paying it on every recovery instead
     overstates it, and the difference is exactly the run-off's own mortality.
     """
-    return pdn.lookup_int(prepared_model_point(), "wiedereingliederung_months")
+    return int(model_point()["wiedereingliederung_months"])
 
 
 def duration_init_months():
@@ -562,7 +553,7 @@ def duration_init_months():
     date is a numbered pitfall.  It does *not* touch the first-order shadow, which always
     runs from inception.
     """
-    return pdn.lookup_int(prepared_model_point(), "duration_init_months")
+    return int(model_point()["duration_init_months"])
 
 
 def claim_duration_init():
@@ -570,7 +561,7 @@ def claim_duration_init():
 
     Zero on every ``aktiv`` point.  See :func:`seed_claim_dur` for the cohort it seeds.
     """
-    return pdn.lookup_int(prepared_model_point(), "claim_duration_init")
+    return int(model_point()["claim_duration_init"])
 
 
 def pols_if_init():
@@ -675,7 +666,7 @@ def seed_claim_dur():
     in its next month of duration at the start of it, exactly as a claim recognised at the
     end of month ``t`` sits at ``z = 1`` at the start of month ``t + 1``.
     """
-    return claim_duration_init() + 1 if status() == "leistung" else 0
+    return claim_duration_init() + 1 if status() == Status.leistung else 0
 
 
 def max_claim_dur():
@@ -721,8 +712,8 @@ def inc_rate_at_age(x):
     the *Anerkennungsquote* is counted twice.
     """
     tbl = data.inception_table()                                     # noqa: F821
-    return pdn.lookup_float(data.prepared_inception_table_scalar_loc(), min(max(x, int(min(pdn.keys(data.prepared_inception_table_index_selection())))),
-                             int(pdn.max_value(pdn.keys(data.prepared_inception_table_index_selection())))), "inc_rate")
+    return float(tbl.loc[min(max(x, int(tbl.index.min())),
+                             int(tbl.index.max())), "inc_rate"])
 
 
 def mort_rate_at_age(x):
@@ -733,8 +724,8 @@ def mort_rate_at_age(x):
     whose lives have recovered and are no longer impaired lives.
     """
     tbl = data.mortality_table()                                     # noqa: F821
-    return pdn.lookup_float(data.prepared_mortality_table_scalar_loc(), min(max(x, int(min(pdn.keys(data.prepared_mortality_table_index_selection())))),
-                             int(pdn.max_value(pdn.keys(data.prepared_mortality_table_index_selection())))), "mort_rate_actv")
+    return float(tbl.loc[min(max(x, int(tbl.index.min())),
+                             int(tbl.index.max())), "mort_rate_actv"])
 
 
 def mort_rate_dis_at_age(x):
@@ -748,8 +739,8 @@ def mort_rate_dis_at_age(x):
     columns.
     """
     tbl = data.mortality_table()                                     # noqa: F821
-    return pdn.lookup_float(data.prepared_mortality_table_scalar_loc(), min(max(x, int(min(pdn.keys(data.prepared_mortality_table_index_selection())))),
-                             int(pdn.max_value(pdn.keys(data.prepared_mortality_table_index_selection())))), "mort_rate_dis")
+    return float(tbl.loc[min(max(x, int(tbl.index.min())),
+                             int(tbl.index.max())), "mort_rate_dis"])
 
 
 def recov_rates():
@@ -761,8 +752,8 @@ def recov_rates():
     with 445 cohorts is the difference between a lookup and a quarter of a million of
     them.
     """
-    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
-    return tuple((pdn.lookup_float(tbl, y, "recov_rate") for y in pdn.periods(1, 12)))
+    tbl = data.claim_duration_table()                                # noqa: F821
+    return [float(tbl.loc[y, "recov_rate"]) for y in range(1, 12)]
 
 
 def mort_dis_sel_factors():
@@ -771,8 +762,8 @@ def mort_dis_sel_factors():
     3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
-    tbl = data.prepared_claim_duration_table_loc()                                # noqa: F821
-    return tuple((pdn.lookup_float(tbl, y, "mort_dis_sel_factor") for y in pdn.periods(1, 12)))
+    tbl = data.claim_duration_table()                                # noqa: F821
+    return [float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12)]
 
 
 # --- the best-estimate rates as composed ---
@@ -858,7 +849,8 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple((1.0 - (1.0 - q * s) ** (1.0 / 12.0) for s in mort_dis_sel_factors()))
+    return [1.0 - (1.0 - q * s) ** (1.0 / 12.0)
+            for s in mort_dis_sel_factors()]
 
 
 def recov_rate(z):
@@ -890,7 +882,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple((1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates()))
+    return [1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates()]
 
 
 def lapse_rate(t):
@@ -904,8 +896,8 @@ def lapse_rate(t):
     lapse for non-payment.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t),
-                             int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return float(tbl.loc[min(policy_year(t),
+                             int(tbl.index.max())), "lapse_rate"])
 
 
 def lapse_rate_mth(t):
@@ -951,7 +943,8 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple((1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0) for r in recov_rates()))
+    return [1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
+            for r in recov_rates()]
 
 
 def mort_rate_first_mth(s):
@@ -981,7 +974,8 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple((1.0 - (1.0 - q * f) ** (1.0 / 12.0) for f in mort_dis_sel_factors()))
+    return [1.0 - (1.0 - q * f) ** (1.0 / 12.0)
+            for f in mort_dis_sel_factors()]
 
 
 def disc_first(s):
@@ -1065,7 +1059,7 @@ def beitragssumme_unit():
     original term rather than the remaining one: the charge was incurred at inception.
     """
     g = 1.0 + beitragsdyn_rate()
-    return pdn.sum_values((g ** (y - 1) for y in pdn.periods(1, cover_end_age() - entry_age() + 1)))
+    return sum(g ** (y - 1) for y in range(1, cover_end_age() - entry_age() + 1))
 
 
 def prem_gross_level_pp():
@@ -1198,7 +1192,7 @@ def dis_cohorts_first(s):
     qy = mort_rate_dis_first_mth_year(s - 1)
     ry = recov_rate_first_mth_year()
     g = 1.0 + leistungsdyn_rate()
-    for i in pdn.periods(min(len(ppols), n - 1)):
+    for i in range(min(len(ppols), n - 1)):
         cy = i // 12
         if cy > 10:
             cy = 10
@@ -1224,7 +1218,7 @@ def dis_exits_first(s):
     deaths = 0.0
     rec = 0.0
     recval = 0.0
-    for i in pdn.periods(len(pols)):
+    for i in range(len(pols)):
         cy = i // 12
         if cy > 10:
             cy = 10
@@ -1252,7 +1246,7 @@ def runoff_cohorts_first(s):
     exits = dis_exits_first(s - 1)
     pols[0] = exits[1]
     val[0] = exits[2]
-    for k in pdn.periods(1, n):
+    for k in range(1, n):
         pols[k] = ppols[k - 1] * surv
         val[k] = pval[k - 1] * surv
     return pols, val
@@ -1266,12 +1260,12 @@ def pols_dis_dur_first(s, z):
 
 def pols_dis_first(s):
     """The whole first-order disabled ledger at the start of month s."""
-    return pdn.sum_values(dis_cohorts_first(s)[0])
+    return sum(dis_cohorts_first(s)[0])
 
 
 def pols_runoff_first(s):
     """The whole first-order § 174 run-off ledger at the start of month s."""
-    return pdn.sum_values(runoff_cohorts_first(s)[0])
+    return sum(runoff_cohorts_first(s)[0])
 
 
 def runoff_val_first(s, k):
@@ -1298,7 +1292,7 @@ def pols_prem_first(s):
     life inside the *Karenzzeit* still pays.
     """
     dis = dis_cohorts_first(s)[0]
-    return pols_actv_first(s) + pdn.sum_values(dis[:karenz_months()])
+    return pols_actv_first(s) + sum(dis[:karenz_months()])
 
 
 def pols_if_first(s):
@@ -1321,7 +1315,8 @@ def pv_prem_unit_first():
     which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
-    return pdn.sum_values((disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0 for s in pdn.periods(0, first_len())))
+    return sum(disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
+               for s in range(0, first_len()))
 
 
 def pv_rente_first():
@@ -1333,12 +1328,12 @@ def pv_rente_first():
     this sum understates the premium by the whole of the § 174 tail.
     """
     total = 0.0
-    for s in pdn.periods(0, first_len()):
+    for s in range(0, first_len()):
         if age_first(s) >= benefit_end_age():
             continue
         val = dis_cohorts_first(s)[1]
-        total += disc_first(s) * (pdn.sum_values(val[karenz_months():])
-                                  + pdn.sum_values(runoff_cohorts_first(s)[1]))
+        total += disc_first(s) * (sum(val[karenz_months():])
+                                  + sum(runoff_cohorts_first(s)[1]))
     return total
 
 
@@ -1351,9 +1346,10 @@ def pv_wiedereingl_first():
     """
     if wiedereingliederung_months() == 0:
         return 0.0
-    return pdn.sum_values((disc_first(s) * wiedereingliederung_months()
+    return sum(disc_first(s) * wiedereingliederung_months()
                * runoff_val_first(s, runoff_months)                  # noqa: F821
-               * (1.0 - mort_rate_first_mth(s)) for s in pdn.periods(0, first_len())))
+               * (1.0 - mort_rate_first_mth(s))
+               for s in range(0, first_len()))
 
 
 def pv_claim_cost_first():
@@ -1366,11 +1362,11 @@ def pv_claim_cost_first():
     ratio of its inception rates.
     """
     total = 0.0
-    for s in pdn.periods(0, first_len()):
+    for s in range(0, first_len()):
         total += disc_first(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
         if age_first(s) < benefit_end_age():
             pols = dis_cohorts_first(s)[0]
-            paying = pdn.sum_values(pols[karenz_months():]) + pols_runoff_first(s)
+            paying = sum(pols[karenz_months():]) + pols_runoff_first(s)
             total += disc_first(s) * claim_maint_cost_mth * paying   # noqa: F821
     return total
 
@@ -1383,7 +1379,8 @@ def pv_admin_first():
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return pdn.sum_values((disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s) for s in pdn.periods(0, first_len())))
+    return sum(disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
+               for s in range(0, first_len()))
 
 
 # --- the best-estimate ledgers ---
@@ -1399,7 +1396,7 @@ def pols_actv(t):
     if t < 0 or t > proj_len():
         return 0.0
     if t == 0:
-        return pols_if_init() if status() == "aktiv" else 0.0
+        return pols_if_init() if status() == Status.aktiv else 0.0
     return (pols_actv(t - 1) - pols_death_actv(t - 1) - pols_lapse(t - 1)
             - pols_inception(t - 1) + pols_reactivation(t - 1))
 
@@ -1474,7 +1471,7 @@ def dis_cohorts(t):
     qy = mort_rate_dis_mth_year(t - 1)
     ry = recov_rate_mth_year()
     g = 1.0 + leistungsdyn_rate()
-    for i in pdn.periods(min(len(ppols), n - 1)):
+    for i in range(min(len(ppols), n - 1)):
         cy = i // 12
         if cy > 10:
             cy = 10
@@ -1505,7 +1502,7 @@ def dis_exits(t):
     deaths = 0.0
     rec = 0.0
     recval = 0.0
-    for i in pdn.periods(len(pols)):
+    for i in range(len(pols)):
         cy = i // 12
         if cy > 10:
             cy = 10
@@ -1541,7 +1538,7 @@ def runoff_cohorts(t):
     exits = dis_exits(t - 1)
     pols[0] = exits[1]
     val[0] = exits[2]
-    for k in pdn.periods(1, n):
+    for k in range(1, n):
         pols[k] = ppols[k - 1] * surv
         val[k] = pval[k - 1] * surv
     return pols, val
@@ -1563,7 +1560,7 @@ def pols_dis(t):
     *Karenzzeit*, which are *berufsunfaehig*, are not yet paid and are still paying
     premium.
     """
-    return pdn.sum_values(dis_cohorts(t)[0])
+    return sum(dis_cohorts(t)[0])
 
 
 def pols_death_dis(t):
@@ -1623,7 +1620,7 @@ def pols_runoff(t):
     does not release the liability in the month it happens, it releases it three months
     later, and every one of those months carries a full *BU-Rente*.
     """
-    return pdn.sum_values(runoff_cohorts(t)[0])
+    return sum(runoff_cohorts(t)[0])
 
 
 def pols_death_runoff(t):
@@ -1694,9 +1691,9 @@ def pols_if_at(t, timing):
         At ``t = proj_len() - 1`` it is the population whose cover simply runs
         out, and nothing is payable to it.
     """
-    if timing == "BEG":
+    if timing == Timing.BEG:
         return pols_if(t)
-    if timing == "END":
+    if timing == Timing.END:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1716,7 +1713,7 @@ def pols_prem(t):
     zero, this equals :func:`pols_actv` at every ``t``.
     """
     dis = dis_cohorts(t)[0]
-    return pols_actv(t) + pdn.sum_values(dis[:karenz_months()])
+    return pols_actv(t) + sum(dis[:karenz_months()])
 
 
 # --- the cash flows ---
@@ -1745,7 +1742,7 @@ def surplus_credit(t):
     return surplus_credit_pp(t) * pols_prem(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the start of month t, by kind; the total when kind is omitted.
 
     ``"BU_RENTE"``
@@ -1768,20 +1765,20 @@ def claims(t, kind=None):
         deliberately does not compute.  The kind exists so that the zero is a
         published scope statement rather than a missing column.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE")))
-    if kind == "BU_RENTE":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.BU_RENTE, Kind.REINTEGRATION, Kind.LAPSE))
+    if kind == Kind.BU_RENTE:
         if age(t) >= benefit_end_age():
             return 0.0
         val = dis_cohorts(t)[1]
-        return pdn.sum_values(val[karenz_months():]) + pdn.sum_values(runoff_cohorts(t)[1])
-    if kind == "REINTEGRATION":
+        return sum(val[karenz_months():]) + sum(runoff_cohorts(t)[1])
+    if kind == Kind.REINTEGRATION:
         if wiedereingliederung_months() == 0:
             return 0.0
         return (wiedereingliederung_months()
                 * runoff_val(t, runoff_months)                       # noqa: F821
                 * (1.0 - mort_rate_mth(t)))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1834,7 +1831,7 @@ def claim_expenses(t):
     maint = 0.0
     if age(t) < benefit_end_age():
         pols = dis_cohorts(t)[0]
-        paying = pdn.sum_values(pols[karenz_months():]) + pols_runoff(t)
+        paying = sum(pols[karenz_months():]) + pols_runoff(t)
         maint = claim_maint_cost_mth * paying                        # noqa: F821
     return assess + maint
 
@@ -1853,7 +1850,7 @@ def net_cf(t):
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
     """
-    return (premiums(t) - surplus_credit(t) - claims(t)
+    return (premiums(t) - surplus_credit(t) - claims(t, Kind.ALL)
             - expenses(t) - claim_expenses(t))
 
 
@@ -1890,9 +1887,9 @@ def check_net_cf_resid(t):
     plausible.
     """
     return net_cf(t) - (prem_zahl_pp(t) * pols_prem(t)
-                        - claims(t, "BU_RENTE")
-                        - claims(t, "REINTEGRATION")
-                        - claims(t, "LAPSE")
+                        - claims(t, Kind.BU_RENTE)
+                        - claims(t, Kind.REINTEGRATION)
+                        - claims(t, Kind.LAPSE)
                         - expenses(t) - claim_expenses(t))
 
 
@@ -1902,8 +1899,9 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return pdn.all_true((abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, abs(bu_rente_pp(t))) for t in pdn.periods(0, proj_len())))
+    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+               * max(1.0, abs(bu_rente_pp(t)))
+               for t in range(0, proj_len()))
 
 
 def check_states_resid(t):
@@ -1925,8 +1923,9 @@ def check_states_resid(t):
 
 def check_states():
     """True when the three ledgers account for the whole in-force population at every t."""
-    return pdn.all_true((abs(check_states_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(0, proj_len() + 1)))
+    return all(abs(check_states_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               for t in range(0, proj_len() + 1))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1948,8 +1947,9 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(0, proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               for t in range(0, proj_len()))
 
 
 def check_dis_roll_fwd_resid(t):
@@ -1970,8 +1970,9 @@ def check_dis_roll_fwd_resid(t):
 
 def check_dis_roll_fwd():
     """True when the disabled ledger rolls forward exactly in every projected month."""
-    return pdn.all_true((abs(check_dis_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(0, proj_len())))
+    return all(abs(check_dis_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               for t in range(0, proj_len()))
 
 
 def check_runoff_roll_fwd_resid(t):
@@ -1989,8 +1990,9 @@ def check_runoff_roll_fwd_resid(t):
 
 def check_runoff_roll_fwd():
     """True when the § 174 run-off ledger rolls forward exactly in every projected month."""
-    return pdn.all_true((abs(check_runoff_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(0, proj_len())))
+    return all(abs(check_runoff_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               for t in range(0, proj_len()))
 
 
 def check_prem_split_resid(t):
@@ -2008,8 +2010,9 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
-    return pdn.all_true((abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
-               * max(1.0, abs(prem_gross_ann_pp(t))) for t in pdn.periods(0, proj_len())))
+    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
+               * max(1.0, abs(prem_gross_ann_pp(t)))
+               for t in range(0, proj_len()))
 
 
 def check_cover_end_resid(t):
@@ -2029,7 +2032,7 @@ def check_cover_end_resid(t):
     """
     resid = 0.0
     if age(t) >= benefit_end_age():
-        resid += claims(t, "BU_RENTE")
+        resid += claims(t, Kind.BU_RENTE)
     if age(t) >= cover_end_age():
         resid += premiums(t)
     return resid
@@ -2037,7 +2040,8 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when benefit and premium both stop exactly at their own contractual ages."""
-    return pdn.all_true((abs(check_cover_end_resid(t)) <= roll_fwd_tol for t in pdn.periods(0, proj_len())))
+    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol         # noqa: F821
+               for t in range(0, proj_len()))
 
 
 # --- the result frames ---
@@ -2062,7 +2066,7 @@ def result_cf():
     ``cover_end_age()`` with nothing payable, and a claim still in payment at the horizon
     simply stops.
     """
-    ts = list(pdn.periods(0, proj_len()))
+    ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2072,9 +2076,9 @@ def result_cf():
             "pols_prem": [pols_prem(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "surplus_credit": [surplus_credit(t) for t in ts],
-            "claims_bu_rente": [claims(t, "BU_RENTE") for t in ts],
-            "claims_reintegration": [claims(t, "REINTEGRATION") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_bu_rente": [claims(t, Kind.BU_RENTE) for t in ts],
+            "claims_reintegration": [claims(t, Kind.REINTEGRATION) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -2097,7 +2101,7 @@ def result_states():
     Read it as the shape of the assumption, not as the rate applied in that month; the
     rate applied to a cohort is ``recov_rate(z)`` and belongs to the cohort.
     """
-    ts = list(pdn.periods(0, proj_len()))
+    ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_inception": [pols_inception(t) for t in ts],
@@ -2115,11 +2119,6 @@ def result_states():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2157,4 +2156,18 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Status = ("Pickle", 3)
+
+Sex = ("Pickle", 4)
+
+Berufsgruppe = ("Pickle", 1)
+
+PremiumForm = ("Pickle", 5)
+
+PremMode = ("Pickle", 2)
+
+Timing = ("Pickle", 6)
+
+Kind = ("Pickle", 7)
+
+enum_definitions = ("Pickle", 8)
