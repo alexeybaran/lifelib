@@ -139,8 +139,8 @@ def model_point_table():
     the library's ``provenance`` rule, a model point being a configuration rather than an
     assumption.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def index_return_table():
@@ -153,9 +153,9 @@ def index_return_table():
     ``_S``.  All three shipped paths are **[std]**; see the Space docstring for how each
     was constructed and which rows a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / index_return_file,                             # noqa: F821
-        index_col=["index_id", "t"])
+        index_col=["index_id", "t"]))
 
 
 def index_param_table():
@@ -168,9 +168,9 @@ def index_param_table():
     shipped paths hold them level only because no level for any carrier and any year was
     established.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / index_param_file,                              # noqa: F821
-        index_col=["index_id", "t"])
+        index_col=["index_id", "t"]))
 
 
 def surplus_rate_table():
@@ -182,8 +182,8 @@ def surplus_rate_table():
     the option package instead.  It is exogenous here — the model consumes a declared rate
     and does not derive one from an investment result under the MindZV minimum.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_rate_file, index_col="t")              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / surplus_rate_file, index_col="t"))             # noqa: F821
 
 
 def election_table():
@@ -194,8 +194,8 @@ def election_table():
     Verzinsung*.  ``w`` in [0, 1] rather than a binary flag, because some tariffs permit a
     partial election and all-or-nothing is then the special case.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / election_file, index_col=["elect_id", "t"])    # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / election_file, index_col=["elect_id", "t"]))   # noqa: F821
 
 
 def mort_table():
@@ -205,8 +205,9 @@ def mort_table():
     see the Space docstring for what it is, what it is not, and what a replacement must
     preserve.  Sex selects the best-estimate row only and is never a rating factor.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def lapse_table():
@@ -219,8 +220,8 @@ def lapse_table():
     (policy year 12) is the § 20 Abs. 1 Nr. 6 EStG tax threshold and is the shape's whole
     point; the levels are **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="t")                     # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="t"))                    # noqa: F821
 
 
 def freq_load_table():
@@ -231,60 +232,9 @@ def freq_load_table():
     premium **collected** and does not enter the *Beitragssumme*, so it changes neither
     the acquisition charge nor the *Mindesttodesfallschutz* floor.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
-
-
-def prepared_freq_load_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_load_table(),
-                        columns=('freq_load',),
-                        indexing='loc')
-
-
-
-def prepared_surplus_rate_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(surplus_rate_table(),
-                        columns=('surplus_rate',),
-                        indexing='loc')
-
-
-
-def prepared_election_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(election_table(),
-                        columns=('w',),
-                        indexing='loc')
-
-
-
-def prepared_index_param_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(index_param_table(),
-                        columns=('cap', 'quote'),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('qx',),
-                        indexing='loc')
-
-
-
-def prepared_lapse_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(lapse_table(),
-                        columns=('lapse_rate',),
-                        indexing='loc')
-
-
-def prepared_index_return_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(index_return_table(), indexing='loc', preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / freq_load_file)                # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 # ---------------------------------------------------------------------------
@@ -309,3 +259,7 @@ freq_load_file = "freq_load_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+PremFreq = ("Pickle", 2)
