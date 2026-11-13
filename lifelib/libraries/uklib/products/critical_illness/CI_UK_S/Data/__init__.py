@@ -68,8 +68,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def ci_rate_table():
@@ -85,32 +85,16 @@ def ci_rate_table():
     Sorted on read: ``Projection.pivot_interp`` slices the frame by (sex, smoker), and
     pandas warns about indexing past the lexsort depth of an unsorted MultiIndex.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / ci_rate_file,                                  # noqa: F821
-        index_col=["sex", "smoker", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / ci_rate_file)                 # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
+    return pdn.table(frame.set_index(["sex", "smoker", "age"]).sort_index())
 
 
 def lapse_table():
     """The lapse rates by policy year, read from *lapse_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
-
-
-
-
-def prepared_ci_rate_table_generators(sex_, smoker_):
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(ci_rate_table().loc[(sex_, smoker_)], preserve_scalar_types = True)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -125,3 +109,7 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Smoker = ("Pickle", 2)
