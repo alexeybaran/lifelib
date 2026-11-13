@@ -560,7 +560,12 @@ def surr_rate(t):
 
 def surr_rate_mth(t):
     """w_m = 1 - (1 - w_ann)^(1/12): the monthly surrender rate **[std]**."""
-    return 1.0 - (1.0 - surr_rate(t)) ** (1.0 / 12.0)
+    return monthly_surrender_in_year(duration(t))
+
+
+def monthly_surrender_in_year(year):
+    """Convert the annual surrender rate once per policy year."""
+    return 1.0 - (1.0 - surr_rate(12 * year)) ** (1.0 / 12.0)
 
 
 def av_pp(t):
@@ -950,7 +955,12 @@ def inflation_factor(t):
     ``(1 + pi)^(y - 1)`` in the notes' policy-year terms: 1 throughout the first policy
     year, ``t = 0..11``.
     """
-    return (1.0 + inflation_rate) ** duration(t)                     # noqa: F821
+    return inflation_in_year(duration(t))
+
+
+def inflation_in_year(year):
+    """Expense inflation at the start of the policy year."""
+    return (1.0 + inflation_rate) ** year                            # noqa: F821
 
 
 def expenses(t):
