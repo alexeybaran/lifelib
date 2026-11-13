@@ -367,6 +367,11 @@ def payment_freq():
     return v
 
 
+def payment_interval():
+    """Months between scheduled payments at the policy's selected frequency."""
+    return 12 // payment_freq()
+
+
 def payment_timing():
     """Whether instalments fall in *arrears* or in *advance*.
 
@@ -545,7 +550,7 @@ def is_payment_mth(t):
     """
     if t < 0:
         return False
-    step = 12 // payment_freq()
+    step = payment_interval()
     if not is_advance_payment():
         return (t + 1) % step == 0
     return t % step == 0
@@ -654,7 +659,7 @@ def mths_since_payment(t):
     configuration a death in month 16 with quarterly arrears payments at months 2, 5,
     ... gives h = 1, one complete month since the month-14 instalment.
     """
-    step = 12 // payment_freq()
+    step = payment_interval()
     if t <= 0:
         return 0
     last = (t // step) * step
