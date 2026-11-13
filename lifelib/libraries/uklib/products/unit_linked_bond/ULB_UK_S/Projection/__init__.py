@@ -490,13 +490,18 @@ def mort_rate(t):
 
 def mort_rate_mth(t):
     """q_m = 1 - (1 - q_a)^(1/12): the monthly mortality rate **[std]**."""
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
+    return monthly_mortality_in_year(duration(t))
+
+
+def monthly_mortality_in_year(year):
+    """Convert the annual mortality rate once per policy year."""
+    return 1.0 - (1.0 - mort_rate(12 * year)) ** (1.0 / 12.0)
 
 
 def surrender_schedule_rate(y):
     """The table surrender rate for the selected policy year."""
     table = data.prepared_surr_table_scalar_loc()                    # noqa: F821
-    last = int(pdn.max_value(pdn.keys(data.prepared_surr_table_index_selection())))
+    last = int(pdn.last_key(table))
     return pdn.lookup_float(table, min(y, last), "surr_rate")
 
 
@@ -505,7 +510,6 @@ def surr_rate_base(t):
 
     2 / 3 / 5 / 8 / 10 percent by band.  Policy years beyond the table take its last row.
     """
-    tbl = data.surr_table()                                          # noqa: F821
     y = policy_year(t)
     return surrender_schedule_rate(y)
 
@@ -798,7 +802,19 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_after_decrements(t - 1)
+
+
+def pols_before_surrender(t):
+    """The in-force count after mortality and before surrender."""
+    return pols_if(t) * (1.0 - mort_rate_mth(t))
+
+
+def pols_after_decrements(t):
+    """The in-force count at the end of the month."""
+    if t < 0 or t >= proj_len() - 1:
+        return 0.0
+    return pols_before_surrender(t) * (1.0 - surr_rate_mth(t))
 
 
 def pols_if_at(t, timing):
@@ -818,11 +834,9 @@ def pols_if_at(t, timing):
     if timing == "BEF_DECR":
         return pols_if(t)
     if timing == "BEF_SURR":
-        return pols_if(t) * (1.0 - mort_rate_mth(t))
+        return pols_before_surrender(t)
     if timing == "AFT_DECR":
-        if t < 0 or t >= proj_len() - 1:
-            return 0.0
-        return pols_if_at(t, "BEF_SURR") * (1.0 - surr_rate_mth(t))
+        return pols_after_decrements(t)
     raise ValueError("invalid timing")
 
 
@@ -833,7 +847,7 @@ def pols_death(t):
 
 def pols_surr(t):
     """Full surrenders at the end of policy month t, from the survivors of mortality."""
-    return pols_if_at(t, "BEF_SURR") * surr_rate_mth(t)
+    return pols_before_surrender(t) * surr_rate_mth(t)
 
 
 def pols_maturity(t):
