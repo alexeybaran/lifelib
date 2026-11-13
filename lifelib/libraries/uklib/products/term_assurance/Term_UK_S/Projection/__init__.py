@@ -578,6 +578,11 @@ def select_factor(t):
     return pdn.lookup_float(data.prepared_select_factor_table_loc(), d, 'factor')        # noqa: F821
 
 
+def mortality_table_rate(x, life):
+    """The selected life's table rate at attained age x."""
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), x), 'mort_rate')
+
+
 def mort_rate_base(t, life=1):
     """The annual mortality table rate for ``life`` at its attained age in month t.
 
@@ -585,7 +590,7 @@ def mort_rate_base(t, life=1):
     than a separate cover [S1][S6][S8]; the 16-Series tables the shipped table proxies
     are graduated on that basis [R10].
     """
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), age(t, life)), 'mort_rate')
+    return mortality_table_rate(age(t, life), life)
 
 
 def mort_rate_life(t, life=1):
@@ -652,6 +657,13 @@ def sel_lapse_factor(t):
         0.0, lapse_cum(t) - sel_lapse_ref)                           # noqa: F821
 
 
+def lapse_schedule_rate(y):
+    """The table lapse rate at a contractual policy year."""
+    table = data.prepared_lapse_table_scalar_loc()                   # noqa: F821
+    last = int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))
+    return pdn.lookup_float(table, min(y, last), "lapse_rate")
+
+
 def lapse_rate_base(t):
     """The table **annual** lapse rate in month t **[std]**, before any rebroking.
 
@@ -663,7 +675,7 @@ def lapse_rate_base(t):
     beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return lapse_schedule_rate(policy_year(t))
 
 
 def rebroke_factor(t):
@@ -711,7 +723,7 @@ def pols_if(t):
         return 0.0
     if t == proj_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_after_decrements(t - 1)
 
 
 def pols_if_at(t, timing):
@@ -734,12 +746,22 @@ def pols_if_at(t, timing):
     if timing == "BEF_DECR":
         return pols_if(t)
     if timing == "BEF_LAPSE":
-        return pols_if(t) * (1.0 - mort_rate_mth(t))
+        return pols_before_lapse(t)
     if timing == "AFT_DECR":
-        if t < proj_start() or t >= proj_len() - 1:
-            return 0.0
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_after_decrements(t)
     raise ValueError("invalid timing")
+
+
+def pols_before_lapse(t):
+    """Policies remaining after deaths and before lapses in month t."""
+    return pols_if(t) * (1.0 - mort_rate_mth(t))
+
+
+def pols_after_decrements(t):
+    """Policies remaining after both decrements and before term expiry."""
+    if t < proj_start() or t >= proj_len() - 1:
+        return 0.0
+    return pols_before_lapse(t) * (1.0 - lapse_rate_mth(t))
 
 
 def pols_death(t):
@@ -757,7 +779,7 @@ def pols_lapse(t):
     Pays nothing - there is no surrender value [S6][R8] - so this moves
     :func:`pols_if` and nothing else.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_before_lapse(t) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -770,7 +792,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return pols_before_lapse(t) * (1.0 - lapse_rate_mth(t))
 
 
 def wop_waived_frac(t):
@@ -997,19 +1019,35 @@ def claims(t, kind=None):
         than left to inference.  See the Space docstring.
     """
     if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "FIB", "LAPSE")))
+        return claims_total(t)
     if kind == "DEATH":
+        return claims_by_kind(t, 0)
+    if kind == "FIB":
+        return claims_by_kind(t, 1)
+    if kind == "LAPSE":
+        return claims_by_kind(t, 2)
+    raise ValueError("invalid kind")
+
+
+def claims_by_kind(t, kind):
+    """Calculate claims with keys 0 (death), 1 (family income benefit), 2 (lapse)."""
+    if kind == 0:
         if shape() == "fib":
             return fib_commute_rate() * benefit_pp(t) * pols_death(t)
         return benefit_pp(t) * pols_death(t)
-    if kind == "FIB":
+    if kind == 1:
         if shape() != "fib":
             return 0.0
         return ((1.0 - fib_commute_rate()) * fib_income()
                 * (pols_death(t) + fib_cum(t)))
-    if kind == "LAPSE":
+    if kind == 2:
         return 0.0
     raise ValueError("invalid kind")
+
+
+def claims_total(t):
+    """Sum death, family income benefit and lapse outgo in that order."""
+    return pdn.sum_values(claims_by_kind(t, kind) for kind in range(3))
 
 
 def claim_expenses(t):
@@ -1105,7 +1143,7 @@ def net_cf(t):
     mortality cost, so early lapses forfeit margin to the insurer and late ones
     relieve it.
     """
-    return (premiums(t) - claims(t) - claim_expenses(t)
+    return (premiums(t) - claims_total(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 

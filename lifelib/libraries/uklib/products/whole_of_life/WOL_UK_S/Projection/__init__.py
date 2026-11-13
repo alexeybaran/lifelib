@@ -436,6 +436,11 @@ def mort_improve_factor(t):
     return (1.0 - mort_improvement) ** duration(t)                   # noqa: F821
 
 
+def mortality_table_rate(x):
+    """The selected basis, sex and smoker rate at attained age x."""
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), x), 'mort_rate')
+
+
 def mort_rate(t):
     """q(y): the annual mortality rate applied in the policy year containing month t.
 
@@ -443,7 +448,7 @@ def mort_rate(t):
     improvement factor, capped at 1.  Both shipped bases are **[std]** proxies shaped
     like the tables the notes name and are not published tables.
     """
-    q = pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), age(t)), 'mort_rate')
+    q = mortality_table_rate(age(t))
     return min(1.0, q * mort_loading() * mort_improve_factor(t))
 
 
@@ -587,6 +592,12 @@ def crossover_mth():
     return -1
 
 
+def lapse_schedule_rate(y):
+    """The selected table lapse rate at a contractual policy year."""
+    tbl = pdn.subtable(data.prepared_lapse_table_groups_1(), cell())    # noqa: F821
+    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate"))
+
+
 def lapse_rate_base(t):
     """The table annual lapse rate in month t **[std]**, before the crossover stress.
 
@@ -596,9 +607,7 @@ def lapse_rate_base(t):
     lapse study was retrieved - and on a product with no surrender value they are the
     single largest lever on the liability.
     """
-    tbl = pdn.subtable(data.prepared_lapse_table_groups_1(), cell())                             # noqa: F821
-    y = policy_year(t)
-    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate"))
+    return lapse_schedule_rate(policy_year(t))
 
 
 def lapse_rate(t):
@@ -670,7 +679,7 @@ def pu_benefit(t):
     if t == 0:
         return 0.0
     return (pu_benefit(t - 1) * (1.0 - mort_rate_mth(t - 1))
-            + pols_convert(t - 1) * benefit_pp(t - 1, "PAID_UP"))
+            + pols_convert(t - 1) * benefit_pp_by_kind(t - 1, 3))
 
 
 def pols_all(t):
@@ -785,24 +794,37 @@ def benefit_pp(t, kind):
         ``SA x N_paid / N_expected``.  Zero without the variant.
     """
     if kind == "NON_ACC":
+        return benefit_pp_by_kind(t, 0)
+    if kind == "ACC":
+        return benefit_pp_by_kind(t, 1)
+    if kind == "DEATH":
+        return benefit_pp_by_kind(t, 2)
+    if kind == "PAID_UP":
+        return benefit_pp_by_kind(t, 3)
+    raise ValueError("invalid kind")
+
+
+def benefit_pp_by_kind(t, kind):
+    """Calculate a benefit with keys 0 (non-accidental), 1 (accidental), 2 (death), 3 (paid-up)."""
+    if kind == 0:
         if cell() == "O50" and in_moratorium(t):
             return prem_cum_pp(t)
         return cover_pp(t)
-    if kind == "ACC":
+    if kind == 1:
         if cell() != "O50":
             return cover_pp(t)
         if in_moratorium(t):
             return cover_pp(t)
         return adb_multiplier() * cover_pp(t)
-    if kind == "DEATH":
+    if kind == 2:
         if cell() == "O50":
-            return ((1.0 - acc_share) * benefit_pp(t, "NON_ACC")     # noqa: F821
-                    + acc_share * benefit_pp(t, "ACC"))              # noqa: F821
+            return ((1.0 - acc_share) * benefit_pp_by_kind(t, 0)    # noqa: F821
+                    + acc_share * benefit_pp_by_kind(t, 1))         # noqa: F821
         if t < suicide_mths:                                         # noqa: F821
             return ((1.0 - suicide_share) * cover_pp(t)              # noqa: F821
                     + suicide_share * prem_cum_pp(t))                # noqa: F821
         return cover_pp(t)
-    if kind == "PAID_UP":
+    if kind == 3:
         if not pu_variant():
             return 0.0
         return cover_pp(t) * payments_made(t) / payments_expected()
@@ -834,14 +856,30 @@ def claims(t, kind=None):
         cell; the kind exists so the zero is stated rather than inferred.
     """
     if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "DEATH_PU", "LAPSE")))
+        return claims_total(t)
     if kind == "DEATH":
-        return pols_death(t) * benefit_pp(t, "DEATH")
+        return claims_by_kind(t, 0)
     if kind == "DEATH_PU":
-        return pu_benefit(t) * mort_rate_mth(t)
+        return claims_by_kind(t, 1)
     if kind == "LAPSE":
+        return claims_by_kind(t, 2)
+    raise ValueError("invalid kind")
+
+
+def claims_by_kind(t, kind):
+    """Calculate claims with keys 0 (death), 1 (paid-up death), 2 (lapse)."""
+    if kind == 0:
+        return pols_death(t) * benefit_pp_by_kind(t, 2)
+    if kind == 1:
+        return pu_benefit(t) * mort_rate_mth(t)
+    if kind == 2:
         return 0.0
     raise ValueError("invalid kind")
+
+
+def claims_total(t):
+    """Sum death, paid-up death and lapse outgo in that order."""
+    return pdn.sum_values(claims_by_kind(t, kind) for kind in range(3))
 
 
 def expense_acq_pp():
@@ -902,7 +940,7 @@ def net_cf(t):
     equal any column of that table.  Lapse contributes nothing at all: it moves
     :func:`pols_if` and pays no cash.
     """
-    return premiums(t) - claims(t) - expenses(t) - commissions(t)
+    return premiums(t) - claims_total(t) - expenses(t) - commissions(t)
 
 
 def check_pols_roll_fwd_resid(t):

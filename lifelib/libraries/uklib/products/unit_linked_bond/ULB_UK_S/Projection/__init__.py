@@ -472,6 +472,11 @@ def further_costs_rate_mth():
     return further_costs_rate() / 12.0
 
 
+def mortality_table_rate(x):
+    """The selected model point's table rate at attained age x."""
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate')
+
+
 def mort_rate(t):
     """q_a: the annual best-estimate mortality rate at the attained age **[std]**.
 
@@ -480,12 +485,19 @@ def mort_rate(t):
     to this product unless the guaranteed minimum death benefit rider is enabled.
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, mortality_table_rate(x) * mort_be_factor)         # noqa: F821
 
 
 def mort_rate_mth(t):
     """q_m = 1 - (1 - q_a)^(1/12): the monthly mortality rate **[std]**."""
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
+
+
+def surrender_schedule_rate(y):
+    """The table surrender rate for the selected policy year."""
+    table = data.prepared_surr_table_scalar_loc()                    # noqa: F821
+    last = int(pdn.max_value(pdn.keys(data.prepared_surr_table_index_selection())))
+    return pdn.lookup_float(table, min(y, last), "surr_rate")
 
 
 def surr_rate_base(t):
@@ -495,7 +507,7 @@ def surr_rate_base(t):
     """
     tbl = data.surr_table()                                          # noqa: F821
     y = policy_year(t)
-    return pdn.lookup_float(data.prepared_surr_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_surr_table_index_selection())))), "surr_rate")
+    return surrender_schedule_rate(y)
 
 
 def return_12m(t):

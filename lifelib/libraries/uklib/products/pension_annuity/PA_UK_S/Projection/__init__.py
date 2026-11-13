@@ -661,6 +661,11 @@ def mths_since_payment(t):
     return max(0, t - last)
 
 
+def mortality_table_rate(x, life):
+    """The selected life's table rate at attained age x."""
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate')
+
+
 def mort_rate_base(t, life):
     """The base-table annual mortality rate for ``life`` in the year containing month t.
 
@@ -671,7 +676,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate') * annuitant_adj                # noqa: F821
+    return mortality_table_rate(x, life) * annuitant_adj              # noqa: F821
 
 
 def improve_rate(t, life):

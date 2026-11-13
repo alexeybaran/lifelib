@@ -692,6 +692,13 @@ def esc_lapse_factor(t):
         0.0, esc_prem_mult * esc_rate() - esc_lapse_threshold)       # noqa: F821
 
 
+def lapse_schedule_rate(y):
+    """The table lapse rate for the selected policy year."""
+    table = data.prepared_lapse_table_scalar_loc()                   # noqa: F821
+    last = int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))
+    return pdn.lookup_float(table, min(y, last), "lapse_rate")
+
+
 def lapse_rate_base(t):
     """The table annual lapse rate in month t **[std]**, before the escalation shock.
 
@@ -702,7 +709,7 @@ def lapse_rate_base(t):
     """
     tbl = data.lapse_table()                                         # noqa: F821
     y = policy_year(t)
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(y, int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return lapse_schedule_rate(y)
 
 
 def lapse_rate(t):
