@@ -116,8 +116,8 @@ def model_point_table():
     about any assumption.  Where a column is an assumption in disguise (``rechnungszins``,
     the opening balances) the technical notes carry the tag.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table_accum():
@@ -128,8 +128,8 @@ def mort_table_accum():
     110, no improvement dimension: a first-order death basis does not anticipate mortality
     improvement, because on a death cover improvement favours the insurer.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_accum_file, index_col="age")              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / mort_accum_file, index_col="age"))             # noqa: F821
 
 
 def annuity_mort_table():
@@ -141,8 +141,8 @@ def annuity_mort_table():
     attained age and calendar year.  That two-dimensional structure is the property a
     replacement may not drop.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / annuity_mort_file, index_col="age")            # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / annuity_mort_file, index_col="age"))           # noqa: F821
 
 
 def lapse_table():
@@ -159,8 +159,8 @@ def lapse_table():
     consequences.  The second is set **above** the first at every duration for that
     reason, and a model of this book carrying only a lapse rate has mis-specified it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="duration")              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="duration"))             # noqa: F821
 
 
 def zulage_schedule():
@@ -176,8 +176,8 @@ def zulage_schedule():
     household fact the insurance contract does not observe, which is the most awkward
     feature of this product for a per-policy projection.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / zulage_file, index_col=["zulage_id", "t"])     # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / zulage_file, index_col=["zulage_id", "t"]))    # noqa: F821
 
 
 def income_schedule():
@@ -191,8 +191,8 @@ def income_schedule():
     *mittelbar zulageberechtigt* spouse, who has no contribution-liable earnings of their
     own and whose *Mindesteigenbeitrag* is therefore the 60 € *Sockelbeitrag*.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / income_file, index_col=["income_id", "t"]))    # noqa: F821
 
 
 def surplus_scenario():
@@ -206,8 +206,8 @@ def surplus_scenario():
     what accrues in the *Überschussguthaben*.  It is the largest single lever in the model
     and the least supported: no declared rate at any carrier was established.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / surplus_file, index_col=["scenario_id", "t"])) # noqa: F821
 
 
 def freq_loading():
@@ -218,74 +218,10 @@ def freq_loading():
     loading enlarges the premium income and nothing else.  Crediting it to the account is
     a listed modeling pitfall.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
-def prepared_freq_loading_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_loading(),
-                        columns=('load',),
-                        indexing='at')
-
-
-
-def prepared_mort_table_accum_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table_accum(),
-                        columns=('qx',),
-                        indexing='at')
-
-
-
-def prepared_lapse_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(lapse_table(),
-                        columns=('lapse_rate', 'transfer_rate'),
-                        indexing='at')
-
-
-
-def prepared_income_schedule_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(income_schedule(),
-                        columns=('income',),
-                        indexing='at')
-
-
-def income_schedule_by_id():
-    """Prepare the income column by schedule ID and projection year."""
-    return pdn.table(income_schedule(), columns=("income",), groups=("income_id",))
-
-
-
-def prepared_surplus_scenario_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(surplus_scenario(),
-                        columns=('decl_rate',),
-                        indexing='at')
-
-
-def surplus_schedule_by_id():
-    """Prepare the declared rate by scenario ID and projection year."""
-    return pdn.table(surplus_scenario(), columns=("decl_rate",), groups=("scenario_id",))
-
-
-def prepared_annuity_mort_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
-
-
-def prepared_zulage_schedule_rows():
-    """Own calculation selection; retain the public source dependency."""
-    return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
-
-
-def zulage_schedule_by_id():
-    """Prepare the calculation columns by household and contribution year."""
-    return pdn.table(zulage_schedule(),
-                     columns=("unmittelbar", "n_kinder_pre2008", "n_kinder_post2008", "bonus"),
-                     groups=("zulage_id",), preserve_scalar_types=True)
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / freq_loading_file)                             # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 # ---------------------------------------------------------------------------
@@ -310,3 +246,5 @@ freq_loading_file = "freq_loading.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+PremFreq = ("Pickle", 1)
