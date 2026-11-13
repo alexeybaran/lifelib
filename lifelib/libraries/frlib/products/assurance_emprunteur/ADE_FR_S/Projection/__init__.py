@@ -890,10 +890,10 @@ def itt_rate_vectors():
     built *from* them, so there is still one definition of each rate.
     """
     zs = range(1, itt_max_months() + 1)
-    rho = [itt_recovery_rate_mth(z) for z in zs]
-    tau = [itt_to_ipt_rate_mth(z) for z in zs]
-    qs = [itt_mort_rate_mth(z) for z in zs]
-    surv = [(1.0 - r) * (1.0 - x) * (1.0 - d) for r, x, d in zip(rho, tau, qs)]
+    rho = np.array([itt_recovery_rate_mth(z) for z in zs])
+    tau = np.array([itt_to_ipt_rate_mth(z) for z in zs])
+    qs = np.array([itt_mort_rate_mth(z) for z in zs])
+    surv = (1.0 - rho) * (1.0 - tau) * (1.0 - qs)
     return rho, tau, qs, surv
 
 
@@ -1024,17 +1024,19 @@ def itt_cohorts_raw(t):
     """
     n = itt_max_months()
     if t < 0 or t > proj_len():
-        return [0.0] * n
+        return np.zeros(n)
     if t == 0:
         if status() != Status.itt:
-            return [0.0] * n
+            return np.zeros(n)
         seed = min(claim_duration_months(), n - 1)
-        return [pols_if_init() if z == seed else 0.0 for z in range(n)]
+        out = np.zeros(n)
+        out[seed] = pols_if_init()
+        return out
     prev = itt_cohorts(t - 1)
     surv = itt_rate_vectors()[3]
-    out = [pols_itt_inception(t - 1)]
-    for z in range(1, n):
-        out.append(prev[z - 1] * surv[z - 1])
+    out = np.empty(n)
+    out[0] = pols_itt_inception(t - 1)
+    out[1:] = prev[:-1] * surv[:-1]
     return out
 
 
@@ -1049,7 +1051,7 @@ def itt_cohorts(t):
     """
     n = itt_max_months()
     if t < 0 or t >= proj_len() or not cover_itt(t):
-        return [0.0] * n
+        return np.zeros(n)
     return itt_cohorts_raw(t)
 
 
@@ -1061,12 +1063,12 @@ def pols_itt_dur(t, z):
     separate cells.  Out of range returns 0.0 rather than raising.
     """
     v = itt_cohorts(t)
-    return v[z - 1] if 1 <= z <= len(v) else 0.0
+    return float(v[z - 1]) if 1 <= z <= len(v) else 0.0
 
 
 def pols_itt(t):
     """l_itt(t): the total population in ITT payment at the start of month t."""
-    return sum(itt_cohorts(t))
+    return float(itt_cohorts(t).sum())
 
 
 def pols_itt_transfer(t):
@@ -1080,7 +1082,7 @@ def pols_itt_transfer(t):
     """
     if t < 0 or t >= proj_len() or cover_itt(t):
         return 0.0
-    return sum(itt_cohorts_raw(t))
+    return float(itt_cohorts_raw(t).sum())
 
 
 def pols_ipt_raw(t):
@@ -1197,9 +1199,13 @@ def pols_itt_recovery(t):
     restart payment with no new *franchise*; returning them to the standard inception
     basis ignores that and understates re-inception at short horizons.
     """
-    v = itt_cohorts(t)
-    rho = itt_rate_vectors()[0]
-    return sum(a * r for a, r in zip(v, rho) if a != 0.0)
+    return float(itt_cohorts(t).dot(itt_rate_vectors()[0]))
+
+
+def itt_exit_weights():
+    """Per-duration weights of the in-claim exits that follow a non-recovery: to IPT, and death."""
+    rho, tau, qs, _ = itt_rate_vectors()
+    return (1.0 - rho) * tau, (1.0 - rho) * (1.0 - tau) * qs
 
 
 def pols_itt_to_ipt(t):
@@ -1209,9 +1215,7 @@ def pols_itt_to_ipt(t):
     among the non-recovered.  These lives are paid for month t as ITT and enter IPT at the
     end of it, so the move creates neither an unpaid month nor a doubled one.
     """
-    v = itt_cohorts(t)
-    rho, tau, _, _ = itt_rate_vectors()
-    return sum(a * (1.0 - r) * x for a, r, x in zip(v, rho, tau) if a != 0.0)
+    return float(itt_cohorts(t).dot(itt_exit_weights()[0]))
 
 
 def pols_itt_death(t):
@@ -1220,10 +1224,7 @@ def pols_itt_death(t):
     ``sum over z of l_itt(t, z) (1 - rho)(1 - tau) q_s``, the last of the three
     competing exits.  They carry the Décès benefit like any other death.
     """
-    v = itt_cohorts(t)
-    rho, tau, qs, _ = itt_rate_vectors()
-    return sum(a * (1.0 - r) * (1.0 - x) * d
-               for a, r, x, d in zip(v, rho, tau, qs) if a != 0.0)
+    return float(itt_cohorts(t).dot(itt_exit_weights()[1]))
 
 
 def pols_itt_stay(t):
@@ -1234,9 +1235,7 @@ def pols_itt_stay(t):
     to ``healthy`` - and excludes the month's own inceptions, which are not paid until the
     following month.
     """
-    v = itt_cohorts(t)
-    surv = itt_rate_vectors()[3]
-    return sum(a * b for a, b in zip(v, surv) if a != 0.0)
+    return float(itt_cohorts(t).dot(itt_rate_vectors()[3]))
 
 
 def pols_itt_cap(t):
@@ -1328,7 +1327,7 @@ def pols_itt_close(t):
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    return sum(itt_cohorts_raw(t + 1))
+    return float(itt_cohorts_raw(t + 1).sum())
 
 
 def pols_ipt_close(t):
@@ -1836,5 +1835,7 @@ Status = ("Pickle", 5)
 PolTiming = ("Pickle", 6)
 
 Kind = ("Pickle", 7)
+
+np = ("Module", "numpy")
 
 enum_definitions = ("Pickle", 8)
