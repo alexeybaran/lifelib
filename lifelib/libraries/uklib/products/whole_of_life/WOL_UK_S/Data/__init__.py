@@ -69,8 +69,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -85,9 +85,11 @@ def mort_table():
     and which come from a sex or smoker factor.  Sorted on read, because
     ``Projection.mort_rate`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["basis", "sex", "smoker", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)              # noqa: F821
+    frame["basis"] = [MortBasis[name] for name in frame["basis"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
+    return pdn.table(frame.set_index(["basis", "sex", "smoker", "age"]).sort_index())
 
 
 def lapse_table():
@@ -101,27 +103,9 @@ def lapse_table():
     public UK whole of life lapse study was retrieved - and on a product with no
     surrender value they are the single largest lever on the liability.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file,                              # noqa: F821
-        index_col=["cell", "policy_year"]).sort_index()
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
-
-
-def lapse_rate_tables():
-    """Own the annual lapse-rate column and preserve each group's label rules."""
-    return pdn.table(lapse_table(), columns=('lapse_rate',), groups=('cell',),
-                     report=True, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / lapse_table_file)             # noqa: F821
+    frame["cell"] = [Cell[name] for name in frame["cell"]]
+    return pdn.table(frame.set_index(["cell", "policy_year"]).sort_index())
 
 
 # ---------------------------------------------------------------------------
@@ -136,3 +120,11 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Cell = ("Pickle", 1)
+
+Sex = ("Pickle", 2)
+
+Smoker = ("Pickle", 3)
+
+MortBasis = ("Pickle", 4)

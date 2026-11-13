@@ -230,7 +230,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def cell():
@@ -239,10 +239,7 @@ def cell():
     The two cells share this engine and not their mortality basis, their lapse table,
     their expense levels or their benefit rules.  See the Space docstring.
     """
-    v = pdn.lookup_object(prepared_model_point(), "cell")
-    if v not in ("O50", "UW"):
-        raise ValueError("invalid cell")
-    return v
+    return Cell[model_point()["cell"]]
 
 
 def age_at_entry():
@@ -253,7 +250,7 @@ def age_at_entry():
     birthday", which is ALB, and the over-50s documents price on "age at outset" without
     stating a basis **[std]**.  All age lookups here are on that one basis.
     """
-    return pdn.lookup_int(prepared_model_point(), "entry_age")
+    return int(model_point()["entry_age"])
 
 
 def sex():
@@ -263,7 +260,7 @@ def sex():
     the rate factors and do not rate by sex, so on that cell this drives the shipped
     **[std]** proxy table and nothing contractual.
     """
-    return pdn.lookup_object(prepared_model_point(), "sex")
+    return Sex[model_point()["sex"]]
 
 
 def smoker():
@@ -272,7 +269,7 @@ def smoker():
     The underwritten specimen distinguishes three smoking states; they are collapsed to
     two here **[std]**.
     """
-    return pdn.lookup_object(prepared_model_point(), "smoker")
+    return Smoker[model_point()["smoker"]]
 
 
 def sum_assured():
@@ -281,7 +278,7 @@ def sum_assured():
     :func:`cover_pp` is the amount in force in a given month, which differs from this on
     the escalating variants.
     """
-    return pdn.lookup_float(prepared_model_point(), "sum_assured")
+    return float(model_point()["sum_assured"])
 
 
 def premium_mth():
@@ -291,7 +288,7 @@ def premium_mth():
     premium rate tables, so any shipped scale would be a **[std]** snapshot calibrated
     to the handful of public quote anchors.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_mth")
+    return float(model_point()["premium_mth"])
 
 
 def escalation():
@@ -301,10 +298,7 @@ def escalation():
     premium for each one percent of cover - and the over-50s RPI variant raises the cash
     sum by RPI capped at 10% and the premium by 1.5 x RPI capped at 15%.
     """
-    v = pdn.lookup_object(prepared_model_point(), "escalation")
-    if v not in ("level", "fixed_5pct", "rpi"):
-        raise ValueError("invalid escalation")
-    return v
+    return Escalation[model_point()["escalation"]]
 
 
 def cessation_mths():
@@ -315,7 +309,7 @@ def cessation_mths():
     anniversary on or after the 90th birthday **[std]** and cover continues; the
     underwritten cell has no cessation at all.
     """
-    return pdn.lookup_int(prepared_model_point(), "cessation_months")
+    return int(model_point()["cessation_months"])
 
 
 def moratorium_mths():
@@ -325,7 +319,7 @@ def moratorium_mths():
     The underwritten cell has a suicide clause over the same window instead, which is a
     different rule with a different denominator - see :func:`benefit_pp`.
     """
-    return pdn.lookup_int(prepared_model_point(), "moratorium_months")
+    return int(model_point()["moratorium_months"])
 
 
 def adb_multiplier():
@@ -336,7 +330,7 @@ def adb_multiplier():
     already the full cash sum, so doubling it there - or applying the multiplier to all
     deaths - overstates outgo.
     """
-    return 2.0 if pdn.lookup_bool(prepared_model_point(), "variant_adb_2x") else 1.0
+    return 2.0 if bool(model_point()["variant_adb_2x"]) else 1.0
 
 
 def pu_variant():
@@ -347,7 +341,7 @@ def pu_variant():
     since ``N_expected`` is measured to it; the underwritten cell has none, so the
     combination raises rather than dividing by zero.
     """
-    v = pdn.lookup_bool(prepared_model_point(), "variant_paid_up")
+    v = bool(model_point()["variant_paid_up"])
     if v and cessation_mths() <= 0:
         raise ValueError("the pro-rata paid-up value needs a premium cessation date")
     return v
@@ -355,7 +349,7 @@ def pu_variant():
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def proj_len():
@@ -409,7 +403,7 @@ def mort_basis():
     either cell the other's basis produces plausible-looking but wrong margins.  See the
     Space docstring.
     """
-    return "population" if cell() == "O50" else "assured"
+    return MortBasis.population if cell() == Cell.O50 else MortBasis.assured
 
 
 def mort_loading():
@@ -420,7 +414,7 @@ def mort_loading():
     pricing basis, so the loading is a placeholder to be calibrated - and a deliberately
     modest one, since population mortality is already heavier than insured experience.
     """
-    return mort_loading_o50 if cell() == "O50" else mort_loading_uw  # noqa: F821
+    return mort_loading_o50 if cell() == Cell.O50 else mort_loading_uw  # noqa: F821
 
 
 def mort_improve_factor(t):
@@ -436,9 +430,9 @@ def mort_improve_factor(t):
     return (1.0 - mort_improvement) ** duration(t)                   # noqa: F821
 
 
-def mortality_table_rate(x):
-    """The selected basis, sex and smoker rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (mort_basis(), sex(), smoker(), x), 'mort_rate')
+def mort_schedule():
+    """The mortality rates of the policy's basis, sex and smoker status, by age."""
+    return data.mort_table().loc[(mort_basis(), sex(), smoker())]   # noqa: F821
 
 
 def mort_rate(t):
@@ -448,18 +442,13 @@ def mort_rate(t):
     improvement factor, capped at 1.  Both shipped bases are **[std]** proxies shaped
     like the tables the notes name and are not published tables.
     """
-    q = mortality_table_rate(age(t))
+    q = float(mort_schedule().loc[age(t), "mort_rate"])
     return min(1.0, q * mort_loading() * mort_improve_factor(t))
 
 
 def mort_rate_mth(t):
     """q_m(y) = 1 - (1 - q)^(1/12): the monthly mortality rate **[std]**."""
-    return monthly_mortality_in_year(duration(t))
-
-
-def monthly_mortality_in_year(year):
-    """Convert the constant annual mortality rate once per policy year."""
-    return 1.0 - (1.0 - mort_rate(12 * year)) ** (1.0 / 12.0)
+    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
 def esc_cover_step():
@@ -472,9 +461,9 @@ def esc_cover_step():
     assumed and the decline rule is not implemented.
     """
     e = escalation()
-    if e == "level":
+    if e == Escalation.level:
         return 0.0
-    if e == "fixed_5pct":
+    if e == Escalation.fixed_5pct:
         return esc_fixed_cover * esc_take_up                         # noqa: F821
     return min(max(rpi_rate, 0.0), esc_rpi_cover_cap) * esc_take_up  # noqa: F821
 
@@ -487,9 +476,9 @@ def esc_prem_step():
     the source defines an increase only, with no decrease **[std]**.
     """
     e = escalation()
-    if e == "level":
+    if e == Escalation.level:
         return 0.0
-    if e == "fixed_5pct":
+    if e == Escalation.fixed_5pct:
         return esc_fixed_prem * esc_take_up                          # noqa: F821
     return min(max(esc_rpi_prem_mult * rpi_rate, 0.0),               # noqa: F821
                esc_rpi_prem_cap) * esc_take_up                       # noqa: F821
@@ -503,12 +492,7 @@ def cover_pp(t):
     index after premiums cease at 90**, which is why this carries no cessation test -
     the premium step, being applied to a zero premium, stops of its own accord.
     """
-    return cover_in_year(duration(t))
-
-
-def cover_in_year(year):
-    """Sum assured after the policy year's cover escalation."""
-    return sum_assured() * (1.0 + esc_cover_step()) ** year
+    return sum_assured() * (1.0 + esc_cover_step()) ** duration(t)
 
 
 def premium_pp(t):
@@ -521,12 +505,7 @@ def premium_pp(t):
     """
     if cessation_mths() > 0 and t >= cessation_mths():
         return 0.0
-    return premium_in_year(duration(t))
-
-
-def premium_in_year(year):
-    """Monthly premium after the policy year's escalation."""
-    return premium_mth() * (1.0 + esc_prem_step()) ** year
+    return premium_mth() * (1.0 + esc_prem_step()) ** duration(t)
 
 
 def prem_cum_pp(t):
@@ -601,16 +580,15 @@ def crossover_mth():
     the tipping point is a pure stress dial and is off in the base run.
     """
     last = cessation_mths() if cessation_mths() > 0 else proj_len()
-    for t in pdn.periods(last):
+    for t in range(last):
         if prem_cum_pp(t) > cover_pp(t):
             return t
     return -1
 
 
-def lapse_schedule_rate(y):
-    """The selected table lapse rate at a contractual policy year."""
-    tbl = pdn.subtable(data.lapse_rate_tables(), cell())             # noqa: F821
-    return pdn.lookup_float(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate")
+def lapse_schedule():
+    """The lapse rates of the policy's cell, by policy year."""
+    return data.lapse_table().loc[cell()]                           # noqa: F821
 
 
 def lapse_rate_base(t):
@@ -622,7 +600,9 @@ def lapse_rate_base(t):
     lapse study was retrieved - and on a product with no surrender value they are the
     single largest lever on the liability.
     """
-    return lapse_schedule_rate(policy_year(t))
+    tbl = lapse_schedule()
+    y = policy_year(t)
+    return float(tbl.loc[min(y, int(tbl.index.max())), "lapse_rate"])
 
 
 def lapse_rate(t):
@@ -694,7 +674,7 @@ def pu_benefit(t):
     if t == 0:
         return 0.0
     return (pu_benefit(t - 1) * (1.0 - mort_rate_mth(t - 1))
-            + pols_convert(t - 1) * benefit_pp_by_kind(t - 1, 3))
+            + pols_convert(t - 1) * benefit_pp(t - 1, BenefitKind.PAID_UP))
 
 
 def pols_all(t):
@@ -719,11 +699,11 @@ def pols_if_at(t, timing):
         the end-of-month count, the notes' ``l(t+1)``; zero in the last projected
         month, where the survivors are :func:`pols_maturity`.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
         return pols_if(t + 1)
@@ -746,7 +726,7 @@ def pols_exit(t):
     What happens to them depends on :func:`pu_eligible`: they either terminate for
     nothing or convert to paid-up.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_convert(t):
@@ -808,38 +788,25 @@ def benefit_pp(t, kind):
         the pro-rata paid-up payout for a policy converting in month t,
         ``SA x N_paid / N_expected``.  Zero without the variant.
     """
-    if kind == "NON_ACC":
-        return benefit_pp_by_kind(t, 0)
-    if kind == "ACC":
-        return benefit_pp_by_kind(t, 1)
-    if kind == "DEATH":
-        return benefit_pp_by_kind(t, 2)
-    if kind == "PAID_UP":
-        return benefit_pp_by_kind(t, 3)
-    raise ValueError("invalid kind")
-
-
-def benefit_pp_by_kind(t, kind):
-    """Calculate a benefit with keys 0 (non-accidental), 1 (accidental), 2 (death), 3 (paid-up)."""
-    if kind == 0:
-        if cell() == "O50" and in_moratorium(t):
+    if kind == BenefitKind.NON_ACC:
+        if cell() == Cell.O50 and in_moratorium(t):
             return prem_cum_pp(t)
         return cover_pp(t)
-    if kind == 1:
-        if cell() != "O50":
+    if kind == BenefitKind.ACC:
+        if cell() != Cell.O50:
             return cover_pp(t)
         if in_moratorium(t):
             return cover_pp(t)
         return adb_multiplier() * cover_pp(t)
-    if kind == 2:
-        if cell() == "O50":
-            return ((1.0 - acc_share) * benefit_pp_by_kind(t, 0)    # noqa: F821
-                    + acc_share * benefit_pp_by_kind(t, 1))         # noqa: F821
+    if kind == BenefitKind.DEATH:
+        if cell() == Cell.O50:
+            return ((1.0 - acc_share) * benefit_pp(t, BenefitKind.NON_ACC)     # noqa: F821
+                    + acc_share * benefit_pp(t, BenefitKind.ACC))              # noqa: F821
         if t < suicide_mths:                                         # noqa: F821
             return ((1.0 - suicide_share) * cover_pp(t)              # noqa: F821
                     + suicide_share * prem_cum_pp(t))                # noqa: F821
         return cover_pp(t)
-    if kind == 3:
+    if kind == BenefitKind.PAID_UP:
         if not pu_variant():
             return 0.0
         return cover_pp(t) * payments_made(t) / payments_expected()
@@ -855,7 +822,7 @@ def premiums(t):
     return premium_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Death outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -870,46 +837,20 @@ def claims(t, kind=None):
         zero, always.  There is no surrender value at any time on either
         cell; the kind exists so the zero is stated rather than inferred.
     """
-    if kind is None:
-        return claims_total(t)
-    if kind == "DEATH":
-        return claims_by_kind(t, 0)
-    if kind == "DEATH_PU":
-        return claims_by_kind(t, 1)
-    if kind == "LAPSE":
-        return claims_by_kind(t, 2)
-    raise ValueError("invalid kind")
-
-
-def claims_by_kind(t, kind):
-    """Calculate claims with keys 0 (death), 1 (paid-up death), 2 (lapse)."""
-    if kind == 0:
-        return claims_death(t)
-    if kind == 1:
-        return claims_paid_up_death(t)
-    if kind == 2:
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.DEATH_PU, Kind.LAPSE))
+    if kind == Kind.DEATH:
+        return pols_death(t) * benefit_pp(t, BenefitKind.DEATH)
+    if kind == Kind.DEATH_PU:
+        return pu_benefit(t) * mort_rate_mth(t)
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
 
-def claims_death(t):
-    """Expected death claim on the full-cover strand."""
-    return pols_death(t) * benefit_pp_by_kind(t, 2)
-
-
-def claims_paid_up_death(t):
-    """Expected death claim on the paid-up strand."""
-    return pu_benefit(t) * mort_rate_mth(t)
-
-
-def claims_total(t):
-    """Combined death outgo on both strands. Lapse pays zero."""
-    return claims_death(t) + claims_paid_up_death(t)
-
-
 def expense_acq_pp():
     """The acquisition expense per policy at issue **[std]**: £150 on O50, £300 on UW."""
-    return expense_acq_o50 if cell() == "O50" else expense_acq_uw    # noqa: F821
+    return expense_acq_o50 if cell() == Cell.O50 else expense_acq_uw    # noqa: F821
 
 
 def expense_maint_pp():
@@ -919,7 +860,7 @@ def expense_maint_pp():
     so the expense margin erodes mechanically over a twenty-year-plus horizon.  A
     per-policy expense error compounds accordingly.
     """
-    return expense_maint_o50 if cell() == "O50" else expense_maint_uw  # noqa: F821
+    return expense_maint_o50 if cell() == Cell.O50 else expense_maint_uw  # noqa: F821
 
 
 def inflation_factor(t):
@@ -928,12 +869,7 @@ def inflation_factor(t):
     ``y - 1 = duration(t) = t // 12``: it steps on policy anniversaries, not monthly,
     which is how the notes write it.
     """
-    return inflation_in_year(duration(t))
-
-
-def inflation_in_year(year):
-    """Maintenance expense inflation at the policy anniversary."""
-    return (1.0 + inflation_rate) ** year                            # noqa: F821
+    return (1.0 + inflation_rate) ** duration(t)                     # noqa: F821
 
 
 def expenses(t):
@@ -970,7 +906,7 @@ def net_cf(t):
     equal any column of that table.  Lapse contributes nothing at all: it moves
     :func:`pols_if` and pays no cash.
     """
-    return premiums(t) - claims_total(t) - expenses(t) - commissions(t)
+    return premiums(t) - claims(t, Kind.ALL) - expenses(t) - commissions(t)
 
 
 def check_pols_roll_fwd_resid(t):
@@ -994,7 +930,8 @@ def check_pols_roll_fwd():
     the signed residual of the month that failed.  The tolerance scales with
     ``pols_if_init()``, since the residual accumulates rounding on that many policies.
     """
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * max(pols_if_init(), 1.0)
+               for t in range(proj_len()))
 
 
 def check_truncation():
@@ -1019,15 +956,15 @@ def result_cf():
     zeros by product design - there is no surrender value - and is published rather than
     dropped.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "pols_pu": [pols_pu(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_death_pu": [claims(t, "DEATH_PU") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_death_pu": [claims(t, Kind.DEATH_PU) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1041,7 +978,7 @@ def result_pols():
 
     The same frame as :func:`result_cf`: ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1051,17 +988,12 @@ def result_pols():
             "pols_convert": [pols_convert(t) for t in ts],
             "prem_cum_pp": [prem_cum_pp(t) for t in ts],
             "cover_pp": [cover_pp(t) for t in ts],
-            "benefit_death_pp": [benefit_pp(t, "DEATH") for t in ts],
+            "benefit_death_pp": [benefit_pp(t, BenefitKind.DEATH) for t in ts],
             "mort_rate": [mort_rate(t) for t in ts],
             "lapse_rate": [lapse_rate(t) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1115,7 +1047,20 @@ comm_init_rate = 0.25
 
 pd = ("Module", "pandas")
 
+Cell = ("Pickle", 1)
 
+Sex = ("Pickle", 2)
 
+Smoker = ("Pickle", 3)
 
-pdn = ("Module", "modelx_helpers.pdn")
+Escalation = ("Pickle", 5)
+
+MortBasis = ("Pickle", 4)
+
+PolTiming = ("Pickle", 6)
+
+BenefitKind = ("Pickle", 7)
+
+Kind = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)
