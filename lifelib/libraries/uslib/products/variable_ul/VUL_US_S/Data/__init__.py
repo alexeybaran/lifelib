@@ -94,12 +94,12 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True, report=True)  # noqa: F821
 
 
-def subaccount_table() -> "modelx_helpers.immutable_inputs.Table":
+def subaccount_table():
     """The separate-account subaccount lineup, read from *subaccount_table.csv*.
 
     One row per subaccount, giving its name and its annual fund operating expense
@@ -137,32 +137,32 @@ def coi_rates():
                         columns=("coi_rate_guar",), report=True)
 
 
-def corridor_factors() -> "modelx_helpers.immutable_inputs.Table":
+def corridor_factors():
     """The GPT corridor factor table by attained age, read from *corridor_factors.csv*."""
     return pdn.table(pd.read_csv(input_dir() / corridor_file, index_col="age"))  # noqa: F821
 
 
-def mort_table() -> "modelx_helpers.immutable_inputs.Table":
+def mort_table():
     """The best-estimate annual mortality table by age, read from *mort_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / mort_table_file, index_col="age"))  # noqa: F821
 
 
-def class_factor_table() -> "modelx_helpers.immutable_inputs.Table":
+def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
 
 
-def lapse_table() -> "modelx_helpers.immutable_inputs.Table":
+def lapse_table():
     """The base annual lapse rates by policy year, read from *lapse_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / lapse_table_file, index_col="policy_year"))  # noqa: F821
 
 
-def prem_persistency_table() -> "modelx_helpers.immutable_inputs.Table":
+def prem_persistency_table():
     """Premium persistency (paid/planned) by policy year, read from *prem_persistency.csv*."""
     return pdn.table(pd.read_csv(input_dir() / prem_persistency_file, index_col="policy_year"))  # noqa: F821
 
 
-def surr_charge_table() -> "modelx_helpers.immutable_inputs.Table":
+def surr_charge_table():
     """The surrender charge schedules, read from *surr_charge_table.csv*.
 
     One row per ``surr_charge_id``, giving the initial charge per $1,000 of initial

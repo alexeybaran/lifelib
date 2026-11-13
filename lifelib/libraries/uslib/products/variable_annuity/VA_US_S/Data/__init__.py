@@ -83,7 +83,7 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)
 

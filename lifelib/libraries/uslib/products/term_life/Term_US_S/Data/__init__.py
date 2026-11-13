@@ -65,7 +65,7 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
 
@@ -83,17 +83,17 @@ def premium_rates():
     return pdn.table(rates, columns=("premium_pp",), groups=rates.index.names[:-1])  # noqa: F821
 
 
-def mort_table() -> "modelx_helpers.immutable_inputs.Table":
+def mort_table():
     """The base mortality table by age, read from *mort_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / mort_table_file, index_col="age"))  # noqa: F821
 
 
-def class_factor_table() -> "modelx_helpers.immutable_inputs.Table":
+def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
 
 
-def shock_lapse_table() -> "modelx_helpers.immutable_inputs.Table":
+def shock_lapse_table():
     """The shock-lapse buckets by jump ratio, read from *shock_lapse_table.csv*."""
     return pdn.table(pd.read_csv(input_dir() / shock_lapse_file), rows=True)  # noqa: F821
 
