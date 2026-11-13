@@ -120,8 +120,8 @@ def model_point_table():
     row by row would repeat the same provenance once per policy while saying nothing
     about any assumption.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def inception_table():
@@ -132,8 +132,8 @@ def inception_table():
     ``inc_rate(30) = 0.001100``; DAV 1997 I is DAV property and is not shipped.  See the
     Space docstring for what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / inception_file, index_col="age")               # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / inception_file, index_col="age"))              # noqa: F821
 
 
 def claim_duration_table():
@@ -145,8 +145,8 @@ def claim_duration_table():
     claim years 1-10 and **row 11 is the ultimate**, applied to claim year 11 and beyond.
     Both columns are **[std]**; DAV 1997 RI and DAV 1997 TI are not shipped.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / claim_duration_file, index_col="dur_year"))    # noqa: F821
 
 
 def mortality_table():
@@ -159,8 +159,8 @@ def mortality_table():
     DAV 2008 T and DAV 1997 TI are not shipped.  **Using one rate for both states is a
     numbered pitfall**, which is why the file carries two columns rather than one.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mortality_file, index_col="age")               # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / mortality_file, index_col="age"))              # noqa: F821
 
 
 def occupation_table():
@@ -174,8 +174,9 @@ def occupation_table():
     insurer's *Berufsgruppenverzeichnis* was retrievable and carrier classifications are
     not comparable with one another.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
+    frame = pd.read_csv(input_dir() / occupation_file)               # noqa: F821
+    frame["berufsgruppe"] = [Berufsgruppe[name] for name in frame["berufsgruppe"]]
+    return pdn.table(frame.set_index("berufsgruppe").sort_index())
 
 
 def lapse_table():
@@ -188,8 +189,8 @@ def lapse_table():
     lapse.  Lapse *selection* is not modelled; the direction of the resulting error is
     stated in the technical notes.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year"))          # noqa: F821
 
 
 def freq_loading_table():
@@ -201,8 +202,9 @@ def freq_loading_table():
     so the quoted *Zahlbeitrag* ratio is untouched by it.  **[std]**: the ladder is the
     recalled German market convention and no retrieved document confirms it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
+    frame = pd.read_csv(input_dir() / freq_loading_file)             # noqa: F821
+    frame["prem_mode"] = [PremMode[name] for name in frame["prem_mode"]]
+    return pdn.table(frame.set_index("prem_mode").sort_index())
 
 
 # ---------------------------------------------------------------------------
@@ -223,3 +225,9 @@ lapse_file = "lapse_table.csv"
 freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
+
+pdn = ("Module", "modelx_helpers.pdn")
+
+Berufsgruppe = ("Pickle", 1)
+
+PremMode = ("Pickle", 2)
