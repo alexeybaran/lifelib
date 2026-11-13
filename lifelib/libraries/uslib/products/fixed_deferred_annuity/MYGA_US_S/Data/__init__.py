@@ -76,30 +76,28 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))
 
 
 def mort_table():
     """Annual mortality by attained age and sex, read from *mort_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["age", "sex"]),
-        columns=("mort_rate",), groups=("sex",))
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["age", "sex"]))
 
 
 def surr_charge_table():
     """Surrender charge rates by schedule and contract year, from *surr_charge_table.csv*."""
-    schedules = pdn.table(pd.read_csv(                                         # noqa: F821
-        input_dir() / surr_charge_file,                              # noqa: F821
-        index_col=["schedule", "contract_year"]), columns=("surr_charge_rate",), groups=("schedule",))
-    return pdn.Record({Schedule[name]: table for name, table in schedules.items()})
+    frame = pd.read_csv(input_dir() / surr_charge_file)                     # noqa: F821
+    frame["schedule"] = [Schedule[name] for name in frame["schedule"]]
+    return pdn.table(frame.set_index(["schedule", "contract_year"]))
 
 
-def surr_charge_age_cap_table() -> "modelx_helpers.immutable_inputs.Table":
+def surr_charge_age_cap_table():
     """The attained-age cap on the renewal surrender charge, from *surr_charge_age_cap.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / surr_charge_age_cap_file, index_col="age"), columns=("surr_charge_cap",))
+    return pdn.table(pd.read_csv(input_dir() / surr_charge_age_cap_file, index_col="age"))   # noqa: F821
 
 
 def rate_scenario():
@@ -110,9 +108,7 @@ def rate_scenario():
     rate that hold from that month until the next row of the same scenario, so a flat
     path is one row at ``t = 0``.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / rate_scenario_file,                            # noqa: F821
-        index_col=["scenario_id", "t"]), columns=("mva_ref_yield", "market_rate"), groups=("scenario_id",))
+    return pdn.table(pd.read_csv(input_dir() / rate_scenario_file, index_col=["scenario_id", "t"]))   # noqa: F821
 
 
 def withdrawal_table():
@@ -122,15 +118,12 @@ def withdrawal_table():
     row takes no withdrawal. The worked example's $4,000 sits at ``t = 12``, the first
     month of contract year 2.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / withdrawal_file,                               # noqa: F821
-        index_col=["wd_schedule_id", "t"]), columns=("wd_amount",), groups=("wd_schedule_id",))
+    return pdn.table(pd.read_csv(input_dir() / withdrawal_file, index_col=["wd_schedule_id", "t"]))   # noqa: F821
 
 
-def mva_factor_table() -> "modelx_helpers.immutable_inputs.Table":
+def mva_factor_table():
     """The declared-differential MVA duration factors, from *mva_factor_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / mva_factor_file, index_col="years_remaining"), columns=("factor_lo", "factor_hi"))
+    return pdn.table(pd.read_csv(input_dir() / mva_factor_file, index_col="years_remaining"))   # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -154,4 +147,6 @@ pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
 
-Schedule = ("Pickle", 10)
+Schedule = ("Pickle", 1)
+
+Sex = ("Pickle", 2)
