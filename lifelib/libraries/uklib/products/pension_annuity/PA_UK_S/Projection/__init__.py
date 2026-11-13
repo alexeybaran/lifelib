@@ -545,8 +545,8 @@ def is_payment_mth(t):
     """
     if t < 0:
         return False
-    step = 12 // payment_freq()
-    if payment_timing() == "arrears":
+    step = payment_interval()
+    if is_arrears_payment():
         return (t + 1) % step == 0
     return t % step == 0
 
@@ -560,7 +560,17 @@ def payment_surv_mth(t):
     survival for advance payments understates the liability by about one period's
     mortality per payment.
     """
-    return t + 1 if payment_timing() == "arrears" else t
+    return t + 1 if is_arrears_payment() else t
+
+
+def payment_interval():
+    """Whole months between instalments."""
+    return 12 // payment_freq()
+
+
+def is_arrears_payment():
+    """Whether survival is measured at the end of the payment month."""
+    return payment_timing() == "arrears"
 
 
 def rpi_index(a):
@@ -1000,7 +1010,12 @@ def pols_if(t):
 
 def inflation_factor(t):
     """The expense inflation factor in month t: ``(1 + pi)^(y - 1)`` **[std]**."""
-    return (1.0 + inflation_rate) ** (policy_year(t) - 1)            # noqa: F821
+    return inflation_in_year(duration(t))
+
+
+def inflation_in_year(year):
+    """Maintenance expense inflation at the policy anniversary."""
+    return (1.0 + inflation_rate) ** year                            # noqa: F821
 
 
 def expenses(t):

@@ -503,7 +503,12 @@ def cover_pp(t):
     index after premiums cease at 90**, which is why this carries no cessation test -
     the premium step, being applied to a zero premium, stops of its own accord.
     """
-    return sum_assured() * (1.0 + esc_cover_step()) ** duration(t)
+    return cover_in_year(duration(t))
+
+
+def cover_in_year(year):
+    """Sum assured after the policy year's cover escalation."""
+    return sum_assured() * (1.0 + esc_cover_step()) ** year
 
 
 def premium_pp(t):
@@ -516,7 +521,12 @@ def premium_pp(t):
     """
     if cessation_mths() > 0 and t >= cessation_mths():
         return 0.0
-    return premium_mth() * (1.0 + esc_prem_step()) ** duration(t)
+    return premium_in_year(duration(t))
+
+
+def premium_in_year(year):
+    """Monthly premium after the policy year's escalation."""
+    return premium_mth() * (1.0 + esc_prem_step()) ** year
 
 
 def prem_cum_pp(t):
@@ -918,7 +928,12 @@ def inflation_factor(t):
     ``y - 1 = duration(t) = t // 12``: it steps on policy anniversaries, not monthly,
     which is how the notes write it.
     """
-    return (1.0 + inflation_rate) ** duration(t)                     # noqa: F821
+    return inflation_in_year(duration(t))
+
+
+def inflation_in_year(year):
+    """Maintenance expense inflation at the policy anniversary."""
+    return (1.0 + inflation_rate) ** year                            # noqa: F821
 
 
 def expenses(t):
