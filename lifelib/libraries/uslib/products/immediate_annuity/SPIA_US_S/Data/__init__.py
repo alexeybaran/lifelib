@@ -70,31 +70,29 @@ def input_dir():
     return _model.path.parent                                        # noqa: F821
 
 
-def model_point_table() -> "modelx_helpers.immutable_inputs.Table":
+def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    values = pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
-    return pdn.table(values, rows=True, report=True)
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def mort_table():
     """The base annuitant mortality table by age and sex, read from *mort_table.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["age", "sex"])     # noqa: F821
-    return pdn.table(values, groups=values.index.names[1:], columns=("mort_rate",))
+    frame = pd.read_csv(input_dir() / mort_table_file)                    # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["age", "sex"]))
 
 
 def improvement_scale():
     """The generational improvement scale by age and sex, from *improvement_scale.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / improvement_scale_file, index_col=["age", "sex"])  # noqa: F821
-    return pdn.table(values, groups=values.index.names[1:], columns=("improvement_rate",))
+    frame = pd.read_csv(input_dir() / improvement_scale_file)                    # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["age", "sex"]))
 
 
-def surr_charge_table() -> "modelx_helpers.immutable_inputs.Table":
+def surr_charge_table():
     """The commutation surrender-charge scale by contract year, from *surr_charge_table.csv*."""
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / surr_charge_file, index_col="policy_year")     # noqa: F821
-    return pdn.table(values)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / surr_charge_file, index_col="policy_year"))     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -111,3 +109,5 @@ surr_charge_file = "surr_charge_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)

@@ -266,8 +266,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)     # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def premium_pp():
@@ -308,11 +308,7 @@ def form():
 
     life_only, life_certain, cash_refund, installment_refund, certain_only.
     """
-    v = model_point()["form"]
-    if v not in ("life_only", "life_certain", "cash_refund",
-                 "installment_refund", "certain_only"):
-        raise ValueError("invalid form")
-    return PayoutForm[v]
+    return Form[model_point()["form"]]
 
 
 def is_joint():
@@ -336,9 +332,9 @@ def age_at_entry(life):
 def sex(life):
     """Sex (M / F) of the primary (life = 1) or joint (life = 2) annuitant."""
     if life == 1:
-        return model_point()["primary_sex"]
+        return Sex[model_point()["primary_sex"]]
     if life == 2:
-        return model_point()["joint_sex"]
+        return Sex[model_point()["joint_sex"]]
     raise ValueError("invalid life")
 
 
@@ -353,10 +349,7 @@ def reduction_trigger():
     A switch, not a parameter: the two conventions coincide on the primary's death and
     differ only on the secondary's [S1][S2][S3][S7].
     """
-    v = model_point()["reduction_trigger"]
-    if v not in ("either", "primary"):
-        raise ValueError("invalid reduction_trigger")
-    return ReductionTrigger[v]
+    return ReductionTrigger[model_point()["reduction_trigger"]]
 
 
 def certain_mths():
@@ -378,10 +371,7 @@ def payment_timing():
     No product document states the convention; VM-V's prescribed weight-table cash flow
     model assumes payments at the end of each period, so arrears is the default [R1].
     """
-    v = model_point()["timing"]
-    if v not in ("arrears", "advance"):
-        raise ValueError("invalid timing")
-    return PaymentTiming[v]
+    return PaymentTiming[model_point()["timing"]]
 
 
 def cola_rate():
@@ -431,16 +421,13 @@ def mort_basis():
     notes' worked example, which is a scenario and not an expectation, reproduces
     exactly.  See the Space docstring.
     """
-    v = model_point()["mort_basis"]
-    if v not in ("table", "scenario"):
-        raise ValueError("invalid mort_basis")
-    return MortalityBasis[v]
+    return MortBasis[model_point()["mort_basis"]]
 
 
 def death_mth(life):
     """The scenario month of death of ``life``; -1 if the life survives throughout.
 
-    Read only when ``mort_basis() == MortalityBasis.scenario``.  A blank cell in the model point table
+    Read only when ``mort_basis() == "scenario"``.  A blank cell in the model point table
     means the life never dies in the scenario and is returned as -1, because ``t`` is
     0-based and month 0 is a projectable month of death like any other.  A death "during
     month t" is decremented at the end of that month, i.e. at time ``t + 1``, so
@@ -449,7 +436,7 @@ def death_mth(life):
     notes' "dies during month 14" is ``death_mth = 13``.
     """
     v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
-    return -1 if pdn.isna(v) else int(v)                              # noqa: F821
+    return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
 def duration_mth(t):
@@ -640,9 +627,9 @@ def certain_mths_eff():
     installment_refund [S1][S5]; 0 for life_only and cash_refund [S1][S2].
     """
     f = form()
-    if f == PayoutForm.life_certain or f == PayoutForm.certain_only:
+    if f in (Form.life_certain, Form.certain_only):
         return certain_mths()
-    if f == PayoutForm.installment_refund:
+    if f == Form.installment_refund:
         return certain_mths_refund()
     return 0
 
@@ -657,18 +644,13 @@ def annuity_pp(t):
     the notes write them.  The trim is a no-op whenever ``P`` is an exact multiple of the
     instalment, which is the shipped anchor's case.
     """
-    if form() != PayoutForm.installment_refund:
+    if form() != Form.installment_refund:
         return annuity_pp_sched(t)
     n_r = certain_mths_refund()
     if t != n_r - 1:
         return annuity_pp_sched(t)
     step = 12 // payment_freq()
     return max(0.0, premium_pp() - cum_annuity_pp(n_r - step))
-
-
-def mortality_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
-    """The original mortality table for the selected life’s sex."""
-    return data.mort_table().slice(sex(life))                          # noqa: F821
 
 
 def mort_rate_base(t, life):
@@ -682,12 +664,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return mortality_schedule(life).lookup_float(x, "mort_rate")  # noqa: F821
-
-
-def improvement_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
-    """The original improvement table for the selected life’s sex."""
-    return data.improvement_scale().slice(sex(life))                   # noqa: F821
+    return float(data.mort_table().loc[(x, sex(life)), "mort_rate"])  # noqa: F821
 
 
 def improvement_rate(t, life):
@@ -700,7 +677,8 @@ def improvement_rate(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 0.0
-    return improvement_schedule(life).lookup_float(x, "improvement_rate")
+    return float(                                                    # noqa: F821
+        data.improvement_scale().loc[(x, sex(life)), "improvement_rate"])
 
 
 def mort_rate(t, life):
@@ -718,8 +696,8 @@ def mort_rate(t, life):
     the unprojected table the study's own answer is 99.6% [R9], and applying 1.084 there
     misstates the mortality level by about 8%.
     """
-    q_base = (mort_rate_base(t, life) * (1.0 - improvement_rate(t, life))
-              ** (calendar_year(t) - mort_table_year))               # noqa: F821
+    k = calendar_year(t) - mort_table_year                           # noqa: F821
+    q_base = mort_rate_base(t, life) * (1.0 - improvement_rate(t, life)) ** k
     q_be = min(1.0, mort_ae_factor * q_base)                         # noqa: F821
     return min(1.0, rating_factor() * q_be)
 
@@ -748,7 +726,7 @@ def lives_if(k, life):
         return 0.0
     if k <= 0:
         return 1.0
-    if mort_basis() == MortalityBasis.scenario:
+    if mort_basis() == MortBasis.scenario:
         d = death_mth(life)
         return 0.0 if (d >= 0 and k > d) else 1.0
     return lives_if(k - 1, life) * (1.0 - mort_rate_mth(k - 1, life))
@@ -818,7 +796,7 @@ def payment_factor_life(t):
     alive [S2][S3][S5].  The two coincide on the primary's death and differ only on the
     secondary's, which is why the trigger is a switch and not a footnote.
     """
-    if form() == PayoutForm.certain_only:
+    if form() == Form.certain_only:
         return 0.0
     s = payment_surv_mth(t)
     l1 = lives_if(s, 1)
@@ -826,7 +804,8 @@ def payment_factor_life(t):
         return l1
     l2 = lives_if(s, 2)
     d = survivor_pct()
-    if reduction_trigger() == ReductionTrigger.either:
+    trig = reduction_trigger()
+    if trig == ReductionTrigger.either:
         return l1 * l2 + d * (l1 + l2 - 2.0 * l1 * l2)
     return l1 + d * (1.0 - l1) * l2
 
@@ -867,7 +846,7 @@ def pols_if(t):
     therefore dropped on ``certain_only``, the one form with no life contingency in it,
     and ``IF(t) = C(t)`` there.  Every other form is unaffected.  See model point 15.
     """
-    alive = 0.0 if form() == PayoutForm.certain_only else lives_if_last(t + 1)
+    alive = 0.0 if form() == Form.certain_only else lives_if_last(t + 1)
     return pols_if_init() * max(certain_floor(t), alive)
 
 
@@ -922,19 +901,6 @@ def commute_disc_rate(t):
     return commute_disc_rate_base + cmt10_shift                      # noqa: F821
 
 
-def commute_discount_code():
-    """The configured commutation discount convention."""
-    label = commute_disc_convention
-    if label not in ("compound", "simple"):
-        raise ValueError("invalid commute_disc_convention")
-    return DiscountConvention[label.upper()]
-
-
-def compound_discount_factor(rate, years):
-    """The original compound discount over the remaining years."""
-    return (1.0 + rate) ** (-years)
-
-
 def commuted_value(t):
     """CV(t): the commuted value of the remaining certain instalments [S1].
 
@@ -952,17 +918,16 @@ def commuted_value(t):
     if t + 1 >= n_eff:
         return 0.0
     j = commute_disc_rate(t)
-    conv = commute_discount_code()
-    total: float = 0.0
+    conv = commute_disc_convention                                   # noqa: F821
+    total = 0.0
     for s in range(t + 1, n_eff):
         inst = annuity_pp_sched(s)
         if inst == 0.0:
             continue
         yrs = (s - t) / 12.0
-        v: float
-        if conv == DiscountConvention.COMPOUND:
-            v = compound_discount_factor(j, yrs)
-        elif conv == DiscountConvention.SIMPLE:
+        if conv == "compound":
+            v = (1.0 + j) ** (-yrs)
+        elif conv == "simple":
             v = max(0.0, 1.0 - j * yrs)
         else:
             raise ValueError("invalid commute_disc_convention")
@@ -1034,10 +999,9 @@ def surr_charge_rate(y):
     take its first and last rows; year 1 is barred from withdrawing at all, so its rate
     is never reached through :func:`commute_amount`.
     """
-    y = int(y)
     tbl = data.surr_charge_table()                                   # noqa: F821
-    key = min(max(y, int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(key, "surr_charge_rate")
+    lo, hi = int(tbl.index.min()), int(tbl.index.max())
+    return float(tbl.loc[min(max(int(y), lo), hi), "surr_charge_rate"])
 
 
 def surr_charge(t):
@@ -1080,24 +1044,24 @@ def claim_pp(t, kind):
     **advance** payment month the instalment paid at the *start* of the death month has
     been paid, so ``G(t + 1)`` is used or the lump sum is overstated by one instalment.
     """
-    if kind != Claim.REFUND:
+    if kind != Kind.REFUND:
         raise ValueError("invalid kind")
-    if form() != PayoutForm.cash_refund:
+    if form() != Form.cash_refund:
         return 0.0
     paid_to = t + 1 if (payment_timing() == PaymentTiming.advance and is_payment_mth(t)) else t
     return max(0.0, premium_pp() - cum_annuity_pp(paid_to))
 
 
 def claims(t, kind):
-    """Expected claim outgo in month t; ``kind=Claim.ALL`` totals every kind.
+    """Expected claim outgo in month t; ``kind=None`` totals every kind.
 
     The only kind on this product is ``"REFUND"``.  It is weighted by
     :func:`lives_death_last`, the notes' ``d_term`` - the death that terminates the income
     stream, which is the primary's on a single-life contract and the last death on a
     joint one (a cash refund on a joint contract is offered only at delta = 100% [S5]).
     """
-    if kind == Claim.ALL:
-        return claims(t, Claim.REFUND)
+    if kind == Kind.ALL:
+        return claims(t, Kind.REFUND)
     return pols_if_init() * lives_death_last(t) * claim_pp(t, kind)
 
 
@@ -1135,7 +1099,7 @@ def liability_cf(t):
     survives verbatim under the name the notes give it while the library-wide
     income-positive convention is available under the name every other model uses.
     """
-    return annuity_payments(t) + claims(t, Claim.ALL) + commutations(t) + expenses(t)
+    return annuity_payments(t) + claims(t, Kind.ALL) + commutations(t) + expenses(t)
 
 
 def net_cf(t):
@@ -1173,7 +1137,7 @@ def check_lives_roll_fwd_resid(k):
     :func:`lives_if_last` that broke the independence construction.
     """
     res = 0.0
-    scenario = mort_basis() == MortalityBasis.scenario
+    scenario = mort_basis() == MortBasis.scenario
     for i in (1, 2):
         if i == 2 and not is_joint():
             continue
@@ -1239,7 +1203,7 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims": [claims(t, Claim.ALL) for t in ts],
+            "claims": [claims(t, Kind.ALL) for t in ts],
             "commutations": [commutations(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1304,18 +1268,16 @@ commute_min_payment = 100.0
 
 pd = ("Module", "pandas")
 
-Claim = ("Pickle", 1)
+Form = ("Pickle", 2)
 
-DiscountConvention = ("Pickle", 2)
+Sex = ("Pickle", 1)
 
-MortalityBasis = ("Pickle", 3)
+ReductionTrigger = ("Pickle", 3)
 
 PaymentTiming = ("Pickle", 4)
 
-PayoutForm = ("Pickle", 5)
+MortBasis = ("Pickle", 5)
 
-ReductionTrigger = ("Pickle", 6)
+Kind = ("Pickle", 6)
 
 enum_definitions = ("Pickle", 7)
-
-pdn = ("Module", "modelx_helpers.pdn")
