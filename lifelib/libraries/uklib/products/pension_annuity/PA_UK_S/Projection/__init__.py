@@ -661,6 +661,11 @@ def mths_since_payment(t):
     return max(0, t - last)
 
 
+def mortality_table_rate(x, life):
+    """The selected life's table rate at attained age x."""
+    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate')
+
+
 def mort_rate_base(t, life):
     """The base-table annual mortality rate for ``life`` in the year containing month t.
 
@@ -671,7 +676,7 @@ def mort_rate_base(t, life):
     x = age(t, life)
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate') * annuitant_adj                # noqa: F821
+    return mortality_table_rate(x, life) * annuitant_adj              # noqa: F821
 
 
 def improve_rate(t, life):
@@ -684,7 +689,11 @@ def improve_rate(t, life):
     choice of long-term improvement rate is the single most sensitive judgment in UK
     annuity valuation, and the CMI model carries no default recommendation for it.
     """
-    x = age(t, life)
+    return improvement_at_age(age(t, life))
+
+
+def improvement_at_age(x):
+    """The attained-age factor shared across the policy year."""
     if x <= improve_flat_age:                                        # noqa: F821
         return improve_rate_base                                     # noqa: F821
     if x >= improve_taper_age:                                       # noqa: F821
@@ -725,7 +734,12 @@ def mort_rate(t, life):
 
 def mort_rate_mth(t, life):
     """q_m = 1 - (1 - q_rated)^(1/12): the monthly mortality rate **[std]**."""
-    return 1.0 - (1.0 - mort_rate(t, life)) ** (1.0 / 12.0)
+    return monthly_mortality_in_year(duration(t), life)
+
+
+def monthly_mortality_in_year(year, life):
+    """Convert the constant annual rate once per policy year and life."""
+    return 1.0 - (1.0 - mort_rate(12 * year, life)) ** (1.0 / 12.0)
 
 
 def lives_if(k, life):
@@ -859,11 +873,26 @@ def cum_annuity_pp(k, kind):
     if k <= 0:
         return 0.0
     if kind == "ANNUITANT":
-        return cum_annuity_pp(k - 1, kind) + annuity_pp(k - 1)
+        return cum_annuitant_pp(k)
     if kind == "ALL":
-        paid = annuity_pp(k - 1) * (payment_factor(k - 1) + dependant_factor(k - 1))
-        return cum_annuity_pp(k - 1, kind) + paid
+        return cum_all_annuity_pp(k)
     raise ValueError("invalid kind")
+
+
+def cum_annuitant_pp(k):
+    """Cumulative scheduled instalments on the annuitant alone."""
+    if k <= 0:
+        return 0.0
+    return cum_annuitant_pp(k - 1) + annuity_pp(k - 1)
+
+
+def cum_all_annuity_pp(k):
+    """Cumulative scheduled instalments on the annuitant and dependant."""
+    if k <= 0:
+        return 0.0
+    t = k - 1
+    paid = annuity_pp(t) * (payment_factor(t) + dependant_factor(t))
+    return cum_all_annuity_pp(t) + paid
 
 
 def vp_balance(k):
@@ -875,8 +904,13 @@ def vp_balance(k):
     """
     if vp_pct() <= 0.0:
         return 0.0
-    kind = "ANNUITANT" if vp_basis() == "first_death" else "ALL"
-    return max(0.0, vp_pct() * purchase_price() - cum_annuity_pp(k, kind))
+    paid = cum_annuitant_pp(k) if is_first_death_vp() else cum_all_annuity_pp(k)
+    return max(0.0, vp_pct() * purchase_price() - paid)
+
+
+def is_first_death_vp():
+    """Whether the value-protection trigger is the annuitant's death."""
+    return vp_basis() == "first_death"
 
 
 def annuity_payments(t):
@@ -910,24 +944,42 @@ def claims(t, kind=None):
         partial period.
     """
     if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("VP", "PROP")))
+        return claims_total(t)
     if kind == "VP":
-        if vp_pct() <= 0.0:
-            return 0.0
-        density = (lives_death(t, 1) if vp_basis() == "first_death"
-                   else lives_death_last(t))
-        measured_at = (t + 1 if (payment_timing() == "advance" and is_payment_mth(t))
-                       else t)
-        return pols_if_init() * density * vp_balance(measured_at)
+        return claims_value_protection(t)
     if kind == "PROP":
-        if not proportion():
-            return 0.0
-        nxt = next_payment_mth(t)
-        if nxt < 0:
-            return 0.0
-        accrual = (mths_since_payment(t) + 0.5) / (12.0 / payment_freq())
-        return pols_if_init() * lives_death(t, 1) * accrual * annuity_pp(nxt)
+        return claims_proportionate(t)
     raise ValueError("invalid kind")
+
+
+def claims_value_protection(t):
+    """Expected value-protection lump sum in month t."""
+    if vp_pct() <= 0.0:
+        return 0.0
+    density = lives_death(t, 1) if is_first_death_vp() else lives_death_last(t)
+    measured_at = t + 1 if is_advance_payment() and is_payment_mth(t) else t
+    return pols_if_init() * density * vp_balance(measured_at)
+
+
+def claims_proportionate(t):
+    """Expected final part-period payment in month t."""
+    if not proportion():
+        return 0.0
+    nxt = next_payment_mth(t)
+    if nxt < 0:
+        return 0.0
+    accrual = (mths_since_payment(t) + 0.5) / (12.0 / payment_freq())
+    return pols_if_init() * lives_death(t, 1) * accrual * annuity_pp(nxt)
+
+
+def is_advance_payment():
+    """Whether instalments are paid at the start of the payment month."""
+    return payment_timing() == "advance"
+
+
+def claims_total(t):
+    """Combined value-protection and proportionate payments in month t."""
+    return claims_value_protection(t) + claims_proportionate(t)
 
 
 def pols_if(t):
@@ -972,7 +1024,7 @@ def liability_cf(t):
     paid at outset, before the first projected month - and no surrender outgo, because
     the contract has no surrender value at any time.
     """
-    return annuity_payments(t) + claims(t) + expenses(t)
+    return annuity_payments(t) + claims_total(t) + expenses(t)
 
 
 def net_cf(t):

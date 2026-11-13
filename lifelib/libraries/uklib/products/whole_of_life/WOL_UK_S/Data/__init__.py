@@ -118,6 +118,12 @@ def prepared_lapse_table_groups_1():
     return pdn.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)
 
 
+def lapse_rate_tables():
+    """Own the annual lapse-rate column and preserve each group's label rules."""
+    return pdn.table(lapse_table(), columns=('lapse_rate',), groups=('cell',),
+                     report=True, preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
