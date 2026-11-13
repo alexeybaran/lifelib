@@ -753,7 +753,7 @@ def recov_rates():
     them.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
+    return np.array([float(tbl.loc[y, "recov_rate"]) for y in range(1, 12)])
 
 
 def mort_dis_sel_factors():
@@ -763,7 +763,7 @@ def mort_dis_sel_factors():
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
+    return np.array([float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12)])
 
 
 # --- the best-estimate rates as composed ---
@@ -817,7 +817,7 @@ def mort_dis_sel_factor(z):
     attained age alone, and a model that drops the duration dimension understates deaths
     in exactly the months where the claim reserve is largest.
     """
-    return mort_dis_sel_factors()[claim_year(z) - 1]
+    return float(mort_dis_sel_factors()[claim_year(z) - 1])
 
 
 def mort_rate_dis(t, z):
@@ -849,8 +849,7 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return 1.0 - (1.0 - q * mort_dis_sel_factors()) ** (1.0 / 12.0)
 
 
 def recov_rate(z):
@@ -867,7 +866,7 @@ def recov_rate(z):
     no public data separates them, so the model publishes exactly one
     claim-termination-other-than-death rate.
     """
-    return recov_rates()[claim_year(z) - 1]
+    return float(recov_rates()[claim_year(z) - 1])
 
 
 def recov_rate_mth(z):
@@ -882,7 +881,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
+    return 1.0 - (1.0 - recov_rates()) ** (1.0 / 12.0)
 
 
 def lapse_rate(t):
@@ -943,8 +942,7 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates())
+    return 1.0 - (1.0 - recov_rates() * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
 
 
 def mort_rate_first_mth(s):
@@ -974,8 +972,7 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return 1.0 - (1.0 - q * mort_dis_sel_factors()) ** (1.0 / 12.0)
 
 
 def disc_first(s):
@@ -1172,6 +1169,25 @@ def pols_inception_first(s):
     return surv * inc_rate_first_mth(s)
 
 
+def claim_year_idx():
+    """The claim-year row (0 to 10) of each cohort slot, slot i holding claim month i + 1.
+
+    Indexes the eleven-element claim-year rate vectors; row 10 is the ultimate, as in
+    :func:`claim_year`.
+    """
+    n = max(first_len() + 1, max_claim_dur())
+    return np.minimum(np.arange(n) // 12, 10)
+
+
+def leistungsdyn_steps():
+    """The benefit escalation applied when a cohort moves from slot i to slot i + 1.
+
+    ``1 + leistungsdyn_rate()`` where claim month i + 1 completes a claim year, else 1.
+    """
+    n = max(first_len() + 1, max_claim_dur())
+    return np.where(np.arange(1, n + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)
+
+
 def dis_cohorts_first(s):
     """The first-order disabled ledger at the start of month s: ``(populations, values)``.
 
@@ -1184,22 +1200,16 @@ def dis_cohorts_first(s):
     basis, which this mirrors exactly but for the loaded rates and the absent lapse.
     """
     n = cohort_len_first(s)
-    pols = [0.0] * n
-    val = [0.0] * n
+    pols = np.zeros(n)
+    val = np.zeros(n)
     if s <= 0:
         return pols, val
     ppols, pval = dis_cohorts_first(s - 1)
-    qy = mort_rate_dis_first_mth_year(s - 1)
-    ry = recov_rate_first_mth_year()
-    g = 1.0 + leistungsdyn_rate()
-    for i in range(min(len(ppols), n - 1)):
-        cy = i // 12
-        if cy > 10:
-            cy = 10
-        keep = (1.0 - qy[cy]) * (1.0 - ry[cy])
-        step = g if (i + 1) % 12 == 0 else 1.0
-        pols[i + 1] = ppols[i] * keep
-        val[i + 1] = pval[i] * keep * step
+    m = min(len(ppols), n - 1)
+    keep = ((1.0 - mort_rate_dis_first_mth_year(s - 1))
+            * (1.0 - recov_rate_first_mth_year()))[claim_year_idx()[:m]]
+    pols[1:m + 1] = ppols[:m] * keep
+    val[1:m + 1] = pval[:m] * keep * leistungsdyn_steps()[:m]
     pols[0] = pols_inception_first(s - 1)
     val[0] = pols[0] * bu_rente_pp_first(s - 1)
     return pols, val
@@ -1213,21 +1223,10 @@ def dis_exits_first(s):
     were on**, which is what enters run-off slot 1 as a value.
     """
     pols, val = dis_cohorts_first(s)
-    qy = mort_rate_dis_first_mth_year(s)
-    ry = recov_rate_first_mth_year()
-    deaths = 0.0
-    rec = 0.0
-    recval = 0.0
-    for i in range(len(pols)):
-        cy = i // 12
-        if cy > 10:
-            cy = 10
-        q = qy[cy]
-        r = ry[cy]
-        deaths += pols[i] * q
-        rec += pols[i] * (1.0 - q) * r
-        recval += val[i] * (1.0 - q) * r
-    return deaths, rec, recval
+    idx = claim_year_idx()[:len(pols)]
+    q = mort_rate_dis_first_mth_year(s)[idx]
+    w = (1.0 - q) * recov_rate_first_mth_year()[idx]
+    return float(pols.dot(q)), float(pols.dot(w)), float(val.dot(w))
 
 
 def runoff_cohorts_first(s):
@@ -1237,8 +1236,8 @@ def runoff_cohorts_first(s):
     recovered.  Slot 1 is last month's claim terminations and the value they carried.
     """
     n = runoff_months                                                # noqa: F821
-    pols = [0.0] * n
-    val = [0.0] * n
+    pols = np.zeros(n)
+    val = np.zeros(n)
     if s <= 0:
         return pols, val
     ppols, pval = runoff_cohorts_first(s - 1)
@@ -1246,32 +1245,31 @@ def runoff_cohorts_first(s):
     exits = dis_exits_first(s - 1)
     pols[0] = exits[1]
     val[0] = exits[2]
-    for k in range(1, n):
-        pols[k] = ppols[k - 1] * surv
-        val[k] = pval[k - 1] * surv
+    pols[1:] = ppols[:-1] * surv
+    val[1:] = pval[:-1] * surv
     return pols, val
 
 
 def pols_dis_dur_first(s, z):
     """The first-order disabled population at claim duration z, start of month s."""
     v = dis_cohorts_first(s)[0]
-    return v[z - 1] if 1 <= z <= len(v) else 0.0
+    return float(v[z - 1]) if 1 <= z <= len(v) else 0.0
 
 
 def pols_dis_first(s):
     """The whole first-order disabled ledger at the start of month s."""
-    return sum(dis_cohorts_first(s)[0])
+    return float(dis_cohorts_first(s)[0].sum())
 
 
 def pols_runoff_first(s):
     """The whole first-order § 174 run-off ledger at the start of month s."""
-    return sum(runoff_cohorts_first(s)[0])
+    return float(runoff_cohorts_first(s)[0].sum())
 
 
 def runoff_val_first(s, k):
     """The first-order run-off slot k times the monthly *BU-Rente* it is being paid."""
     v = runoff_cohorts_first(s)[1]
-    return v[k - 1] if 1 <= k <= len(v) else 0.0
+    return float(v[k - 1]) if 1 <= k <= len(v) else 0.0
 
 
 def pols_reactivation_first(s):
@@ -1281,7 +1279,7 @@ def pols_reactivation_first(s):
     behind :func:`dis_exits_first`'s recoveries, which is § 174 in arithmetic.
     """
     slots = runoff_cohorts_first(s)[0]
-    return slots[-1] * (1.0 - mort_rate_first_mth(s))
+    return float(slots[-1]) * (1.0 - mort_rate_first_mth(s))
 
 
 def pols_prem_first(s):
@@ -1292,7 +1290,7 @@ def pols_prem_first(s):
     life inside the *Karenzzeit* still pays.
     """
     dis = dis_cohorts_first(s)[0]
-    return pols_actv_first(s) + sum(dis[:karenz_months()])
+    return pols_actv_first(s) + float(dis[:karenz_months()].sum())
 
 
 def pols_if_first(s):
@@ -1332,8 +1330,8 @@ def pv_rente_first():
         if age_first(s) >= benefit_end_age():
             continue
         val = dis_cohorts_first(s)[1]
-        total += disc_first(s) * (sum(val[karenz_months():])
-                                  + sum(runoff_cohorts_first(s)[1]))
+        total += disc_first(s) * float(val[karenz_months():].sum()
+                                        + runoff_cohorts_first(s)[1].sum())
     return total
 
 
@@ -1366,7 +1364,7 @@ def pv_claim_cost_first():
         total += disc_first(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
         if age_first(s) < benefit_end_age():
             pols = dis_cohorts_first(s)[0]
-            paying = sum(pols[karenz_months():]) + pols_runoff_first(s)
+            paying = float(pols[karenz_months():].sum()) + pols_runoff_first(s)
             total += disc_first(s) * claim_maint_cost_mth * paying   # noqa: F821
     return total
 
@@ -1459,8 +1457,8 @@ def dis_cohorts(t):
     previous one mutated, so holding a returned list cannot corrupt the cache.
     """
     n = cohort_len(t)
-    pols = [0.0] * n
-    val = [0.0] * n
+    pols = np.zeros(n)
+    val = np.zeros(n)
     if t <= 0:
         z0 = seed_claim_dur()
         if z0 and z0 <= n:
@@ -1468,17 +1466,11 @@ def dis_cohorts(t):
             val[z0 - 1] = pols_if_init() * rente_pay_pp(t, z0)
         return pols, val
     ppols, pval = dis_cohorts(t - 1)
-    qy = mort_rate_dis_mth_year(t - 1)
-    ry = recov_rate_mth_year()
-    g = 1.0 + leistungsdyn_rate()
-    for i in range(min(len(ppols), n - 1)):
-        cy = i // 12
-        if cy > 10:
-            cy = 10
-        keep = (1.0 - qy[cy]) * (1.0 - ry[cy])
-        step = g if (i + 1) % 12 == 0 else 1.0
-        pols[i + 1] = ppols[i] * keep
-        val[i + 1] = pval[i] * keep * step
+    m = min(len(ppols), n - 1)
+    keep = ((1.0 - mort_rate_dis_mth_year(t - 1))
+            * (1.0 - recov_rate_mth_year()))[claim_year_idx()[:m]]
+    pols[1:m + 1] = ppols[:m] * keep
+    val[1:m + 1] = pval[:m] * keep * leistungsdyn_steps()[:m]
     pols[0] = pols_inception(t - 1)
     val[0] = pols[0] * bu_rente_pp(t - 1)
     return pols, val
@@ -1497,21 +1489,10 @@ def dis_exits(t):
     :func:`dis_cohorts` would otherwise have to be walked three times a month.
     """
     pols, val = dis_cohorts(t)
-    qy = mort_rate_dis_mth_year(t)
-    ry = recov_rate_mth_year()
-    deaths = 0.0
-    rec = 0.0
-    recval = 0.0
-    for i in range(len(pols)):
-        cy = i // 12
-        if cy > 10:
-            cy = 10
-        q = qy[cy]
-        r = ry[cy]
-        deaths += pols[i] * q
-        rec += pols[i] * (1.0 - q) * r
-        recval += val[i] * (1.0 - q) * r
-    return deaths, rec, recval
+    idx = claim_year_idx()[:len(pols)]
+    q = mort_rate_dis_mth_year(t)[idx]
+    w = (1.0 - q) * recov_rate_mth_year()[idx]
+    return float(pols.dot(q)), float(pols.dot(w)), float(val.dot(w))
 
 
 def runoff_cohorts(t):
@@ -1529,8 +1510,8 @@ def runoff_cohorts(t):
     payment is *leistungspflichtig*, not in run-off.
     """
     n = runoff_months                                                # noqa: F821
-    pols = [0.0] * n
-    val = [0.0] * n
+    pols = np.zeros(n)
+    val = np.zeros(n)
     if t <= 0:
         return pols, val
     ppols, pval = runoff_cohorts(t - 1)
@@ -1538,9 +1519,8 @@ def runoff_cohorts(t):
     exits = dis_exits(t - 1)
     pols[0] = exits[1]
     val[0] = exits[2]
-    for k in range(1, n):
-        pols[k] = ppols[k - 1] * surv
-        val[k] = pval[k - 1] * surv
+    pols[1:] = ppols[:-1] * surv
+    val[1:] = pval[:-1] * surv
     return pols, val
 
 
@@ -1550,7 +1530,7 @@ def pols_dis_dur(t, z):
     Zero outside ``1 <= z <= cohort_len(t)``, so the two-dimensional view is total.
     """
     v = dis_cohorts(t)[0]
-    return v[z - 1] if 1 <= z <= len(v) else 0.0
+    return float(v[z - 1]) if 1 <= z <= len(v) else 0.0
 
 
 def pols_dis(t):
@@ -1560,7 +1540,7 @@ def pols_dis(t):
     *Karenzzeit*, which are *berufsunfaehig*, are not yet paid and are still paying
     premium.
     """
-    return sum(dis_cohorts(t)[0])
+    return float(dis_cohorts(t)[0].sum())
 
 
 def pols_death_dis(t):
@@ -1598,7 +1578,7 @@ def runoff_value_in(t):
 def pols_runoff_slot(t, k):
     """l_r(t, k): the § 174 run-off population k months into the run-off, start of month t."""
     v = runoff_cohorts(t)[0]
-    return v[k - 1] if 1 <= k <= len(v) else 0.0
+    return float(v[k - 1]) if 1 <= k <= len(v) else 0.0
 
 
 def runoff_val(t, k):
@@ -1610,7 +1590,7 @@ def runoff_val(t, k):
     dimension.
     """
     v = runoff_cohorts(t)[1]
-    return v[k - 1] if 1 <= k <= len(v) else 0.0
+    return float(v[k - 1]) if 1 <= k <= len(v) else 0.0
 
 
 def pols_runoff(t):
@@ -1620,7 +1600,7 @@ def pols_runoff(t):
     does not release the liability in the month it happens, it releases it three months
     later, and every one of those months carries a full *BU-Rente*.
     """
-    return sum(runoff_cohorts(t)[0])
+    return float(runoff_cohorts(t)[0].sum())
 
 
 def pols_death_runoff(t):
@@ -1713,7 +1693,7 @@ def pols_prem(t):
     zero, this equals :func:`pols_actv` at every ``t``.
     """
     dis = dis_cohorts(t)[0]
-    return pols_actv(t) + sum(dis[:karenz_months()])
+    return pols_actv(t) + float(dis[:karenz_months()].sum())
 
 
 # --- the cash flows ---
@@ -1771,7 +1751,7 @@ def claims(t, kind):
         if age(t) >= benefit_end_age():
             return 0.0
         val = dis_cohorts(t)[1]
-        return sum(val[karenz_months():]) + sum(runoff_cohorts(t)[1])
+        return float(val[karenz_months():].sum() + runoff_cohorts(t)[1].sum())
     if kind == Kind.REINTEGRATION:
         if wiedereingliederung_months() == 0:
             return 0.0
@@ -1831,7 +1811,7 @@ def claim_expenses(t):
     maint = 0.0
     if age(t) < benefit_end_age():
         pols = dis_cohorts(t)[0]
-        paying = sum(pols[karenz_months():]) + pols_runoff(t)
+        paying = float(pols[karenz_months():].sum()) + pols_runoff(t)
         maint = claim_maint_cost_mth * paying                        # noqa: F821
     return assess + maint
 
@@ -2169,5 +2149,7 @@ PremMode = ("Pickle", 2)
 Timing = ("Pickle", 6)
 
 Kind = ("Pickle", 7)
+
+np = ("Module", "numpy")
 
 enum_definitions = ("Pickle", 8)
