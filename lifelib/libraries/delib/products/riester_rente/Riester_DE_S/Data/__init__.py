@@ -281,6 +281,13 @@ def prepared_zulage_schedule_rows():
     return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
 
 
+def zulage_schedule_by_id():
+    """Prepare the calculation columns by household and contribution year."""
+    return pdn.table(zulage_schedule(),
+                     columns=("unmittelbar", "n_kinder_pre2008", "n_kinder_post2008", "bonus"),
+                     groups=("zulage_id",), preserve_scalar_types=True)
+
+
 # ---------------------------------------------------------------------------
 # References
 
