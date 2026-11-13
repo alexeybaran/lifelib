@@ -835,12 +835,18 @@ def mort_rate(t):
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
     on the anniversary, so the twelve months of a projection year share one annual rate.
     """
-    if age(t) >= omega_age:                                          # noqa: F821
+    return mortality_in_year(proj_year(t))
+
+
+def mortality_in_year(k):
+    """Annual mortality is constant within each projection year."""
+    x = age_y(k)
+    if x >= omega_age:                                                # noqa: F821
         return 1.0
-    if is_accum(t):
-        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor)   # noqa: F821
-    return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
-               * annuity_mort_be_factor)                             # noqa: F821
+    if is_accum_y(k):
+        return min(1.0, mort_rate_at_age(x) * mort_be_factor)           # noqa: F821
+    return min(1.0, annuity_mort_rate(x, calendar_year_y(k))
+               * annuity_mort_be_factor)                              # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -874,7 +880,12 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return data.prepared_lapse_table_at().lookup_float(contract_year(t), 'lapse_rate')
+    return lapse_rate_at_duration(contract_year(t))
+
+
+def lapse_rate_at_duration(y):
+    """Read the surrender rate once per attained contract year."""
+    return data.prepared_lapse_table_at().lookup_float(y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -902,7 +913,12 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return data.prepared_lapse_table_at().lookup_float(contract_year(t), 'transfer_rate')
+    return transfer_rate_at_duration(contract_year(t))
+
+
+def transfer_rate_at_duration(y):
+    """Read the transfer rate once per attained contract year."""
+    return data.prepared_lapse_table_at().lookup_float(y, "transfer_rate")
 
 
 def transfer_rate_mth(t):
@@ -1375,8 +1391,13 @@ def av_total_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_total_pp(k) + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        return av_total_pp(k + 1)
+        return av_after_interest(k)
     raise ValueError("invalid timing")
+
+
+def av_after_interest(k):
+    """The year-end per-policy account value used to settle exits."""
+    return av_total_pp(k + 1)
 
 
 def av_total_at(k, timing):
@@ -1691,7 +1712,7 @@ def db_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return av_total_pp_at(k, "AFT_INT")
+    return av_after_interest(k)
 
 
 def cv_pp(k):
@@ -1704,7 +1725,7 @@ def cv_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return av_total_pp_at(k, "AFT_INT") * (1.0 - stornoabzug_rate)         # noqa: F821
+    return av_after_interest(k) * (1.0 - stornoabzug_rate)              # noqa: F821
 
 
 def transfer_value_pp(k):
@@ -1719,7 +1740,7 @@ def transfer_value_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return max(0.0, av_total_pp_at(k, "AFT_INT") - transfer_charge)        # noqa: F821
+    return max(0.0, av_after_interest(k) - transfer_charge)             # noqa: F821
 
 
 def exit_charge_pp(t):
@@ -1734,7 +1755,7 @@ def exit_charge_pp(t):
     """
     if not is_accum(t):
         return 0.0
-    a = av_total_pp_at(proj_year(t), "AFT_INT")
+    a = av_after_interest(proj_year(t))
     return (stornoabzug_rate * a * pols_lapse(t)                     # noqa: F821
             + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
 
