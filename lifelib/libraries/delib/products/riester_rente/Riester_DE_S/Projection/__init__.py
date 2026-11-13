@@ -935,7 +935,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_after_decrements(t - 1)
 
 
 def pols_if_at(t, timing):
@@ -957,11 +957,17 @@ def pols_if_at(t, timing):
     if timing == "AFT_DECR":
         if t < 0 or t >= proj_len():
             return 0.0
-        if t == t_conv() and is_kleinbetrag():
-            return 0.0
-        return (pols_if(t) - pols_death(t) - pols_lapse(t)
-                - pols_transfer(t))
+        return pols_after_decrements(t)
     raise ValueError("invalid timing")
+
+
+def pols_after_decrements(t):
+    """End-of-month in-force count after all decrements."""
+    if t < 0 or t >= proj_len():
+        return 0.0
+    if t == t_conv() and is_kleinbetrag():
+        return 0.0
+    return pols_if(t) - pols_death(t) - pols_lapse(t) - pols_transfer(t)
 
 
 def pols_death(t):
@@ -1763,18 +1769,36 @@ def claims(t, kind=None):
     if kind is None:
         return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
                                           "LUMPSUM", "COMMUTATION", "ANNUITY")))
-    k = proj_year(t)
+    proj_year(t)  # Check the period before dispatching a named claim.
     if kind == "DEATH":
-        return db_pp(k) * pols_death(t)
+        return claims_by_kind(t, 0)
     if kind == "LAPSE":
-        return cv_pp(k) * pols_lapse(t)
+        return claims_by_kind(t, 1)
     if kind == "TRANSFER":
-        return transfer_value_pp(k) * pols_transfer(t)
+        return claims_by_kind(t, 2)
     if kind == "LUMPSUM":
-        return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_by_kind(t, 3)
     if kind == "COMMUTATION":
-        return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_by_kind(t, 4)
     if kind == "ANNUITY":
+        return claims_by_kind(t, 5)
+    raise ValueError("invalid kind")
+
+
+def claims_by_kind(t, kind: int):
+    """Monthly claim amount for the internal kind index in :func:`claims` order."""
+    k = proj_year(t)
+    if kind == 0:
+        return db_pp(k) * pols_death(t)
+    if kind == 1:
+        return cv_pp(k) * pols_lapse(t)
+    if kind == 2:
+        return transfer_value_pp(k) * pols_transfer(t)
+    if kind == 3:
+        return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+    if kind == 4:
+        return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+    if kind == 5:
         return annuity_month_pp() * pols_annuity_pay(t)
     raise ValueError("invalid kind")
 
@@ -1903,9 +1927,9 @@ def net_cf(t):
     then a long thin negative tail of monthly annuity instalments.
     """
     return (premiums(t) + zulagen(t)
-            - claims(t, "DEATH") - claims(t, "LAPSE") - claims(t, "TRANSFER")
-            - claims(t, "LUMPSUM") - claims(t, "COMMUTATION")
-            - claims(t, "ANNUITY")
+            - claims_by_kind(t, 0) - claims_by_kind(t, 1) - claims_by_kind(t, 2)
+            - claims_by_kind(t, 3) - claims_by_kind(t, 4)
+            - claims_by_kind(t, 5)
             - expenses(t) - commissions(t))
 
 

@@ -2051,13 +2051,33 @@ def claims(t, kind=None):
     given long enough, the residual, and none of them may produce a negative payment.
     """
     if kind is None:
-        return (claims(t, "CI") + claims(t, "DEATH") + claims(t, "DEATH_CI")
-                + claims(t, "LAPSE") + claims(t, "LAPSE_CI"))
+        return claims_total(t)
     if kind == "CI":
-        return pdn.sum_values((pols_ci_in(t, s) * accel_benefit_pp(s) for s in (t + 1, -(t + 1))))
+        return claims_by_kind(t, 0)
     if kind == "DEATH":
-        return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
+        return claims_by_kind(t, 1)
     if kind == "DEATH_CI":
+        return claims_by_kind(t, 2)
+    if kind == "LAPSE":
+        return claims_by_kind(t, 3)
+    if kind == "LAPSE_CI":
+        return claims_by_kind(t, 4)
+    raise ValueError("invalid kind")
+
+
+def claims_total(t):
+    """Monthly benefit outgo across all claim kinds, in :func:`claims` order."""
+    return (claims_by_kind(t, 0) + claims_by_kind(t, 1) + claims_by_kind(t, 2)
+            + claims_by_kind(t, 3) + claims_by_kind(t, 4))
+
+
+def claims_by_kind(t, kind: int):
+    """Monthly claim amount for the internal kind index in :func:`claims` order."""
+    if kind == 0:
+        return pdn.sum_values((pols_ci_in(t, s) * accel_benefit_pp(s) for s in (t + 1, -(t + 1))))
+    if kind == 1:
+        return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
+    if kind == 2:
         n = pols_if_ci(t)
         if n <= 0.0:
             return 0.0
@@ -2070,9 +2090,9 @@ def claims(t, kind=None):
             return 0.0
         return pdn.sum_values((pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
                    * max(0.0, resid_db_pp(t + 1, s) - loan) for s in ci_cohort_ids(t)))
-    if kind == "LAPSE":
+    if kind == 3:
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_lapse(t)
-    if kind == "LAPSE_CI":
+    if kind == 4:
         return max(0.0, cv_pp_ci(t + 1) - loan_pp(t)) * pols_lapse_ci(t)
     raise ValueError("invalid kind")
 
@@ -2162,7 +2182,7 @@ def net_cf(t):
     front-loads that outgo**: on the anchor cell the CI benefit is paid a decade or more
     before the death benefit it accelerates.
     """
-    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims_total(t) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 
