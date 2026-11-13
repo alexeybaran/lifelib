@@ -454,7 +454,12 @@ def mort_rate(t):
 
 def mort_rate_mth(t):
     """q_m(y) = 1 - (1 - q)^(1/12): the monthly mortality rate **[std]**."""
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
+    return monthly_mortality_in_year(duration(t))
+
+
+def monthly_mortality_in_year(year):
+    """Convert the constant annual mortality rate once per policy year."""
+    return 1.0 - (1.0 - mort_rate(12 * year)) ** (1.0 / 12.0)
 
 
 def esc_cover_step():
@@ -869,17 +874,27 @@ def claims(t, kind=None):
 def claims_by_kind(t, kind):
     """Calculate claims with keys 0 (death), 1 (paid-up death), 2 (lapse)."""
     if kind == 0:
-        return pols_death(t) * benefit_pp_by_kind(t, 2)
+        return claims_death(t)
     if kind == 1:
-        return pu_benefit(t) * mort_rate_mth(t)
+        return claims_paid_up_death(t)
     if kind == 2:
         return 0.0
     raise ValueError("invalid kind")
 
 
+def claims_death(t):
+    """Expected death claim on the full-cover strand."""
+    return pols_death(t) * benefit_pp_by_kind(t, 2)
+
+
+def claims_paid_up_death(t):
+    """Expected death claim on the paid-up strand."""
+    return pu_benefit(t) * mort_rate_mth(t)
+
+
 def claims_total(t):
-    """Sum death, paid-up death and lapse outgo in that order."""
-    return pdn.sum_values(claims_by_kind(t, kind) for kind in range(3))
+    """Combined death outgo on both strands. Lapse pays zero."""
+    return claims_death(t) + claims_paid_up_death(t)
 
 
 def expense_acq_pp():
