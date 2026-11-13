@@ -140,8 +140,8 @@ def model_point_table():
     a model point is a configuration — one policy's own terms — rather than an
     assumption.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table():
@@ -152,8 +152,8 @@ def mort_table():
     basis generational.  A **[std]** proxy anchored at ``qx(67) = 0.014000``, not DAV
     2004 R; see the Space docstring for what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col="age")              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / mort_table_file, index_col="age"))             # noqa: F821
 
 
 def surplus_table():
@@ -165,9 +165,9 @@ def surplus_table():
     rate including the *Rechnungszins*, not a spread over it — and ``ann_bonus_rate`` the
     *Überschussrente* uplift in the *Rentenphase*.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file,                                  # noqa: F821
-        index_col=["scenario_id", "t"])
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / surplus_file,                      # noqa: F821
+        index_col=["scenario_id", "t"]))
 
 
 def rentenfaktor_table():
@@ -178,9 +178,9 @@ def rentenfaktor_table():
     Entirely **[std]** — no *Rentenfaktor* level, range or time series exists anywhere in
     the delib corpus.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / rentenfaktor_file,                 # noqa: F821
+        index_col=["rf_scenario_id", "age"]))
 
 
 def charge_table():
@@ -192,8 +192,8 @@ def charge_table():
     modeling pitfall, and keeping the two groups in one file is what makes the split
     visible.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col="tariff_id")            # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / charge_file, index_col="tariff_id"))           # noqa: F821
 
 
 def behaviour_table():
@@ -206,9 +206,9 @@ def behaviour_table():
     therefore behavioural rather than contractual.  Both are **[std]** with no calibration
     evidence of any kind.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / behaviour_file,                                # noqa: F821
-        index_col=["beh_table_id", "dur"])
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / behaviour_file,                    # noqa: F821
+        index_col=["beh_table_id", "dur"]))
 
 
 def option_table():
@@ -219,75 +219,9 @@ def option_table():
     ``guarantee_period`` and ``survivor`` give the reduction in the *Rentenfaktor* that
     pays for a *Rentengarantiezeit* and a *Hinterbliebenenrente*.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / option_file,                                   # noqa: F821
-        index_col=["option_id", "option_key"])
-
-
-def prepared_option_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(option_table(),
-                        columns=('factor',),
-                        indexing='loc')
-
-
-
-def prepared_charge_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(charge_table(),
-                        columns=('zill_rate', 'alpha_zuz_rate', 'unit_cost_pp', 'expense_infl', 'beta_prem', 'gamma_av', 'terminal_bonus_rate'),
-                        indexing='loc')
-
-
-def prepared_charge_table_rows():
-    """Own pandas-style charge rows for repeated calculation selection."""
-    return pdn.table(charge_table(), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_rentenfaktor_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(rentenfaktor_table(),
-                        columns=('rf_curr',),
-                        indexing='loc')
-
-
-def prepared_mort_table_rows():
-    """Own pandas-style rows for repeated calculation selection."""
-    return pdn.table(mort_table(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_behaviour_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(behaviour_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_option_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(option_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_surplus_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(surplus_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_behaviour_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(behaviour_table(), groups=('beh_table_id',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_surplus_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(surplus_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_mort_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(mort_table().index)
+    frame = pd.read_csv(input_dir() / option_file)                   # noqa: F821
+    frame["option_id"] = [OptionId[name] for name in frame["option_id"]]
+    return pdn.table(frame.set_index(["option_id", "option_key"]))
 
 
 # ---------------------------------------------------------------------------
@@ -310,3 +244,5 @@ option_file = "option_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+OptionId = ("Pickle", 1)
