@@ -160,8 +160,8 @@ def model_point_table():
     rule: a model point is a *configuration* — one policy's issue age, sum insured,
     *Zahlweise* and schedule ids — rather than an assumption about the world.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table():
@@ -175,9 +175,11 @@ def mort_table():
     the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
     unsourced mortality level in the model rather than two stacked on each other.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["table_id", "sex", "smoker", "age"])
+    frame = pd.read_csv(                                             # noqa: F821
+        input_dir() / mort_table_file)                               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
+    return pdn.table(frame.set_index(["table_id", "sex", "smoker", "age"]))
 
 
 def benefit_schedule():
@@ -189,9 +191,9 @@ def benefit_schedule():
     agreed at issue for a stated term.  ``policy_year`` is the contractual label and runs
     from 1; ``Projection.benefit_factor`` reads it at ``t + 1``.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / benefit_schedule_file,                         # noqa: F821
-        index_col=["schedule_id", "policy_year"])
+        index_col=["schedule_id", "policy_year"]))
 
 
 def nvg_schedule():
@@ -203,9 +205,9 @@ def nvg_schedule():
     schedule rather than modelled as a decision.  ``policy_year`` is the contractual label
     and runs from 1; ``Projection.sum_uplift`` reads it at ``t + 1``.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / nvg_schedule_file,                             # noqa: F821
-        index_col=["nvg_id", "policy_year"])
+        index_col=["nvg_id", "policy_year"]))
 
 
 def lapse_table():
@@ -217,8 +219,8 @@ def lapse_table():
     is where the convention belongs — the zero is a property of the last policy year, not
     of the table.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year"))          # noqa: F821
 
 
 def freq_loading_table():
@@ -228,52 +230,9 @@ def freq_loading_table():
     billed amount, and ``instalments``, the number of payments a year, which is carried
     for reporting and enters no cash flow on an annual grid.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
-def prepared_mort_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='at')
-
-
-
-def prepared_benefit_schedule_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(benefit_schedule(),
-                        columns=('benefit_factor',),
-                        indexing='at')
-
-
-
-def prepared_nvg_schedule_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(nvg_schedule(),
-                        columns=('sum_uplift',),
-                        indexing='at')
-
-
-
-def prepared_lapse_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(lapse_table(),
-                        columns=('lapse_rate',),
-                        indexing='at')
-
-
-
-def prepared_freq_loading_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_loading_table(),
-                        columns=('prem_freq_load',),
-                        indexing='at')
-
-
-def prepared_freq_loading_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(freq_loading_table(), indexing='at', preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / freq_loading_file)             # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 # ---------------------------------------------------------------------------
@@ -294,3 +253,9 @@ freq_loading_file = "freq_loading_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Smoker = ("Pickle", 2)
+
+PremFreq = ("Pickle", 3)
