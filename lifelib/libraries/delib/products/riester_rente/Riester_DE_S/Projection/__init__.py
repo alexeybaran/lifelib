@@ -1580,14 +1580,23 @@ def ann_factor():
     On the anchor — age 67 in calendar 2044 — it is 20,87222879, and that is the number a
     substitute annuity table must reproduce for the notes' worked example to close.
     """
-    v = 1.0 / (1.0 + annuity_rechnungszins)                          # noqa: F821
     x0, tau0 = age_y(k_conv()), calendar_year_y(k_conv())
     total, kp, k = 0.0, 1.0, 0
     while kp > 0.0 and x0 + k <= omega_age:                          # noqa: F821
-        total += v ** k * kp
+        total += annuity_discount(k) * kp
         kp *= 1.0 - annuity_mort_rate(x0 + k, tau0 + k)
         k += 1
     return total - woolhouse                                        # noqa: F821
+
+
+def annuity_discount_base():
+    """One-year discount factor at the first-order annuity rate."""
+    return 1.0 / (1.0 + annuity_rechnungszins)                        # noqa: F821
+
+
+def annuity_discount(year):
+    """Discount factor to the start of the given annuity year."""
+    return annuity_discount_base() ** year
 
 
 def rentenfaktor_curr():
@@ -1822,20 +1831,50 @@ def claims(t, kind=None):
 
 def claims_by_kind(t, kind: int):
     """Monthly claim amount for the internal kind index in :func:`claims` order."""
-    k = proj_year(t)
+    proj_year(t)
     if kind == 0:
-        return db_pp(k) * pols_death(t)
+        return claims_death(t)
     if kind == 1:
-        return cv_pp(k) * pols_lapse(t)
+        return claims_lapse(t)
     if kind == 2:
-        return transfer_value_pp(k) * pols_transfer(t)
+        return claims_transfer(t)
     if kind == 3:
-        return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_lump_sum(t)
     if kind == 4:
-        return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_commutation(t)
     if kind == 5:
-        return annuity_month_pp() * pols_annuity_pay(t)
+        return claims_annuity(t)
     raise ValueError("invalid kind")
+
+
+def claims_death(t):
+    """Account value paid on death in month t."""
+    return db_pp(proj_year(t)) * pols_death(t)
+
+
+def claims_lapse(t):
+    """Surrender value on lapse in month t."""
+    return cv_pp(proj_year(t)) * pols_lapse(t)
+
+
+def claims_transfer(t):
+    """Account value paid on transfer in month t."""
+    return transfer_value_pp(proj_year(t)) * pols_transfer(t)
+
+
+def claims_lump_sum(t):
+    """Elected lump sum at conversion."""
+    return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+
+
+def claims_commutation(t):
+    """Small-annuity commutation at conversion."""
+    return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+
+
+def claims_annuity(t):
+    """Monthly annuity instalment."""
+    return annuity_month_pp() * pols_annuity_pay(t)
 
 
 def premiums(t):
@@ -1962,9 +2001,8 @@ def net_cf(t):
     then a long thin negative tail of monthly annuity instalments.
     """
     return (premiums(t) + zulagen(t)
-            - claims_by_kind(t, 0) - claims_by_kind(t, 1) - claims_by_kind(t, 2)
-            - claims_by_kind(t, 3) - claims_by_kind(t, 4)
-            - claims_by_kind(t, 5)
+            - claims_death(t) - claims_lapse(t) - claims_transfer(t)
+            - claims_lump_sum(t) - claims_commutation(t) - claims_annuity(t)
             - expenses(t) - commissions(t))
 
 
