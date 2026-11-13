@@ -230,7 +230,7 @@ def prepared_freq_loading_at():
 
 
 
-def prepared_mort_table_accum_at():
+def prepared_mort_table_accum_at() -> "modelx_helpers.immutable_inputs.Table":
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(mort_table_accum(),
                         columns=('qx',),
@@ -238,7 +238,7 @@ def prepared_mort_table_accum_at():
 
 
 
-def prepared_lapse_table_at():
+def prepared_lapse_table_at() -> "modelx_helpers.immutable_inputs.Table":
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(lapse_table(),
                         columns=('lapse_rate', 'transfer_rate'),
@@ -253,6 +253,11 @@ def prepared_income_schedule_at():
                         indexing='at')
 
 
+def income_schedule_by_id():
+    """Prepare the income column by schedule ID and projection year."""
+    return pdn.table(income_schedule(), columns=("income",), groups=("income_id",))
+
+
 
 def prepared_surplus_scenario_at():
     """Own calculation columns; follow the public source Cell cache."""
@@ -261,7 +266,12 @@ def prepared_surplus_scenario_at():
                         indexing='at')
 
 
-def prepared_annuity_mort_table_scalar_at():
+def surplus_schedule_by_id():
+    """Prepare the declared rate by scenario ID and projection year."""
+    return pdn.table(surplus_scenario(), columns=("decl_rate",), groups=("scenario_id",))
+
+
+def prepared_annuity_mort_table_scalar_at() -> "modelx_helpers.immutable_inputs.Table":
     """Own original column scalars for calculation lookup."""
     return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
 
@@ -269,6 +279,13 @@ def prepared_annuity_mort_table_scalar_at():
 def prepared_zulage_schedule_rows():
     """Own calculation selection; retain the public source dependency."""
     return pdn.table(zulage_schedule(), rows=True, indexing='loc', preserve_scalar_types=True)
+
+
+def zulage_schedule_by_id():
+    """Prepare the calculation columns by household and contribution year."""
+    return pdn.table(zulage_schedule(),
+                     columns=("unmittelbar", "n_kinder_pre2008", "n_kinder_post2008", "bonus"),
+                     groups=("zulage_id",), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------

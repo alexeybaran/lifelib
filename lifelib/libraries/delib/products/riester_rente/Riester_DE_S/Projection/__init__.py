@@ -799,7 +799,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return pdn.lookup_float(data.prepared_mort_table_accum_at(), x, 'qx')                # noqa: F821
+    return data.prepared_mort_table_accum_at().lookup_float(x, 'qx')
 
 
 def annuity_mort_rate(x, tau):
@@ -814,9 +814,8 @@ def annuity_mort_rate(x, tau):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    tab = data.annuity_mort_table()                                  # noqa: F821
-    qb = pdn.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "qx_base")
-    im = pdn.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "improvement")
+    qb = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "qx_base")
+    im = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "improvement")
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 
@@ -836,12 +835,18 @@ def mort_rate(t):
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
     on the anniversary, so the twelve months of a projection year share one annual rate.
     """
-    if age(t) >= omega_age:                                          # noqa: F821
+    return mortality_in_year(proj_year(t))
+
+
+def mortality_in_year(k):
+    """Annual mortality is constant within each projection year."""
+    x = age_y(k)
+    if x >= omega_age:                                                # noqa: F821
         return 1.0
-    if is_accum(t):
-        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor)   # noqa: F821
-    return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
-               * annuity_mort_be_factor)                             # noqa: F821
+    if is_accum_y(k):
+        return min(1.0, mort_rate_at_age(x) * mort_be_factor)           # noqa: F821
+    return min(1.0, annuity_mort_rate(x, calendar_year_y(k))
+               * annuity_mort_be_factor)                              # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -875,7 +880,12 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return pdn.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'lapse_rate')
+    return lapse_rate_at_duration(contract_year(t))
+
+
+def lapse_rate_at_duration(y):
+    """Read the surrender rate once per attained contract year."""
+    return data.prepared_lapse_table_at().lookup_float(y, "lapse_rate")
 
 
 def lapse_rate_mth(t):
@@ -903,7 +913,12 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return pdn.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'transfer_rate')
+    return transfer_rate_at_duration(contract_year(t))
+
+
+def transfer_rate_at_duration(y):
+    """Read the transfer rate once per attained contract year."""
+    return data.prepared_lapse_table_at().lookup_float(y, "transfer_rate")
 
 
 def transfer_rate_mth(t):
@@ -935,7 +950,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_after_decrements(t - 1)
 
 
 def pols_if_at(t, timing):
@@ -957,11 +972,17 @@ def pols_if_at(t, timing):
     if timing == "AFT_DECR":
         if t < 0 or t >= proj_len():
             return 0.0
-        if t == t_conv() and is_kleinbetrag():
-            return 0.0
-        return (pols_if(t) - pols_death(t) - pols_lapse(t)
-                - pols_transfer(t))
+        return pols_after_decrements(t)
     raise ValueError("invalid timing")
+
+
+def pols_after_decrements(t):
+    """End-of-month in-force count after all decrements."""
+    if t < 0 or t >= proj_len():
+        return 0.0
+    if t == t_conv() and is_kleinbetrag():
+        return 0.0
+    return pols_if(t) - pols_death(t) - pols_lapse(t) - pols_transfer(t)
 
 
 def pols_death(t):
@@ -1039,6 +1060,11 @@ def pols_annuity_pay(t):
     return pols_if(t)
 
 
+def policy_income_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The income schedule selected by this policy."""
+    return data.income_schedule_by_id().slice(income_id())
+
+
 def income_ref(k):
     """Y(k): the contribution-liable earnings the § 86 minimum of period k is struck on.
 
@@ -1052,7 +1078,12 @@ def income_ref(k):
         return 0.0
     if k == 0:
         return income_init()
-    return pdn.lookup_float(data.prepared_income_schedule_at(), (income_id(), k - 1), 'income')  # noqa: F821
+    return policy_income_schedule().lookup_float(k - 1, "income")
+
+
+def policy_zulage_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The allowance drivers selected for this policy's household."""
+    return data.zulage_schedule_by_id().slice(zulage_id())
 
 
 def zulage_entitlement_pp(k):
@@ -1067,11 +1098,11 @@ def zulage_entitlement_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    row = pdn.row(data.prepared_zulage_schedule_rows(), (zulage_id(), k))               # noqa: F821
-    return (grundzulage * float(pdn.lookup_object(row, "unmittelbar"))                  # noqa: F821
-            + kinderzulage_pre2008 * float(pdn.lookup_object(row, "n_kinder_pre2008"))  # noqa: F821
-            + kinderzulage_post2008 * float(pdn.lookup_object(row, "n_kinder_post2008"))  # noqa: F821
-            + berufseinsteiger_bonus * float(pdn.lookup_object(row, "bonus")))          # noqa: F821
+    schedule = policy_zulage_schedule()
+    return (grundzulage * schedule.lookup_float(k, "unmittelbar")              # noqa: F821
+            + kinderzulage_pre2008 * schedule.lookup_float(k, "n_kinder_pre2008")  # noqa: F821
+            + kinderzulage_post2008 * schedule.lookup_float(k, "n_kinder_post2008")  # noqa: F821
+            + berufseinsteiger_bonus * schedule.lookup_float(k, "bonus"))     # noqa: F821
 
 
 def mindesteigenbeitrag_pp(k):
@@ -1240,6 +1271,11 @@ def prem_to_av_pp(k):
 # === the account: two balances, one credited rate
 
 
+def policy_surplus_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The declared-rate schedule selected by this policy."""
+    return data.surplus_schedule_by_id().slice(scenario_id())
+
+
 def decl_rate(k):
     """j(k): the declared *laufende Verzinsung* of period k, from *surplus_scenario.csv*.
 
@@ -1252,7 +1288,7 @@ def decl_rate(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return pdn.lookup_float(data.prepared_surplus_scenario_at(), (scenario_id(), k), 'decl_rate')
+    return policy_surplus_schedule().lookup_float(k, "decl_rate")
 
 
 def int_guar_pp(k):
@@ -1360,8 +1396,13 @@ def av_total_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_total_pp(k) + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        return av_total_pp(k + 1)
+        return av_after_interest(k)
     raise ValueError("invalid timing")
+
+
+def av_after_interest(k):
+    """The year-end per-policy account value used to settle exits."""
+    return av_total_pp(k + 1)
 
 
 def av_total_at(k, timing):
@@ -1676,7 +1717,7 @@ def db_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return av_total_pp_at(k, "AFT_INT")
+    return av_after_interest(k)
 
 
 def cv_pp(k):
@@ -1689,7 +1730,7 @@ def cv_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return av_total_pp_at(k, "AFT_INT") * (1.0 - stornoabzug_rate)         # noqa: F821
+    return av_after_interest(k) * (1.0 - stornoabzug_rate)              # noqa: F821
 
 
 def transfer_value_pp(k):
@@ -1704,7 +1745,7 @@ def transfer_value_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return max(0.0, av_total_pp_at(k, "AFT_INT") - transfer_charge)        # noqa: F821
+    return max(0.0, av_after_interest(k) - transfer_charge)             # noqa: F821
 
 
 def exit_charge_pp(t):
@@ -1719,7 +1760,7 @@ def exit_charge_pp(t):
     """
     if not is_accum(t):
         return 0.0
-    a = av_total_pp_at(proj_year(t), "AFT_INT")
+    a = av_after_interest(proj_year(t))
     return (stornoabzug_rate * a * pols_lapse(t)                     # noqa: F821
             + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
 
@@ -1763,18 +1804,36 @@ def claims(t, kind=None):
     if kind is None:
         return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
                                           "LUMPSUM", "COMMUTATION", "ANNUITY")))
-    k = proj_year(t)
+    proj_year(t)  # Check the period before dispatching a named claim.
     if kind == "DEATH":
-        return db_pp(k) * pols_death(t)
+        return claims_by_kind(t, 0)
     if kind == "LAPSE":
-        return cv_pp(k) * pols_lapse(t)
+        return claims_by_kind(t, 1)
     if kind == "TRANSFER":
-        return transfer_value_pp(k) * pols_transfer(t)
+        return claims_by_kind(t, 2)
     if kind == "LUMPSUM":
-        return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_by_kind(t, 3)
     if kind == "COMMUTATION":
-        return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+        return claims_by_kind(t, 4)
     if kind == "ANNUITY":
+        return claims_by_kind(t, 5)
+    raise ValueError("invalid kind")
+
+
+def claims_by_kind(t, kind: int):
+    """Monthly claim amount for the internal kind index in :func:`claims` order."""
+    k = proj_year(t)
+    if kind == 0:
+        return db_pp(k) * pols_death(t)
+    if kind == 1:
+        return cv_pp(k) * pols_lapse(t)
+    if kind == 2:
+        return transfer_value_pp(k) * pols_transfer(t)
+    if kind == 3:
+        return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
+    if kind == 4:
+        return commutation_pp() * pols_conv() if t == t_conv() else 0.0
+    if kind == 5:
         return annuity_month_pp() * pols_annuity_pay(t)
     raise ValueError("invalid kind")
 
@@ -1903,9 +1962,9 @@ def net_cf(t):
     then a long thin negative tail of monthly annuity instalments.
     """
     return (premiums(t) + zulagen(t)
-            - claims(t, "DEATH") - claims(t, "LAPSE") - claims(t, "TRANSFER")
-            - claims(t, "LUMPSUM") - claims(t, "COMMUTATION")
-            - claims(t, "ANNUITY")
+            - claims_by_kind(t, 0) - claims_by_kind(t, 1) - claims_by_kind(t, 2)
+            - claims_by_kind(t, 3) - claims_by_kind(t, 4)
+            - claims_by_kind(t, 5)
             - expenses(t) - commissions(t))
 
 
