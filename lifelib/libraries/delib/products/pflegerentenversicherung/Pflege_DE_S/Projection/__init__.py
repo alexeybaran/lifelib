@@ -681,6 +681,11 @@ def mort_rate_care(t, g):
     return 1.0 - math.exp(-mort_force_care(t, g))                    # noqa: F821
 
 
+def care_mortality_multiple(g):
+    """The mortality multiple for one care grade."""
+    return pdn.lookup_float(data.prepared_care_table_at(), g, 'mort_mult')               # noqa: F821
+
+
 def mort_force_care(t, g):
     """mu_g(t): ``mort_mult(g)`` times the **force** of active mortality at the same age.
 
@@ -690,7 +695,7 @@ def mort_force_care(t, g):
     grade 5.  On *rates* the ratio compresses towards 1 as ``mort_rate`` saturates at the
     oldest ages, which is an artefact of the rate scale and not a change in the basis.
     """
-    mult = pdn.lookup_float(data.prepared_care_table_at(), g, 'mort_mult')               # noqa: F821
+    mult = care_mortality_multiple(g)
     return mult * mort_force(t)
 
 
@@ -758,6 +763,28 @@ def det_force(t, g):
     return -math.log(1.0 - min(q, 1.0 - 1e-12))                      # noqa: F821
 
 
+def recovery_grade_rate(g):
+    """The recovery rate before attained-age damping."""
+    return pdn.lookup_float(data.prepared_care_table_at(), g, 'rec_rate')                # noqa: F821
+
+
+def recovery_reference_age():
+    """The age at which recovery damping starts."""
+    return pdn.lookup_float(data.prepared_basis_table_at(), 'rec_age_ref', 'value')      # noqa: F821
+
+
+def recovery_age_decay():
+    """The damping rate per year over the reference age."""
+    return pdn.lookup_float(data.prepared_basis_table_at(), 'rec_age_decay', 'value')    # noqa: F821
+
+
+def recovery_age_factor(x):
+    """The age-dependent part of the recovery rate."""
+    ref = recovery_reference_age()
+    decay = recovery_age_decay()
+    return math.exp(-decay * max(0.0, x - ref))                    # noqa: F821
+
+
 def rec_rate(t, g):
     """The annual rate of recovery from grade ``g``, damped above ``rec_age_ref``.
 
@@ -770,10 +797,8 @@ def rec_rate(t, g):
     Recovery from grade 1 leads to the **active** state, and a life that recovers starts
     paying its *Beitrag* again.
     """
-    base = pdn.lookup_float(data.prepared_care_table_at(), g, 'rec_rate')                # noqa: F821
-    ref = pdn.lookup_float(data.prepared_basis_table_at(), 'rec_age_ref', 'value')       # noqa: F821
-    decay = pdn.lookup_float(data.prepared_basis_table_at(), 'rec_age_decay', 'value')   # noqa: F821
-    return base * math.exp(-decay * max(0.0, age(t) - ref))          # noqa: F821
+    base = recovery_grade_rate(g)
+    return base * recovery_age_factor(age(t))
 
 
 def rec_force(t, g):
@@ -1473,6 +1498,25 @@ def tar_mort_rate(t):
     return min(1.0 - 1e-12, margin * (mix * q_m + (1.0 - mix) * q_f))
 
 
+def tariff_male_weight():
+    """The weight of the male mortality and incidence tables."""
+    return pdn.lookup_float(data.prepared_basis_table_at(), 'unisex_mix_male', 'value')  # noqa: F821
+
+
+def tariff_care_mortality_margin():
+    """The prudence factor applied to care mortality rates."""
+    return pdn.lookup_float(data.prepared_basis_table_at(), 'care_mort_margin', 'value')  # noqa: F821
+
+
+def tariff_mortality_force(x):
+    """The unmargined blended mortality force at age x."""
+    mix = tariff_male_weight()
+    q_m = pdn.lookup_float(data.prepared_mort_table_at(), ('M', x), 'mort_rate')         # noqa: F821
+    q_f = pdn.lookup_float(data.prepared_mort_table_at(), ('F', x), 'mort_rate')         # noqa: F821
+    q = min(1.0 - 1e-12, mix * q_m + (1.0 - mix) * q_f)
+    return -math.log(1.0 - q)                                     # noqa: F821
+
+
 def tar_mort_rate_care(t, g):
     """The first-order in-care death rate at *Pflegegrad* ``g``.
 
@@ -1486,13 +1530,9 @@ def tar_mort_rate_care(t, g):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = pdn.lookup_float(data.prepared_basis_table_at(), 'unisex_mix_male', 'value')   # noqa: F821
-    margin = pdn.lookup_float(data.prepared_basis_table_at(), 'care_mort_margin', 'value')
-    mult = pdn.lookup_float(data.prepared_care_table_at(), g, 'mort_mult')               # noqa: F821
-    q_m = pdn.lookup_float(data.prepared_mort_table_at(), ('M', age(t)), 'mort_rate')    # noqa: F821
-    q_f = pdn.lookup_float(data.prepared_mort_table_at(), ('F', age(t)), 'mort_rate')    # noqa: F821
-    q = min(1.0 - 1e-12, mix * q_m + (1.0 - mix) * q_f)
-    mu = -math.log(1.0 - q)                                          # noqa: F821
+    margin = tariff_care_mortality_margin()
+    mult = care_mortality_multiple(g)
+    mu = tariff_mortality_force(age(t))
     return min(1.0 - 1e-12, margin * (1.0 - math.exp(-mult * mu)))   # noqa: F821
 
 
@@ -1514,13 +1554,23 @@ def tar_inc_rate(t):
     return min(margin * (mix * i_m + (1.0 - mix) * i_f), cap)
 
 
+def tariff_deterioration_rate(g):
+    """The tariff deterioration rate by grade."""
+    return min(1.0 - 1e-12, pdn.lookup_float(data.prepared_basis_table_at(), 'det_margin', 'value') * det_rate(g))
+
+
 def tar_det_rate(t, g):
     """The first-order deterioration rate: ``det_margin x det_rate(g)``, capped below 1.
 
     ``det_margin = 1.15`` moves lives faster into the higher-paying grades, which is
     prudence on a schedule whose top steps pay most.
     """
-    return min(1.0 - 1e-12, pdn.lookup_float(data.prepared_basis_table_at(), 'det_margin', 'value') * det_rate(g))
+    return tariff_deterioration_rate(g)
+
+
+def tariff_recovery_margin():
+    """The prudence factor applied to recovery rates."""
+    return pdn.lookup_float(data.prepared_basis_table_at(), 'rec_margin', 'value')       # noqa: F821
 
 
 def tar_rec_rate(t, g):
@@ -1529,7 +1579,7 @@ def tar_rec_rate(t, g):
     ``rec_margin = 0.80`` produces **fewer** recoveries and so longer spells in payment,
     which is the prudent direction for a benefit that stops on recovery.
     """
-    return pdn.lookup_float(data.prepared_basis_table_at(), 'rec_margin', 'value') * rec_rate(t, g)
+    return tariff_recovery_margin() * rec_rate(t, g)
 
 
 def tar_p_act(t):
