@@ -564,13 +564,13 @@ def av_pp(t):
 
     The bid value of units, and the column the notes' worked-example table prints first.
     ``av_init_pp()`` at ``t = 0`` (issue), then the end-of-month value of the previous
-    month, ``av_pp_at(t - 1, "AFT_WD")``.  Floored at zero: :func:`wd_pp` caps the
+    month, ``av_end(t - 1)``.  Floored at zero: :func:`wd_pp` caps the
     withdrawal at what the fund can pay, so the fund is drawn to nothing rather than
     through it.
     """
     if t == 0:
         return av_init_pp()
-    return av_pp_at(t - 1, "AFT_WD")
+    return av_end(t - 1)
 
 
 def av_pp_at(t, timing):
@@ -600,13 +600,27 @@ def av_pp_at(t, timing):
     if timing == "BEF_GROWTH":
         return av_pp(t)
     if timing == "AFT_GROWTH":
-        return av_pp(t) + fund_growth_pp(t) - tax_provision_pp(t)
+        return av_after_growth(t)
     if timing == "AFT_CHARGE":
-        return av_pp_at(t, "AFT_GROWTH") - amc_pp(t) - further_costs_pp(t)
+        return av_after_charge(t)
     if timing == "AFT_WD":
-        return max(0.0, av_pp_at(t, "AFT_CHARGE")
-                   - wd_pp(t) - adviser_charge_pp(t) - gmdb_charge_pp(t))
+        return av_end(t)
     raise ValueError("invalid timing")
+
+
+def av_after_growth(t):
+    """Unit fund after gross return and tax, before fund charges."""
+    return av_pp(t) + fund_growth_pp(t) - tax_provision_pp(t)
+
+
+def av_after_charge(t):
+    """Unit fund after the management charge and further costs."""
+    return av_after_growth(t) - amc_pp(t) - further_costs_pp(t)
+
+
+def av_end(t):
+    """Unit fund after withdrawals and the remaining charges."""
+    return max(0.0, av_after_charge(t) - wd_pp(t) - adviser_charge_pp(t) - gmdb_charge_pp(t))
 
 
 def av_per_segment_pp(t):
@@ -640,7 +654,7 @@ def amc_pp(t):
     Levied on the post-growth, pre-cancellation fund, because it accrues daily through
     the unit price.  The insurer's only material income line on this product.
     """
-    return amc_rate_mth() * av_pp_at(t, "AFT_GROWTH")
+    return amc_rate_mth() * av_after_growth(t)
 
 
 def further_costs_pp(t):
@@ -648,7 +662,7 @@ def further_costs_pp(t):
 
     A **pass-through**, not insurer income.
     """
-    return further_costs_rate_mth() * av_pp_at(t, "AFT_GROWTH")
+    return further_costs_rate_mth() * av_after_growth(t)
 
 
 def wd_cap_pp(t):
@@ -659,7 +673,7 @@ def wd_cap_pp(t):
     the premium, whichever is larger, and it includes the ongoing adviser charge.
     """
     return wd_cap_rate * max(                                        # noqa: F821
-        av_pp_at(t, "AFT_CHARGE"), premium())
+        av_after_charge(t), premium())
 
 
 def wd_pp(t):
@@ -675,7 +689,7 @@ def wd_pp(t):
     ac = adviser_charge_pp(t)
     gc = gmdb_charge_pp(t)
     room = max(0.0, wd_cap_pp(t) / 12.0 - ac)
-    available = max(0.0, av_pp_at(t, "AFT_CHARGE") - ac - gc)
+    available = max(0.0, av_after_charge(t) - ac - gc)
     return min(scheduled, room, available)
 
 
@@ -685,7 +699,7 @@ def adviser_charge_pp(t):
     ``oac_rate/12`` of the fund after charges.  A **pass-through**: it reduces the unit
     fund and consumes the policyholder's tax allowance, and it is not insurer income.
     """
-    return oac_rate() / 12.0 * av_pp_at(t, "AFT_CHARGE")
+    return oac_rate() / 12.0 * av_after_charge(t)
 
 
 def gmdb_guarantee_pp(t):
@@ -719,7 +733,7 @@ def gmdb_charge_pp(t):
     if not gmdb_flag():
         return 0.0
     naar = max(0.0, gmdb_guarantee_pp(t)
-               - db_uplift() * av_pp_at(t, "AFT_CHARGE"))
+               - db_uplift() * av_after_charge(t))
     return mort_rate_mth(t) * naar
 
 
@@ -731,7 +745,7 @@ def death_strain_pp(t):
     cancelling the policyholder's own units, so the insurer's cost is only the uplift - a
     tenth of a percent of the fund on the composite - plus any in-the-money guarantee.
     """
-    uf = av_pp_at(t, "AFT_WD")
+    uf = av_end(t)
     strain = (db_uplift() - 1.0) * uf
     if gmdb_flag():
         strain += max(0.0, gmdb_guarantee_pp(t) - db_uplift() * uf)
@@ -853,7 +867,7 @@ def claims(t, kind=None):
     """
     if kind is None:
         return pdn.sum_values((claims(t, k) for k in ("DEATH", "SURRENDER")))
-    uf = av_pp_at(t, "AFT_WD")
+    uf = av_end(t)
     if kind == "DEATH":
         benefit = db_uplift() * uf
         if gmdb_flag():
@@ -880,7 +894,7 @@ def unit_releases(t):
     outgo less this is exactly the death strain, which is the only part the insurer funds
     from its own resources.
     """
-    return av_pp_at(t, "AFT_WD") * (pols_death(t) + pols_surr(t))
+    return av_end(t) * (pols_death(t) + pols_surr(t))
 
 
 def amc_charges(t):
@@ -963,7 +977,7 @@ def check_av_roll_fwd_resid(t):
     Skipped once the fund has been drawn to nothing, where the withdrawal cap breaks the
     equality by design.
     """
-    uf_end = av_pp_at(t, "AFT_WD")
+    uf_end = av_end(t)
     if uf_end <= 0.0:
         return 0.0
     built = (av_pp(t) + fund_growth_pp(t) - tax_provision_pp(t)
@@ -1061,7 +1075,7 @@ def result_uf():
             "adviser_charge_pp": [adviser_charge_pp(t) for t in ts],
             "gmdb_charge_pp": [gmdb_charge_pp(t) for t in ts],
             "wd_pp": [wd_pp(t) for t in ts],
-            "av_pp_end": [av_pp_at(t, "AFT_WD") for t in ts],
+            "av_pp_end": [av_end(t) for t in ts],
             "wd_cum_pp": [wd_cum_pp(t) for t in ts],
             "allowance_cum_pp": [allowance_cum_pp(t) for t in ts],
             "excess_gain_pp": [excess_gain_pp(t) for t in ts],
