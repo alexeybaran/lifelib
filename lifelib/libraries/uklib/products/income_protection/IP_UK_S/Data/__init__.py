@@ -72,8 +72,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def inception_table():
@@ -85,9 +85,9 @@ def inception_table():
     marks which cells are the notes' own pivots and which come from a factor.  Sorted
     on read, because ``Projection.inception_rate`` slices it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / inception_file,                                # noqa: F821
-        index_col=["sex", "occ_class", "deferred_weeks", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / inception_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "occ_class", "deferred_weeks", "age"]).sort_index())
 
 
 def termination_table():
@@ -97,9 +97,9 @@ def termination_table():
     terminations into recovery and death exactly this way, but is two-dimensional in
     age and duration; the age dimension is suppressed here **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / termination_file,                              # noqa: F821
-        index_col="claim_duration_year")
+        index_col="claim_duration_year"))
 
 
 def mort_table():
@@ -111,48 +111,15 @@ def mort_table():
     protection anyway, so the shipped rates are a placeholder to be replaced with
     portfolio experience.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def lapse_table():
     """The lapse rates by policy year, read from *lapse_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_termination_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(termination_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_inception_table_groups_3():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(inception_table(), groups=('sex', 'occ_class', 'deferred_weeks'), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_termination_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(termination_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -171,3 +138,5 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
