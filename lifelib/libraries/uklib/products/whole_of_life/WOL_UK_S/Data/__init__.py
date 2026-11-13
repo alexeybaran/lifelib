@@ -113,6 +113,12 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def mortality_by_policy_categories(basis, sex, smoker) -> "modelx_helpers.immutable_inputs.Table":
+    """Prepare the selected mortality curve from the ordinary input Cell."""
+    rows = mort_table().xs((basis, sex, smoker), level=("basis", "sex", "smoker"))
+    return pdn.table(rows, columns=("mort_rate",))
+
+
 def prepared_lapse_table_groups_1():
     """Own labelled groups in original row and column order."""
     return pdn.table(lapse_table(), groups=('cell',), rows=True, preserve_scalar_types=True)

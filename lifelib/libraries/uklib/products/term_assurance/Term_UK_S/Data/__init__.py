@@ -117,6 +117,12 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def mortality_by_policy_categories(sex, smoker) -> "modelx_helpers.immutable_inputs.Table":
+    """Prepare the selected mortality curve from the ordinary input Cell."""
+    rows = mort_table().xs((sex, smoker), level=("sex", "smoker"))
+    return pdn.table(rows, columns=("mort_rate",))
+
+
 def prepared_lapse_table_scalar_loc():
     """Own original column scalars for calculation lookup."""
     return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)

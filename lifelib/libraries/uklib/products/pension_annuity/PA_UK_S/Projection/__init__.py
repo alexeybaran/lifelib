@@ -661,9 +661,17 @@ def mths_since_payment(t):
     return max(0, t - last)
 
 
+def mortality_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
+    """Reuse the attained-age schedule for this life."""
+    return data.mortality_by_sex(sex(life))
+
+
 def mortality_table_rate(x, life):
     """The selected life's table rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), 'mort_rate')
+    try:
+        return mortality_schedule(life).lookup_float(x, "mort_rate")
+    except KeyError:
+        return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), x), "mort_rate")
 
 
 def mort_rate_base(t, life):

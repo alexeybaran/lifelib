@@ -578,9 +578,17 @@ def select_factor(t):
     return pdn.lookup_float(data.prepared_select_factor_table_loc(), d, 'factor')        # noqa: F821
 
 
+def mortality_schedule(life) -> "modelx_helpers.immutable_inputs.Table":
+    """Reuse the attained-age schedule for this life."""
+    return data.mortality_by_policy_categories(sex(life), smoker(life))
+
+
 def mortality_table_rate(x, life):
     """The selected life's table rate at attained age x."""
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), x), 'mort_rate')
+    try:
+        return mortality_schedule(life).lookup_float(x, "mort_rate")
+    except KeyError:
+        return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(life), smoker(life), x), "mort_rate")
 
 
 def mort_rate_base(t, life=1):

@@ -97,6 +97,11 @@ def prepared_mort_table_loc():
                         indexing='loc')
 
 
+def mortality_by_sex(sex) -> "modelx_helpers.immutable_inputs.Table":
+    """Prepare the selected mortality curve from the ordinary input Cell."""
+    return pdn.table(mort_table().xs(sex, level="sex"), columns=("mort_rate",))
+
+
 # ---------------------------------------------------------------------------
 # References
 
