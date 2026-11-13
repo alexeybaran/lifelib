@@ -32,7 +32,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.universal_life.categories import Claim, Timing, DeathBenefitOption
+from lifelib.libraries.uslib.products.universal_life.enums import Claim, DeathBenefitOption, Timing
 
 MODEL_PATH = LIB / "products/universal_life/UL_US_S"
 
@@ -78,7 +78,7 @@ def _wd_ten_percent_monthly(t):
     the pattern that exposes a monthly rather than annual free-withdrawal allowance.
     The first anniversary is the start of policy month ``t = 12``.
     """
-    return 0.10 * av_pp_at(t, Timing.BEF_WD) if t >= 12 else 0.0      # noqa: F821
+    return 0.10 * av_pp_at(t, Timing.BEF_WD) if t >= 12 else 0.0          # noqa: F821
 
 
 def _premium_far_above_the_seven_pay_limit():
@@ -517,7 +517,7 @@ def test_death_benefit_never_falls_below_the_face_amount(universal_life):
     death claim collected *from* the beneficiary.  ``av_pp_db_basis`` floors the balance
     at zero **[std]** so that cannot happen.
     """
-    for point_id in universal_life.Data.model_point_table()["keys"]:
+    for point_id in universal_life.Data.model_point_table().index:
         proj = universal_life.Projection[point_id]
         for t in range(proj.proj_len()):
             assert proj.db_pp(t) >= proj.sum_assured_at(t) - 1e-9, (point_id, t)
@@ -666,8 +666,8 @@ def test_a_withdrawal_is_not_a_claim(withdrawing):
     assert proj.withdrawals(t) == pytest.approx(proj.wd_pp(t) * proj.pols_if(t),
                                                 rel=1e-12)
     # not a kind, and not inside the kind-less total
-    for call in (lambda: proj.claims(t, -1),
-                 lambda: proj.claim_pp(t, -1)):
+    for call in (lambda: proj.claims(t, "WITHDRAWAL"),
+                 lambda: proj.claim_pp(t, "WITHDRAWAL")):
         with pytest.raises(Exception) as excinfo:
             call()
         assert "invalid kind" in str(excinfo.value)
@@ -759,12 +759,12 @@ def test_invalid_arguments_raise(anchor):
     message rather than the exception class.
     """
     cases = [
-        (lambda: anchor.av_pp_at(0, -1), "invalid timing"),
-        (lambda: anchor.av_at(0, -1), "invalid timing"),
+        (lambda: anchor.av_pp_at(0, "NOPE"), "invalid timing"),
+        (lambda: anchor.av_at(0, "NOPE"), "invalid timing"),
         (lambda: anchor.pols_if_at(0, "NOPE"), "invalid timing"),
-        (lambda: anchor.claim_pp(0, -1), "invalid kind"),
-        (lambda: anchor.claims(0, -1), "invalid kind"),
-        (lambda: anchor.claims_from_av(0, -1), "invalid kind"),
+        (lambda: anchor.claim_pp(0, "NOPE"), "invalid kind"),
+        (lambda: anchor.claims(0, "NOPE"), "invalid kind"),
+        (lambda: anchor.claims_from_av(0, "NOPE"), "invalid kind"),
     ]
     for call, message in cases:
         with pytest.raises(Exception) as excinfo:

@@ -18,19 +18,30 @@ class Timing(IntEnum):
 
 
 class DeathBenefitOption(IntEnum):
-    OTHER = -1
     A = 0
     B = 1
 
 
 class Qualification(IntEnum):
-    OTHER = -1
     GPT = 0
     CVAT = 1
 
 
 class PremiumType(IntEnum):
-    OTHER = -1
     SINGLE = 0
     LEVEL = 1
     TARGET = 2
+
+
+class Sex(IntEnum):
+    M = 0
+    F = 1
+
+
+class RateClass(IntEnum):
+    PPlusNT = 0
+    PNT = 1
+    StdPlusNT = 2
+    StdNT = 3
+    PTob = 4
+    StdTob = 5
