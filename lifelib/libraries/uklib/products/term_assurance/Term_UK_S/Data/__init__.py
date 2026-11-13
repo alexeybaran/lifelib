@@ -69,8 +69,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -79,15 +79,16 @@ def mort_table():
     Read as the applied best-estimate rate on the ``applied`` mortality basis and as
     the ultimate rate on the ``select`` basis; see ``Projection.mort_basis``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "smoker", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)              # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
+    return pdn.table(frame.set_index(["sex", "smoker", "age"]))
 
 
 def select_factor_table():
     """The select-duration factors, read from *select_factor_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / select_factor_file, index_col="duration")      # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / select_factor_file, index_col="duration"))      # noqa: F821
 
 
 def lapse_table():
@@ -98,33 +99,8 @@ def lapse_table():
     ``policy_year(t) = t // 12 + 1``, and the rate it returns is the **annual** one the
     table is quoted in.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
-
-
-def prepared_select_factor_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(select_factor_table(),
-                        columns=('factor',),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -141,3 +117,7 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Smoker = ("Pickle", 2)
