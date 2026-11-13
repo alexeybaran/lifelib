@@ -102,45 +102,46 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def cv_table():
     """The guaranteed cash value schedule per $1,000 of face, from *cv_table.csv*."""
-    frame = pd.read_csv(                                              # noqa: F821
-        input_dir() / cv_file,                                       # noqa: F821
-        index_col=["premium_period", "sex", "issue_age", "policy_year"])
-    return pdn.table(frame, columns=("cv_per_1000",), groups=frame.index.names[:-1])
+    frame = pd.read_csv(input_dir() / cv_file)                    # noqa: F821
+    frame["premium_period"] = [PremiumPeriod[name] for name in frame["premium_period"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["premium_period", "sex", "issue_age", "policy_year"]))
 
 
 def nsp_table():
     """The endowment-at-100 net single premiums by attained age, from *nsp_table.csv*."""
-    frame = pd.read_csv(                                              # noqa: F821
-        input_dir() / nsp_file, index_col=["sex", "age"])            # noqa: F821
-    return pdn.table(frame, columns=("nsp",), groups=frame.index.names[:-1])
+    frame = pd.read_csv(input_dir() / nsp_file)                    # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
-def np_guar_table() -> "modelx_helpers.immutable_inputs.Table":
+def np_guar_table():
     """The nonforfeiture net level premiums per $1,000, from *np_guar_table.csv*."""
-    frame = pd.read_csv(                                              # noqa: F821
-        input_dir() / np_guar_file,                                  # noqa: F821
-        index_col=["premium_period", "sex", "issue_age"])
-    return pdn.table(frame, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / np_guar_file)                    # noqa: F821
+    frame["premium_period"] = [PremiumPeriod[name] for name in frame["premium_period"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["premium_period", "sex", "issue_age"]))
 
 
 def mort_table():
     """The guaranteed mortality table by sex and age, read from *mort_table.csv*."""
-    frame = pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
-    return pdn.table(frame, columns=("mort_rate",), groups=frame.index.names[:-1])
+    frame = pd.read_csv(input_dir() / mort_table_file)                    # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
-def premium_rates() -> "modelx_helpers.immutable_inputs.Table":
+def premium_rates():
     """The final-expense premium rates per $1,000, read from *premium_rates.csv*."""
-    frame = pd.read_csv(                                              # noqa: F821
-        input_dir() / premium_rates_file,                            # noqa: F821
-        index_col=["product", "sex", "risk_class", "issue_age"])
-    return pdn.table(frame, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / premium_rates_file)                    # noqa: F821
+    frame["product"] = [Product[name] for name in frame["product"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["risk_class"] = [RiskClass[name] for name in frame["risk_class"]]
+    return pdn.table(frame.set_index(["product", "sex", "risk_class", "issue_age"]))
 
 
 # ---------------------------------------------------------------------------
@@ -161,3 +162,11 @@ premium_rates_file = "premium_rates.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Product = ("Pickle", 1)
+
+PremiumPeriod = ("Pickle", 2)
+
+Sex = ("Pickle", 3)
+
+RiskClass = ("Pickle", 4)
