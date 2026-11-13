@@ -568,6 +568,16 @@ def monthly_surrender_in_year(year):
     return 1.0 - (1.0 - surr_rate(12 * year)) ** (1.0 / 12.0)
 
 
+def mortality_survival_in_year(year):
+    """Monthly survival of the mortality decrement for this policy year."""
+    return 1.0 - monthly_mortality_in_year(year)
+
+
+def surrender_survival_in_year(year):
+    """Monthly survival of the surrender decrement for this policy year."""
+    return 1.0 - monthly_surrender_in_year(year)
+
+
 def av_pp(t):
     """UF(t): the unit fund per policy at time t, the **start** of policy month t.
 
@@ -812,14 +822,14 @@ def pols_if(t):
 
 def pols_before_surrender(t):
     """The in-force count after mortality and before surrender."""
-    return pols_if(t) * (1.0 - mort_rate_mth(t))
+    return pols_if(t) * mortality_survival_in_year(duration(t))
 
 
 def pols_after_decrements(t):
     """The in-force count at the end of the month."""
     if t < 0 or t >= proj_len() - 1:
         return 0.0
-    return pols_before_surrender(t) * (1.0 - surr_rate_mth(t))
+    return pols_before_surrender(t) * surrender_survival_in_year(duration(t))
 
 
 def pols_if_at(t, timing):
