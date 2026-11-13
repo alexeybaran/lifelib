@@ -799,7 +799,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return pdn.lookup_float(data.prepared_mort_table_accum_at(), x, 'qx')                # noqa: F821
+    return data.prepared_mort_table_accum_at().lookup_float(x, 'qx')
 
 
 def annuity_mort_rate(x, tau):
@@ -814,9 +814,8 @@ def annuity_mort_rate(x, tau):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    tab = data.annuity_mort_table()                                  # noqa: F821
-    qb = pdn.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "qx_base")
-    im = pdn.lookup_float(data.prepared_annuity_mort_table_scalar_at(), x, "improvement")
+    qb = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "qx_base")
+    im = data.prepared_annuity_mort_table_scalar_at().lookup_float(x, "improvement")
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 
@@ -1045,6 +1044,11 @@ def pols_annuity_pay(t):
     return pols_if(t)
 
 
+def policy_income_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The income schedule selected by this policy."""
+    return data.income_schedule_by_id().slice(income_id())
+
+
 def income_ref(k):
     """Y(k): the contribution-liable earnings the § 86 minimum of period k is struck on.
 
@@ -1058,7 +1062,7 @@ def income_ref(k):
         return 0.0
     if k == 0:
         return income_init()
-    return pdn.lookup_float(data.prepared_income_schedule_at(), (income_id(), k - 1), 'income')  # noqa: F821
+    return policy_income_schedule().lookup_float(k - 1, "income")
 
 
 def zulage_entitlement_pp(k):
@@ -1246,6 +1250,11 @@ def prem_to_av_pp(k):
 # === the account: two balances, one credited rate
 
 
+def policy_surplus_schedule() -> "modelx_helpers.immutable_inputs.Table":
+    """The declared-rate schedule selected by this policy."""
+    return data.surplus_schedule_by_id().slice(scenario_id())
+
+
 def decl_rate(k):
     """j(k): the declared *laufende Verzinsung* of period k, from *surplus_scenario.csv*.
 
@@ -1258,7 +1267,7 @@ def decl_rate(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return pdn.lookup_float(data.prepared_surplus_scenario_at(), (scenario_id(), k), 'decl_rate')
+    return policy_surplus_schedule().lookup_float(k, "decl_rate")
 
 
 def int_guar_pp(k):
