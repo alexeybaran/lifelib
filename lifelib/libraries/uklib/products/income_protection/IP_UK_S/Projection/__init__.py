@@ -610,9 +610,9 @@ def claim_rate_vectors():
     definition of each rate.
     """
     zs = range(1, max_dur() + 1)
-    rec = np.array([rec_rate_mth(z) for z in zs])
-    dth = np.array([mort_rate_sick_mth(z) for z in zs])
-    return rec, dth, (1.0 - rec) * (1.0 - dth)
+    rec = [rec_rate_mth(z) for z in zs]
+    dth = [mort_rate_sick_mth(z) for z in zs]
+    return rec, dth, [(1.0 - r) * (1.0 - d) for r, d in zip(rec, dth)]
 
 
 def esc_rate():
@@ -746,16 +746,16 @@ def sick_cohorts(t):
     """
     n = max_dur()
     if t < 0 or t >= proj_len():
-        return np.zeros(n)
+        return [0.0] * n
     if t == 0:
         seed = pols_if_init() if status() == Status.in_claim else 0.0
         z0 = claim_duration_months() + 1
-        return np.where(np.arange(1, n + 1) == z0, seed, 0.0)
+        return [seed if z == z0 else 0.0 for z in range(1, n + 1)]
     prev = sick_cohorts(t - 1)
     surv = claim_rate_vectors()[2]
-    out = np.empty(n)
-    out[0] = pols_inception(t - 1)
-    np.multiply(prev[:-1], surv[:-1], out=out[1:])
+    out = [pols_inception(t - 1)]
+    for z in range(1, n):
+        out.append(prev[z - 1] * surv[z - 1])
     return out
 
 
@@ -765,12 +765,12 @@ def pols_sick_dur(t, z):
     ``z`` is the 1-based claim-duration cohort index; ``z - 1`` is its list position.
     """
     v = sick_cohorts(t)
-    return float(v[z - 1]) if 1 <= z <= len(v) else 0.0
+    return v[z - 1] if 1 <= z <= len(v) else 0.0
 
 
 def pols_sick(t):
     """l_S(t): the total population in claim payment at the start of month t."""
-    return float(np.add.reduce(sick_cohorts(t)))
+    return sum(sick_cohorts(t))
 
 
 def pols_sick_surv(t):
@@ -782,7 +782,7 @@ def pols_sick_surv(t):
     """
     v = sick_cohorts(t)
     surv = claim_rate_vectors()[2]
-    return float(v.dot(surv))
+    return sum(a * b for a, b in zip(v, surv) if a != 0.0)
 
 
 def pols_recovery(t):
@@ -793,7 +793,7 @@ def pols_recovery(t):
     """
     v = sick_cohorts(t)
     rec = claim_rate_vectors()[0]
-    return float(v.dot(rec))
+    return sum(a * b for a, b in zip(v, rec) if a != 0.0)
 
 
 def pols_death_sick(t):
@@ -804,7 +804,8 @@ def pols_death_sick(t):
     """
     v = sick_cohorts(t)
     rec, dth, _ = claim_rate_vectors()
-    return float((v * (1.0 - rec)).dot(dth))
+    return sum(a * (1.0 - r) * d
+               for a, r, d in zip(v, rec, dth) if a != 0.0)
 
 
 def pols_exit(t):
@@ -1222,7 +1223,5 @@ RecoveryBasis = ("Pickle", 5)
 PolTiming = ("Pickle", 6)
 
 Kind = ("Pickle", 7)
-
-np = ("Module", "numpy")
 
 enum_definitions = ("Pickle", 8)
