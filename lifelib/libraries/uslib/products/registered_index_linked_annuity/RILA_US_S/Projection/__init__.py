@@ -732,9 +732,19 @@ def index_perf(t):
     return index_level(t) / index_at_term_start(t) - 1.0
 
 
+def normal_scale():
+    """The normal distribution scale shared by option valuations."""
+    return math.sqrt(2.0)                                           # noqa: F821
+
+
+def continuous_rate(rate):
+    """Convert an annual effective rate for use across the option valuations."""
+    return math.log(1.0 + rate)                                     # noqa: F821
+
+
 def norm_cdf(x):
     """N(x): the standard normal cumulative distribution function."""
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))                # noqa: F821
+    return 0.5 * (1.0 + math.erf(x / normal_scale()))               # noqa: F821
 
 
 def bs_d1(spot, strike, tau_, rate, divy, vol):
@@ -745,8 +755,8 @@ def bs_d1(spot, strike, tau_, rate, divy, vol):
     the 4.00% and 2.00% market inputs enter as ``ln 1.04 = 3.9221%`` and
     ``ln 1.02 = 1.9803%`` exactly as the notes state.
     """
-    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
+    rate_cc = continuous_rate(rate)
+    divy_cc = continuous_rate(divy)
     return ((math.log(spot / strike) + (rate_cc - divy_cc + vol ** 2 / 2.0) * tau_)  # noqa: F821
             / (vol * math.sqrt(tau_)))                               # noqa: F821
 
@@ -765,8 +775,8 @@ def bs_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(spot - strike, 0.0)
-    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
+    rate_cc = continuous_rate(rate)
+    divy_cc = continuous_rate(divy)
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
     return (spot * math.exp(-divy_cc * tau_) * norm_cdf(d_1)         # noqa: F821
@@ -780,8 +790,8 @@ def bs_put(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return max(strike - spot, 0.0)
-    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
-    divy_cc = math.log(1.0 + divy)                                   # noqa: F821
+    rate_cc = continuous_rate(rate)
+    divy_cc = continuous_rate(divy)
     d_1 = bs_d1(spot, strike, tau_, rate, divy, vol)
     d_2 = bs_d2(spot, strike, tau_, rate, divy, vol)
     return (strike * math.exp(-rate_cc * tau_) * norm_cdf(-d_2)      # noqa: F821
@@ -798,7 +808,7 @@ def bs_binary_call(spot, strike, tau_, rate, divy, vol):
     """
     if tau_ <= 0.0:
         return 1.0 if spot >= strike else 0.0
-    rate_cc = math.log(1.0 + rate)                                   # noqa: F821
+    rate_cc = continuous_rate(rate)
     return (math.exp(-rate_cc * tau_)                                # noqa: F821
             * norm_cdf(bs_d2(spot, strike, tau_, rate, divy, vol)))
 
