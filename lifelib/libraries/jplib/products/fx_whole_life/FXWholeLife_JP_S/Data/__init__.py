@@ -109,8 +109,8 @@ def model_point_table():
     anchor cell: male, 契約年齢 40, LEVEL shape, 基本保険金額 US$100,000, 60歳払込満了,
     月払保険料 US$239.60, 積立利率 at the guaranteed floor of 3.00%.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -121,8 +121,9 @@ def mort_table():
     Space docstring.  Includes 高度障害, which the published table's death rate already
     carries, so 高度障害 is not a second decrement anywhere in this model.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def lapse_table():
@@ -133,9 +134,9 @@ def lapse_table():
     public anchor at all and is a **[std]** judgement.  Policy years beyond the last
     row take that row.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file,                              # noqa: F821
-        index_col=["shape", "policy_year"])
+    frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
+    frame["shape"] = [Shape[name] for name in frame["shape"]]
+    return pdn.table(frame.set_index(["shape", "policy_year"]))      # noqa: F821
 
 
 def charge_table():
@@ -145,9 +146,10 @@ def charge_table():
     解約控除 scale, the 低解約返戻金割合 ramp, the three constants of the 市場価格調整
     reconstruction and the two 特別積立金 rates, each with its own provenance.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_table_file,                             # noqa: F821
-        index_col=["shape", "item"])
+    frame = pd.read_csv(input_dir() / charge_table_file)             # noqa: F821
+    frame["shape"] = [Shape[name] for name in frame["shape"]]
+    frame["item"] = [ChargeItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index(["shape", "item"]))             # noqa: F821
 
 
 def fx_path_table():
@@ -158,44 +160,8 @@ def fx_path_table():
     contractual cash flows and not an FX view.  Policy years beyond the last row take
     that row.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / fx_path_file, index_col="policy_year")         # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_charge_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(charge_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-def prepared_fx_path_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(fx_path_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_table_calculation_groups_1():
-    """Own original input values for calculation operations."""
-    return pdn.table(mort_table(), groups=('sex',), rows=False, preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_calculation_groups_1():
-    """Own original input values for calculation operations."""
-    return pdn.table(lapse_table(), groups=('shape',), rows=False, preserve_scalar_types=True)
-
-
-def prepared_fx_path_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(fx_path_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / fx_path_file, index_col="policy_year"))         # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -214,3 +180,9 @@ fx_path_file = "fx_path_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Shape = ("Pickle", 2)
+
+ChargeItem = ("Pickle", 3)
