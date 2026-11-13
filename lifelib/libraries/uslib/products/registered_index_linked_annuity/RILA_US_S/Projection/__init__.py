@@ -639,10 +639,30 @@ def market_table():
     return data.market_scenario().loc[scenario_id()]                 # noqa: F821
 
 
-def market_index_level(k):
-    """The scenario's ``index_level`` in force at month k (step function)."""
+def market_state(k, field):
+    """Step-function lookup of column ``name`` in the model point's market scenario.
+
+    ``k`` is a **time** in policy months from the Issue Date, ``k = 0`` at issue, not the
+    month index: the market state month ``t`` is valued at is ``market_state(t + 1, ...)``
+    and the state locked on a Term Start Date is ``market_state(term_start_month(t), ...)``.
+    Each row of *market_scenario.csv* is keyed by that same ``month_end`` and states the
+    market state that holds from it until the next row of the same scenario, so a flat
+    path is one row. The index path is therefore piecewise constant between the scenario's
+    own anchor months; that is a property of the deterministic scenario, not of the model.
+    """
     sub = market_table()
-    return float(sub.loc[sub.index.asof(k), "index_level"])
+    if field == MarketField.index_level:
+        return float(sub.loc[sub.index.asof(k), "index_level"])
+    elif field == MarketField.mvr:
+        return float(sub.loc[sub.index.asof(k), "mvr"])
+    elif field == MarketField.risk_free:
+        return float(sub.loc[sub.index.asof(k), "risk_free"])
+    elif field == MarketField.div_yield:
+        return float(sub.loc[sub.index.asof(k), "div_yield"])
+    elif field == MarketField.impl_vol:
+        return float(sub.loc[sub.index.asof(k), "impl_vol"])
+    else:
+        raise ValueError("invalid market field")
 
 
 def index_level(t):
@@ -651,18 +671,12 @@ def index_level(t):
     All representative indices are **price return**, which is why the dividend yield is a
     live pricing input: omitting it overprices every call in the portfolio.
     """
-    return market_index_level(t + 1)
+    return market_state(t + 1, MarketField.index_level)
 
 
 def index_at_term_start(t):
     """I_s: the index level at the Term Start Date of the term in force during month t."""
-    return market_index_level(term_start_month(t))
-
-
-def market_mvr(k):
-    """The scenario's ``mvr`` in force at month k (step function)."""
-    sub = market_table()
-    return float(sub.loc[sub.index.asof(k), "mvr"])
+    return market_state(term_start_month(t), MarketField.index_level)
 
 
 def mvr(t):
@@ -672,29 +686,17 @@ def mvr(t):
     between adjacent CMT maturities [S2]; the model takes it as an exogenous scalar series
     **[std]** rather than carrying a curve.
     """
-    return market_mvr(t + 1)
+    return market_state(t + 1, MarketField.mvr)
 
 
 def mvr_at_term_start(t):
     """r_0: the Market Value Rate on the Term Start Date [S2]."""
-    return market_mvr(term_start_month(t))
-
-
-def market_risk_free(k):
-    """The scenario's ``risk_free`` in force at month k (step function)."""
-    sub = market_table()
-    return float(sub.loc[sub.index.asof(k), "risk_free"])
+    return market_state(term_start_month(t), MarketField.mvr)
 
 
 def risk_free(t):
     """The risk-free rate at month t's month end, annual effective, 4.00% **[std]**."""
-    return market_risk_free(t + 1)
-
-
-def market_div_yield(k):
-    """The scenario's ``div_yield`` in force at month k (step function)."""
-    sub = market_table()
-    return float(sub.loc[sub.index.asof(k), "div_yield"])
+    return market_state(t + 1, MarketField.risk_free)
 
 
 def div_yield(t):
@@ -702,13 +704,7 @@ def div_yield(t):
 
     A live pricing input because every representative index is price return [S1][S2].
     """
-    return market_div_yield(t + 1)
-
-
-def market_impl_vol(k):
-    """The scenario's ``impl_vol`` in force at month k (step function)."""
-    sub = market_table()
-    return float(sub.loc[sub.index.asof(k), "impl_vol"])
+    return market_state(t + 1, MarketField.div_yield)
 
 
 def impl_vol(t):
@@ -720,7 +716,7 @@ def impl_vol(t):
     supply a surface interpolated in both maturity and moneyness [S4]; that is a change to
     *market_scenario.csv* plus a lookup, not to any formula here.
     """
-    return market_impl_vol(t + 1)
+    return market_state(t + 1, MarketField.impl_vol)
 
 
 def index_perf(t):
@@ -844,9 +840,9 @@ def opt_budget_at_cap(t, cap):
     k = term_start_month(t)
     tau_ = float(term_years())
     pr = participation()
-    rate = market_risk_free(k)
-    divy = market_div_yield(k)
-    vol = market_impl_vol(k)
+    rate = market_state(k, MarketField.risk_free)
+    divy = market_state(k, MarketField.div_yield)
+    vol = market_state(k, MarketField.impl_vol)
     atm = pr * bs_call(i_s, i_s, tau_, rate, divy, vol) / i_s
     otm = pr * bs_call(i_s, i_s * (1.0 + cap / pr), tau_, rate, divy, vol) / i_s
     otp = bs_put(i_s, i_s * (1.0 - buffer()), tau_, rate, divy, vol) / i_s
@@ -945,9 +941,9 @@ def opt_component(t, leg, spot, tau_, mkt):
         k = term_start_month(t)
     else:
         raise ValueError("invalid mkt")
-    rate = market_risk_free(k)
-    divy = market_div_yield(k)
-    vol = market_impl_vol(k)
+    rate = market_state(k, MarketField.risk_free)
+    divy = market_state(k, MarketField.div_yield)
+    vol = market_state(k, MarketField.impl_vol)
     i_s = index_at_term_start(t)
     pr = participation() if crediting_type() == CreditType.CAP else 1.0
     if leg == OptionLeg.ATM_CALL:
@@ -2346,12 +2342,14 @@ CreditType = ("Pickle", 5)
 
 InterimValueFamily = ("Pickle", 6)
 
-MarketQuote = ("Pickle", 7)
+MarketField = ("Pickle", 7)
 
-OptionLeg = ("Pickle", 8)
+MarketQuote = ("Pickle", 8)
 
-Timing = ("Pickle", 9)
+OptionLeg = ("Pickle", 9)
+
+Timing = ("Pickle", 10)
 
 Sex = ("Pickle", 1)
 
-enum_definitions = ("Pickle", 10)
+enum_definitions = ("Pickle", 11)
