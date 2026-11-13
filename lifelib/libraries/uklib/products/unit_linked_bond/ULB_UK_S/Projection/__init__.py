@@ -500,9 +500,8 @@ def monthly_mortality_in_year(year):
 
 def surrender_schedule_rate(y):
     """The table surrender rate for the selected policy year."""
-    table = data.prepared_surr_table_scalar_loc()                    # noqa: F821
-    last = int(pdn.last_key(table))
-    return pdn.lookup_float(table, min(y, last), "surr_rate")
+    table = data.surrender_rates()                                  # noqa: F821
+    return table.lookup_float(min(y, table.index.max_int()), "surr_rate")
 
 
 def surr_rate_base(t):

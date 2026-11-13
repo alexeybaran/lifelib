@@ -114,6 +114,11 @@ def prepared_surr_table_scalar_loc():
     return pdn.table(surr_table(), indexing='loc', preserve_scalar_types=True)
 
 
+def surrender_rates() -> "modelx_helpers.immutable_inputs.Table":
+    """Own the selected annual rate column with its original scalar types."""
+    return pdn.table(surr_table(), columns=('surr_rate',), preserve_scalar_types=True)
+
+
 def prepared_surr_table_index_selection():
     """Own original labels and multiplicity for calculation traversal."""
     return pdn.index(surr_table().index)
