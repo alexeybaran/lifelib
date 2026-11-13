@@ -238,7 +238,7 @@ def prepared_mort_table_accum_at():
 
 
 
-def prepared_lapse_table_at():
+def prepared_lapse_table_at() -> "modelx_helpers.immutable_inputs.Table":
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(lapse_table(),
                         columns=('lapse_rate', 'transfer_rate'),

@@ -875,7 +875,7 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return pdn.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'lapse_rate')
+    return data.prepared_lapse_table_at().lookup_float(contract_year(t), 'lapse_rate')
 
 
 def lapse_rate_mth(t):
@@ -903,7 +903,7 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return pdn.lookup_float(data.prepared_lapse_table_at(), contract_year(t), 'transfer_rate')
+    return data.prepared_lapse_table_at().lookup_float(contract_year(t), 'transfer_rate')
 
 
 def transfer_rate_mth(t):
