@@ -135,8 +135,8 @@ def model_point_table():
     so an in-force cell is the continuation of a projectable contract rather than a
     free-standing guess.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
 
 
 def mort_table():
@@ -147,8 +147,9 @@ def mort_table():
     **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what it is
     anchored on and what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def decl_rate_table():
@@ -159,9 +160,9 @@ def decl_rate_table():
     on top of the guarantee, which is what the ``max(0, .)`` in
     :func:`~.RV_DE_S.Projection.bonus_rate` implements.  Levels are **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / decl_rate_file,                                # noqa: F821
-        index_col=["scenario_id", "calendar_year"])
+        index_col=["scenario_id", "calendar_year"]))
 
 
 def rentenfaktor_table():
@@ -172,9 +173,9 @@ def rentenfaktor_table():
     immediate-annuity tariff.  Three **[std]** scenario paths — ``base``, ``low``,
     ``high`` — anchored at age 67 on 32,00 €, 25,50 € and 35,00 €.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
+        index_col=["rf_scenario_id", "age"]))
 
 
 def charge_table():
@@ -193,8 +194,9 @@ def charge_table():
     things and confusing them is a listed pitfall; the expense levels live in
     :func:`param_table`.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col=["charge_id", "item"])   # noqa: F821
+    frame = pd.read_csv(input_dir() / charge_file)                   # noqa: F821
+    frame["item"] = [ChargeItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index(["charge_id", "item"]))
 
 
 def lapse_table():
@@ -209,8 +211,8 @@ def lapse_table():
     is zero from the *Rentenbeginn*, which is imposed in
     :func:`~.RV_DE_S.Projection.lapse_rate` rather than carried in the table.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="duration")              # noqa: F821
+    return pdn.table(pd.read_csv(                                    # noqa: F821
+        input_dir() / lapse_file, index_col="duration"))             # noqa: F821
 
 
 def freq_load_table():
@@ -221,8 +223,9 @@ def freq_load_table():
     loaded annual amount at the start of the year and does not model the instalments
     themselves.  Levels are **[std]**; no German carrier's loading was established.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
+    frame = pd.read_csv(input_dir() / freq_load_file)                # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 def param_table():
@@ -234,80 +237,9 @@ def param_table():
     They live in a file rather than in ``Projection`` References so that each one carries
     its own provenance tag, which a Reference cannot.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
-
-
-def prepared_param_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(param_table(),
-                        columns=('value',),
-                        indexing='at')
-
-
-
-def prepared_freq_load_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_load_table(),
-                        columns=('freq_load',),
-                        indexing='at')
-
-
-
-def prepared_charge_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(charge_table(),
-                        columns=('value',),
-                        indexing='at')
-
-
-
-def prepared_mort_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('q_base', 'improve'),
-                        indexing='at')
-
-
-
-def prepared_rentenfaktor_table_at():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(rentenfaktor_table(),
-                        columns=('annuity_rate_curr',),
-                        indexing='at')
-
-
-def prepared_charge_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(charge_table(), indexing='at', preserve_scalar_types=True)
-
-
-
-def prepared_decl_rate_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(decl_rate_table(), indexing='at', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='at', preserve_scalar_types=True)
-
-
-
-def prepared_param_table_scalar_at():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(param_table(), indexing='at', preserve_scalar_types=True)
-
-
-def prepared_decl_rate_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(decl_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    frame = pd.read_csv(input_dir() / param_file)                    # noqa: F821
+    frame["item"] = [ParamItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index("item"))
 
 
 # ---------------------------------------------------------------------------
@@ -332,3 +264,11 @@ param_file = "param_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+PremFreq = ("Pickle", 2)
+
+ParamItem = ("Pickle", 3)
+
+ChargeItem = ("Pickle", 4)
