@@ -660,7 +660,7 @@ def sel_lapse_factor(t):
 def lapse_schedule_rate(y):
     """The table lapse rate at a contractual policy year."""
     table = data.prepared_lapse_table_scalar_loc()                   # noqa: F821
-    last = int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))
+    last = int(pdn.last_key(table))
     return pdn.lookup_float(table, min(y, last), "lapse_rate")
 
 
@@ -674,7 +674,6 @@ def lapse_rate_base(t):
     1-based policy year, read at :func:`policy_year` ``(t) = t // 12 + 1``; policy years
     beyond the table take its last row.
     """
-    tbl = data.lapse_table()                                         # noqa: F821
     return lapse_schedule_rate(policy_year(t))
 
 

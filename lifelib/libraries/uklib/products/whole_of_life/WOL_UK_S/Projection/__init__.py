@@ -594,8 +594,8 @@ def crossover_mth():
 
 def lapse_schedule_rate(y):
     """The selected table lapse rate at a contractual policy year."""
-    tbl = pdn.subtable(data.prepared_lapse_table_groups_1(), cell())    # noqa: F821
-    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate"))
+    tbl = pdn.subtable(data.lapse_rate_tables(), cell())             # noqa: F821
+    return pdn.lookup_float(tbl, min(y, int(pdn.last_key(tbl))), "lapse_rate")
 
 
 def lapse_rate_base(t):
