@@ -753,7 +753,7 @@ def recov_rates():
     them.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
+    return [float(tbl.loc[y, "recov_rate"]) for y in range(1, 12)]
 
 
 def mort_dis_sel_factors():
@@ -763,7 +763,7 @@ def mort_dis_sel_factors():
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
+    return [float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12)]
 
 
 # --- the best-estimate rates as composed ---
@@ -849,8 +849,8 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return [1.0 - (1.0 - q * s) ** (1.0 / 12.0)
+            for s in mort_dis_sel_factors()]
 
 
 def recov_rate(z):
@@ -882,7 +882,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
+    return [1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates()]
 
 
 def lapse_rate(t):
@@ -943,8 +943,8 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates())
+    return [1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
+            for r in recov_rates()]
 
 
 def mort_rate_first_mth(s):
@@ -974,8 +974,8 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return [1.0 - (1.0 - q * f) ** (1.0 / 12.0)
+            for f in mort_dis_sel_factors()]
 
 
 def disc_first(s):

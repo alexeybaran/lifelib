@@ -753,9 +753,10 @@ def sick_cohorts(t):
         return [seed if z == z0 else 0.0 for z in range(1, n + 1)]
     prev = sick_cohorts(t - 1)
     surv = claim_rate_vectors()[2]
-    out = [pols_inception(t - 1)]
+    out = [0.0] * n
+    out[0] = pols_inception(t - 1)
     for z in range(1, n):
-        out.append(prev[z - 1] * surv[z - 1])
+        out[z] = prev[z - 1] * surv[z - 1]
     return out
 
 
