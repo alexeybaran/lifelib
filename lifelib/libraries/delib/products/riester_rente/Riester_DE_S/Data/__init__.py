@@ -230,7 +230,7 @@ def prepared_freq_loading_at():
 
 
 
-def prepared_mort_table_accum_at() -> "modelx_helpers.immutable_inputs.Table":
+def prepared_mort_table_accum_at():
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(mort_table_accum(),
                         columns=('qx',),
@@ -238,7 +238,7 @@ def prepared_mort_table_accum_at() -> "modelx_helpers.immutable_inputs.Table":
 
 
 
-def prepared_lapse_table_at() -> "modelx_helpers.immutable_inputs.Table":
+def prepared_lapse_table_at():
     """Own calculation columns; follow the public source Cell cache."""
     return pdn.table(lapse_table(),
                         columns=('lapse_rate', 'transfer_rate'),
@@ -271,7 +271,7 @@ def surplus_schedule_by_id():
     return pdn.table(surplus_scenario(), columns=("decl_rate",), groups=("scenario_id",))
 
 
-def prepared_annuity_mort_table_scalar_at() -> "modelx_helpers.immutable_inputs.Table":
+def prepared_annuity_mort_table_scalar_at():
     """Own original column scalars for calculation lookup."""
     return pdn.table(annuity_mort_table(), indexing='at', preserve_scalar_types=True)
 
