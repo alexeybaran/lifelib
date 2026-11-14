@@ -572,10 +572,9 @@ def mort_rate_at_age(x, table_sex, basis):
     if table_sex == Sex.U:
         return (mix_male * mort_rate_at_age(x, Sex.M, basis)           # noqa: F821
                 + (1.0 - mix_male) * mort_rate_at_age(x, Sex.F, basis))   # noqa: F821
-    tab = data.mort_table()                                          # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+    sub = data.mort_table().loc[(basis, table_sex)]                  # noqa: F821
+    xx = min(max(int(x), int(sub.index.min())), int(sub.index.max()))
+    return float(sub.loc[xx, "mort_rate"])
 
 
 def improve_rate_at_age(x, basis):
@@ -587,10 +586,9 @@ def improve_rate_at_age(x, basis):
     **rate** of improvement as well as its level, because the improvement compounds over a
     forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
     """
-    tab = data.improvement_table()                                   # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, xx), "improve_rate"])
+    sub = data.improvement_table().loc[basis]                        # noqa: F821
+    xx = min(max(int(x), int(sub.index.min())), int(sub.index.max()))
+    return float(sub.loc[xx, "improve_rate"])
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
