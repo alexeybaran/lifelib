@@ -52,9 +52,8 @@ notes' [unverified] maturity inference (spec F5). For an in-force model point
 ``t = 0``, and ``duration_mth(t) = duration_mth_init() + t`` is the notes' own month
 index counted from issue; ``policy_year(t) = duration_mth(t) // 12 + 1`` is the
 contractual 1-based label. State cells -- ``av_pp(t)``, ``fa_pp(t)``, ``lca_pp(t)``,
-``loan_bal_pp(t)``, ``seg_bal_pp(t, segment_age)`` -- are closing balances of month
-``t``, with ``segment_age = t - opening_month``. The opening values the notes define
-at their own ``t = 0`` -- ``FA(0) = 0``, ``S(0) = 0``,
+``loan_bal_pp(t)``, ``seg_bal_pp(t, m)`` -- are closing balances of month ``t``; the
+opening values the notes define at their own ``t = 0`` -- ``FA(0) = 0``, ``S(0) = 0``,
 ``L(0) = 0``, ``l(0) = 1`` -- are the ``"BEF_PREM"`` timing of ``t = 0`` and
 ``pols_if(0)``.
 

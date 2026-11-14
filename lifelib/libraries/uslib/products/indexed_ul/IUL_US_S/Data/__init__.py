@@ -13,9 +13,11 @@ file. Holding them in an unparameterized Space reads each file once no matter ho
 policies are projected.
 
 Inputs are **external files**: plain CSVs in the model folder's parent directory,
-``products/indexed_ul/``. The model folder stores the formulas and helper References.
-The Data Cells read these files and prepare lookup tables on first use. The external
-input layout follows ``annuallife.TradLife_A``.
+``products/indexed_ul/``, rather than data stored inside the model. The model folder
+therefore holds nothing but formulas -- no ``_data/``, no IOSpec, no embedded values --
+so a diff of the model shows logic changes only. This follows ``annuallife.TradLife_A``;
+contrast ``basiclife.BasicTerm_S``, which keeps its inputs *inside* the model through
+modelx's IOSpec machinery.
 
 The consequence worth knowing: **the model is not portable on its own.** Copying the
 ``IUL_US_S`` folder without its parent's CSVs produces a model that reads and then
@@ -85,7 +87,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True, report=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def coi_rates():
@@ -93,11 +95,10 @@ def coi_rates():
 
     Per $1,000 of net amount at risk, keyed by issue-age cell and policy year.
     """
-    rates = pd.read_csv(                                              # noqa: F821
-        input_dir() / coi_rates_file,                                # noqa: F821
-        index_col=["sex", "rate_class", "age_at_entry", "policy_year"])
-    return pdn.table(rates, groups=rates.index.names[:-1],
-                        columns=("coi_rate_guar",), report=True)
+    frame = pd.read_csv(input_dir() / coi_rates_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index(["sex", "rate_class", "age_at_entry", "policy_year"]))
 
 
 def corridor_factors():
@@ -116,7 +117,9 @@ def mort_table():
 
 def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
+    frame = pd.read_csv(input_dir() / class_factor_file)             # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index("rate_class"))
 
 
 def lapse_table():
@@ -153,3 +156,7 @@ surr_charge_file = "surr_charge_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+RateClass = ("Pickle", 2)

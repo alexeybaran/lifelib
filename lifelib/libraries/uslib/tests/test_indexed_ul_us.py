@@ -27,7 +27,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.indexed_ul.categories import Claim, Timing
+from lifelib.libraries.uslib.products.indexed_ul.enums import Claim, CreditBase, DeathBenefitOption, PremiumMode, Timing
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -132,9 +132,9 @@ def test_worked_example_transamerica_credit_base_variation(anchor):
     consistent with it among the modeling pitfalls.
     """
     bal0, ded = 12000.00, 180.00
-    assert anchor.seg_credit_base(bal0, ded, "ADJ_BEGIN") == pytest.approx(
+    assert anchor.seg_credit_base(bal0, ded, CreditBase.ADJ_BEGIN) == pytest.approx(
         11910.00, abs=CENT)
-    assert anchor.index_credit(bal0, ded, 0.12, "ADJ_BEGIN") == pytest.approx(
+    assert anchor.index_credit(bal0, ded, 0.12, CreditBase.ADJ_BEGIN) == pytest.approx(
         WORKED_EXAMPLE_ADJ_BEGIN_CREDIT, abs=CENT)
     # ... and the baseline convention is the one the model runs on.
     assert anchor.seg_credit_base_conv == "REMAINING"
@@ -217,18 +217,18 @@ def test_first_segment_credit_reproduces_from_its_own_ladder(anchor):
     fixed account.  Its credit is the level index return because 0% < 6.40% < 10.00%.
     """
     assert anchor.seg_new_pp(0) == pytest.approx(9383.636985, abs=1e-5)
-    assert anchor.seg_bal_pp(11, 11) == pytest.approx(8102.641000, abs=1e-5)
-    assert anchor.seg_ded_cum_pp(11, 11) == pytest.approx(1280.995985, abs=1e-5)
+    assert anchor.seg_bal_pp(11, 0) == pytest.approx(8102.641000, abs=1e-5)
+    assert anchor.seg_ded_cum_pp(11, 0) == pytest.approx(1280.995985, abs=1e-5)
     assert anchor.seg_return(12) == pytest.approx(0.064, rel=1e-12)
     assert anchor.index_credit_pp(12) == pytest.approx(
         0.064 * 8102.641000, abs=1e-5)
     # the credit base is the remaining balance, so the eleven deductions earn nothing
     assert anchor.index_credit_pp(12) == pytest.approx(
-        anchor.index_credit(anchor.seg_new_pp(0), anchor.seg_ded_cum_pp(11, 11), 0.064),
+        anchor.index_credit(anchor.seg_new_pp(0), anchor.seg_ded_cum_pp(11, 0), 0.064),
         rel=1e-12)
     # nothing matures in the first twelve months, and no segment predates t = 0
     assert all(anchor.index_credit_pp(t) == 0.0 for t in range(12))
-    assert anchor.seg_bal_pp(0, 0 - -1) == 0.0
+    assert anchor.seg_bal_pp(0, -1) == 0.0
 
 
 # ===========================================================================
@@ -244,7 +244,7 @@ def test_pitfall_segment_bookkeeping_keeps_per_segment_index_levels(indexed_ul):
     """
     p = indexed_ul.Projection[4]
     p.result_cf()
-    assert p.premium_mode() == "MONTHLY"
+    assert p.premium_mode() == PremiumMode.MONTHLY
     assert p.seg_count(0) == 1
     assert p.seg_count(11) == p.seg_term_mth == 12
     assert max(p.seg_count(t) for t in range(199)) == 12
@@ -319,7 +319,7 @@ def test_the_two_draws_on_the_segment_pool_cannot_together_overdraw_it(indexed_u
     assert p.seg_bal_active_pp(t) == pytest.approx(265.29, abs=CENT)
     assert p.draw_from_seg_pp(t) == pytest.approx(200.00, abs=CENT)
     assert p.mth_deduction_from_seg_pp(t) == pytest.approx(65.29, abs=CENT)
-    assert p.seg_bal_pp(t, t - 372) == pytest.approx(0.0, abs=1e-8)
+    assert p.seg_bal_pp(t, 372) == pytest.approx(0.0, abs=1e-8)
     assert p.index_credit_pp(384) >= 0.0 - 1e-8          # was -7.17
 
     # ... and the invariant behind it, every month of the projection
@@ -328,7 +328,7 @@ def test_the_two_draws_on_the_segment_pool_cannot_together_overdraw_it(indexed_u
                 <= p.seg_bal_active_pp(u) + 1e-8)
         assert p.index_credit_pp(u) >= -1e-8
         for m in range(max(0, u - p.seg_term_mth + 1), u + 1):
-            assert p.seg_bal_pp(u, u - m) >= -1e-8
+            assert p.seg_bal_pp(u, m) >= -1e-8
 
     # the deduction is still charged in full: the fixed account carries the excess
     assert (p.mth_deduction_from_fa_pp(t)
@@ -350,8 +350,8 @@ def test_pitfall_floor_is_not_an_in_segment_guarantee(anchor):
     assert anchor.index_floor == 0.0
     # a live segment loses exactly its deductions, month after month, and gains nothing
     for t in range(1, 11):
-        assert anchor.seg_bal_pp(t, t) == pytest.approx(
-            anchor.seg_bal_pp(t - 1, t - 1) - anchor.seg_ded_pp(t, t), rel=1e-12)
+        assert anchor.seg_bal_pp(t, 0) == pytest.approx(
+            anchor.seg_bal_pp(t - 1, 0) - anchor.seg_ded_pp(t, 0), rel=1e-12)
     # interest credited to the account value comes from the fixed and collateral
     # accounts only, never from a segment
     for t in (2, 6, 10):
@@ -395,7 +395,7 @@ def test_pitfall_corridor_interplay(indexed_ul):
     """
     p = indexed_ul.Projection[2]
     p.result_cf()
-    assert p.db_option() == "B"
+    assert p.db_option() == DeathBenefitOption.B
     assert p.db_pp(0) == pytest.approx(
         p.sum_assured() + p.av_pp_at(0, Timing.BEF_FEE), abs=CENT)
     # Option B keeps the net amount at risk near the face amount as the fund grows,
@@ -406,8 +406,8 @@ def test_pitfall_corridor_interplay(indexed_ul):
     assert p.coi_pp(599) > a.coi_pp(599)
     # the corridor table is the IRC 7702(d) grading, 250% to 40 down to 100% at 90-95
     assert a.corridor_factor(0) == 2.15                # attained age 45
-    assert indexed_ul.Data.corridor_factors().lookup_float(40, "corridor_factor") == 2.50
-    assert indexed_ul.Data.corridor_factors().lookup_float(95, "corridor_factor") == 1.00
+    assert indexed_ul.Data.corridor_factors().loc[40, "corridor_factor"] == 2.50
+    assert indexed_ul.Data.corridor_factors().loc[95, "corridor_factor"] == 1.00
 
 
 def test_pitfall_maturity_mechanics(anchor):
@@ -522,7 +522,7 @@ def test_premium_falls_only_on_the_policy_anniversary(anchor):
 
     That is ``t = 0, 12, 24, ...`` -- ``duration_mth(t) % 12 == 0``.
     """
-    assert anchor.premium_mode() == "ANNUAL"
+    assert anchor.premium_mode() == PremiumMode.ANNUAL
     assert anchor.premium_pp(0) == 10000.0
     assert all(anchor.premium_pp(t) == 0.0 for t in range(1, 12))
     assert anchor.premium_pp(12) > 0.0
@@ -785,7 +785,7 @@ def test_timing_arguments_reject_unknown_values(anchor):
         with pytest.raises(Exception):
             cells(0, bad)
     with pytest.raises(Exception):
-        anchor.claims(0, -1)
+        anchor.claims(0, "ANNUITIZATION")
 
 
 # ===========================================================================
@@ -930,20 +930,20 @@ def test_the_model_docstring_describes_the_shipped_model_points(indexed_ul):
     first pitfall.
     """
     tbl = indexed_ul.Data.model_point_table()
-    assert len(tbl["keys"]) == 5
+    assert len(tbl) == 5
     doc = indexed_ul.doc
     assert "carries five points" in doc
     assert "four points" not in doc
 
     # point 4 is the monthly-premium cell, the only one with a full ladder
     p4 = indexed_ul.Projection[4]
-    assert p4.premium_mode() == "MONTHLY"
+    assert p4.premium_mode() == PremiumMode.MONTHLY
     assert p4.wd_pp(12) == 0.0 and p4.loan_new_pp(240) == 0.0
     assert "Point 4 pays **monthly**" in doc
 
     # point 5 is the underfunded withdrawal-and-loan cell
     p5 = indexed_ul.Projection[5]
-    assert p5.premium_mode() == "ANNUAL" and p5.premium_pp_ann() == 6000.0
+    assert p5.premium_mode() == PremiumMode.ANNUAL and p5.premium_pp_ann() == 6000.0
     assert p5.wd_pp(12) == 200.0 and p5.loan_new_pp(240) == 6000.0
     assert "Point 5 is underfunded at $6,000 a year" in doc
 

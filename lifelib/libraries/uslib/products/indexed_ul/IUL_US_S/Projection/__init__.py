@@ -59,7 +59,7 @@ contractual 1-based label ``duration(t) + 1``. For a new-business point the note
 ``t`` and this ``t`` coincide.
 
 State cells are **closing balances**: :func:`av_pp` ``(t)``, :func:`fa_pp` ``(t)``,
-:func:`lca_pp` ``(t)``, :func:`loan_bal_pp` ``(t)``, :func:`seg_bal_pp` ``(t, segment_age)``,
+:func:`lca_pp` ``(t)``, :func:`loan_bal_pp` ``(t)``, :func:`seg_bal_pp` ``(t, m)``,
 :func:`sum_assured_at` ``(t)`` and the two cumulative-premium accumulators are the
 values at the **end** of month ``t`` (the notes' ``X_{t+1}``). The opening value of a
 month is the ``"BEF_PREM"`` timing (the notes' ``X_t``), which is the model point's
@@ -143,17 +143,17 @@ B_t                        loan_new_pp(t)                  New standard loan
 W_t + B_t                  draw_pp(t)                      The whole step-3 draw
 W^FA_t + B^FA_t            draw_from_fa_pp(t)              Step-3 draw sourced from FA
 W^seg_{k,t} + B^seg_{k,t}  draw_from_seg_pp(t)             Step-3 draw sourced from segments
-(segment k's share)        seg_wd_pp(t, segment_age)       Segment m's part of that draw
-(cumulative)               seg_wd_cum_pp(t, segment_age)   Draws out of segment m to date
+(segment k's share)        seg_wd_pp(t, m)                 Segment m's part of that draw
+(cumulative)               seg_wd_cum_pp(t, m)             Draws out of segment m to date
 FA_{t+1}                   fa_pp(t)                        Fixed (holding) account, end of month t
 FA_t                       fa_pp_at(t, "BEF_PREM")         Fixed account, start of month t
 (FA intra-month)           fa_pp_at(t, timing)             Fixed account by timing
-S_{k,t+1}                  seg_bal_pp(t, segment_age)      Segment born at m, end of month t
+S_{k,t+1}                  seg_bal_pp(t, m)                Segment born at m, end of month t
 Sweep_t                    sweep_pp(t)                     Sweep into a new segment
 S_{k,m_k}                  seg_new_pp(m)                   Segment balance at creation
 (sum of segments)          seg_bal_tot_pp(t)               All live segment balances
 (active pool)              seg_bal_active_pp(t)            Segments available to a draw
-(pro-rata share)           seg_share(t, segment_age)       Segment m's share of that pool
+(pro-rata share)           seg_share(t, m)                 Segment m's share of that pool
 (segment count)            seg_count(t)                    Live segments, at most 12
 w_ix                       index_alloc_rate()              Indexed allocation share
 I(t)                       index_level(t)                  Index level at monthiversary t
@@ -199,8 +199,8 @@ NAAR_t                     net_amt_at_risk(t)              Net amount at risk
 MD_t                       mth_deduction_pp(t)             Monthly deduction
 MD^FA_t                    mth_deduction_from_fa_pp(t)     Deduction sourced from FA
 MD^seg_{k,t}               mth_deduction_from_seg_pp(t)    Deduction sourced from segments
-(segment k's share)        seg_ded_pp(t, segment_age)      Segment m's part of the deduction
-(cumulative)               seg_ded_cum_pp(t, segment_age) Deductions charged to segment m
+(segment k's share)        seg_ded_pp(t, m)                Segment m's part of the deduction
+(cumulative)               seg_ded_cum_pp(t, m)            Deductions charged to segment m
 DB_t                       db_pp(t)                        Death benefit after corridor
 kappa_x                    corridor_factor(t)              IRC 7702(d) corridor factor
 SC_t                       surr_charge_pp(t)               Surrender charge scheduled
@@ -298,11 +298,9 @@ for the other quietly changes both answers.
 
 A segment is created at every monthiversary from the sweep and matures twelve months
 later, so between step 2 and step 7 of any month eleven segments are live and after the
-sweep twelve are -- the "up to 12 concurrent segments" of [S3][S4]. The segment Cells
-take ``segment_age = t - opening_month``. :func:`seg_bal_pp` ``(t, segment_age)`` is the
-balance at the end of month ``t`` of the segment opened at ``m = t - segment_age``.
-The age runs from zero through eleven for a live segment, so the age dimension stays
-bounded by the segment term as the projection horizon grows.
+sweep twelve are -- the "up to 12 concurrent segments" of [S3][S4]. Segments are indexed
+by their creation month ``m``: :func:`seg_bal_pp` ``(t, m)`` is the balance at the end
+of month ``t`` of the segment born at ``m``, and is zero outside ``m <= t <= m + 11``.
 
 Two properties of this arrangement are worth stating because the notes list both as
 pitfalls.
@@ -342,8 +340,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)     # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def age_at_entry():
@@ -353,12 +351,12 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def rate_class():
     """The underwriting class of the selected model point (spec Table 1) [S3]."""
-    return model_point()["rate_class"]
+    return RateClass[model_point()["rate_class"]]
 
 
 def sum_assured():
@@ -372,7 +370,7 @@ def db_option():
     The Graded and Return of Premium options are minority designs excluded from the
     baseline by the product spec (F3).
     """
-    return model_point()["db_option"]
+    return DeathBenefitOption[model_point()["db_option"]]
 
 
 def qual_test():
@@ -383,12 +381,12 @@ def qual_test():
     :func:`corridor_factor` raises on anything else rather than silently applying GPT
     corridor factors.
     """
-    return model_point()["qual_test"]
+    return Qualification[model_point()["qual_test"]]
 
 
 def premium_type():
     """The premium pattern: ``"LEVEL"``, ``"SINGLE"`` or ``"TARGET"`` **[std]**."""
-    return model_point()["premium_type"]
+    return PremiumType[model_point()["premium_type"]]
 
 
 def premium_mode():
@@ -398,7 +396,7 @@ def premium_mode():
     each policy year (``duration_mth(t) % 12 == 0``) **[std]**; monthly mode is carried
     so the chassis' level-pay pattern remains reachable.
     """
-    return model_point()["premium_mode"]
+    return PremiumMode[model_point()["premium_mode"]]
 
 
 def premium_pp_ann():
@@ -565,9 +563,9 @@ def is_guaranteed_basis():
     notes' "guaranteed-basis projections use only this class".  Key sensitivity 1 in
     the notes is exactly how far apart the two runs are.
     """
-    if basis == "CURRENT":                                           # noqa: F821
+    if basis == Basis.CURRENT:                                           # noqa: F821
         return False
-    elif basis == "GUARANTEED":                                      # noqa: F821
+    elif basis == Basis.GUARANTEED:                                      # noqa: F821
         return True
     else:
         raise ValueError("invalid basis")
@@ -722,9 +720,9 @@ def seg_credit_base(seg_bal_init, seg_deductions, conv=None):
     is the Reference that records the choice.
     """
     k = seg_credit_base_conv if conv is None else conv               # noqa: F821
-    if k == "REMAINING":
+    if k == CreditBase.REMAINING:
         return seg_bal_init - seg_deductions
-    elif k == "ADJ_BEGIN":
+    elif k == CreditBase.ADJ_BEGIN:
         return seg_bal_init - seg_deductions / 2
     else:
         raise ValueError("invalid credit base")
@@ -785,19 +783,19 @@ def premium_pp(t):
     """
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    if premium_type() == "SINGLE":
+    if premium_type() == PremiumType.SINGLE:
         return min(premium_pp_ann(), gsp()) if duration_mth(t) == 0 else 0.0
-    if premium_mode() == "ANNUAL":
+    if premium_mode() == PremiumMode.ANNUAL:
         if duration_mth(t) % 12 != 0:
             return 0.0
         gross = premium_pp_ann() * prem_persistency(t)
-    elif premium_mode() == "MONTHLY":
+    elif premium_mode() == PremiumMode.MONTHLY:
         gross = premium_pp_ann() / 12 * prem_persistency(t)
     else:
         raise ValueError("invalid premium mode")
-    if premium_type() == "LEVEL":
+    if premium_type() == PremiumType.LEVEL:
         return gross
-    elif premium_type() == "TARGET":
+    elif premium_type() == PremiumType.TARGET:
         paid = 0.0 if t == 0 else cum_prem_pp(t - 1)
         return min(gross, max(0.0, gpt_limit(t) - paid))
     else:
@@ -824,6 +822,11 @@ def premiums(t):
     return premium_pp(t) * pols_if(t)
 
 
+def wd_pp_amount():
+    """The model point's constant monthly withdrawal amount."""
+    return float(model_point()["wd_pp"])
+
+
 def wd_pp(t):
     """W_t: the partial withdrawal per policy at BOM of month t, **gross of the fee**.
 
@@ -841,7 +844,7 @@ def wd_pp(t):
         return 0.0
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return wd_pp_amount()
 
 
 def wd_fee_pp(t):
@@ -852,6 +855,11 @@ def wd_fee_pp(t):
     ``W_t``.
     """
     return wd_fee if wd_pp(t) > 0 else 0.0                           # noqa: F821
+
+
+def loan_new_pp_amount():
+    """The model point's new loan taken at each policy anniversary."""
+    return float(model_point()["loan_new_pp_ann"])
 
 
 def loan_new_pp(t):
@@ -870,7 +878,7 @@ def loan_new_pp(t):
         return 0.0
     if duration_mth(t) % 12 != 0:
         return 0.0
-    return float(model_point()["loan_new_pp_ann"])
+    return loan_new_pp_amount()
 
 
 def face_reduction_pp(t):
@@ -880,7 +888,7 @@ def face_reduction_pp(t):
     the retrieved brochures.  Under Option B the withdrawal reduces the account value
     only and this is zero.
     """
-    if db_option() != "A" or wd_pp(t) <= 0:
+    if db_option() != DeathBenefitOption.A or wd_pp(t) <= 0:
         return 0.0
     opening = sum_assured() if t == 0 else sum_assured_at(t - 1)
     return min(wd_pp(t), opening)
@@ -920,11 +928,11 @@ def corridor_factor(t):
     list omitting this among the pitfalls, because it overstates late-duration account
     values and understates charges.
     """
-    if qual_test() != "GPT":
+    if qual_test() != Qualification.GPT:
         raise ValueError("invalid qual_test")
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "corridor_factor")
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return float(tbl.loc[a, "corridor_factor"])
 
 
 def db_pp(t):
@@ -943,9 +951,9 @@ def db_pp(t):
     interim interest, so nothing extra is needed here.
     """
     av = av_pp_at(t, Timing.BEF_FEE)
-    if db_option() == "A":
+    if db_option() == DeathBenefitOption.A:
         opt = sum_assured_at(t)
-    elif db_option() == "B":
+    elif db_option() == DeathBenefitOption.B:
         opt = sum_assured_at(t) + av
     else:
         raise ValueError("invalid db_option")
@@ -972,12 +980,8 @@ def coi_rate_scale():
     shipped table covers the notes' anchor cell M / NT / 45 only; a model point on any
     other cell needs the table extended first.
     """
-    return pdn.to_pandas(pdn.column(coi_schedule(), "coi_rate_guar", report=True))
-
-
-def coi_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The guaranteed COI table for the policy sex, class and issue age."""
-    return data.coi_rates().slice(sex(), rate_class(), age_at_entry())     # noqa: F821
+    return data.coi_rates().loc[                                     # noqa: F821
+        (sex(), rate_class(), age_at_entry())]
 
 
 def coi_rate_guar(t):
@@ -989,9 +993,9 @@ def coi_rate_guar(t):
     swapped by replacing *coi_rates.csv*.  Policy years beyond the table take its last
     row.
     """
-    scale = coi_schedule()
-    y = min(policy_year(t), scale.index.max_int())
-    return scale.lookup_float(y, "coi_rate_guar")
+    scale = coi_rate_scale()
+    y = min(policy_year(t), int(scale.index.max()))
+    return float(scale.loc[y, "coi_rate_guar"])
 
 
 def coi_rate(t):
@@ -1162,11 +1166,6 @@ def mth_deduction_from_fa_pp(t):
     return mth_deduction_pp(t) - mth_deduction_from_seg_pp(t)
 
 
-def first_live_segment(t):
-    """The oldest segment still live in month t."""
-    return max(0, t - seg_term_mth + 1)                              # noqa: F821
-
-
 def seg_bal_active_pp(t):
     """The live segment balances available to a draw at BOM of month t.
 
@@ -1176,33 +1175,31 @@ def seg_bal_active_pp(t):
     does not exist yet -- it is created by the sweep at step 7.  No segment can be born
     before ``t = 0``, so the pool is empty in the first month.
     """
-    return sum((seg_bal_pp(t - 1, t - 1 - m)
-                   for m in range(first_live_segment(t), t)), 0.0)
+    lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
+    return sum(seg_bal_pp(t - 1, m) for m in range(lo, t))
 
 
-def seg_share(t, segment_age):
+def seg_share(t, m):
     """Segment m's pro-rata share of a draw at BOM of month t.
 
     Its opening balance over the live pool.  Because a pro-rata draw leaves the
     proportions unchanged, the same shares serve the step-3 draw and the step-6
     deduction even though they are taken at different points in the month.
-
-    Segment age is the projection month minus the opening month.
     """
     pool = seg_bal_active_pp(t)
     if pool <= 0:
         return 0.0
-    return seg_bal_pp(t - 1, segment_age - 1) / pool
+    return seg_bal_pp(t - 1, m) / pool
 
 
-def seg_wd_pp(t, segment_age):
+def seg_wd_pp(t, m):
     """Segment m's contribution to the step-3 draw of month t."""
-    return draw_from_seg_pp(t) * seg_share(t, segment_age)
+    return draw_from_seg_pp(t) * seg_share(t, m)
 
 
-def seg_ded_pp(t, segment_age):
+def seg_ded_pp(t, m):
     """Segment m's contribution to the monthly deduction of month t."""
-    return mth_deduction_from_seg_pp(t) * seg_share(t, segment_age)
+    return mth_deduction_from_seg_pp(t) * seg_share(t, m)
 
 
 def sweep_pp(t):
@@ -1222,7 +1219,7 @@ def seg_new_pp(m):
     return sweep_pp(m)
 
 
-def seg_bal_pp(t, segment_age):
+def seg_bal_pp(t, m):
     """S_{k,t+1}: the balance at the end of month t of the segment created at month m.
 
     ``S_{k,t+1} = S_{k,t} - MD^seg - W^seg - B^seg``, with **no interim interest**: the
@@ -1236,39 +1233,33 @@ def seg_bal_pp(t, segment_age):
     month ``m + 11`` and matures at step 2 of month ``m + 12``, before that month's
     deduction -- so it bears eleven in-segment deductions.  The worked example
     stipulates twelve; see the README.
-
-    Segment age is the projection month minus the opening month.
     """
-    if t < segment_age or segment_age < 0 or segment_age >= seg_term_mth:  # noqa: F821
+    if m < 0 or t < m or t > m + seg_term_mth - 1:                   # noqa: F821
         return 0.0
-    if segment_age == 0:
-        return seg_new_pp(t)
-    return seg_bal_pp(t - 1, segment_age - 1) - seg_wd_pp(t, segment_age) - seg_ded_pp(t, segment_age)
+    if t == m:
+        return seg_new_pp(m)
+    return seg_bal_pp(t - 1, m) - seg_wd_pp(t, m) - seg_ded_pp(t, m)
 
 
-def seg_ded_cum_pp(t, segment_age):
-    """Deductions charged to segment from its creation through the end of month t.
+def seg_ded_cum_pp(t, m):
+    """Deductions charged to segment m from its creation through the end of month t.
 
     Zero in the creation month itself (the segment is created after that month's
     deduction) and outside the segment's life.
-
-    Segment age is the projection month minus the opening month.
     """
-    if t < segment_age or segment_age <= 0 or segment_age >= seg_term_mth:  # noqa: F821
+    if m < 0 or t <= m or t > m + seg_term_mth - 1:                  # noqa: F821
         return 0.0
-    return seg_ded_cum_pp(t - 1, segment_age - 1) + seg_ded_pp(t, segment_age)
+    return seg_ded_cum_pp(t - 1, m) + seg_ded_pp(t, m)
 
 
-def seg_wd_cum_pp(t, segment_age):
-    """Withdrawals and loan transfers out of segment through the end of month t.
+def seg_wd_cum_pp(t, m):
+    """Withdrawals and loan transfers out of segment m through the end of month t.
 
     Zero in the creation month itself and outside the segment's life.
-
-    Segment age is the projection month minus the opening month.
     """
-    if t < segment_age or segment_age <= 0 or segment_age >= seg_term_mth:  # noqa: F821
+    if m < 0 or t <= m or t > m + seg_term_mth - 1:                  # noqa: F821
         return 0.0
-    return seg_wd_cum_pp(t - 1, segment_age - 1) + seg_wd_pp(t, segment_age)
+    return seg_wd_cum_pp(t - 1, m) + seg_wd_pp(t, m)
 
 
 def seg_bal_tot_pp(t):
@@ -1276,7 +1267,8 @@ def seg_bal_tot_pp(t):
 
     The segments born at ``max(0, t - 11) ... t``.
     """
-    return sum(seg_bal_pp(t, t - m) for m in range(first_live_segment(t), t + 1))
+    lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
+    return sum(seg_bal_pp(t, m) for m in range(lo, t + 1))
 
 
 def seg_count(t):
@@ -1285,7 +1277,8 @@ def seg_count(t):
     At most ``seg_term_mth`` (12), the contractual maximum [S3][S4]; zero throughout
     for a model point with ``index_alloc_rate() == 0``.
     """
-    return sum(1 for m in range(first_live_segment(t), t + 1) if seg_bal_pp(t, t - m) > 0)
+    lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
+    return sum(1 for m in range(lo, t + 1) if seg_bal_pp(t, m) > 0)
 
 
 def seg_return(t):
@@ -1312,9 +1305,8 @@ def index_credit_pp(t):
     m = t - seg_term_mth                                             # noqa: F821
     if m < 0:
         return 0.0
-    segment_age = seg_term_mth - 1                                   # noqa: F821
-    init = seg_new_pp(m) - seg_wd_cum_pp(t - 1, segment_age)
-    return index_credit(init, seg_ded_cum_pp(t - 1, segment_age), seg_return(t))
+    init = seg_new_pp(m) - seg_wd_cum_pp(t - 1, m)
+    return index_credit(init, seg_ded_cum_pp(t - 1, m), seg_return(t))
 
 
 def index_credits(t):
@@ -1333,7 +1325,7 @@ def seg_roll_pp(t):
     m = t - seg_term_mth                                             # noqa: F821
     if m < 0:
         return 0.0
-    return seg_bal_pp(t - 1, seg_term_mth - 1) + index_credit_pp(t)
+    return seg_bal_pp(t - 1, m) + index_credit_pp(t)
 
 
 def fa_pp_at(t, timing):
@@ -1544,6 +1536,18 @@ def av_change(t):
     return av_at(t + 1, Timing.BEF_PREM) - av_at(t, Timing.BEF_PREM)
 
 
+def surr_charge_init():
+    """The schedule's initial surrender charge per $1,000 of face."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["sc_per_1000_init"])
+
+
+def surr_charge_runoff_years():
+    """The schedule's run-off period in years."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["runoff_years"])
+
+
 def surr_charge_rate(t):
     """SC per $1,000 of initial face in policy month t **[std]** scale (F17).
 
@@ -1556,10 +1560,8 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    tbl = data.surr_charge_table()                                  # noqa: F821
-    schedule = surr_charge_id()
-    init = tbl.lookup_float(schedule, "sc_per_1000_init")
-    yrs = tbl.lookup_float(schedule, "runoff_years")
+    init = surr_charge_init()
+    yrs = surr_charge_runoff_years()
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1731,7 +1733,7 @@ def is_mec(t):
 
 def class_factor():
     """The underwriting-class multiplier on the base mortality table **[std]**."""
-    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
+    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
 
 
 def mort_rate(t):
@@ -1744,8 +1746,8 @@ def mort_rate(t):
     Ages beyond the table take its last row, where the rate is 1.0.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "mort_rate") * class_factor() * mort_ae_factor  # noqa: F821
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return float(tbl.loc[a, "mort_rate"]) * class_factor() * mort_ae_factor  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1762,8 +1764,8 @@ def lapse_rate_base(t):
     behind a paid package.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "lapse_rate_ann")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate_ann"])
 
 
 def lapse_shock_year():
@@ -1777,7 +1779,7 @@ def lapse_shock_year():
     """
     if not has_surr_charge():
         return 0
-    return data.surr_charge_table().lookup_int(surr_charge_id(), "runoff_years") + 1  # noqa: F821
+    return int(data.surr_charge_table().loc[surr_charge_id(), "runoff_years"]) + 1  # noqa: F821
 
 
 def lapse_rate_sc_mult(t):
@@ -1873,7 +1875,7 @@ def pols_if_at(t, timing):
     :func:`pols_if`: there is no new business inside a projection, and the contract has
     no maturity that terminates coverage.
     """
-    if timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    if timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         return pols_if(t)
     else:
         raise ValueError("invalid timing")
@@ -1960,21 +1962,21 @@ def claims_over_av(t):
 def claims(t, kind):
     """Claim outgo in policy month t, optionally by ``kind``.
 
-    ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``Claim.ALL`` for the total.  Death claims are
+    ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``None`` for the total.  Death claims are
     weighted by :func:`pols_death` and surrenders by :func:`pols_lapse`, both
     end-of-month events.
 
     ``"WITHDRAWAL"`` is deliberately **not** accepted: a partial withdrawal is a payment
     on the owner's election rather than a claim, so it is the standalone cells
     :func:`withdrawals` and its own ``result_cf()`` column.  Keeping it out of the
-    ``kind == Claim.ALL`` total is what stops it being counted twice.
+    ``kind is None`` total is what stops it being counted twice.
     """
     if kind == Claim.DEATH:
         return claim_pp(t, Claim.DEATH) * pols_death(t)
     elif kind == Claim.LAPSE:
         return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
     elif kind == Claim.ALL:
-        return sum(claims(t, claim_kind) for claim_kind in (Claim.DEATH, Claim.LAPSE))
+        return sum(claims(t, k) for k in (Claim.DEATH, Claim.LAPSE))
     else:
         raise ValueError("invalid kind")
 
@@ -2142,7 +2144,7 @@ def check_seg_ladder():
 
     * at most ``seg_term_mth`` segments are live;
     * every segment that matured accounted for its creation balance exactly,
-      ``seg_new_pp(m) == seg_bal_pp(m + 11, 11) + deductions + withdrawals`` -- nothing
+      ``seg_new_pp(m) == seg_bal_pp(m + 11, m) + deductions + withdrawals`` -- nothing
       may appear in or vanish from a segment except a deduction, a withdrawal or a loan
       transfer, because segments earn no interim interest;
     * **every live segment balance is non-negative**;
@@ -2160,11 +2162,11 @@ def check_seg_ladder():
         res.append(index_credit_pp(t) >= -1e-8)
         lo = max(0, t - seg_term_mth + 1)                            # noqa: F821
         for k in range(lo, t + 1):
-            res.append(seg_bal_pp(t, t - k) >= -1e-8)
+            res.append(seg_bal_pp(t, k) >= -1e-8)
         m = t - seg_term_mth                                         # noqa: F821
         if m >= 0:
-            closed = (seg_bal_pp(t - 1, t - 1 - m) + seg_ded_cum_pp(t - 1, t - 1 - m)
-                      + seg_wd_cum_pp(t - 1, t - 1 - m))
+            closed = (seg_bal_pp(t - 1, m) + seg_ded_cum_pp(t - 1, m)
+                      + seg_wd_cum_pp(t - 1, m))
             res.append(math.isclose(seg_new_pp(m), closed,           # noqa: F821
                                     rel_tol=1e-9, abs_tol=1e-8))
     return all(res)
@@ -2312,8 +2314,6 @@ data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
 
-basis = "CURRENT"
-
 maturity_age = 121
 
 omega_age = 120
@@ -2337,8 +2337,6 @@ index_return_ann = 0.064
 index_level_init = 4500.0
 
 seg_term_mth = 12
-
-seg_credit_base_conv = "REMAINING"
 
 load_prem_rate_guar = 0.08
 
@@ -2394,10 +2392,30 @@ pd = ("Module", "pandas")
 
 math = ("Module", "math")
 
-Claim = ("Pickle", 1)
+Sex = ("Pickle", 1)
 
-Timing = ("Pickle", 2)
+RateClass = ("Pickle", 2)
 
-enum_definitions = ("Pickle", 3)
+DeathBenefitOption = ("Pickle", 3)
 
-pdn = ("Module", "modelx_helpers.pdn")
+Qualification = ("Pickle", 4)
+
+PremiumType = ("Pickle", 5)
+
+PremiumMode = ("Pickle", 6)
+
+Basis = ("Pickle", 7)
+
+CreditBase = ("Pickle", 8)
+
+Timing = ("Pickle", 9)
+
+PolTiming = ("Pickle", 10)
+
+Claim = ("Pickle", 11)
+
+basis = ("Pickle", 12)
+
+seg_credit_base_conv = ("Pickle", 13)
+
+enum_definitions = ("Pickle", 14)
