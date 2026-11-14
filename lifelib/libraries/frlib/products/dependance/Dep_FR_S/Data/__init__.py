@@ -82,8 +82,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -104,9 +104,9 @@ def mort_table():
     TH 00-02 / TF 00-02 or of TGH05 / TGF05, which are cited by name and arrêté in the
     technical notes and are not reproduced by this library.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def prevalence_table():
@@ -125,9 +125,10 @@ def prevalence_table():
     elsewhere — :func:`severity_share_table` for the first and
     ``Projection.inc_rate_partial`` for the second.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / prevalence_file,                               # noqa: F821
-        index_col=["sex", "param"]).sort_index()
+    frame = pd.read_csv(input_dir() / prevalence_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["param"] = [PrevParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index(["sex", "param"]).sort_index())
 
 
 def severity_share_table():
@@ -141,9 +142,9 @@ def severity_share_table():
     and the ``avq6`` and ``aggir`` rows are flat factors on it that **no retrieved
     document supports at all**.  The ``provenance`` column says which is which.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / severity_share_file,                           # noqa: F821
-        index_col="trigger_grid")
+    frame = pd.read_csv(input_dir() / severity_share_file)                     # noqa: F821
+    frame["trigger_grid"] = [TriggerGrid[name] for name in frame["trigger_grid"]]
+    return pdn.table(frame.set_index("trigger_grid"))
 
 
 def lapse_table():
@@ -155,8 +156,8 @@ def lapse_table():
     rate — ``Projection.lapse_rate_base`` caps the policy year at the largest year in
     the table, so a lifetime projection does not run off the end of it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def cause_mix_table():
@@ -169,8 +170,9 @@ def cause_mix_table():
     model point's own three *carence* lengths, so a contract with a different menu
     changes the model point and not this file.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / cause_mix_file, index_col="cause")             # noqa: F821
+    frame = pd.read_csv(input_dir() / cause_mix_file)                     # noqa: F821
+    frame["cause"] = [Cause[name] for name in frame["cause"]]
+    return pdn.table(frame.set_index("cause"))
 
 
 def reduction_table():
@@ -184,8 +186,8 @@ def reduction_table():
     the coefficient at first qualification and the rows at 5, 6 and 7 years are
     unreachable on the base cell.  The last row applies to 30 years and over.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / reduction_file, index_col="years_paid")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / reduction_file, index_col="years_paid"))        # noqa: F821
 
 
 def revision_table():
@@ -198,92 +200,8 @@ def revision_table():
     is arbitrary inside the 0-10% band the only retrieved cap allows.  The last row is
     the terminal rate.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / revision_file, index_col="policy_year")        # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_prevalence_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(prevalence_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-
-def prepared_cause_mix_index():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.index(cause_mix_table().index)
-
-
-def prepared_cause_shares():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.record(cause_mix_table()["share"], preserve_scalar_types=True)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_reduction_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(reduction_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_revision_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(revision_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_severity_share_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(severity_share_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_mort_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(mort_table().index)
-
-
-
-def prepared_reduction_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(reduction_table().index)
-
-
-
-def prepared_revision_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(revision_table().index)
-
-
-def prepared_cause_mix_table_calculation():
-    """Own original input values for calculation operations."""
-    return pdn.table(cause_mix_table(), groups=(), rows=False, preserve_scalar_types=True)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / revision_file, index_col="policy_year"))        # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -308,3 +226,11 @@ revision_file = "revision_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+PrevParam = ("Pickle", 2)
+
+TriggerGrid = ("Pickle", 3)
+
+Cause = ("Pickle", 4)

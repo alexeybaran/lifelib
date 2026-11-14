@@ -368,12 +368,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def age_at_entry():
@@ -386,7 +386,7 @@ def age_at_entry():
     at ``t = 12, 24, ...`` from the valuation date rather than from the contractual
     anniversary.
     """
-    return pdn.lookup_int(prepared_model_point(), "entry_age")
+    return int(model_point()["entry_age"])
 
 
 def sex():
@@ -397,10 +397,7 @@ def sex():
     2004 EU directive, so ``premium_mth`` is a model point column and not a rate looked
     up by sex.
     """
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def cover_type():
@@ -410,10 +407,7 @@ def cover_type():
     worked example runs.  See the Space docstring for what ``total_only`` changes and
     for the one **[std]** departure it forces on the duration clock.
     """
-    v = pdn.lookup_object(prepared_model_point(), "cover_type")
-    if v not in ("total_and_partial", "total_only"):
-        raise ValueError("invalid cover_type")
-    return v
+    return CoverType[model_point()["cover_type"]]
 
 
 def cover_partial():
@@ -423,7 +417,7 @@ def cover_partial():
     ``cover_type`` — the *rente*, the *capital*, the premium *exonération* and where the
     *carence* and the *franchise* attach — cannot drift apart.
     """
-    return cover_type() == "total_and_partial"
+    return cover_type() == CoverType.total_and_partial
 
 
 def trigger_grid():
@@ -434,10 +428,7 @@ def trigger_grid():
     data.  The grid enters through :func:`severity_share` and nowhere else: a stricter
     grid is a smaller share of public prevalence, not a different chain.
     """
-    v = pdn.lookup_object(prepared_model_point(), "trigger_grid")
-    if v not in ("avq5", "avq6", "aggir"):
-        raise ValueError("invalid trigger_grid")
-    return v
+    return TriggerGrid[model_point()["trigger_grid"]]
 
 
 def rente_total_mth():
@@ -449,7 +440,7 @@ def rente_total_mth():
     and on a ``reduced`` cell it is the **full guarantee** before the *barème*
     coefficient is applied.
     """
-    return pdn.lookup_float(prepared_model_point(), "rente_total_mth")
+    return float(model_point()["rente_total_mth"])
 
 
 def partial_ratio():
@@ -458,7 +449,7 @@ def partial_ratio():
     0.50, modal across five retrieved providers.  The two *rentes* are mutually
     exclusive: recognition of *totale* never opens partial rights.
     """
-    return pdn.lookup_float(prepared_model_point(), "partial_ratio")
+    return float(model_point()["partial_ratio"])
 
 
 def partial_ratio_paid():
@@ -472,7 +463,7 @@ def partial_ratio_paid():
 
 def capital_option():
     """Whether the optional *capital d'équipement* is bought."""
-    return pdn.lookup_bool(prepared_model_point(), "capital_option")
+    return bool(model_point()["capital_option"])
 
 
 def capital_amount():
@@ -483,7 +474,7 @@ def capital_amount():
     covered state, with no *franchise* **[std]**, and the guarantee is extinguished on
     payment regardless of later deterioration.
     """
-    return pdn.lookup_float(prepared_model_point(), "capital_amount") if capital_option() else 0.0
+    return float(model_point()["capital_amount"]) if capital_option() else 0.0
 
 
 def premium_mth():
@@ -495,7 +486,7 @@ def premium_mth():
     The premium is *viagère*: level for the entry age but payable for life, with no
     premium-paying term.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_mth")
+    return float(model_point()["premium_mth"])
 
 
 def premium_mode():
@@ -505,15 +496,13 @@ def premium_mode():
     **[std]**: no retrieved document discloses one, so an annual payer pays exactly
     twelve monthly premiums at the start of the policy year.
     """
-    v = pdn.lookup_object(prepared_model_point(), "premium_mode")
-    if v not in ("monthly", "quarterly", "half_yearly", "annual"):
-        raise ValueError("invalid premium_mode")
-    return v
+    return PremiumMode[model_point()["premium_mode"]]
 
 
 def premium_months():
     """The number of months one premium instalment covers: 1, 3, 6 or 12."""
-    return {"monthly": 1, "quarterly": 3, "half_yearly": 6, "annual": 12}[
+    return {PremiumMode.monthly: 1, PremiumMode.quarterly: 3, PremiumMode.half_yearly: 6,
+            PremiumMode.annual: 12}[
         premium_mode()]
 
 
@@ -534,7 +523,7 @@ def couple_discount():
     mechanics beyond scaling the premium, conditional on facts about a second life the
     model point does not carry.
     """
-    return pdn.lookup_bool(prepared_model_point(), "couple_discount")
+    return bool(model_point()["couple_discount"])
 
 
 def couple_factor():
@@ -544,12 +533,12 @@ def couple_factor():
 
 def carence_accident_months():
     """The *carence* for accident, 0 months on every retrieved contract."""
-    return pdn.lookup_int(prepared_model_point(), "carence_accident_months")
+    return int(model_point()["carence_accident_months"])
 
 
 def carence_illness_months():
     """The *carence* for illness other than neurological or psychiatric, 12 months."""
-    return pdn.lookup_int(prepared_model_point(), "carence_illness_months")
+    return int(model_point()["carence_illness_months"])
 
 
 def carence_neuro_months():
@@ -559,7 +548,7 @@ def carence_neuro_months():
     insurer does when a cause is both frequent and adversely selected, and every
     retrieved contract puts an MMSE overlay on exactly that cause.
     """
-    return pdn.lookup_int(prepared_model_point(), "carence_neuro_months")
+    return int(model_point()["carence_neuro_months"])
 
 
 def carence_months(cause):
@@ -570,11 +559,11 @@ def carence_months(cause):
     inside its *carence* is **terminated and every premium refunded**; the benefit is
     not merely deferred.
     """
-    if cause == "accident":
+    if cause == Cause.accident:
         return carence_accident_months()
-    if cause == "illness":
+    if cause == Cause.illness:
         return carence_illness_months()
-    if cause == "neuro":
+    if cause == Cause.neuro:
         return carence_neuro_months()
     raise ValueError("invalid cause")
 
@@ -588,7 +577,7 @@ def franchise_months():
     corroborated rather than assumed — one retrieved contract restores exactly three
     instalments at the first payment.
     """
-    return pdn.lookup_int(prepared_model_point(), "franchise_months")
+    return int(model_point()["franchise_months"])
 
 
 def reduction_qualifying_years():
@@ -597,7 +586,7 @@ def reduction_qualifying_years():
     Eight on the base cell; the observed range is five to eight across the retrieved
     contracts.  Below it a lapsed membership ends with no value at all.
     """
-    return pdn.lookup_int(prepared_model_point(), "reduction_qualifying_years")
+    return int(model_point()["reduction_qualifying_years"])
 
 
 def status():
@@ -616,10 +605,7 @@ def status():
 
     An in-force portfolio needs all four kinds of cell.
     """
-    v = pdn.lookup_object(prepared_model_point(), "status")
-    if v not in ("autonomous", "partial", "total", "reduced"):
-        raise ValueError("invalid status")
-    return v
+    return Status[model_point()["status"]]
 
 
 def claim_duration_months():
@@ -629,7 +615,7 @@ def claim_duration_months():
     at the end of the month before the valuation date.  A cell seeded at
     ``z0 = franchise_months()`` is therefore paid in its very first month.
     """
-    return pdn.lookup_int(prepared_model_point(), "claim_duration_months")
+    return int(model_point()["claim_duration_months"])
 
 
 def years_paid():
@@ -638,12 +624,12 @@ def years_paid():
     It selects the *barème* coefficient the frozen reduced *rente* carries, and it is
     ignored on every other kind of cell.
     """
-    return pdn.lookup_int(prepared_model_point(), "years_paid")
+    return int(model_point()["years_paid"])
 
 
 def pols_if_init():
     """Initial number of policies; 1.0 on a single-policy model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 # --- the policy clock ---
@@ -707,7 +693,7 @@ def max_dur():
 
 def seed_dur():
     """The duration cohort the initial population occupies, or 0 if it is not seeded."""
-    return claim_duration_months() + 1 if status() in ("partial", "total") else 0
+    return claim_duration_months() + 1 if status() in (Status.partial, Status.total) else 0
 
 
 def cohort_len(t):
@@ -784,7 +770,8 @@ def revision_rate(t):
     repricing.
     """
     tbl = data.revision_table()                                      # noqa: F821
-    return pdn.lookup_float(data.prepared_revision_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_revision_table_index_selection())))), "revision_rate")
+    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
+                         "revision_rate"])
 
 
 def premium_factor(y):
@@ -862,10 +849,10 @@ def reduction_coeff(n):
     if n < reduction_qualifying_years():
         return 0.0
     tbl = data.reduction_table()                                     # noqa: F821
-    lo, hi = int(min(pdn.keys(data.prepared_reduction_table_index_selection()))), int(pdn.max_value(pdn.keys(data.prepared_reduction_table_index_selection())))
+    lo, hi = int(tbl.index.min()), int(tbl.index.max())
     if n < lo:
         return 0.0
-    return pdn.lookup_float(data.prepared_reduction_table_scalar_loc(), min(n, hi), "coefficient")
+    return float(tbl.loc[min(n, hi), "coefficient"])
 
 
 def inflation_factor(t):
@@ -880,6 +867,11 @@ def inflation_factor(t):
 
 # --- the decrement basis ---
 
+def mort_schedule():
+    """The base mortality rates at the policy's sex, by attained age."""
+    return data.mort_table().loc[sex()]                              # noqa: F821
+
+
 def mort_rate(t):
     """The **healthy-life** annual mortality rate at the attained age in month t.
 
@@ -889,7 +881,7 @@ def mort_rate(t):
     :func:`mort_rate_partial` and :func:`mort_rate_total` — and reading a dependent's
     mortality out of this cells is the largest single error available on this product.
     """
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), age(t)), 'mort_rate')  # noqa: F821
+    return float(mort_schedule().loc[age(t), "mort_rate"])
 
 
 def mort_rate_mth(t):
@@ -944,6 +936,12 @@ def mort_rate_total_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (mort_total_mult / 12.0)    # noqa: F821
 
 
+def mort_top_age():
+    """The last attained age of the mortality rates at the policy's sex."""
+    ages = [a for s, a in data.mort_table().index if s == sex()]     # noqa: F821
+    return max(ages)
+
+
 def mort_force_at(x):
     """mu_H at an **exact**, possibly fractional, age x.
 
@@ -952,15 +950,13 @@ def mort_force_at(x):
     Only the two sojourn calibrations use it: the projection itself reads the force at
     integer attained ages through :func:`mort_force`.
     """
-    tbl = data.mort_table()                                          # noqa: F821
     lo = int(math.floor(x))                                          # noqa: F821
     hi = lo + 1
-    ages = [a for s, a in pdn.keys(data.prepared_mort_table_index_selection()) if s == sex()]
-    top = pdn.max_value(ages)
+    top = mort_top_age()
     if lo >= top:
         return float("inf")
-    q_lo = pdn.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo), "mort_rate")
-    q_hi = pdn.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), min(hi, top)), "mort_rate")
+    q_lo = float(mort_schedule().loc[lo, "mort_rate"])
+    q_hi = float(mort_schedule().loc[min(hi, top), "mort_rate"])
     if q_lo >= 1.0 or q_hi >= 1.0:
         return float("inf")
     m_lo = -math.log(1.0 - q_lo)                                     # noqa: F821
@@ -979,7 +975,8 @@ def lapse_rate_base(t):
     row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
+                         "lapse_rate"])
 
 
 def revision_lapse_factor(t):
@@ -1047,8 +1044,9 @@ def carence_factor(t):
     arises from a cause still inside its *carence* leaves the in-force ledger exactly as
     a covered one does, and takes :func:`refunds_carence` with it.
     """
-    tbl = data.prepared_cause_mix_index()                                     # noqa: F821
-    return float(pdn.sum_values((pdn.lookup_object(data.prepared_cause_shares(), c) for c in pdn.keys(tbl) if carence_months(c) <= t)))
+    tbl = data.cause_mix_table()                                     # noqa: F821
+    return float(sum(tbl.loc[c, "share"] for c in tbl.index
+                     if carence_months(c) <= t))
 
 
 def aggravation_carence(t):
@@ -1063,6 +1061,11 @@ def aggravation_carence(t):
 
 # --- prevalence and the incidence identity ---
 
+def prevalence_schedule():
+    """The prevalence-curve parameters at the policy's sex, by name."""
+    return data.prevalence_table().loc[sex()]                        # noqa: F821
+
+
 def prev_param(name):
     """One parameter of the APA-prevalence logistic for this model point's sex.
 
@@ -1070,7 +1073,7 @@ def prev_param(name):
     to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,
     and it governs the tail — where 65% of this product's lifetime claims fall.
     """
-    return pdn.lookup_float(data.prepared_prevalence_table_loc(), (sex(), name), 'value')  # noqa: F821
+    return float(prevalence_schedule().loc[name, "value"])
 
 
 def prev_rate(t):
@@ -1085,9 +1088,9 @@ def prev_rate(t):
     APA is not available below age 60, so the curve has **no anchor at all** under 60 and
     every entry age below 60 runs on pure extrapolation.
     """
-    return prev_param("prev_ceil") / (
-        1.0 + math.exp(-prev_param("prev_beta")                      # noqa: F821
-                       * (age(t) - prev_param("prev_x_mid"))))
+    return prev_param(PrevParam.prev_ceil) / (
+        1.0 + math.exp(-prev_param(PrevParam.prev_beta)                      # noqa: F821
+                       * (age(t) - prev_param(PrevParam.prev_x_mid))))
 
 
 def prev_slope(t):
@@ -1098,7 +1101,7 @@ def prev_slope(t):
     that catches the product's dominant error.
     """
     p = prev_rate(t)
-    return prev_param("prev_beta") * p * (1.0 - p / prev_param("prev_ceil"))
+    return prev_param(PrevParam.prev_beta) * p * (1.0 - p / prev_param(PrevParam.prev_ceil))
 
 
 def severity_share(kind):
@@ -1115,19 +1118,24 @@ def severity_share(kind):
     of error: severity mix worsens with age, so the model **understates** *totale*
     prevalence at old ages and overstates it at young ones.
     """
-    if kind not in ("partial", "total"):
+    if kind == Severity.partial:
+        return float(data.severity_share_table().loc[                    # noqa: F821
+            trigger_grid(), "share_partial"])
+    elif kind == Severity.total:
+        return float(data.severity_share_table().loc[                    # noqa: F821
+            trigger_grid(), "share_total"])
+    else:
         raise ValueError("invalid kind")
-    return pdn.lookup_float(data.prepared_severity_share_table_scalar_loc(), trigger_grid(), "share_" + kind)
 
 
 def prev_partial(t):
     """pi_P = s_P prev(x): the proportion of living lives in insured *partielle*."""
-    return severity_share("partial") * prev_rate(t)
+    return severity_share(Severity.partial) * prev_rate(t)
 
 
 def prev_total(t):
     """pi_T = s_T prev(x): the proportion of living lives in insured *totale*."""
-    return severity_share("total") * prev_rate(t)
+    return severity_share(Severity.total) * prev_rate(t)
 
 
 def mort_force_avg(t):
@@ -1162,7 +1170,7 @@ def inc_rate_partial(t):
     """
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("partial") * prev_slope(t)
+    num = (severity_share(Severity.partial) * prev_slope(t)
            + (aggravation_rate + mort_partial_mult * mort_force(t))  # noqa: F821
            * pi_p - pi_p * mort_force_avg(t))
     return max(0.0, num / pi_h)
@@ -1193,7 +1201,7 @@ def inc_rate_total(t):
     """
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("total") * prev_slope(t)
+    num = (severity_share(Severity.total) * prev_slope(t)
            - aggravation_rate * pi_p                                 # noqa: F821
            + mort_total_mult * mort_force(t) * pi_t                  # noqa: F821
            - pi_t * mort_force_avg(t))
@@ -1228,7 +1236,7 @@ def pols_auto(t):
     if t < 0 or t > proj_len():
         return 0.0
     if t == 0:
-        return pols_if_init() if status() == "autonomous" else 0.0
+        return pols_if_init() if status() == Status.autonomous else 0.0
     base = pols_base(t - 1)
     stay = base * (1.0 - inc_rate_partial_mth(t - 1)
                    - inc_rate_total_mth(t - 1))
@@ -1386,7 +1394,7 @@ def pols_red(t):
     if t < 0 or t > proj_len():
         return 0.0
     if t == 0:
-        return pols_if_init() if status() == "reduced" else 0.0
+        return pols_if_init() if status() == Status.reduced else 0.0
     prev = pols_red(t - 1)
     surv = prev * (1.0 - mort_rate_mth(t - 1))
     return (surv - pols_entry_total_red(t - 1) + pols_reduction(t - 1)
@@ -1413,7 +1421,7 @@ def red_rente_value(t):
     if t < 0 or t > proj_len():
         return 0.0
     if t == 0:
-        if status() != "reduced":
+        if status() != Status.reduced:
             return 0.0
         return (pols_if_init() * rente_total_mth()
                 * reduction_coeff(years_paid()))
@@ -1464,7 +1472,7 @@ def dep_cohorts(t):
     if t <= 0:
         z0 = seed_dur()
         if z0 and z0 <= n:
-            if status() == "partial":
+            if status() == Status.partial:
                 part[z0 - 1] = pols_if_init()
             else:
                 tot[z0 - 1] = pols_if_init()
@@ -1476,7 +1484,7 @@ def dep_cohorts(t):
     recog = aggravation_carence(t - 1)
     restart = not cover_partial()
     fresh = 0.0
-    for z in pdn.periods(1, min(len(prev_p), n - 1) + 1):
+    for z in range(1, min(len(prev_p), n - 1) + 1):
         ps = prev_p[z - 1] * surv_p
         na = ps * ia
         part[z] = ps - na
@@ -1518,12 +1526,12 @@ def pols_totr_dur(t, z):
 
 def pols_part(t):
     """The whole population in *dépendance partielle* at the start of month t."""
-    return pdn.sum_values(dep_cohorts(t)[0])
+    return sum(dep_cohorts(t)[0])
 
 
 def pols_tot(t):
     """The whole population in *dépendance totale* on a full *rente*, at the start of t."""
-    return pdn.sum_values(dep_cohorts(t)[1])
+    return sum(dep_cohorts(t)[1])
 
 
 def pols_totr(t):
@@ -1533,12 +1541,12 @@ def pols_totr(t):
     :func:`pols_red` and carry a frozen reduced amount rather than the policy year's
     guarantee.
     """
-    return pdn.sum_values(dep_cohorts(t)[2])
+    return sum(dep_cohorts(t)[2])
 
 
 def totr_rente_value(t):
     """The reduced-rente *totale* ledger's population times the amount it is paid."""
-    return pdn.sum_values(dep_cohorts(t)[3])
+    return sum(dep_cohorts(t)[3])
 
 
 def pols_recovery(t):
@@ -1625,9 +1633,9 @@ def pols_if_at(t, timing):
     The intermediate points of the other models have no single-population meaning here,
     because five ledgers are moving at once; the ledgers themselves expose them.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len():
             return 0.0
         return pols_if(t + 1)
@@ -1697,12 +1705,12 @@ def instalments(t):
     s_p = (1.0 - mort_rate_partial_mth(t)) if cover_partial() else 0.0
     s_t = 1.0 - mort_rate_total_mth(t)
     out = 0.0
-    for z in pdn.periods(franchise_months() + 1, len(part) + 1):
+    for z in range(franchise_months() + 1, len(part) + 1):
         out += part[z - 1] * s_p + (tot[z - 1] + totr[z - 1]) * s_t
     return out
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the end of month t, by kind; the total when kind is omitted.
 
     ``"RENTE"``
@@ -1725,16 +1733,16 @@ def claims(t, kind=None):
     There is deliberately **no** ``"DEATH"`` kind: this composite carries no death
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE")))
-    if kind == "RENTE":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.RENTE, Kind.CAPITAL, Kind.LAPSE))
+    if kind == Kind.RENTE:
         part, tot, totr, val = dep_cohorts(t)
         s_p = 1.0 - mort_rate_partial_mth(t)
         s_t = 1.0 - mort_rate_total_mth(t)
         rho = partial_ratio_paid()
         amounts = {}
         out = 0.0
-        for z in pdn.periods(franchise_months() + 1, len(part) + 1):
+        for z in range(franchise_months() + 1, len(part) + 1):
             p, o, v = part[z - 1], tot[z - 1], val[z - 1]
             if p == 0.0 and o == 0.0 and v == 0.0:
                 continue
@@ -1745,9 +1753,9 @@ def claims(t, kind=None):
                 amounts[y_e] = a
             out += (rho * a * p * s_p + a * o * s_t + v * s_t)
         return out
-    if kind == "CAPITAL":
+    if kind == Kind.CAPITAL:
         return capital_pp(t) * pols_capital_claims(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1808,7 +1816,7 @@ def net_cf(t):
     risk-free term structure to exactly this stream, and that is a layer above this
     model.
     """
-    return (premiums(t) - claims(t) - refunds_carence(t)
+    return (premiums(t) - claims(t, Kind.ALL) - refunds_carence(t)
             - expenses(t) - claim_expenses(t))
 
 
@@ -1889,7 +1897,8 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_states_resid(t):
@@ -1915,7 +1924,8 @@ def check_states():
     still has one.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return pdn.all_true((abs(check_states_resid(t)) <= tol for t in pdn.periods(proj_len() + 1)))
+    return all(abs(check_states_resid(t)) <= tol
+               for t in range(proj_len() + 1))
 
 
 def check_part_roll_fwd_resid(t):
@@ -1937,7 +1947,8 @@ def check_part_roll_fwd_resid(t):
 def check_part_roll_fwd():
     """True when the *partielle* ledger closes against its aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return pdn.all_true((abs(check_part_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_part_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_tot_roll_fwd_resid(t):
@@ -1961,7 +1972,8 @@ def check_tot_roll_fwd_resid(t):
 def check_tot_roll_fwd():
     """True when the two *totale* ledgers close against their aggregate recursion."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
-    return pdn.all_true((abs(check_tot_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_tot_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_model_point():
@@ -1974,8 +1986,8 @@ def check_model_point():
     cell with enough years of premiums behind it to have qualified, and a cause mix that
     sums to one — without which :func:`carence_factor` would silently scale every claim.
     """
-    tbl = data.prepared_cause_mix_table_calculation()                                     # noqa: F821
-    if abs(pdn.sum_f64(v for v in pdn.column(tbl, "share") if not pdn.is_missing(pd.isna, v)) - 1.0) > 1e-9:
+    tbl = data.cause_mix_table()                                     # noqa: F821
+    if abs(float(sum(tbl.loc[c, "share"] for c in tbl.index)) - 1.0) > 1e-9:
         return False
     if not 500.0 <= rente_total_mth() <= 3000.0:
         return False
@@ -1988,9 +2000,9 @@ def check_model_point():
     if not (carence_accident_months() <= carence_illness_months()
             <= carence_neuro_months()):
         return False
-    if status() == "autonomous" and not 40 <= age_at_entry() <= 75:
+    if status() == Status.autonomous and not 40 <= age_at_entry() <= 75:
         return False
-    if status() == "reduced" and years_paid() < reduction_qualifying_years():
+    if status() == Status.reduced and years_paid() < reduction_qualifying_years():
         return False
     return age_at_entry() < terminal_age                             # noqa: F821
 
@@ -2007,7 +2019,7 @@ def result_cf():
     has its own because it is a per-event cost rather than a per-policy one.  Nothing
     here is discounted.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2017,9 +2029,9 @@ def result_cf():
             "pols_tot": [pols_tot(t) for t in ts],
             "pols_totr": [pols_totr(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_rente": [claims(t, "RENTE") for t in ts],
-            "claims_capital": [claims(t, "CAPITAL") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_rente": [claims(t, Kind.RENTE) for t in ts],
+            "claims_capital": [claims(t, Kind.CAPITAL) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "refunds_carence": [refunds_carence(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
@@ -2031,7 +2043,7 @@ def result_cf():
 
 def result_states():
     """Result table of state movements and rates, indexed by policy month t."""
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_entry_partial": [pols_entry_partial(t) for t in ts],
@@ -2053,11 +2065,6 @@ def result_states():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2105,4 +2112,24 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+CoverType = ("Pickle", 5)
+
+TriggerGrid = ("Pickle", 3)
+
+PremiumMode = ("Pickle", 6)
+
+Cause = ("Pickle", 4)
+
+Status = ("Pickle", 7)
+
+PrevParam = ("Pickle", 2)
+
+Severity = ("Pickle", 8)
+
+PolTiming = ("Pickle", 9)
+
+Kind = ("Pickle", 10)
+
+enum_definitions = ("Pickle", 11)
