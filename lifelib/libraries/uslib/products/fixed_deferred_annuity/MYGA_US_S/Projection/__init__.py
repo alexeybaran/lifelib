@@ -634,14 +634,26 @@ def prem_to_av_pp(t):
     return av_pp_init() if t == 0 else 0.0
 
 
+def has_withdrawals():
+    """Whether the withdrawal table has rows for the model point's withdrawal programme."""
+    return wd_schedule_id() in data.withdrawal_table().index         # noqa: F821
+
+
+def withdrawal_rows():
+    """The model point's scheduled withdrawals (only read when has_withdrawals())."""
+    return data.withdrawal_table().loc[wd_schedule_id()]             # noqa: F821
+
+
 def wd_scheduled_pp(t):
     """The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.
 
     An exact-key lookup on ``(wd_schedule_id, t)`` with ``t`` the 0-based policy month.
     """
-    table = data.withdrawal_table()                                  # noqa: F821
-    key = (wd_schedule_id(), t)
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    if not has_withdrawals():
+        return 0.0
+    rows = withdrawal_rows()
+    m = t
+    return float(rows.loc[m, "wd_amount"]) if m in rows.index else 0.0
 
 
 def wd_pp(t):
