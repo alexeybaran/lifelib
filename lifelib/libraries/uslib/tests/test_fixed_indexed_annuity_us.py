@@ -27,9 +27,10 @@ decimals of a percentage, the MVA factor to the eight decimals it is printed at.
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.fixed_indexed_annuity.enums import Claim, CreditMethod, GlwbBasis, Phase, PolTiming, Sex, Timing
+from lifelib.libraries.uslib.products.fixed_indexed_annuity.enums import Claim, CreditMethod, GlwbBasis, MvaCollarBasis, Phase, PolTiming, Sex, Timing
 
 MODEL_PATH = LIB / "products/fixed_indexed_annuity/FIA_US_S"
 
@@ -669,7 +670,7 @@ def test_pitfall_the_mva_collar_on_a_partial_withdrawal_is_shipped_both_ways(
     assert anchor.mva_pp_on(A8, base, small) == 0.0                   # "gross", default
     model = mx.read_model(MODEL_PATH, name="FIA_collar")
     try:
-        model.Projection.mva_collar_basis = "surrender_value"
+        model.Projection.mva_collar_basis = MvaCollarBasis.surrender_value
         alt = model.Projection[1]
         assert alt.mva_pp_on(A8, base, small) == pytest.approx(-1158.64, abs=CENT)
         # ... but the worked example's surrender trace is invariant, because G = AV there.
@@ -1521,7 +1522,7 @@ def test_the_model_point_table_ships_the_nine_switch_combinations(
     model in the library. What is left here is the count, which is this product's own
     statement about what the shipped table covers.
     """
-    assert len(fixed_indexed_annuity.Data.model_point_table()) == 9
+    assert len(pdn.to_pandas(fixed_indexed_annuity.Data.model_point_table())) == 9
 
 
 def test_the_model_name_matches_the_product_folder(fixed_indexed_annuity):
