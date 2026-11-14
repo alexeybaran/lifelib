@@ -65,6 +65,7 @@ import pathlib
 import modelx as mx
 import pandas as pd
 import pytest
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.indemnity_medical.enums import Kind, PolTiming, Sex, Stream
@@ -143,20 +144,20 @@ UTILISATION_RATIO = (1.2499293, 1.100000, 1.1800000, 1.1799961,
 # payment per event at trend 1.0 — which is what policy year 1 uses.  The right-hand
 # figure is not any simple function of the mean, and that is the point of the table.
 SEVERITY = {
-    "ge_in":   ([(250000, .40), (700000, .32), (1800000, .20), (5000000, .07),
+    Stream.ge_in:   ([(250000, .40), (700000, .32), (1800000, .20), (5000000, .07),
                  (15000000, .01)], 1184000.0, 947200.0),
-    "ge_out":  ([(8000, .30), (18000, .30), (40000, .25), (90000, .12),
+    Stream.ge_out:  ([(8000, .30), (18000, .30), (40000, .25), (90000, .12),
                  (250000, .03)], 36100.0, 22638.20),
-    "np_in":   ([(400000, .40), (1200000, .33), (3000000, .20), (8000000, .07)],
+    Stream.np_in:   ([(400000, .40), (1200000, .33), (3000000, .20), (8000000, .07)],
                 1716000.0, 1201200.0),
-    "np_room": ([(0, .55), (300000, .30), (1200000, .15)], 270000.0, 135000.0),
-    "np_out":  ([(45000, .35), (90000, .30), (180000, .22), (400000, .10),
+    Stream.np_room: ([(0, .55), (300000, .30), (1200000, .15)], 270000.0, 135000.0),
+    Stream.np_out:  ([(45000, .35), (90000, .30), (180000, .22), (400000, .10),
                  (900000, .03)], 149350.0, 76970.0),
-    "physio":  ([(80000, .35), (120000, .35), (180000, .22), (400000, .08)],
+    Stream.physio:  ([(80000, .35), (120000, .35), (180000, .22), (400000, .08)],
                 141600.0, 97020.0),
-    "inject":  ([(60000, .40), (120000, .30), (250000, .20), (700000, .10)],
+    Stream.inject:  ([(60000, .40), (120000, .30), (250000, .20), (700000, .10)],
                 180000.0, 121200.0),
-    "mri":     ([(450000, .45), (700000, .35), (1100000, .20)], 667500.0, 467250.0),
+    Stream.mri:     ([(450000, .45), (700000, .35), (1100000, .20)], 667500.0, 467250.0),
 }
 GE_OUT_CLINIC = 24540.0        # the ₩10,000-tier expected payment per visit
 GE_OUT_HOSPITAL = 19400.0      # the ₩20,000-tier expected payment per visit
@@ -483,19 +484,19 @@ def test_worked_example_severity_points_and_expected_payment(kr_medical_anchor, 
     points, mean, payment = SEVERITY[stream]
     assert a.sev_points(stream) == [(float(c), p) for c, p in points]
     assert a.sev_mean(stream) == pytest.approx(mean, rel=1e-12)
-    if stream == "ge_in":
+    if stream == Stream.ge_in:
         got = mean * (1.0 - a.retain_rate_ge())
-    elif stream == "ge_out":
+    elif stream == Stream.ge_out:
         clinic = a.paid_out_per_visit(Stream.ge_out, 10000.0, 0.20, 1.0)
         hospital = a.paid_out_per_visit(Stream.ge_out, 20000.0, 0.20, 1.0)
         assert clinic == pytest.approx(GE_OUT_CLINIC, abs=WON)
         assert hospital == pytest.approx(GE_OUT_HOSPITAL, abs=WON)
         got = 0.63 * clinic + 0.37 * hospital
-    elif stream == "np_in":
+    elif stream == Stream.np_in:
         got = mean * (1.0 - a.retain_rate_np())
-    elif stream == "np_room":
+    elif stream == Stream.np_room:
         got = sum(p * min(0.50 * c, 100000.0 * a.los_days(1)) for c, p in points)
-    elif stream == "np_out":
+    elif stream == Stream.np_out:
         got = a.paid_out_per_visit(Stream.np_out, 30000.0, 0.30, 1.0)
     else:
         got = a.paid_per_act(stream, 1.0)
@@ -1297,22 +1298,22 @@ def test_pitfall_apply_the_deductible_to_the_distribution_not_to_the_mean(
         return max(0.0, mu - max(floor, retain * mu))
 
     np_out = a.paid_out_per_visit(Stream.np_out, 30000.0, 0.30, 1.0)
-    assert naive("np_out", 30000.0, 0.30) == pytest.approx(104545.0, abs=WON)
-    assert naive("np_out", 30000.0, 0.30) / np_out - 1.0 == pytest.approx(
+    assert naive(Stream.np_out, 30000.0, 0.30) == pytest.approx(104545.0, abs=WON)
+    assert naive(Stream.np_out, 30000.0, 0.30) / np_out - 1.0 == pytest.approx(
         0.3583, abs=5e-5)
     clinic = a.paid_out_per_visit(Stream.ge_out, 10000.0, 0.20, 1.0)
     hospital = a.paid_out_per_visit(Stream.ge_out, 20000.0, 0.20, 1.0)
-    assert naive("ge_out", 10000.0, 0.20) / clinic - 1.0 == pytest.approx(
+    assert naive(Stream.ge_out, 10000.0, 0.20) / clinic - 1.0 == pytest.approx(
         0.0636, abs=5e-5)
-    assert naive("ge_out", 20000.0, 0.20) / hospital - 1.0 == pytest.approx(
+    assert naive(Stream.ge_out, 20000.0, 0.20) / hospital - 1.0 == pytest.approx(
         -0.1701, abs=5e-5)
     blend = 0.63 * clinic + 0.37 * hospital
-    naive_blend = 0.63 * naive("ge_out", 10000.0, 0.20) \
-        + 0.37 * naive("ge_out", 20000.0, 0.20)
+    naive_blend = 0.63 * naive(Stream.ge_out, 10000.0, 0.20) \
+        + 0.37 * naive(Stream.ge_out, 20000.0, 0.20)
     assert naive_blend / blend - 1.0 == pytest.approx(-0.0105, abs=5e-5)
     # MRI is the control: every point sits above its crossing, so the mean is exact there.
     assert a.paid_per_act(Stream.mri, 1.0) == pytest.approx(
-        naive("mri", 30000.0, 0.30), rel=1e-14)
+        naive(Stream.mri, 30000.0, 0.30), rel=1e-14)
 
 
 def test_pitfall_the_public_ceiling_is_an_exclusion_from_covered_loss_not_a_benefit_cap(
@@ -2015,7 +2016,7 @@ def test_the_model_point_table_exercises_the_product(indemnity_medical):
     cost-trend stress that makes the corridor clip.
     """
     table = indemnity_medical.Data.model_point_table()
-    assert len(table) == 10 and list(table.index) == list(range(1, 11))
+    assert len(pdn.to_pandas(table)) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert table["issue_age"].min() == 0 and table["issue_age"].max() == 65
     for module in ("np_rider", "three_np", "nhi_covered", "reld_on", "noclaim_on"):
