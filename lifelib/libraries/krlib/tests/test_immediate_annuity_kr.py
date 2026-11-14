@@ -53,6 +53,7 @@ rather than moving a result.  That every check is *True* on every shipped model 
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.immediate_annuity.enums import CreditingBasis, Kind, RetentionBasis, Sex, Shape
@@ -318,15 +319,15 @@ CHECKS_WITH_RESID = {
 
 # The charge basis, by shape, every rate of it [std] in its adoption or its derivation.
 CHARGE_RATES = {
-    "life": {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
+    Shape.life: {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
              "risk_prem_rate": 0.0000, "comm_rate": 0.0200,
              "acq_expense_rate": 0.0150, "annuity_charge_rate": 0.0080,
              "db_rate": 0.00},
-    "inheritance": {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
+    Shape.inheritance: {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
                     "risk_prem_rate": 0.0147, "comm_rate": 0.0200,
                     "acq_expense_rate": 0.0150, "annuity_charge_rate": 0.0080,
                     "db_rate": 0.10},
-    "certain": {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
+    Shape.certain: {"acq_charge_rate": 0.0220, "admin_charge_rate": 0.0130,
                 "risk_prem_rate": 0.0147, "comm_rate": 0.0200,
                 "acq_expense_rate": 0.0150, "annuity_charge_rate": 0.0080,
                 "db_rate": 0.10},
@@ -2022,7 +2023,7 @@ def test_the_std_charge_parameters_the_notes_state(immediate_annuity, shape):
     is what makes the premium split close, and ``comm_rate``, which sits **below** the
     계약체결비용 so that the charge covers the commission at the same moment.
     """
-    point_id = {"life": 1, "inheritance": 6, "certain": 9}[shape]
+    point_id = {Shape.life: 1, Shape.inheritance: 6, Shape.certain: 9}[shape]
     p = immediate_annuity.Projection[point_id]
     assert p.shape() == shape
     for name, value in CHARGE_RATES[shape].items():
@@ -2123,7 +2124,7 @@ def test_the_model_point_table_exercises_the_product(immediate_annuity):
     ₩10,000,000 carrier minimum through the ₩100,000,000 median and tax cap to the
     ₩5,000,000,000 maximum, and the issue ages span the 45–80 band.
     """
-    table = immediate_annuity.Data.model_point_table()
+    table = pdn.to_pandas(immediate_annuity.Data.model_point_table())
     assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["shape"]) == {"life", "inheritance", "certain"}
