@@ -528,7 +528,7 @@ def test_the_guarantee_basis_is_not_one_construction(anchor, whole_life):
     mort = whole_life.Data.mort_table()
     assert _endow_nsp(mort, Sex.M, 55) == pytest.approx(0.330820, abs=1e-6)
     assert anchor.nsp(55) == 0.42                     # +27.0% on the recomputed value
-    assert _endow_nsp(mort, "M", 45) == pytest.approx(0.236184, abs=1e-6)
+    assert _endow_nsp(mort, Sex.M, 45) == pytest.approx(0.236184, abs=1e-6)
     assert anchor.nsp(45) == pytest.approx(0.258170, abs=1e-6)
 
     # (5) The size of the mismatch: the guarantee rate that reconciles the two falls
