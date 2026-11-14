@@ -1008,6 +1008,11 @@ def corridor_override_m1():
     return model_point()["corridor_override_m1"]
 
 
+def has_corridor_override_m1():
+    """Whether the model point carries a month-1 corridor factor override (D64: the missing-value test, per policy)."""
+    return not pd.isna(corridor_override_m1())                       # noqa: F821
+
+
 def corridor_factor(t):
     """kappa_t: the corridor factor in projected month t, at the **attained** age.
 
@@ -1032,7 +1037,7 @@ def corridor_factor(t):
     if qual_test() != Qualification.GPT:
         raise ValueError("invalid qual_test")
     o = corridor_override_m1()
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    if t == 0 and has_corridor_override_m1():
         return float(o)
     return corridor_factor_at(age(t))
 
@@ -1139,6 +1144,11 @@ def coi_rate_override_m1():
     return model_point()["coi_rate_override_m1"]
 
 
+def has_coi_rate_override_m1():
+    """Whether the model point carries a month-1 COI rate override (D64: the missing-value test, per policy)."""
+    return not pd.isna(coi_rate_override_m1())                       # noqa: F821
+
+
 def coi_rate(t):
     """c_t: the current monthly COI rate in projected month t.
 
@@ -1158,7 +1168,7 @@ def coi_rate(t):
     directions.
     """
     o = coi_rate_override_m1()
-    if t == 0 and not pd.isna(o):                                    # noqa: F821
+    if t == 0 and has_coi_rate_override_m1():
         return min(float(o), coi_rate_guar(t), coi_rate_cap)         # noqa: F821
     return coi_rate_at(policy_year(t))
 
