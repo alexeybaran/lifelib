@@ -533,6 +533,11 @@ def units():
     return sum_assured() / 1000
 
 
+def return_rows():
+    """The model point's return scenario: gross returns keyed by (subaccount, projected month)."""
+    return data.scenario_table().loc[scenario_id()]                  # noqa: F821
+
+
 def gross_return_mth(t, i):
     """r_{i,t}: the **gross** monthly return of subaccount i, a scenario input.
 
@@ -547,7 +552,7 @@ def gross_return_mth(t, i):
     applied in :func:`inv_return_mth`.  A stochastic set is more rows in this table,
     not a formula change.
     """
-    tbl = data.scenario_table().loc[(scenario_id(), i)]              # noqa: F821
+    tbl = return_rows().loc[i]
     m = min(t, int(tbl.index.max()))
     return float(tbl.loc[m, "gross_return_mth"])
 
