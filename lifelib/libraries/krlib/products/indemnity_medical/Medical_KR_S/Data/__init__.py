@@ -160,8 +160,8 @@ def model_point_table():
     for that exact life.  The others exercise the 보장종목 elections, the
     보험가입금액 menu, the optional modules and the edge ages.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -173,9 +173,9 @@ def mort_table():
     liability *release*, so the usual direction of prudence is inverted — see the Space
     docstring.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def lapse_table():
@@ -185,8 +185,8 @@ def lapse_table():
     policyholder's separate right to decline the annual renewal is a different decrement
     and carries its own rate, ``Projection.renewal_decline_rate``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def utilisation_table():
@@ -200,9 +200,9 @@ def utilisation_table():
     ``act_rate_mri``, plus ``los_days``, the mean length of stay the 상급병실료
     daily-average cap is applied against.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / utilisation_table_file,                        # noqa: F821
-        index_col=["sex", "age_start"])
+    frame = pd.read_csv(input_dir() / utilisation_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age_start"]))
 
 
 def severity_table():
@@ -215,9 +215,9 @@ def severity_table():
     three 3대비급여 classes.  The deductible is a kinked function of cost, so the shape
     of each distribution, not its mean, decides the claim.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / severity_table_file,                           # noqa: F821
-        index_col=["stream", "point"])
+    frame = pd.read_csv(input_dir() / severity_table_file)                     # noqa: F821
+    frame["stream"] = [Stream[name] for name in frame["stream"]]
+    return pdn.table(frame.set_index(["stream", "point"]))
 
 
 def claim_shape_table():
@@ -231,8 +231,8 @@ def claim_shape_table():
     Bucket 0 is the no-claim mass that becomes 1단계.  This is the table the
     비급여 할인·할증 loop runs on.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / claim_shape_file, index_col="bucket")          # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / claim_shape_file, index_col="bucket"))          # noqa: F821
 
 
 def oop_ceiling_table():
@@ -244,75 +244,8 @@ def oop_ceiling_table():
     refundable from cover outright, so this is the level at which the 급여 half of the
     insured loss stops accruing.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / oop_ceiling_file, index_col="decile")          # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_oop_ceiling_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(oop_ceiling_table(),
-                        columns=('ceiling',),
-                        indexing='loc')
-
-
-
-def prepared_claim_shape_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(claim_shape_table(),
-                        columns=('share', 'claim_amount'),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_utilisation_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(utilisation_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_severity_table_calculation_groups_1():
-    """Own original input values for calculation operations."""
-    return pdn.table(severity_table(), groups=('stream',), rows=False, preserve_scalar_types=False)
-
-
-def prepared_claim_shape_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(claim_shape_table().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_mort_table_index_selection_level_age():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(mort_table().index.get_level_values("age"))
-
-
-
-def prepared_utilisation_table_index_selection_level_age_start():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(utilisation_table().index.get_level_values("age_start"))
-
-
-def prepared_claim_shape_table_calculation():
-    """Own original input values for calculation operations."""
-    return pdn.table(claim_shape_table(), groups=(), rows=False, preserve_scalar_types=True)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / oop_ceiling_file, index_col="decile"))          # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -335,3 +268,7 @@ oop_ceiling_file = "oop_ceiling_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Stream = ("Pickle", 2)
