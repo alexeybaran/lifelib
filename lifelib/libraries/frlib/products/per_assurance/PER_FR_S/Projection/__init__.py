@@ -512,20 +512,17 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the model point; printed, never used in a formula."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def sex():
     """The sex (M / F) of the member, the key into the mortality and annuity tables."""
-    v = pdn.lookup_str(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def age_init():
@@ -536,7 +533,7 @@ def age_init():
     applied with the annexed *décalage d'âge* age shifts, which the shipped proxy does
     not reproduce.
     """
-    return pdn.lookup_int(prepared_model_point(), "age")
+    return int(model_point()["age"])
 
 
 def retirement_age():
@@ -547,7 +544,7 @@ def retirement_age():
     grid.  It is the single most important number on the model point: it sets both the
     length of the projection and, through ``years_to_horizon``, every year's target mix.
     """
-    return pdn.lookup_int(prepared_model_point(), "retirement_age")
+    return int(model_point()["retirement_age"])
 
 
 def duration_ifo():
@@ -558,7 +555,7 @@ def duration_ifo():
     anniversary of the first *versement*, not of the projection start.  The anchor cell
     carries 2, so its window closes after two projected years rather than five.
     """
-    return pdn.lookup_int(prepared_model_point(), "duration_ifo")
+    return int(model_point()["duration_ifo"])
 
 
 def compartment():
@@ -570,10 +567,7 @@ def compartment():
     from the main-residence early-release case, which is the only discretionary limb of
     the seven, so ``exit_table.csv`` carries a lower ``early_release_rate`` for them.
     """
-    v = pdn.lookup_str(prepared_model_point(), "compartment")
-    if v not in ("c1", "c2", "c3"):
-        raise ValueError("invalid compartment")
-    return v
+    return Compartment[model_point()["compartment"]]
 
 
 def allocation_profile():
@@ -584,10 +578,7 @@ def allocation_profile():
     against a hard-coded list, so adding an insurer profile to ``allocation_grid.csv``
     is enough to make it usable.
     """
-    v = pdn.lookup_str(prepared_model_point(), "allocation_profile")
-    if v not in set(pdn.keys(data.prepared_allocation_grid_index_selection_level_0())):  # noqa: F821
-        raise ValueError("allocation_profile not in allocation_grid.csv")
-    return v
+    return AllocationProfile[model_point()["allocation_profile"]]
 
 
 def premium_init():
@@ -596,17 +587,17 @@ def premium_init():
     Zero on a cell that has stopped contributing — a c2 or c3 compartment reached by an
     incoming transfer holds acquired rights and receives nothing further.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def av_euro_init():
     """The per-policy euro-support balance carried into the projection."""
-    return pdn.lookup_float(prepared_model_point(), "av_euro_init")
+    return float(model_point()["av_euro_init"])
 
 
 def av_uc_init():
     """The per-policy *unités de compte* balance carried into the projection."""
-    return pdn.lookup_float(prepared_model_point(), "av_uc_init")
+    return float(model_point()["av_uc_init"])
 
 
 def death_floor_init():
@@ -617,7 +608,7 @@ def death_floor_init():
     return is *negative* carries a base **above** its balance, which is the only state in
     which the floor bites; model point 10 is that cell.
     """
-    return pdn.lookup_float(prepared_model_point(), "death_floor_init")
+    return float(model_point()["death_floor_init"])
 
 
 def death_floor_flag():
@@ -626,7 +617,7 @@ def death_floor_flag():
     Included as standard in two sampled contracts, optional in three and an age-rated
     rider in one, so it is a model point column rather than a product constant.
     """
-    return pdn.lookup_bool(prepared_model_point(), "death_floor_flag")
+    return bool(model_point()["death_floor_flag"])
 
 
 def exit_form():
@@ -637,10 +628,8 @@ def exit_form():
     rights may be delivered no other way — and a model point that says otherwise raises
     here rather than projecting a settlement the contract cannot make.
     """
-    v = pdn.lookup_str(prepared_model_point(), "exit_form")
-    if v not in ("capital_single", "capital_staged", "annuity", "mixed"):
-        raise ValueError("invalid exit_form")
-    if compartment() == "c3" and v != "annuity":
+    v = ExitForm[model_point()["exit_form"]]
+    if compartment() == Compartment.c3 and v != ExitForm.annuity:
         raise ValueError(
             "compartment 3 rights may be delivered only as a life annuity")
     return v
@@ -654,13 +643,13 @@ def annuity_share():
     ``mixed`` election must be strictly between the two ends; at either end it is one of
     the pure forms and should say so.
     """
-    theta = pdn.lookup_float(prepared_model_point(), "annuity_share")
+    theta = float(model_point()["annuity_share"])
     form = exit_form()
-    if form == "mixed":
+    if form == ExitForm.mixed:
         if not 0.0 < theta < 1.0:
             raise ValueError("a mixed exit needs 0 < annuity_share < 1")
         return theta
-    expected = 1.0 if form == "annuity" else 0.0
+    expected = 1.0 if form == ExitForm.annuity else 0.0
     if abs(theta - expected) > 1e-12:
         raise ValueError("annuity_share contradicts exit_form")
     return expected
@@ -673,10 +662,10 @@ def capital_instalments():
     changes :func:`capital_instalment_pp` and nothing else — see the Space docstring on
     why staged capital is settled at the horizon.
     """
-    j = pdn.lookup_int(prepared_model_point(), "capital_instalments")
+    j = int(model_point()["capital_instalments"])
     if j < 1:
         raise ValueError("capital_instalments must be at least 1")
-    if j > 1 and exit_form() != "capital_staged":
+    if j > 1 and exit_form() != ExitForm.capital_staged:
         raise ValueError("only a capital_staged exit is paid in instalments")
     return j
 
@@ -690,7 +679,7 @@ def deduction_elected():
     the insurer pays.  It appears in no recursion in this Space and exists so a
     downstream tax layer can find it.
     """
-    return pdn.lookup_bool(prepared_model_point(), "deduction_elected")
+    return bool(model_point()["deduction_elected"])
 
 
 def mort_basis():
@@ -705,10 +694,7 @@ def mort_basis():
     is set so that ``mort_be_factor x q(M, 52)`` is exactly 0.00500.  They diverge after
     that, because a table has a slope and a placeholder does not.
     """
-    v = pdn.lookup_str(prepared_model_point(), "mort_basis")
-    if v not in ("flat", "table"):
-        raise ValueError("invalid mort_basis")
-    return v
+    return MortBasis[model_point()["mort_basis"]]
 
 
 def mort_rate_flat():
@@ -718,12 +704,12 @@ def mort_rate_flat():
     basis, and the one published rate card in the sample is a *gross premium* scale on a
     no-underwriting death rider, which must not be read as one.
     """
-    return pdn.lookup_float(prepared_model_point(), "mort_rate_flat")
+    return float(model_point()["mort_rate_flat"])
 
 
 def pols_if_init():
     """l-(0): the in-force probability carried in; 1.0 on a single-policy model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def proj_years():
@@ -848,6 +834,11 @@ def is_anniv(t):
     return duration_mth(t) % 12 == 11
 
 
+def allocation_schedule():
+    """The euro and UC shares of the policy's allocation profile, by years to horizon."""
+    return data.allocation_grid().loc[allocation_profile()]          # noqa: F821
+
+
 def alloc_euro(t):
     """a(t): the target euro (low-risk) share in month t, read from the grid.
 
@@ -862,9 +853,9 @@ def alloc_euro(t):
     Years beyond the last row of the grid take that row, which is the ``k > 10`` band in
     the shipped file.
     """
-    grid = pdn.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(pdn.last_key(grid))))
-    return float(pdn.lookup_object(grid, k, "euro_share"))
+    grid = allocation_schedule()
+    k = max(1, min(years_to_horizon(t), int(grid.index.max())))
+    return float(grid.loc[k, "euro_share"])
 
 
 def alloc_uc(t):
@@ -874,9 +865,9 @@ def alloc_uc(t):
     whose rows do not close is caught by :func:`check_glide_path_closes` instead of being
     silently half-ignored.
     """
-    grid = pdn.subtable(data.prepared_allocation_grid_groups_1(), allocation_profile())          # noqa: F821
-    k = max(1, min(years_to_horizon(t), int(pdn.last_key(grid))))
-    return float(pdn.lookup_object(grid, k, "uc_share"))
+    grid = allocation_schedule()
+    k = max(1, min(years_to_horizon(t), int(grid.index.max())))
+    return float(grid.loc[k, "uc_share"])
 
 
 def premium_pp(t):
@@ -935,8 +926,8 @@ def switch_pp(t):
     """
     if not is_plan_boy(t):
         return 0.0
-    return (alloc_euro(t) * av_pp_at(t, "BEF_REBAL")
-            - av_euro_pp_at(t, "BEF_REBAL"))
+    return (alloc_euro(t) * av_pp_at(t, AvTiming.BEF_REBAL)
+            - av_euro_pp_at(t, AvTiming.BEF_REBAL))
 
 
 def arbitrage_charge_pp(t):
@@ -1022,23 +1013,23 @@ def av_euro_pp_at(t, timing):
     3.38% clears that comfortably, so the euro support does rise every year; at a credited
     rate of 0% it would fall by the 0.70% charge.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return av_euro_init()
         return av_euro_pp(t - 1)
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         m = switch_pp(t)
-        bom = (av_euro_pp_at(t, "BEF_REBAL") + m
+        bom = (av_euro_pp_at(t, AvTiming.BEF_REBAL) + m
                + alloc_euro(t) * prem_to_av_pp(t))
         if m < 0.0:
             bom -= arbitrage_charge_pp(t)
         return bom
-    if timing == "BEF_CHARGE":
-        return av_euro_pp_at(t, "BOM") * (1.0 + return_euro_mth())
-    if timing == "EOM":
+    if timing == AvTiming.BEF_CHARGE:
+        return av_euro_pp_at(t, AvTiming.BOM) * (1.0 + return_euro_mth())
+    if timing == AvTiming.EOM:
         if not is_anniv(t):
-            return av_euro_pp_at(t, "BEF_CHARGE")
-        return (av_euro_pp_at(t, "BEF_CHARGE")
+            return av_euro_pp_at(t, AvTiming.BEF_CHARGE)
+        return (av_euro_pp_at(t, AvTiming.BEF_CHARGE)
                 * (1.0 - charge_euro))                               # noqa: F821
     raise ValueError("invalid timing")
 
@@ -1056,23 +1047,23 @@ def av_uc_pp_at(t, timing):
     of units, not to their value, and ``return_uc`` is stated net of the fund-level
     charges inside the units, which are large relative to the wrapper charge.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return av_uc_init()
         return av_uc_pp(t - 1)
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         m = switch_pp(t)
-        bom = (av_uc_pp_at(t, "BEF_REBAL") - m
+        bom = (av_uc_pp_at(t, AvTiming.BEF_REBAL) - m
                + alloc_uc(t) * prem_to_av_pp(t))
         if m >= 0.0:
             bom -= arbitrage_charge_pp(t)
         return bom
-    if timing == "BEF_CHARGE":
-        return av_uc_pp_at(t, "BOM") * (1.0 + return_uc_mth())
-    if timing == "EOM":
+    if timing == AvTiming.BEF_CHARGE:
+        return av_uc_pp_at(t, AvTiming.BOM) * (1.0 + return_uc_mth())
+    if timing == AvTiming.EOM:
         if not is_anniv(t):
-            return av_uc_pp_at(t, "BEF_CHARGE")
-        return (av_uc_pp_at(t, "BEF_CHARGE")
+            return av_uc_pp_at(t, AvTiming.BEF_CHARGE)
+        return (av_uc_pp_at(t, AvTiming.BEF_CHARGE)
                 * (1.0 - charge_uc))                                 # noqa: F821
     raise ValueError("invalid timing")
 
@@ -1097,7 +1088,7 @@ def av_euro_pp(t):
     The balance the month *opens* with is ``av_euro_pp_at(t, "BEF_REBAL")``, which is
     :func:`av_euro_init` at ``t = 0``.
     """
-    return av_euro_pp_at(t, "EOM")
+    return av_euro_pp_at(t, AvTiming.EOM)
 
 
 def av_uc_pp(t):
@@ -1106,7 +1097,7 @@ def av_uc_pp(t):
     The balance the month *opens* with is ``av_uc_pp_at(t, "BEF_REBAL")``, which is
     :func:`av_uc_init` at ``t = 0``.
     """
-    return av_uc_pp_at(t, "EOM")
+    return av_uc_pp_at(t, AvTiming.EOM)
 
 
 def av_pp(t):
@@ -1127,7 +1118,7 @@ def av_pp(t):
     The balance the month *opens* with is ``av_pp_at(t, "BEF_REBAL")``, which at ``t = 0``
     is the model point's opening state ``av_euro_init() + av_uc_init()``.
     """
-    return av_pp_at(t, "EOM")
+    return av_pp_at(t, AvTiming.EOM)
 
 
 def av_at(t, timing):
@@ -1139,10 +1130,10 @@ def av_at(t, timing):
     balance; no cash flow in this model reads it, because every claim is already the
     product of a decrement and a per-policy amount.
     """
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         return av_pp_at(t, timing) * pols_if(t)
-    if timing == "EOM":
-        return av_pp_at(t, timing) * pols_if_at(t, "AFT_DECR")
+    if timing == AvTiming.EOM:
+        return av_pp_at(t, timing) * pols_if_at(t, PolTiming.AFT_DECR)
     raise ValueError("invalid timing")
 
 
@@ -1157,8 +1148,8 @@ def inv_income_pp(t):
     It is the only term that opens the gap between the account value and the *garantie
     plancher* base, which is what :func:`check_floor_identity` uses it for.
     """
-    return (av_euro_pp_at(t, "BOM") * return_euro_mth()
-            + av_uc_pp_at(t, "BOM") * return_uc_mth())
+    return (av_euro_pp_at(t, AvTiming.BOM) * return_euro_mth()
+            + av_uc_pp_at(t, AvTiming.BOM) * return_uc_mth())
 
 
 def mgmt_charge_pp(t):
@@ -1191,8 +1182,8 @@ def mgmt_charge_pp(t):
     """
     if not is_anniv(t):
         return 0.0
-    return (av_euro_pp_at(t, "BEF_CHARGE") * charge_euro             # noqa: F821
-            + av_uc_pp_at(t, "BEF_CHARGE") * charge_uc)              # noqa: F821
+    return (av_euro_pp_at(t, AvTiming.BEF_CHARGE) * charge_euro             # noqa: F821
+            + av_uc_pp_at(t, AvTiming.BEF_CHARGE) * charge_uc)              # noqa: F821
 
 
 def death_floor_pp_at(t, timing):
@@ -1213,12 +1204,12 @@ def death_floor_pp_at(t, timing):
     charge — are non-zero in only two months of the twelve, so the base is a step function
     that moves at the plan-year start and at the anniversary and is flat in between.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return death_floor_init()
         return death_floor_pp(t - 1)
-    if timing == "EOM":
-        return (death_floor_pp_at(t, "BEF_REBAL") + prem_to_av_pp(t)
+    if timing == AvTiming.EOM:
+        return (death_floor_pp_at(t, AvTiming.BEF_REBAL) + prem_to_av_pp(t)
                 - arbitrage_charge_pp(t) - mgmt_charge_pp(t))
     raise ValueError("invalid timing")
 
@@ -1249,7 +1240,7 @@ def death_floor_pp(t):
     The base the month *opens* with is ``death_floor_pp_at(t, "BEF_REBAL")``, which at
     ``t = 0`` is :func:`death_floor_init`.
     """
-    return death_floor_pp_at(t, "EOM")
+    return death_floor_pp_at(t, AvTiming.EOM)
 
 
 def floor_in_force(t):
@@ -1288,6 +1279,11 @@ def death_benefit_pp(t):
     return max(av_pp(t), min(death_floor_pp(t), death_floor_cap))    # noqa: F821
 
 
+def mort_schedule():
+    """The mortality rates at the policy's sex, by attained age."""
+    return data.mort_table().loc[sex()]                              # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the **annual** mortality rate of the plan year containing month t.
 
@@ -1304,10 +1300,11 @@ def mort_rate(t):
     accumulation and are cited rather than shipped, their *décalage d'âge* age shifts are
     not reproduced, and no sampled contract publishes a mortality basis at all.
     """
-    if mort_basis() == "flat":
+    if mort_basis() == MortBasis.flat:
         return mort_rate_flat()
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, float(mort_schedule().loc[
+        x, "mort_rate"]) * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1323,6 +1320,11 @@ def mort_rate_mth(t):
     product, so the constant-force reading is a standardization.
     """
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
+
+
+def exit_schedule():
+    """The early-release and transfer rates of the policy's compartment, by duration."""
+    return data.exit_table().loc[compartment()]                      # noqa: F821
 
 
 def early_release_rate(t):
@@ -1345,9 +1347,9 @@ def early_release_rate(t):
     the 0-based :func:`duration` — and compartment 3 carries a lower rate because the
     main-residence limb is closed to it.
     """
-    tbl = pdn.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
-    d = max(1, min(plan_year(t), int(pdn.last_key(tbl))))
-    return float(pdn.lookup_object(tbl, d, "early_release_rate"))
+    tbl = exit_schedule()
+    d = max(1, min(plan_year(t), int(tbl.index.max())))
+    return float(tbl.loc[d, "early_release_rate"])
 
 
 def early_release_rate_mth(t):
@@ -1383,9 +1385,9 @@ def transfer_out_rate(t):
     only: applied over a longer pre-anniversary run it is below 1 on average, and a
     calibration that spans one would have to rescale.
     """
-    tbl = pdn.subtable(data.prepared_exit_table_groups_1(), compartment())                       # noqa: F821
-    d = max(1, min(plan_year(t), int(pdn.last_key(tbl))))
-    return float(pdn.lookup_object(tbl, d, "transfer_out_rate"))
+    tbl = exit_schedule()
+    d = max(1, min(plan_year(t), int(tbl.index.max())))
+    return float(tbl.loc[d, "transfer_out_rate"])
 
 
 def transfer_out_rate_mth(t):
@@ -1445,7 +1447,7 @@ def pols_if(t):
     """
     if t <= 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1484,14 +1486,14 @@ def pols_if_at(t, timing):
     account-value cells use ``"BEF_REBAL"`` / ``"BOM"`` / ``"BEF_CHARGE"`` / ``"EOM"``,
     which mark points in the month's *investment* sequence and not in this chain.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_RELEASE":
+    if timing == PolTiming.BEF_RELEASE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_TRANSFER":
-        return pols_if_at(t, "BEF_RELEASE") * (1.0 - early_release_rate_mth(t))
-    if timing == "AFT_DECR":
-        return pols_if_at(t, "BEF_TRANSFER") * (1.0 - transfer_out_rate_mth(t))
+    if timing == PolTiming.BEF_TRANSFER:
+        return pols_if_at(t, PolTiming.BEF_RELEASE) * (1.0 - early_release_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
+        return pols_if_at(t, PolTiming.BEF_TRANSFER) * (1.0 - transfer_out_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1507,12 +1509,12 @@ def pols_death(t):
 
 def pols_release(t):
     """d_release(t): *déblocages anticipés* in month t, from that month's survivors."""
-    return pols_if_at(t, "BEF_RELEASE") * early_release_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_RELEASE) * early_release_rate_mth(t)
 
 
 def pols_transfer(t):
     """d_transfer(t): transfers out in month t, after that month's deaths and releases."""
-    return pols_if_at(t, "BEF_TRANSFER") * transfer_out_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_TRANSFER) * transfer_out_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1528,7 +1530,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "AFT_DECR")
+    return pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def annuity_factor():
@@ -1547,7 +1549,8 @@ def annuity_factor():
     No sampled insurer publishes an annuity rate card and TGH05 / TGF05 are not shipped,
     so the ladder is a placeholder to be replaced before any quantitative use.
     """
-    return pdn.lookup_float(data.prepared_annuity_factor_table_loc(), (sex(), retirement_age()), 'annuity_factor')
+    return float(data.annuity_factor_table().loc[                    # noqa: F821
+        (sex(), retirement_age()), "annuity_factor"])
 
 
 def capital_leg_pp():
@@ -1675,20 +1678,20 @@ def claim_pp(t, kind):
         ``t = proj_len() - 1`` only.  Where the annuity is *not* commuted its capital leaves as
         :func:`annuity_conversion` instead, so the two never overlap.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return death_benefit_pp(t)
-    if kind == "EARLY_RELEASE":
+    if kind == Kind.EARLY_RELEASE:
         return av_pp(t)
-    if kind == "TRANSFER":
+    if kind == Kind.TRANSFER:
         return av_pp(t) * (1.0 - transfer_indemnity_rate(t))
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         if t != proj_len() - 1:
             return 0.0
         return capital_leg_pp() + commuted_pp()
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Each kind weights :func:`claim_pp` by its own decrement, so a benefit is never
@@ -1696,15 +1699,16 @@ def claims(t, kind=None):
     not a benefit paid to the policyholder but capital handed to the annuity model, and
     it carries its own line in :func:`result_cf`.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY")))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in
+                   (Kind.DEATH, Kind.EARLY_RELEASE, Kind.TRANSFER, Kind.MATURITY))
+    if kind == Kind.DEATH:
         return claim_pp(t, kind) * pols_death(t)
-    if kind == "EARLY_RELEASE":
+    if kind == Kind.EARLY_RELEASE:
         return claim_pp(t, kind) * pols_release(t)
-    if kind == "TRANSFER":
+    if kind == Kind.TRANSFER:
         return claim_pp(t, kind) * pols_transfer(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return claim_pp(t, kind) * pols_maturity(t)
     raise ValueError("invalid kind")
 
@@ -1768,7 +1772,7 @@ def liability_cf(t):
     handed to the annuity model, plus expenses, less *versements*.  :func:`net_cf` is its
     negative.
     """
-    return (claims(t) + annuity_conversion(t) + expenses(t) - premiums(t))
+    return (claims(t, Kind.ALL) + annuity_conversion(t) + expenses(t) - premiums(t))
 
 
 def net_cf(t):
@@ -1795,13 +1799,14 @@ def check_pols_roll_fwd_resid(t):
     shows up here.  It closes **month by month**, not merely at anniversaries.
     """
     return (pols_if(t) - pols_death(t) - pols_release(t)
-            - pols_transfer(t) - pols_if_at(t, "AFT_DECR"))
+            - pols_transfer(t) - pols_if_at(t, PolTiming.AFT_DECR))
 
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return bool(pdn.all_true(
-        (abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_len()))))
+    return bool(all(
+        abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol * max(pols_if_init(), 1.0)  # noqa: F821
+        for t in range(proj_len())))
 
 
 def check_av_roll_fwd_resid(t):
@@ -1822,7 +1827,7 @@ def check_av_roll_fwd_resid(t):
     *versement*, the arbitrage charge and the management charge are simply zero in the
     months they do not fall.
     """
-    built = (av_pp_at(t, "BEF_REBAL") + prem_to_av_pp(t)
+    built = (av_pp_at(t, AvTiming.BEF_REBAL) + prem_to_av_pp(t)
              - arbitrage_charge_pp(t)
              + inv_income_pp(t) - mgmt_charge_pp(t))
     return av_pp(t) - built
@@ -1830,7 +1835,8 @@ def check_av_roll_fwd_resid(t):
 
 def check_av_roll_fwd():
     """True when the account value roll-forward closes in every projected month."""
-    return bool(pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-8 for t in pdn.periods(proj_len()))))
+    return bool(all(abs(check_av_roll_fwd_resid(t)) <= 1e-8
+                    for t in range(proj_len())))
 
 
 def check_floor_identity_resid(t):
@@ -1855,13 +1861,14 @@ def check_floor_identity_resid(t):
     charge would keep the account value at the anniversary and move the base.
     """
     return ((av_pp(t) - death_floor_pp(t))
-            - (av_pp_at(t, "BEF_REBAL")
-               - death_floor_pp_at(t, "BEF_REBAL")) - inv_income_pp(t))
+            - (av_pp_at(t, AvTiming.BEF_REBAL)
+               - death_floor_pp_at(t, AvTiming.BEF_REBAL)) - inv_income_pp(t))
 
 
 def check_floor_identity():
     """True when the *garantie plancher* identity closes in every projected month."""
-    return bool(pdn.all_true((abs(check_floor_identity_resid(t)) <= 1e-8 for t in pdn.periods(proj_len()))))
+    return bool(all(abs(check_floor_identity_resid(t)) <= 1e-8
+                    for t in range(proj_len())))
 
 
 def check_euro_share_min_resid(t):
@@ -1883,7 +1890,7 @@ def check_euro_share_min_resid(t):
     70.00% euro after the rebalancing that opens its last plan year, month 132, and 69.67%
     at the anniversary, month 143.
     """
-    return av_euro_pp_at(t, "BOM") - alloc_euro(t) * av_pp_at(t, "BOM")
+    return av_euro_pp_at(t, AvTiming.BOM) - alloc_euro(t) * av_pp_at(t, AvTiming.BOM)
 
 
 def euro_share_min_bound(t):
@@ -1922,8 +1929,9 @@ def check_euro_share_min():
     on a de-risking switch puts the residual at ``-(1 - a) arb`` where the bound is zero,
     and fails here at the first band crossing.
     """
-    return bool(pdn.all_true(
-        (check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8 for t in pdn.periods(proj_len()) if is_plan_boy(t))))
+    return bool(all(
+        check_euro_share_min_resid(t) >= euro_share_min_bound(t) - 1e-8
+        for t in range(proj_len()) if is_plan_boy(t)))
 
 
 def check_glide_path_closes():
@@ -1937,7 +1945,8 @@ def check_glide_path_closes():
     distinct row of the grid a projection touches is read exactly once; the other eleven
     months of each plan year return the same row.
     """
-    return bool(pdn.all_true((abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12 for t in pdn.periods(proj_len()) if is_plan_boy(t))))
+    return bool(all(abs(alloc_euro(t) + alloc_uc(t) - 1.0) <= 1e-12
+                    for t in range(proj_len()) if is_plan_boy(t)))
 
 
 def check_commutation_identity():
@@ -1968,7 +1977,7 @@ def check_horizon():
     n = proj_len()
     if premium_pp(n) != 0.0 or years_to_horizon(n) != 0:
         return False
-    maturity_mths = [t for t in pdn.periods(n) if pols_maturity(t) > 0.0]
+    maturity_mths = [t for t in range(n) if pols_maturity(t) > 0.0]
     return bool(maturity_mths == [n - 1])
 
 
@@ -1989,16 +1998,16 @@ def result_cf():
     :func:`result_cf_annual` sums this frame into plan years so that it can be laid beside
     the annual-step model it replaced.
     """
-    ts = list(pdn.periods(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(range(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_early_release": [claims(t, "EARLY_RELEASE") for t in ts],
-            "claims_transfer": [claims(t, "TRANSFER") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_early_release": [claims(t, Kind.EARLY_RELEASE) for t in ts],
+            "claims_transfer": [claims(t, Kind.TRANSFER) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "annuity_conversion": [annuity_conversion(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -2040,10 +2049,13 @@ def result_cf_annual():
     the plan-year start.  ``liability_cf`` and ``net_cf`` follow them.  That gap is the
     point of the finer grid.
     """
-    monthly = pdn.table(result_cf(), report=True)
-    years = [duration_mth(t) // 12 for t in pdn.keys(monthly)]
-    annual = pdn.group_sum(monthly, years, first=('pols_if',), last=('av_pp',))
-    return pdn.to_pandas(annual, index_name='t_year')
+    df = result_cf()
+    years = pd.Index([duration_mth(t) // 12 for t in df.index],      # noqa: F821
+                     name="t_year")
+    out = df.drop(columns=["pols_if", "av_pp"]).groupby(years).sum()
+    out.insert(0, "av_pp", df["av_pp"].groupby(years).last())
+    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
+    return out
 
 
 def result_state():
@@ -2066,7 +2078,7 @@ def result_state():
     are one period apart: ``result_state()["pols_if_eoy"].loc[t]`` equals
     ``result_cf()["pols_if"].loc[t + 1]``.
     """
-    ts = list(pdn.periods(proj_len()))                                     # t = 0 .. T - 1
+    ts = list(range(proj_len()))                                     # t = 0 .. T - 1
     return pd.DataFrame(                                             # noqa: F821
         {
             "years_to_horizon": [years_to_horizon(t) for t in ts],
@@ -2078,7 +2090,7 @@ def result_state():
             "av_uc_pp": [av_uc_pp(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "death_floor_pp": [death_floor_pp(t) for t in ts],
-            "pols_if_eoy": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_eoy": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2102,7 +2114,7 @@ def result_state_annual():
     Every figure in it reproduces the annual-step model's to floating point, which is what
     lets the notes' worked example stay in the notes and still be asserted.
     """
-    years = list(pdn.periods(proj_years()))
+    years = list(range(proj_years()))
     bom = [12 * y for y in years]                    # the rebalancing month
     eom = [12 * y + 11 for y in years]               # the anniversary month
     return pd.DataFrame(                                             # noqa: F821
@@ -2116,7 +2128,7 @@ def result_state_annual():
             "av_uc_pp": [av_uc_pp(t) for t in eom],
             "av_pp": [av_pp(t) for t in eom],
             "death_floor_pp": [death_floor_pp(t) for t in eom],
-            "pols_if_eoy": [pols_if_at(t, "AFT_DECR") for t in eom],
+            "pols_if_eoy": [pols_if_at(t, PolTiming.AFT_DECR) for t in eom],
         },
         index=pd.Index(years, name="t_year"),                        # noqa: F821
     )
@@ -2150,15 +2162,10 @@ def result_settlement():
             "commuted_pp": commuted_pp(),
             "annuity_conversion_pp": annuity_conversion_pp(),
             "death_floor_pp": death_floor_pp(t_last),
-            "pols_if_eoy": pols_if_at(t_last, "AFT_DECR"),
+            "pols_if_eoy": pols_if_at(t_last, PolTiming.AFT_DECR),
         },
         name="settlement",
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2206,4 +2213,20 @@ roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+Compartment = ("Pickle", 2)
+
+AllocationProfile = ("Pickle", 3)
+
+ExitForm = ("Pickle", 4)
+
+MortBasis = ("Pickle", 5)
+
+AvTiming = ("Pickle", 6)
+
+PolTiming = ("Pickle", 7)
+
+Kind = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)
