@@ -779,7 +779,7 @@ def los_days(band):
     sourced national mean [REG-R27].
     """
     sub = data.los_table().loc[band]                                 # noqa: F821
-    return tuple(int(d) for d in sub.index)
+    return [int(d) for d in sub.index]
 
 
 def los_probs(band):
@@ -794,7 +794,7 @@ def los_probs(band):
     without changing the calibration target at all.
     """
     sub = data.los_table().loc[band]                                 # noqa: F821
-    return tuple(float(sub.loc[d, "prob"]) for d in sub.index)
+    return [float(sub.loc[d, "prob"]) for d in sub.index]
 
 
 def min_days_floor():
