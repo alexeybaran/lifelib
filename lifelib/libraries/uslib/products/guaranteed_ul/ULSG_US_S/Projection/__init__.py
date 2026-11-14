@@ -658,6 +658,11 @@ def prem_persistency_override():
     return model_point()["prem_persistency_override"]
 
 
+def has_prem_persistency_override():
+    """Whether the model point carries a premium persistency override (D64: the missing-value test, per policy)."""
+    return not pd.isna(prem_persistency_override())                  # noqa: F821
+
+
 def prem_persistency(t):
     """phi_t: the probability the scheduled premium is actually paid **[std]**.
 
@@ -676,7 +681,7 @@ def prem_persistency(t):
     account, the cumulative premium and the premium income all move together.
     """
     o = prem_persistency_override()
-    if not pd.isna(o):                                               # noqa: F821
+    if has_prem_persistency_override():
         return float(o)
     return prem_persistency_ann if premium_type() == PremiumType.LEVEL else 1.0  # noqa: F821
 
