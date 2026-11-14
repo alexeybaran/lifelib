@@ -25,9 +25,10 @@ import math
 
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.indexed_ul.enums import Claim, CreditBase, DeathBenefitOption, PremiumMode, Timing
+from lifelib.libraries.uslib.products.indexed_ul.enums import Basis, Claim, CreditBase, DeathBenefitOption, PremiumMode, Timing
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -137,7 +138,7 @@ def test_worked_example_transamerica_credit_base_variation(anchor):
     assert anchor.index_credit(bal0, ded, 0.12, CreditBase.ADJ_BEGIN) == pytest.approx(
         WORKED_EXAMPLE_ADJ_BEGIN_CREDIT, abs=CENT)
     # ... and the baseline convention is the one the model runs on.
-    assert anchor.seg_credit_base_conv == "REMAINING"
+    assert anchor.seg_credit_base_conv == CreditBase.REMAINING
     assert anchor.index_credit(bal0, ded, 0.12) == pytest.approx(1182.00, abs=CENT)
 
 
@@ -806,7 +807,7 @@ def test_guaranteed_basis_diverges_dramatically():
         curr = model.Projection[1]
         curr.result_cf()
         base_av = curr.av_pp(119)                          # end of policy year 10
-        model.Projection.basis = "GUARANTEED"
+        model.Projection.basis = Basis.GUARANTEED
         model.Projection.clear_all()
         guar = model.Projection[1]
         guar.result_cf()
@@ -930,7 +931,7 @@ def test_the_model_docstring_describes_the_shipped_model_points(indexed_ul):
     first pitfall.
     """
     tbl = indexed_ul.Data.model_point_table()
-    assert len(tbl) == 5
+    assert len(pdn.to_pandas(tbl)) == 5
     doc = indexed_ul.doc
     assert "carries five points" in doc
     assert "four points" not in doc
