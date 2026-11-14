@@ -159,9 +159,9 @@ def uc_scenario_table():
     returns and accrue to the fund manager rather than to the insurer.  Sorted on read,
     because ``Projection.uc_return_mth`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / uc_scenario_table_file,                         # noqa: F821
-        index_col="scenario_id").sort_index()
+        index_col=["scenario_id", "from_month"]).sort_index())
 
 
 # ---------------------------------------------------------------------------

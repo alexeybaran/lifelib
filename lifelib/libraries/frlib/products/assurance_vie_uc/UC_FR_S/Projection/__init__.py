@@ -643,8 +643,8 @@ def euro_credit_factor_mth():
 
 
 def uc_scenario_segments():
-    """The month segments of the policy's UC return scenario (a pandas DataFrame)."""
-    return data.uc_scenario_table().loc[[uc_return_scenario()]]      # noqa: F821
+    """The month segments of the policy's UC return scenario, keyed by ``from_month``."""
+    return data.uc_scenario_table().loc[uc_return_scenario()]        # noqa: F821
 
 
 def uc_return_mth(t):
@@ -657,9 +657,9 @@ def uc_return_mth(t):
     a projection that has run off the end of its scenario is not projecting anything.
     """
     tbl = uc_scenario_segments()
-    for lo, hi, r in zip(tbl["from_month"], tbl["to_month"], tbl["uc_return_mth"]):
-        if int(lo) <= t <= int(hi):
-            return float(r)
+    lo = tbl.index.asof(t)
+    if t <= int(tbl.loc[lo, "to_month"]):
+        return float(tbl.loc[lo, "uc_return_mth"])
     raise ValueError("no scenario segment covers this month")
 
 
