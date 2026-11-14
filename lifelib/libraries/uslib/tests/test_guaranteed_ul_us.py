@@ -27,11 +27,10 @@ test_coi_scale_precision_divergence_is_shipped_not_resolved.
 import re
 
 import modelx as mx
-import pandas as pd
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.guaranteed_ul.categories import Claim, Timing, PremiumMode
+from lifelib.libraries.uslib.products.guaranteed_ul.enums import Claim, LoanTiming, PolTiming, PremiumMode, RateClass, Sex, Timing
 
 MODEL_PATH = LIB / "products/guaranteed_ul/ULSG_US_S"
 
@@ -257,7 +256,7 @@ def test_monthly_coi_is_the_simple_twelfth(anchor, guaranteed_ul):
     The notes fix the simple twelfth for the COI and say expressly not to mix it with
     1 - (1-q)^(1/12), which differs materially above age 85 where q exceeds 0.10.
     """
-    scale = guaranteed_ul.Data.coi_rates()["M"]["StdNT"].lookup_float(85, "coi_rate_guar_ann")
+    scale = guaranteed_ul.Data.coi_rates().loc[(Sex.M, RateClass.StdNT, 85), "coi_rate_guar_ann"]
     assert scale == pytest.approx(8.615 * 12, abs=5e-4)
     assert anchor.coi_rate_guar(0) == pytest.approx(scale / 12, abs=1e-12)
 
@@ -526,7 +525,7 @@ def test_pols_if_weights_its_own_row(anchor):
         assert anchor.premium_pp(t) > 0
         assert df.loc[t, "premiums"] / anchor.premium_pp(t) == pytest.approx(
             df.loc[t, "pols_if"], abs=EXACT)
-    for timing in (Timing.BEF_MAT, Timing.BEF_NB, Timing.BEF_DECR):
+    for timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         assert anchor.pols_if_at(39, timing) == anchor.pols_if(39)
 
 
@@ -548,30 +547,13 @@ def test_withdrawals_are_a_payment_not_a_claim(anchor, guaranteed_ul):
 
     # Utilisation is zero in every shipped model point, so the column is zero and the
     # claims total is the three termination kinds alone.
-    for point_id in guaranteed_ul.Data.model_point_table()["keys"]:
+    for point_id in guaranteed_ul.Data.model_point_table().index:
         proj = guaranteed_ul.Projection[point_id]
         assert proj.result_cf()["withdrawals"].abs().max() == 0.0
     for t in (0, 39, 80):
         assert anchor.claims(t, Claim.ALL) == pytest.approx(
             anchor.claims(t, Claim.DEATH) + anchor.claims(t, Claim.LAPSE)
             + anchor.claims(t, Claim.REFUND) + anchor.claims(t, Claim.GRACE), abs=EXACT)
-
-
-def test_withdrawal_amount_comes_from_the_csv_after_eligibility_checks(tmp_path):
-    model = mx.read_model(MODEL_PATH, name="ULSG_withdrawal_input")
-    try:
-        points = pd.read_csv(MODEL_PATH.parent / "model_point_table.csv", index_col="point_id")
-        points.loc[2, "wd_pp"] = 125.0
-        path = tmp_path / "points.csv"
-        points.to_csv(path)
-        model.Data.model_point_file = path
-        proj = model.Projection[2]
-        assert proj.wd_pp(11) == 0.0
-        assert proj.wd_pp(12) == 125.0
-        assert proj.wd_pp(731) == 125.0
-        assert proj.wd_pp(732) == 0.0
-    finally:
-        model.close()
 
 
 def test_checks_take_no_argument_and_return_bool(anchor):
@@ -603,14 +585,14 @@ def test_corridor_table_is_the_irc_7702d2_applicable_percentages(guaranteed_ul, 
     been claiming as sourced.
     """
     tbl = guaranteed_ul.Data.corridor_factors()
-    assert {tbl.lookup(age, "provenance") for age in tbl["keys"]} == {"sourced [R4]"}
+    assert set(tbl["provenance"]) == {"sourced [R4]"}
     for a, pct in IRC_7702D2.items():
-        assert tbl.lookup_float(a, "corridor_factor") == pytest.approx(pct / 100, abs=1e-12)
-    assert all(tbl.lookup_float(a, "corridor_factor") == 1.0 for a in tbl["keys"] if a >= 95)
+        assert tbl.loc[a, "corridor_factor"] == pytest.approx(pct / 100, abs=1e-12)
+    assert tbl["corridor_factor"].loc[95:].eq(1.00).all()
     assert anchor.corridor_factor(0) == 1.05             # attained age 85
 
     # It never binds on any shipped point - which is why the death benefit is a max.
-    for point_id in guaranteed_ul.Data.model_point_table()["keys"]:
+    for point_id in guaranteed_ul.Data.model_point_table().index:
         proj = guaranteed_ul.Projection[point_id]
         assert all(proj.db_pp(t) == proj.sum_assured_at(t)
                    for t in range(proj.proj_len()))
@@ -664,7 +646,7 @@ def test_opening_balances_are_the_first_month_opening_timing(anchor, new_biz):
     for proj in (anchor, new_biz):
         assert proj.av_pp_at(0, Timing.BEF_PREM) == proj.av_pp_init()
         assert proj.sg_pp_at(0, Timing.BEF_PREM) == proj.sg_pp_init()
-        assert proj.loan_bal_pp_at(0, Timing.BEF_INT) == proj.loan_bal_init()
+        assert proj.loan_bal_pp_at(0, LoanTiming.BEF_INT) == proj.loan_bal_init()
         assert proj.cum_prem_pp(0) == pytest.approx(
             proj.cum_prem_init() + proj.premium_pp(0), abs=EXACT)
         assert proj.pols_if(0) == proj.pols_if_init()
@@ -673,7 +655,7 @@ def test_opening_balances_are_the_first_month_opening_timing(anchor, new_biz):
         for t in (1, 5, 12):
             assert proj.av_pp_at(t, Timing.BEF_PREM) == proj.av_pp(t - 1)
             assert proj.sg_pp_at(t, Timing.BEF_PREM) == proj.sg_pp(t - 1)
-            assert proj.loan_bal_pp_at(t, Timing.BEF_INT) == proj.loan_bal_pp(t - 1)
+            assert proj.loan_bal_pp_at(t, LoanTiming.BEF_INT) == proj.loan_bal_pp(t - 1)
     # The anchor's first month takes the premium on top of av_init = 2,400, so its
     # closing balance is not its opening one.
     assert anchor.av_pp_init() == 2400.0

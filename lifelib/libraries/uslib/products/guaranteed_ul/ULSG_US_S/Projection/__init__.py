@@ -307,8 +307,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as an immutable row."""
-    return data.model_point_table().slice(point_id)                    # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def age_at_entry():
@@ -318,12 +318,12 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def rate_class():
     """The underwriting class of the selected model point (four NT, two tobacco) [S4]."""
-    return model_point()["rate_class"]
+    return RateClass[model_point()["rate_class"]]
 
 
 def sum_assured():
@@ -346,18 +346,12 @@ def premium_type():
     A first-class model point attribute because funding pattern drives both the
     guarantee trajectory and observed lapse behaviour [R8].
     """
-    label = model_point()["premium_type"]
-    if label == "UNKNOWN":
-        raise KeyError(label)
-    return PremiumType[label]
+    return PremiumType[model_point()["premium_type"]]
 
 
 def premium_mode():
     """The premium mode: ``"A"``, ``"S"``, ``"Q"`` or ``"M"`` (EFT only) [S2]."""
-    label = model_point()["premium_mode"]
-    if label == "UNKNOWN":
-        raise KeyError(label)
-    return PremiumMode[label]
+    return PremiumMode[model_point()["premium_mode"]]
 
 
 def premium_pp_ann():
@@ -475,7 +469,7 @@ def coi_rate_dp():
     way for an admin system to carry a rate table and reproduces the notes' table.
     """
     o = model_point()["coi_rate_dp"]
-    return -1 if pdn.isna(o) else int(o)           # noqa: F821
+    return -1 if pd.isna(o) else int(o)                              # noqa: F821
 
 
 def duration_mth(t):
@@ -659,6 +653,11 @@ def is_premium_mth(t):
     return duration_mth(t) % (12 // premium_freq()) == 0
 
 
+def prem_persistency_override():
+    """The model point's premium persistency override; blank (NaN) when there is none."""
+    return model_point()["prem_persistency_override"]
+
+
 def prem_persistency(t):
     """phi_t: the probability the scheduled premium is actually paid **[std]**.
 
@@ -676,8 +675,8 @@ def prem_persistency(t):
     phi once, to the premium actually received, so the account value, the shadow
     account, the cumulative premium and the premium income all move together.
     """
-    o = model_point()["prem_persistency_override"]
-    if not pdn.isna(o):                            # noqa: F821
+    o = prem_persistency_override()
+    if not pd.isna(o):                                               # noqa: F821
         return float(o)
     return prem_persistency_ann if premium_type() == PremiumType.LEVEL else 1.0  # noqa: F821
 
@@ -737,6 +736,11 @@ def cum_prem_pp(t):
     return prev + premium_pp(t)
 
 
+def wd_pp_amount():
+    """The model point's constant monthly withdrawal amount."""
+    return float(model_point()["wd_pp"])
+
+
 def wd_pp(t):
     """W_t: the partial withdrawal per policy at BOM of policy month t.
 
@@ -751,7 +755,7 @@ def wd_pp(t):
         return 0.0
     if age(t) >= charges_cease_age:                                  # noqa: F821
         return 0.0
-    return float(model_point()["wd_pp"])
+    return wd_pp_amount()
 
 
 def wd_fee_pp(t):
@@ -781,8 +785,8 @@ def corridor_factor(t):
     but it is the reason the death benefit is a ``max`` rather than the face amount.
     """
     tbl = data.corridor_factors()                                    # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return tbl.lookup_float(a, "corridor_factor")
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return float(tbl.loc[a, "corridor_factor"])
 
 
 def db_pp(t):
@@ -825,11 +829,6 @@ def sg_net_amt_at_risk(t):
                - max(sg_pp_at(t, Timing.BEF_COI), 0.0))
 
 
-def coi_table() -> "modelx_helpers.immutable_inputs.Table":
-    """The original COI table for this policy's sex and underwriting class."""
-    return data.coi_rates().slice(sex(), rate_class())
-
-
 def coi_rate_scale():
     """The guaranteed maximum annual COI scale for this model point's cell.
 
@@ -838,8 +837,7 @@ def coi_rate_scale():
     covers the anchor cell M / StdNT over attained ages 45-121 only; a model point on
     any other cell, or a younger attained age, needs the table extended first.
     """
-    group = data.coi_rates().slice(sex(), rate_class())
-    return pdn.to_pandas(pdn.column(group, "coi_rate_guar_ann", report=True))
+    return data.coi_rates().loc[(sex(), rate_class())]  # noqa: F821
 
 
 def coi_rate_guar(t):
@@ -852,9 +850,9 @@ def coi_rate_guar(t):
     to be stated in the policy [R3]; carriers do not publish them, so the shipped
     scale is illustrative **[std]**, not the 2017 CSO table [REG-R17].
     """
-    scale = coi_table()
-    a = min(age(t), scale.index.max_int())
-    return scale.lookup_float(a, "coi_rate_guar_ann") / 12
+    scale = coi_rate_scale()
+    a = min(age(t), int(scale.index.max()))
+    return float(scale.loc[a, "coi_rate_guar_ann"]) / 12
 
 
 def coi_rate(t):
@@ -1111,7 +1109,7 @@ def inv_income_pp(t):
     With the account value exhausted the credit is zero, which is why the worked
     example shows no interest from policy month 304 (``t = 3`` on the anchor).
     """
-    loaned = loan_bal_pp_at(t, Timing.BEF_INT)
+    loaned = loan_bal_pp_at(t, LoanTiming.BEF_INT)
     unloaned = av_pp_at(t, Timing.BEF_INV) - loaned
     return unloaned * inv_return_mth(t) + loaned * loan_cr_rate_mth()
 
@@ -1177,7 +1175,7 @@ def loan_bal_pp_at(t, timing):
 
     The end-of-month balance ``L_t`` is :func:`loan_bal_pp`.
     """
-    if timing == Timing.BEF_INT:
+    if timing == LoanTiming.BEF_INT:
         return loan_bal_init() if t == 0 else loan_bal_pp(t - 1)
     else:
         raise ValueError("invalid timing")
@@ -1195,7 +1193,7 @@ def loan_bal_pp(t):
     and from the surrender value; the shadow account itself is not reduced by it
     [S4][S2].
     """
-    return loan_bal_pp_at(t, Timing.BEF_INT) * (1 + loan_rate_mth())
+    return loan_bal_pp_at(t, LoanTiming.BEF_INT) * (1 + loan_rate_mth())
 
 
 def sg_pp_at(t, timing):
@@ -1292,7 +1290,7 @@ def is_guar_supported(t):
     whole death benefit.  ``L_{t-1}`` is the opening loan balance
     ``loan_bal_pp_at(t, "BEF_INT")``.
     """
-    return sg_pp_at(t, Timing.BEF_INV) - loan_bal_pp_at(t, Timing.BEF_INT) > 0
+    return sg_pp_at(t, Timing.BEF_INV) - loan_bal_pp_at(t, LoanTiming.BEF_INT) > 0
 
 
 def catch_up_prem_pp(t):
@@ -1307,6 +1305,18 @@ def catch_up_prem_pp(t):
     return max(0.0, -sg_net_pp(t)) / (1 - load_prem_rate_sg)         # noqa: F821
 
 
+def surr_charge_init():
+    """The schedule's initial surrender charge per $1,000 of face."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["sc_per_1000_init"])
+
+
+def surr_charge_runoff_years():
+    """The schedule's run-off period in years."""
+    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821
+    return float(row["runoff_years"])
+
+
 def surr_charge_rate(t):
     """SC per $1,000 of initial face in policy month t **[std]**.
 
@@ -1319,10 +1329,8 @@ def surr_charge_rate(t):
     """
     if not has_surr_charge():
         return 0.0
-    tbl = data.surr_charge_table()                                   # noqa: F821
-    schedule = surr_charge_id()
-    init = tbl.lookup_float(schedule, "sc_per_1000_init")
-    yrs = tbl.lookup_float(schedule, "runoff_years")
+    init = surr_charge_init()
+    yrs = surr_charge_runoff_years()
     m = duration_mth(t) + 1
     return max(0.0, init - (init / yrs) * (m / 12))
 
@@ -1464,7 +1472,7 @@ def rop_ratio(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return data.rop_table().lookup_float(a, "refund_ratio")             # noqa: F821
+    return float(data.rop_table().loc[a, "refund_ratio"])             # noqa: F821
 
 
 def rop_rate(t):
@@ -1478,12 +1486,12 @@ def rop_rate(t):
     a = rop_anniversary(t)
     if a == 0:
         return 0.0
-    return data.rop_table().lookup_float(a, "exercise_rate")            # noqa: F821
+    return float(data.rop_table().loc[a, "exercise_rate"])            # noqa: F821
 
 
 def class_factor():
     """The underwriting-class multiplier on the best-estimate mortality table **[std]**."""
-    return data.class_factor_table().lookup_float(rate_class(), "factor")  # noqa: F821
+    return float(data.class_factor_table().loc[rate_class(), "factor"])  # noqa: F821
 
 
 def mort_improve_rate(t):
@@ -1532,8 +1540,8 @@ def mort_rate(t):
     pushing the terminal rate past certainty.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    a = min(max(age(t), int(pdn.first_key(tbl))), tbl.index.max_int())
-    return min(1.0, tbl.lookup_float(a, "mort_rate") * class_factor()
+    a = min(max(age(t), int(tbl.index.min())), int(tbl.index.max()))
+    return min(1.0, float(tbl.loc[a, "mort_rate"]) * class_factor()
                * mort_ae_factor * mort_improve_factor(t))            # noqa: F821
 
 
@@ -1557,8 +1565,8 @@ def lapse_rate_base(t):
     a paid data package, so the levels are a standardization.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), tbl.index.max_int())
-    return tbl.lookup_float(y, "lapse_rate_ann")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate_ann"])
 
 
 def lapse_rate_guar_mult():
@@ -1658,7 +1666,7 @@ def pols_if_at(t, timing):
     no maturity date, so nothing changes the policy count between BOM and the
     end-of-month decrements.
     """
-    if timing == Timing.BEF_MAT or timing == Timing.BEF_NB or timing == Timing.BEF_DECR:
+    if timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         return pols_if(t)
     else:
         raise ValueError("invalid timing")
@@ -1734,7 +1742,7 @@ def claim_pp(t, kind):
     ``"WITHDRAWAL"``
         ``W_t``.  The $25 fee is retained by the insurer and is not part of the
         payment.  A withdrawal is not a claim -- the aggregate cash flow is
-        :func:`withdrawals`, not ``claims(t, Claim.WITHDRAWAL)``, which raises -- but the
+        :func:`withdrawals`, not ``claims(t, "WITHDRAWAL")``, which raises -- but the
         per-policy amount keeps its branch here because :func:`withdrawals` weights it.
 
     ``"GRACE"``
@@ -1798,14 +1806,14 @@ def claims_over_av(t):
 def claims(t, kind):
     """Claim outgo in policy month t, optionally by ``kind``.
 
-    ``kind`` is ``"DEATH"``, ``"LAPSE"``, ``"REFUND"``, ``"GRACE"``, or ``Claim.ALL`` for
+    ``kind`` is ``"DEATH"``, ``"LAPSE"``, ``"REFUND"``, ``"GRACE"``, or ``None`` for
     the total.  Death claims are weighted by :func:`pols_death`, surrenders by
     :func:`pols_lapse` and refunds by :func:`pols_rop`, all end-of-month events.
 
     ``"WITHDRAWAL"`` is deliberately **not** a claim kind and raises: a partial
     withdrawal is a payment on the owner's election out of a policy that stays in
     force, so it is :func:`withdrawals`.  Keeping it out of this cells is what keeps
-    the ``kind == Claim.ALL`` total from double-counting it against the ``withdrawals``
+    the ``kind is None`` total from double-counting it against the ``withdrawals``
     column of :func:`result_cf`.
     """
     if kind == Claim.DEATH:
@@ -1817,9 +1825,8 @@ def claims(t, kind):
     elif kind == Claim.GRACE:
         return 0.0
     elif kind == Claim.ALL:
-        # The four claim kinds occupy the first four enum codes.
-        return sum(claims(t, claim_kind) for claim_kind in (
-            Claim.DEATH, Claim.LAPSE, Claim.REFUND, Claim.GRACE))
+        return sum(claims(t, k) for k in
+                   (Claim.DEATH, Claim.LAPSE, Claim.REFUND, Claim.GRACE))
     else:
         raise ValueError("invalid kind")
 
@@ -2290,14 +2297,20 @@ pd = ("Module", "pandas")
 
 math = ("Module", "math")
 
-Timing = ("Pickle", 1)
+Sex = ("Pickle", 1)
 
-Claim = ("Pickle", 2)
+RateClass = ("Pickle", 2)
 
 PremiumType = ("Pickle", 3)
 
 PremiumMode = ("Pickle", 4)
 
-enum_definitions = ("Pickle", 5)
+Timing = ("Pickle", 5)
 
-pdn = ("Module", "modelx_helpers.pdn")
+LoanTiming = ("Pickle", 6)
+
+PolTiming = ("Pickle", 7)
+
+Claim = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)

@@ -14,7 +14,8 @@ policies are projected.
 
 Inputs are **external files**: plain CSVs in the model folder's parent directory,
 ``products/guaranteed_ul/``, rather than data stored inside the model. The model
-folder holds formulas and enum definitions. It does not embed any CSV data. This follows
+folder therefore holds nothing but formulas -- no ``_data/``, no IOSpec, no embedded
+values -- so a diff of the model shows logic changes only. This follows
 ``annuallife.TradLife_A``; contrast ``basiclife.BasicTerm_S``, which keeps its inputs
 *inside* the model through modelx's IOSpec machinery.
 
@@ -80,7 +81,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def coi_rates():
@@ -91,9 +92,10 @@ def coi_rates():
     requires the guaranteed maxima to be stated in the policy, and [REG-R17] names the
     2017 CSO family the notes point at.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / coi_rates_file,                                # noqa: F821
-        index_col=["sex", "rate_class", "age"]), groups=("sex", "rate_class"), report=True)
+    frame = pd.read_csv(input_dir() / coi_rates_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index(["sex", "rate_class", "age"]))
 
 
 def corridor_factors():
@@ -108,7 +110,9 @@ def mort_table():
 
 def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
+    frame = pd.read_csv(input_dir() / class_factor_file)             # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index("rate_class"))
 
 
 def lapse_table():
@@ -156,3 +160,7 @@ rop_file = "rop_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+RateClass = ("Pickle", 2)

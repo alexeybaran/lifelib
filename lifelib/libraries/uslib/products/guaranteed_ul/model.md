@@ -109,18 +109,17 @@ products/guaranteed_ul/
   rop_table.csv
   run.py
   README.md
-  categories.py                 (enum definitions for the projection)
-  ULSG_US_S/
+  ULSG_US_S/              <- formulas only
     __init__.py                   (model docstring)
     _system.json
     Data/__init__.py              (reads the CSVs, once per model)
     Projection/__init__.py        (the by-policy projection)
-    _data/data.pickle             (serialized references to enum definitions)
 ```
 
 This follows lifelib's `annuallife/TradLife_A`, which keeps its inputs beside the model
-and reads them at run time. The serialized enum references carry model code definitions.
-The original CSV files supply the policy and assumption values.
+and reads them at run time. It is the opposite of `basiclife/BasicTerm_S`, which stores
+its inputs *inside* the model through modelx's IOSpec machinery — hence no `_data/`
+directory and no embedded values here at all.
 
 ### Read once, in `Data`
 
@@ -129,9 +128,6 @@ ItemSpace with its own cells cache. Readers placed there would re-read every fil
 every policy. They live instead in an unparameterized **`Data`** Space, which
 `Projection` references as `data` — so each file is read once per model no matter how
 many policies are projected.
-
-The Data Cells wrap the CSV results in immutable tables. Projection Cells use those
-tables for lookups. Open the saved model with `modelx.read_model()` as usual.
 
 `Data.input_dir()` resolves the location from `_model.path.parent` when the model is
 read, so it works wherever the repository is checked out. Each table has a filename
