@@ -339,7 +339,7 @@ def test_monthly_mode_collects_twelve_instalments(whole_life):
     income carries the 3% modal load and is spread across a decrementing block.
     """
     monthly, annual = whole_life.Projection[15], whole_life.Projection[2]
-    assert (monthly.premium_mode(), annual.premium_mode()) == ("M", "A")
+    assert (monthly.premium_mode(), annual.premium_mode()) == (PremiumMode.M, PremiumMode.A)
     assert monthly.modal_factor() == 0.085833            # the [S1] par scale
     assert monthly.prem_cycle() == 1 and annual.prem_cycle() == 12
     assert monthly.premium_pp_ann(0) == annual.premium_pp_ann(0) == 1800.0
@@ -608,7 +608,7 @@ def test_cv_schedule_is_sex_distinct(whole_life):
     assert checked == 6
 
     male, female = whole_life.Projection[2], whole_life.Projection[10]
-    assert (male.sex(), female.sex()) == ("M", "F")
+    assert (male.sex(), female.sex()) == (Sex.M, Sex.F)
     assert male.cv_pp(anniv(9)) == pytest.approx(11200.0, abs=CENT)   # the worked example
     assert female.cv_pp(anniv(9)) == pytest.approx(9800.0, abs=CENT)  # its own schedule
     assert female.cv_pp(female.proj_len() - 1) == pytest.approx(
@@ -1008,7 +1008,7 @@ def test_the_loan_reduces_every_benefit(whole_life):
     loaned, plain = whole_life.Projection[6], whole_life.Projection[2]
     last = loaned.proj_len() - 1
     a9, a8 = anniv(9), anniv(8)
-    for kind, t in (("DEATH", a9), ("LAPSE", a9), ("MATURITY", last)):
+    for kind, t in ((Kind.DEATH, a9), (Kind.LAPSE, a9), (Kind.MATURITY, last)):
         assert loaned.claim_pp(t, kind) < plain.claim_pp(t, kind)
     assert loaned.claim_pp(last, Kind.MATURITY) == pytest.approx(
         plain.claim_pp(last, Kind.MATURITY) - loaned.loan_bal(last), abs=CENT)
@@ -1115,7 +1115,7 @@ def test_result_cf_annual_is_the_monthly_frame_summed(anchor, newbiz):
 
 
 def test_timing_and_kind_reject_unknown_values(newbiz):
-    for timing in ("BEF_DECR", "BEF_SURR", "BEF_MAT", "AFT_DECR"):
+    for timing in (PolTiming.BEF_DECR, PolTiming.BEF_SURR, PolTiming.BEF_MAT, PolTiming.AFT_DECR):
         assert newbiz.pols_if_at(anniv(9), timing) >= 0.0
     with pytest.raises(Exception, match="invalid timing"):
         newbiz.pols_if_at(anniv(9), "BEF_LUNCH")
