@@ -21,6 +21,7 @@ derived 1-based label and indexes only the annual display grid.
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 
 from us_registry import LIB
 from lifelib.libraries.uslib.products.deferred_income_annuity.enums import Claim, DbForm, FactorBasis, IncomeForm, MarketType, MortBasis, PaymentTiming, Phase, ReductionTrigger
@@ -802,6 +803,6 @@ def test_the_premium_schedule_is_a_separate_table(deferred_income_annuity):
     cannot live in a fixed set of model point columns."""
     anchor = deferred_income_annuity.Projection[1]
     assert anchor.premium_by_mth() == {0: 100000.0, 60: 50000.0}
-    assert len(anchor.premium_schedule()) == 2
+    assert len(pdn.to_pandas(anchor.premium_schedule())) == 2
     single = deferred_income_annuity.Projection[11]
     assert single.premium_by_mth() == {0: 210000.0}

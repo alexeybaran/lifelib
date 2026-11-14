@@ -100,7 +100,7 @@ def premium_schedule_table():
     indexed, so that selecting a contract's rows returns a DataFrame whether it has one
     slice or many.
     """
-    return pd.read_csv(input_dir() / premium_schedule_file)           # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / premium_schedule_file).set_index(["point_id", "premium_mth"]).sort_index())           # noqa: F821
 
 
 def mort_table():

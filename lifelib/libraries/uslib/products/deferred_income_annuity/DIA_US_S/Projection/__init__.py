@@ -524,8 +524,7 @@ def premium_schedule():
     period" [S2][S3][S4][R13] - so the schedule is a separate long table rather than a
     fixed set of model point columns.
     """
-    tbl = data.premium_schedule_table()                              # noqa: F821
-    return tbl[tbl["point_id"] == point_id].sort_values("premium_mth")  # noqa: F821
+    return data.premium_schedule_table().loc[point_id]               # noqa: F821
 
 
 def premium_by_mth():
@@ -535,9 +534,11 @@ def premium_by_mth():
     than a DataFrame filter in every one of the projected months.
     """
     out = {}
-    for _, r in premium_schedule().iterrows():
-        k = int(r["premium_mth"])
-        out[k] = out.get(k, 0.0) + float(r["premium_amt"])
+    if point_id not in data.premium_schedule_table().index:          # noqa: F821
+        return out
+    sub = premium_schedule()
+    for k in sub.index:
+        out[int(k)] = out.get(int(k), 0.0) + float(sub.loc[k, "premium_amt"])
     return out
 
 
@@ -909,12 +910,10 @@ def annuity_factor(start_mth, guar_mths, int_rate, from_mth):
         p_start = q1
     last = horizon_mths()
     total = 0.0
-    k = 1
-    while True:
+    n = int((last - start_mth) // step) + 1 if adv else int((last - start_mth) // step)
+    for k in range(1, n + 1):
         off = (k - 1) * step if adv else k * step
         s = start_mth + off
-        if s > last:
-            break
         cert = p_start if k * step <= guar_mths else 0.0
         p1 = lives_if(s, 1) / l1f
         if jt and l2f > 0.0:
@@ -926,7 +925,6 @@ def annuity_factor(start_mth, guar_mths, int_rate, from_mth):
         else:
             lf = p1
         total += (1.0 / m) * v ** ((s - from_mth) / 12.0) * max(cert, lf)
-        k += 1
     return total
 
 
