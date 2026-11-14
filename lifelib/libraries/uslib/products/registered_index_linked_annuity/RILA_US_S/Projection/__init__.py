@@ -1515,6 +1515,16 @@ def free_wd_avail(t):
     return free_wd_remain(t - 1) if t > 0 else 0.0
 
 
+def has_withdrawals():
+    """Whether the withdrawal table has rows for the model point's withdrawal programme."""
+    return wd_schedule_id() in data.withdrawal_table().index         # noqa: F821
+
+
+def withdrawal_rows():
+    """The model point's scheduled withdrawals (only read when has_withdrawals())."""
+    return data.withdrawal_table().loc[wd_schedule_id()]             # noqa: F821
+
+
 def wd_scheduled_pp(t):
     """The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.
 
@@ -1522,9 +1532,11 @@ def wd_scheduled_pp(t):
     reads key ``t + 1``: the worked example's $8,000 at the 3-year point sits at month end
     36 and is taken in month 35.
     """
-    table = data.withdrawal_table()                                  # noqa: F821
-    key = (wd_schedule_id(), t + 1)
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    if not has_withdrawals():
+        return 0.0
+    rows = withdrawal_rows()
+    m = t + 1
+    return float(rows.loc[m, "wd_amount"]) if m in rows.index else 0.0
 
 
 def wd_behavioral_pp(t):
