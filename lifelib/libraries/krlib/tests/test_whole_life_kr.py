@@ -82,6 +82,7 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import model_path
 from lifelib.libraries.krlib.products.whole_life.enums import IntBasis, Kind, LapseBasis, PolTiming, Sex
@@ -1982,8 +1983,8 @@ def test_the_lapse_table_holds_two_bases_and_three_parameters_each(whole_life):
     effect read directly.  Folding either into a duration curve would make a behavioural
     assumption look like an observation.
     """
-    table = whole_life.Data.lapse_table()
-    assert set(table.index) == {"loglinear", "flat"}
+    table = pdn.to_pandas(whole_life.Data.lapse_table())
+    assert set(table.index) == {LapseBasis.loglinear, LapseBasis.flat}
     assert list(table.columns) == [
         "first_year_rate", "completion_rate", "ultimate_rate", "provenance"]
     assert table.loc[LapseBasis.loglinear, "first_year_rate"] == 0.10
@@ -2094,7 +2095,7 @@ def test_the_model_point_table_ships_ten_points_and_the_anchor_is_sourced(whole_
     quantitative fact the whole worked example rests on, so it is asserted from the CSV as
     well as from the model.
     """
-    table = whole_life.Data.model_point_table()
+    table = pdn.to_pandas(whole_life.Data.model_point_table())
     assert len(table) == 10
     assert list(table.index) == list(range(1, 11))
     assert table.index.name == "point_id"
