@@ -67,6 +67,7 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.term_life.enums import ContractBoundary, Kind, MaturityForm, PolTiming, PremiumMode, RateClass, RenewalType, Segment, Sex
@@ -264,9 +265,9 @@ STD_SCALARS = {
 
 # The diagnostic qbar values the notes publish as "checkable from the shipped table".
 QBAR_DIAGNOSTICS = {
-    ("M", 40, 20): 0.00152337, ("F", 40, 20): 0.00077569, ("M", 30, 20): 0.00070037,
-    ("M", 65, 15): 0.01348403, ("F", 45, 35): 0.00370477, ("M", 19, 30): 0.00053910,
-    ("M", 55, 20): 0.00655454,
+    (Sex.M, 40, 20): 0.00152337, (Sex.F, 40, 20): 0.00077569, (Sex.M, 30, 20): 0.00070037,
+    (Sex.M, 65, 15): 0.01348403, (Sex.F, 45, 35): 0.00370477, (Sex.M, 19, 30): 0.00053910,
+    (Sex.M, 55, 20): 0.00655454,
 }
 
 # The three 예정 경험사망률 rates per sex that every 상품요약서 must print, and which the
@@ -371,7 +372,7 @@ def test_worked_example_the_lapse_curve_is_the_prescribed_shape(term_life,
     numbers are sourced.
     """
     table = term_life.Data.lapse_table()
-    assert list(table.index) == ["in_payment_start", "in_payment_end", "post_payment"]
+    assert list(table.index) == [Segment.in_payment_start, Segment.in_payment_end, Segment.post_payment]
     assert float(table.loc[Segment.in_payment_start, "lapse_rate"]) == 0.046
     assert float(table.loc[Segment.in_payment_end, "lapse_rate"]) == 0.001
     assert float(table.loc[Segment.post_payment, "lapse_rate"]) == 0.008
@@ -814,7 +815,7 @@ def test_the_renewal_ladder_is_read_off_published_cells_with_no_extension(term_l
     for k, t, entry_age, p_m, p_a in RENEWAL_LADDER:
         assert p.term_index(t) == k
         assert p.term_start_age(k) == entry_age and p.term_len(k) == 10
-        assert ("pure", "M", entry_age, 10) in tbl.index    # published, not extended
+        assert (MaturityForm.pure, Sex.M, entry_age, 10) in tbl.index    # published, not extended
         assert p.prem_rate_mth(t) == p_m and p.premium_mth_pp(t) == p_m
         assert p.prem_pp(t) == p_a
     assert [round(p.prem_pp(t) / p.prem_pp(0), 2) for _, t, *_ in RENEWAL_LADDER] == [
@@ -1212,7 +1213,7 @@ def test_pitfall_truncation_shortens_the_cycle_not_the_horizon():
         assert [p.term_len(k) for k in (1, 2, 3, 4)] == [10, 10, 10, 5]
         assert p.term_index(360) == 4 == p.term_index(419)
         assert p.mort_table_mean(75, 5) < p.mort_table_mean(75, 10)
-        anchor = model.Data.prem_anchor_table().loc[("pure", "M")]
+        anchor = model.Data.prem_anchor_table().loc[(MaturityForm.pure, Sex.M)]
         assert p.prem_rate_mth(360) == pytest.approx(
             float(anchor["prem_mth_per_100m"]) * p.mort_table_mean(75, 5)
             / p.mort_table_mean(40, 20), rel=1e-12)
@@ -1527,13 +1528,13 @@ def test_pitfall_qbar_is_a_mean_of_table_rates_not_best_estimate_rates(term_life
         sum(a.mort_rate_at_age(x) for x in range(40, 60)) / 20.0, rel=1e-14)
     assert a.mort_table_mean(40, 1) == a.mort_rate_at_age(40)      # not 0.85 x it
     for (sex, x, m), qbar in sorted(QBAR_DIAGNOSTICS.items()):
-        q = term_life.Projection[1 if sex == "M" else 2]
+        q = term_life.Projection[1 if sex == Sex.M else 2]
         assert q.sex() == sex
         assert q.mort_table_mean(x, m) == pytest.approx(qbar, abs=5e-9), (sex, x, m)
     p = term_life.Projection[10]
     assert p.rate_class() == RateClass.preferred and p.class_mort_ratio() < 1.0
     anchor = float(term_life.Data.prem_anchor_table().loc[
-        ("pure", "M"), "prem_mth_per_100m"])
+        (MaturityForm.pure, Sex.M), "prem_mth_per_100m"])
     assert p.prem_rate_mth(0) == pytest.approx(
         anchor * p.mort_table_mean(55, 20) / p.mort_table_mean(40, 20), rel=1e-12)
     # A class-adjusted qbar would cancel; a best-estimate one would not.
@@ -1564,8 +1565,8 @@ def test_the_premium_scale_uses_published_cells_where_they_exist(term_life):
         (published if key in tbl.index else extended).add(point_id)
     assert published == {1, 2, 3, 4, 5, 6} and extended == {7, 8, 9, 10}
     anchors = term_life.Data.prem_anchor_table()
-    assert set(anchors.index) == {("pure", "M"), ("pure", "F"),
-                                  ("rop", "M"), ("rop", "F")}
+    assert set(anchors.index) == {(MaturityForm.pure, Sex.M), (MaturityForm.pure, Sex.F),
+                                  (MaturityForm.rop, Sex.M), (MaturityForm.rop, Sex.F)}
     for form, sex in anchors.index:
         assert int(anchors.loc[(form, sex), "issue_age"]) == 40
         assert int(anchors.loc[(form, sex), "term_y"]) == 20
@@ -1914,8 +1915,8 @@ def test_the_rate_class_relativities_are_sourced_ratios(term_life):
     at three ages between which the ratios move little.
     """
     table = term_life.Data.rate_class_table()
-    classes = ("standard", "nonsmoker", "preferred", "super_preferred")
-    assert set(table.index) == {(c, s) for c in classes for s in ("M", "F")}
+    classes = (RateClass.standard, RateClass.nonsmoker, RateClass.preferred, RateClass.super_preferred)
+    assert set(table.index) == {(c, s) for c in classes for s in (Sex.M, Sex.F)}
     assert table["provenance"].notna().all()
     for sex in (Sex.M, Sex.F):
         assert float(table.loc[(RateClass.standard, sex), "mort_ratio"]) == 1.0
@@ -2162,7 +2163,7 @@ def test_the_model_point_table_exercises_the_product(term_life):
     rather than left to a reader counting rows.
     """
     table = term_life.Data.model_point_table()
-    assert len(table) == 10 and list(table.index) == list(range(1, 11))
+    assert len(pdn.to_pandas(table)) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["renewal_type"]) == {"gaengsin", "bi_gaengsin"}
     assert set(table["contract_boundary"]) == {"ceiling", "current_term"}
