@@ -31,7 +31,7 @@ live, in :data:`EXTRA_POINT_ASSERTIONS`.
 import math
 import re
 from collections import Counter
-from enum import EnumMeta
+from enum import Enum, EnumMeta
 import pickle
 
 import modelx as mx
@@ -184,7 +184,8 @@ def test_model_folder_keeps_inputs_external(name):
         with enum_file.open("rb") as stream:
             refs = pickle.load(stream)
         scalar_math = (numeric_math.erf, numeric_math.exp, numeric_math.isinf, numeric_math.log, numeric_math.sqrt)
-        assert refs and all(isinstance(value, (EnumMeta, EnumDefinitions))
+        # D30, D31(b): enum classes, EnumDefinitions, or the enum member a model parameter holds
+        assert refs and all(isinstance(value, (EnumMeta, EnumDefinitions, Enum))
                             or any(value is function for function in scalar_math) for value in refs.values())
     assert list(folder.rglob("*.pickle")) == ([enum_file] if enum_file.exists() else [])
     assert not (folder / "_data").exists() or list((folder / "_data").iterdir()) == [enum_file]
