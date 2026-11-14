@@ -111,8 +111,8 @@ def reversion_coeff_table():
     coefficient, and ``Projection.reversion_coeff`` raises rather than guessing one.
     Read without an index because the lookup is a band test, not a key lookup.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / reversion_coeff_file)                          # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / reversion_coeff_file).set_index(["reversion_pct", "gen_diff_lo"]).sort_index())                          # noqa: F821
 
 
 # ---------------------------------------------------------------------------

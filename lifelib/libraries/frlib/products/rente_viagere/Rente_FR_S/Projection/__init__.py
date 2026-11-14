@@ -789,11 +789,16 @@ def reversion_coeff():
         return 1.0
     d = birth_year(2) - birth_year(1)
     tbl = data.reversion_coeff_table()                               # noqa: F821
-    hit = tbl[((tbl["reversion_pct"] - reversion_pct()).abs() < 1e-9)
-              & (tbl["gen_diff_lo"] <= d) & (d <= tbl["gen_diff_hi"])]
-    if len(hit) != 1:
+    hits = 0
+    coeff = 0.0
+    for k in tbl.index:
+        if abs(k[0] - reversion_pct()) < 1e-9 and k[1] <= d <= tbl.loc[k, "gen_diff_hi"]:
+            if hits == 0:
+                coeff = float(tbl.loc[k, "reversion_coeff"])
+            hits += 1
+    if hits != 1:
         raise ValueError("no published reversion coefficient for this model point")
-    return float(hit["reversion_coeff"].iloc[0])
+    return coeff
 
 
 def option_coeff():
