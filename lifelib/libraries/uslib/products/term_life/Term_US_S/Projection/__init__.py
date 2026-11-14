@@ -430,10 +430,11 @@ def mort_rate_mth(t):
 def shock_lapse_rate():
     """Shock lapse at the end of the level period, by jump-ratio bucket **[std]**."""
     j = jump_ratio()
-    for _, r in data.shock_lapse_table().iterrows():                        # noqa: F821
-        if r["jump_lo"] < j <= r["jump_hi"]:
-            return float(r["shock_lapse_rate"])
-    return float(data.shock_lapse_table().iloc[-1]["shock_lapse_rate"])     # noqa: F821
+    tbl = data.shock_lapse_table()                                          # noqa: F821
+    for k in tbl.index:
+        if tbl.loc[k, "jump_lo"] < j <= tbl.loc[k, "jump_hi"]:
+            return float(tbl.loc[k, "shock_lapse_rate"])
+    return float(tbl.loc[tbl.index.max(), "shock_lapse_rate"])
 
 
 def lapse_rate(t):
