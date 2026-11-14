@@ -131,7 +131,10 @@ def payout_rate_table():
     Banded rather than keyed: each row gives an inclusive attained-age band with the
     single-life and joint-life percentages [S3].
     """
-    return pdn.table(pd.read_csv(input_dir() / payout_rate_file, index_col="age_lo").sort_index())               # noqa: F821
+    frame = pd.read_csv(input_dir() / payout_rate_file, index_col="age_lo")  # noqa: F821
+    if not (frame.index.is_monotonic_increasing and frame.index.is_unique):
+        raise ValueError("payout_rate_table: age_lo must be strictly increasing in the file")
+    return pdn.table(frame)
 
 
 def rate_scenario():

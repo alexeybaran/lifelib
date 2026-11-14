@@ -1614,3 +1614,25 @@ def test_model_docstring_names_the_gaps(fixed_indexed_annuity):
         assert gap in doc
     for name in ("Data", "Projection"):
         assert name in doc
+
+
+def test_the_payout_rate_bands_must_be_in_age_order(fixed_indexed_annuity):
+    """W3.3 (D68): payout_rate scans the bands in key order, so the reader refuses a file
+    whose age_lo is not strictly increasing rather than answering differently."""
+    import pandas as pd
+    from modelx.core.errors import FormulaError
+    model = mx.read_model(MODEL_PATH, name="FIA_US_S_d68")
+    try:
+        src = model.Data.input_dir() / "payout_rate_table.csv"
+        broken = pd.read_csv(src).iloc[::-1]
+        alt = "payout_rate_table_d68_broken.csv"
+        broken.to_csv(model.Data.input_dir() / alt, index=False)
+        try:
+            model.Data.payout_rate_file = alt
+            model.Data.clear_all()
+            with pytest.raises(FormulaError, match="payout_rate_table"):
+                model.Data.payout_rate_table()
+        finally:
+            (model.Data.input_dir() / alt).unlink(missing_ok=True)
+    finally:
+        model.close()
