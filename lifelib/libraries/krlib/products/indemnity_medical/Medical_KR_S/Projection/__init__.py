@@ -1017,9 +1017,21 @@ def sev_points(stream):
                 [sub.loc[k, "prob"] for k in sub.index]))
 
 
+def sev_costs(stream):
+    """The costs of :func:`sev_points` as floats: the vector form of sev_points (rule V, D90)."""
+    sub = data.severity_table().loc[stream]                          # noqa: F821
+    return [float(sub.loc[k, "cost"]) for k in sub.index]
+
+
+def sev_probs(stream):
+    """The probabilities of :func:`sev_points`: the vector form of sev_points (rule V, D90)."""
+    sub = data.severity_table().loc[stream]                          # noqa: F821
+    return [float(sub.loc[k, "prob"]) for k in sub.index]
+
+
 def sev_mean(stream):
     """The expected cost of one event in a severity stream, KRW, before any trend."""
-    return sum(c * p for c, p in sev_points(stream))
+    return sum(c * p for c, p in zip(sev_costs(stream), sev_probs(stream)))
 
 
 # --- 급여 reimbursement — the main contract ---------------------------------
@@ -1106,7 +1118,7 @@ def paid_out_per_visit(stream, floor, retain, trend):
     ₩250,000 of covered cost on the 급여 side, the same point at both tiers.
     """
     tot = 0.0
-    for c, p in sev_points(stream):
+    for c, p in zip(sev_costs(stream), sev_probs(stream)):
         cost = c * trend
         ded = max(floor, retain * cost)
         tot += p * min(max(0.0, cost - ded), visit_cap())
@@ -1167,7 +1179,7 @@ def claims_np_in_pp(y):
     tr = trend_np(y)
     base = sev_mean(Stream.np_in) * tr * (1.0 - retain_rate_np())
     room = 0.0
-    for c, p in sev_points(Stream.np_room):
+    for c, p in zip(sev_costs(Stream.np_room), sev_probs(Stream.np_room)):
         room += p * min(room_rate * c * tr,                          # noqa: F821
                         room_cap_day * los_days(y))                  # noqa: F821
     return adm_rate(y) * (base + room)
@@ -1245,7 +1257,7 @@ def paid_per_act(stream, trend):
     of the three, the act counter.
     """
     tot = 0.0
-    for c, p in sev_points(stream):
+    for c, p in zip(sev_costs(stream), sev_probs(stream)):
         cost = c * trend
         tot += p * max(0.0, cost - max(ded_np_out,                   # noqa: F821
                                        retain_rate_np() * cost))
