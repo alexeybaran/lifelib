@@ -620,6 +620,18 @@ def prev_slope_at(x):
     return beta * p * (1.0 - p / ceil)
 
 
+def grade_ages(grade):
+    """The pivot ages of grade_share_table at ``grade``, as floats in ascending order."""
+    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
+    return sorted(float(a) for a in tbl.index)
+
+
+def grade_shares(grade):
+    """The ``share_ge`` of grade_share_table at ``grade``, at :func:`grade_ages`."""
+    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
+    return [float(tbl.loc[a, "share_ge"]) for a in grade_ages(grade)]
+
+
 def share_ge_at(grade, x):
     """s_G(x): the share of certified lives at ``grade`` or above at 만나이 ``x``.
 
@@ -630,16 +642,18 @@ def share_ge_at(grade, x):
     at 85 and over, and a model applying a single vector at all ages mis-prices this benefit
     by up to a factor of two.
     """
-    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
-    ages = sorted(float(a) for a in tbl.index)
+    ages = grade_ages(grade)
+    shares = grade_shares(grade)
     if x <= ages[0]:
-        return float(tbl.loc[ages[0], "share_ge"])
+        return shares[0]
     if x >= ages[-1]:
-        return float(tbl.loc[ages[-1], "share_ge"])
-    for lo, hi in zip(ages[:-1], ages[1:]):
+        return shares[-1]
+    for i in range(len(ages) - 1):
+        lo = ages[i]
+        hi = ages[i + 1]
         if lo <= x <= hi:
-            v_lo = float(tbl.loc[lo, "share_ge"])
-            v_hi = float(tbl.loc[hi, "share_ge"])
+            v_lo = shares[i]
+            v_hi = shares[i + 1]
             return v_lo + (v_hi - v_lo) * (x - lo) / (hi - lo)
     raise ValueError("age out of range")
 
@@ -652,14 +666,16 @@ def share_slope_at(grade, x):
     product rule, and it is **negative** over most of the range for a severe threshold, which
     is the U-shape doing its work.
     """
-    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
-    ages = sorted(float(a) for a in tbl.index)
+    ages = grade_ages(grade)
+    shares = grade_shares(grade)
     if x < ages[0] or x >= ages[-1]:
         return 0.0
-    for lo, hi in zip(ages[:-1], ages[1:]):
+    for i in range(len(ages) - 1):
+        lo = ages[i]
+        hi = ages[i + 1]
         if lo <= x < hi:
-            v_lo = float(tbl.loc[lo, "share_ge"])
-            v_hi = float(tbl.loc[hi, "share_ge"])
+            v_lo = shares[i]
+            v_hi = shares[i + 1]
             return (v_hi - v_lo) / (hi - lo)
     return 0.0
 
@@ -1466,6 +1482,18 @@ def prem_accum_factor(t):
     return (1.0 + j) * ((1.0 + j) ** t - 1.0) / j
 
 
+def av_fractions():
+    """The run-off fractions of av_table, as floats in ascending order."""
+    tbl = data.av_table()                                            # noqa: F821
+    return sorted(float(v) for v in tbl.index)
+
+
+def av_ratios():
+    """The ``av_ratio`` of av_table at :func:`av_fractions`."""
+    tbl = data.av_table()                                            # noqa: F821
+    return [float(tbl.loc[v, "av_ratio"]) for v in av_fractions()]
+
+
 def av_ratio_at(fraction):
     """The 계약자적립액 as a ratio to cumulative premiums, at ``fraction`` of the way from
     납입완료 to maturity.
@@ -1478,16 +1506,18 @@ def av_ratio_at(fraction):
     Indexing on the *fraction* rather than on the policy year is the **[std]** step that lets
     one published progression serve every term and every paying period.
     """
-    tbl = data.av_table()                                            # noqa: F821
-    xs = sorted(float(v) for v in tbl.index)
+    xs = av_fractions()
+    ratios = av_ratios()
     if fraction <= xs[0]:
-        return float(tbl.loc[xs[0], "av_ratio"])
+        return ratios[0]
     if fraction >= xs[-1]:
-        return float(tbl.loc[xs[-1], "av_ratio"])
-    for lo, hi in zip(xs[:-1], xs[1:]):
+        return ratios[-1]
+    for i in range(len(xs) - 1):
+        lo = xs[i]
+        hi = xs[i + 1]
         if lo <= fraction <= hi:
-            v_lo = float(tbl.loc[lo, "av_ratio"])
-            v_hi = float(tbl.loc[hi, "av_ratio"])
+            v_lo = ratios[i]
+            v_hi = ratios[i + 1]
             return v_lo + (v_hi - v_lo) * (fraction - lo) / (hi - lo)
     raise ValueError("fraction out of range")
 
