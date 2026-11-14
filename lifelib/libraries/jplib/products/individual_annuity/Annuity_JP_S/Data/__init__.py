@@ -101,8 +101,8 @@ def model_point_table():
 
     Indexed by ``point_id``.  Point 1 is the technical notes' worked-example anchor cell.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -114,9 +114,10 @@ def mort_table():
     :func:`mort_anchor_table` — 死亡保険用 graduated log-linearly, 年金開始後用 on a Makeham law.
     See the Space docstring.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["table", "sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["table"] = [MortTable[name] for name in frame["table"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["table", "sex", "age"]).sort_index())  # noqa: F821
 
 
 def mort_anchor_table():
@@ -127,9 +128,10 @@ def mort_anchor_table():
     the library's input set: rates quoted and attributed, which the IAJ's terms permit — as
     opposed to a copy of the table, which they do not.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_anchor_file,                              # noqa: F821
-        index_col=["table", "sex"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_anchor_file)              # noqa: F821
+    frame["table"] = [MortTable[name] for name in frame["table"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["table", "sex", "age"]).sort_index())  # noqa: F821
 
 
 def lapse_table():
@@ -150,9 +152,9 @@ def lapse_table():
     The rates are **annual** and are not restated per month: the rate is the observation,
     and ``Projection.lapse_rate_mth`` derives the monthly decrement from it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file,                              # noqa: F821
-        index_col=["segment", "from_year"]).sort_index()
+    frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
+    frame["segment"] = [Segment[name] for name in frame["segment"]]
+    return pdn.table(frame.set_index(["segment", "from_year"]).sort_index())  # noqa: F821
 
 
 def pricing_table():
@@ -169,8 +171,9 @@ def pricing_table():
     ``surr_charge_years`` = 10 is an elapsed count of years, the length of the 解約控除
     run-off, not a point on the frame.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / pricing_table_file, index_col="item")          # noqa: F821
+    frame = pd.read_csv(input_dir() / pricing_table_file)                    # noqa: F821
+    frame["item"] = [PricingItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index("item"))                        # noqa: F821
 
 
 def expense_table():
@@ -180,8 +183,9 @@ def expense_table():
     :func:`pricing_table`, which is a pricing loading living inside the fund; mixing the
     two double-counts expense in one direction and destroys the calibration in the other.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / expense_table_file, index_col="item")          # noqa: F821
+    frame = pd.read_csv(input_dir() / expense_table_file)                    # noqa: F821
+    frame["item"] = [ExpenseItem[name] for name in frame["item"]]
+    return pdn.table(frame.set_index("item"))                        # noqa: F821
 
 
 def commute_factor_table():
@@ -192,59 +196,9 @@ def commute_factor_table():
     payout 予定利率 of 0.65%; the mismatch is a property of the composite and the reason
     base-run commutation take-up is zero.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / commute_factor_file,                           # noqa: F821
-        index_col="remaining_years")
-
-
-def prepared_pricing_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(pricing_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-def prepared_expense_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(expense_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-
-def prepared_lapse_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(lapse_table(), groups=('segment',), preserve_scalar_types = True)
-
-
-def prepared_lapse_table_flat_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(lapse_table(), preserve_scalar_types = True)
-
-
-def prepared_commute_factor_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(commute_factor_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_anchor_table_calculation():
-    """Own original input values for calculation operations."""
-    return pdn.table(mort_anchor_table().reset_index(), groups=(), rows=False, preserve_scalar_types=True)
-
-
-def prepared_commute_factor_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(commute_factor_table().index)
+        index_col="remaining_years"))
 
 
 # ---------------------------------------------------------------------------
@@ -267,3 +221,13 @@ commute_factor_file = "commute_factor_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+MortTable = ("Pickle", 2)
+
+Segment = ("Pickle", 3)
+
+PricingItem = ("Pickle", 4)
+
+ExpenseItem = ("Pickle", 5)
