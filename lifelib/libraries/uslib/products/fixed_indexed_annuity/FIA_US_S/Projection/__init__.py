@@ -467,8 +467,8 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point."""
-    return data.model_point_table().slice(point_id)     # noqa: F821
+    """The selected model point as a Series."""
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
@@ -483,7 +483,7 @@ def age_at_entry():
 
 def sex():
     """The sex of the selected model point, M or F."""
-    return model_point()["sex"]
+    return Sex[model_point()["sex"]]
 
 
 def tax_status():
@@ -493,7 +493,7 @@ def tax_status():
     implemented, though the notes make the RMD age a behavioural input through
     :func:`activation_rate` and the ``rmd_age`` Reference.
     """
-    return model_point()["tax_status"]
+    return TaxStatus[model_point()["tax_status"]]
 
 
 def premium_pp():
@@ -561,13 +561,13 @@ def glwb_basis():
     younger covered person [S1][S3].  Joint-life *survivorship* is **not implemented**:
     the notes specify the joint payout percentage but no second-life mortality basis.
     """
-    return model_point()["glwb_basis"]
+    return GlwbBasis[model_point()["glwb_basis"]]
 
 
 def joint_age():
     """The issue age (ANB) of the joint covered person; the annuitant's own if blank."""
     given = model_point()["joint_age"]
-    return age_at_entry() if pdn.isna(given) else int(given)           # noqa: F821
+    return age_at_entry() if pd.isna(given) else int(given)           # noqa: F821
 
 
 def income_start_age():
@@ -599,7 +599,7 @@ def credit_method():
     which the notes exclude, and its floor convention is itself flagged as ambiguous
     [S4][R1].
     """
-    return model_point()["credit_method"]
+    return CreditMethod[model_point()["credit_method"]]
 
 
 def cap_rate():
@@ -662,7 +662,7 @@ def av_pp_init():
     [S10].
     """
     given = model_point()["av_initial"]
-    if pdn.isna(given):                                               # noqa: F821
+    if pd.isna(given):                                               # noqa: F821
         return premium_pp() * (1.0 + bonus_rate())
     return float(given)
 
@@ -677,7 +677,7 @@ def benefit_base_pp_init():
     if not glwb_elected():
         return 0.0
     given = model_point()["bb_initial"]
-    if pdn.isna(given):                                               # noqa: F821
+    if pd.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -687,7 +687,7 @@ def rollup_base_pp_init():
     if not glwb_elected():
         return 0.0
     given = model_point()["rb_initial"]
-    if pdn.isna(given):                                               # noqa: F821
+    if pd.isna(given):                                               # noqa: F821
         return premium_pp()
     return float(given)
 
@@ -699,7 +699,7 @@ def mgsv_pp_init():
     ``93,811.84 = 87,500 x 1.01^7`` is that value rolled forward seven years.
     """
     given = model_point()["mgv_initial"]
-    if pdn.isna(given):                                               # noqa: F821
+    if pd.isna(given):                                               # noqa: F821
         return net_consideration_ratio * premium_pp()                # noqa: F821
     return float(given)
 
@@ -707,21 +707,18 @@ def mgsv_pp_init():
 def lw_pp_init():
     """LW at entry: zero before exercise, else the stated in-force income amount."""
     given = model_point()["lw_initial"]
-    return 0.0 if pdn.isna(given) else float(given)                   # noqa: F821
+    return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
 
 
 def payout_rate_init():
     """The payout percentage already locked at entry; zero before exercise."""
     given = model_point()["payout_rate_initial"]
-    return 0.0 if pdn.isna(given) else float(given)                   # noqa: F821
+    return 0.0 if pd.isna(given) else float(given)                   # noqa: F821
 
 
 def phase_init():
     """The phase at entry: ``ACCUM`` unless the model point enters in force in income."""
-    value = model_point()["phase_initial"]
-    if value not in ("ACCUM", "INCOME", "DEPLETED", "TERMINATED"):
-        raise ValueError("invalid phase_initial")
-    return value
+    return Phase[model_point()["phase_initial"]]
 
 
 def policy_term():
@@ -829,7 +826,7 @@ def covered_age(t):
     joint-life basis [S1][S3].  Timed like :func:`age`, at the opening anniversary; the
     payout percentage and the minimum exercise age are read at :func:`exercise_age`.
     """
-    if glwb_basis() == "joint":
+    if glwb_basis() == GlwbBasis.joint:
         return min(age_at_entry(), joint_age()) + duration(t)
     return age(t)
 
@@ -847,7 +844,12 @@ def exercise_age(t):
     return covered_age(t) + 1
 
 
-def scenario_value(y, name):
+def rate_scenario_path():
+    """The model point's index and MVA reference-yield path, by policy year."""
+    return data.rate_scenario().loc[scenario_id()]                   # noqa: F821
+
+
+def scenario_value(y, field):
     """Step-function lookup of column ``name`` in the model point's scenario at anniversary ``y``.
 
     **The argument is an anniversary number, not the frame's month index.** The ``t``
@@ -858,14 +860,14 @@ def scenario_value(y, name):
     scenario, so a flat path is one row.  Anniversaries before the first row take the
     first row's level.
     """
-    schedule = rate_schedule()
-    key = max(y, pdn.first_key(schedule))
-    return float(schedule.previous(key, name))
-
-
-def rate_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The rate table for the model point’s scenario."""
-    return data.rate_scenario().slice(scenario_id())                  # noqa: F821
+    sub = rate_scenario_path()
+    key = sub.index.asof(y) if y >= sub.index[0] else sub.index[0]
+    if field == ScenarioField.index_level:
+        return float(sub.loc[key, "index_level"])
+    elif field == ScenarioField.mva_ref_yield:
+        return float(sub.loc[key, "mva_ref_yield"])
+    else:
+        raise ValueError("invalid scenario field")
 
 
 def index_level(y):
@@ -876,7 +878,7 @@ def index_level(y):
     anniversary's.  The S&P 500 **price** index in the composite; dividends are excluded
     [S2][S6][R1].
     """
-    return scenario_value(y, "index_level")
+    return scenario_value(y, ScenarioField.index_level)
 
 
 def index_return(t):
@@ -950,15 +952,15 @@ def credit_rate_on(r, method):
     implemented — see :func:`credit_method`.
     """
     net = r - index_cost_rate                                        # noqa: F821
-    if method == "cap":
+    if method == CreditMethod.cap:
         raw = min(cap_rate_in_force(), net)
-    elif method == "par":
+    elif method == CreditMethod.par:
         raw = par_rate * net                                         # noqa: F821
-    elif method == "par_cap":
+    elif method == CreditMethod.par_cap:
         raw = min(cap_rate_in_force(), par_rate * net)               # noqa: F821
-    elif method == "spread":
+    elif method == CreditMethod.spread:
         raw = par_rate * net - spread_rate                           # noqa: F821
-    elif method == "trigger":
+    elif method == CreditMethod.trigger:
         raw = trigger_rate if net >= 0.0 else floor_rate             # noqa: F821
     else:
         raise ValueError("invalid credit_method")
@@ -993,7 +995,7 @@ def index_credit_pp(t):
     """
     if t < entry_mth() or not is_anniv(t):
         return 0.0
-    if phase_open(t) in ("DEPLETED", "TERMINATED"):
+    if phase_open(t) in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
     return av_indexed_pp_year_open(t) * credit_rate(t)
 
@@ -1009,10 +1011,10 @@ def fixed_interest_pp(t):
     """
     if t < entry_mth():
         return 0.0
-    if phase_open(t) in ("DEPLETED", "TERMINATED"):
+    if phase_open(t) in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
     rate = (1.0 + fixed_rate_in_force()) ** (1.0 / 12.0) - 1.0
-    return av_fixed_pp_at(t, "BEF_INV") * rate
+    return av_fixed_pp_at(t, Timing.BEF_INV) * rate
 
 
 def fixed_interest_ann_pp(t):
@@ -1025,7 +1027,7 @@ def fixed_interest_ann_pp(t):
     """
     if t < entry_mth() or not is_anniv(t):
         return 0.0
-    if phase_open(t) in ("DEPLETED", "TERMINATED"):
+    if phase_open(t) in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
     return av_fixed_pp_year_open(t) * fixed_rate_in_force()
 
@@ -1062,10 +1064,10 @@ def rider_charge_pp(t):
         return 0.0
     if not rider_in_force_open(t):
         return 0.0
-    if phase_open(t) in ("DEPLETED", "TERMINATED"):
+    if phase_open(t) in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
     return (min(rider_charge_rate, rider_charge_rate_max)             # noqa: F821
-            * benefit_base_pp_at(t, "BEF_ROLLUP"))
+            * benefit_base_pp_at(t, Timing.BEF_ROLLUP))
 
 
 def av_pp_at(t, timing):
@@ -1087,25 +1089,25 @@ def av_pp_at(t, timing):
     """
     if t < entry_mth():
         return av_pp_init()
-    if timing == "BEF_PREM":
-        return 0.0 if t == entry_mth() == 0 else av_pp_at(t, "BEF_INV")
+    if timing == Timing.BEF_PREM:
+        return 0.0 if t == entry_mth() == 0 else av_pp_at(t, Timing.BEF_INV)
     opening = av_pp_init() if t == entry_mth() else av_pp(t - 1)
-    if timing == "BEF_INV":
+    if timing == Timing.BEF_INV:
         return opening
     val = opening + inv_income_pp(t)
-    if timing == "BEF_FEE":
+    if timing == Timing.BEF_FEE:
         return val
     val = val - rider_charge_pp(t)
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return max(0.0, val - wd_pp(t))
     raise ValueError("invalid timing")
 
 
 def av_pp(t):
     """AV(t): the account value per contract closing **month** t, after all processing."""
-    return av_pp_at(t, "EOY")
+    return av_pp_at(t, Timing.EOY)
 
 
 def av_pp_year_open(t):
@@ -1143,19 +1145,19 @@ def av_fixed_pp_at(t, timing):
     """
     if t < entry_mth():
         return av_fixed_pp_init()
-    if timing == "BEF_PREM":
-        return 0.0 if t == entry_mth() == 0 else av_fixed_pp_at(t, "BEF_INV")
+    if timing == Timing.BEF_PREM:
+        return 0.0 if t == entry_mth() == 0 else av_fixed_pp_at(t, Timing.BEF_INV)
     opening = av_fixed_pp_init() if t == entry_mth() else av_fixed_pp(t - 1)
-    if timing == "BEF_INV":
+    if timing == Timing.BEF_INV:
         return opening
     val = opening + fixed_interest_pp(t)
-    if timing == "BEF_FEE":
+    if timing == Timing.BEF_FEE:
         return val
     val = max(0.0, val - rider_charge_pp(t))
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
-        total = av_pp_at(t, "BEF_WD")
+    if timing == Timing.EOY:
+        total = av_pp_at(t, Timing.BEF_WD)
         if total <= 0.0:
             return 0.0
         share = min(1.0, max(0.0, wd_pp(t) / total))
@@ -1165,7 +1167,7 @@ def av_fixed_pp_at(t, timing):
 
 def av_fixed_pp(t):
     """F(t): the fixed account balance per contract closing month t."""
-    return av_fixed_pp_at(t, "EOY")
+    return av_fixed_pp_at(t, Timing.EOY)
 
 
 def av_indexed_pp_at(t, timing):
@@ -1180,7 +1182,7 @@ def av_indexed_pp(t):
     each anniversary by that year's index credit net of its share of the charge and the
     withdrawal.
     """
-    return av_indexed_pp_at(t, "EOY")
+    return av_indexed_pp_at(t, Timing.EOY)
 
 
 def av_depletion_pp(t):
@@ -1200,7 +1202,7 @@ def av_depletion_pp(t):
     """
     if t < entry_mth():
         return 0.0
-    return max(0.0, wd_pp(t) - av_pp_at(t, "BEF_WD"))
+    return max(0.0, wd_pp(t) - av_pp_at(t, Timing.BEF_WD))
 
 
 def surr_charge_rate(t):
@@ -1212,8 +1214,8 @@ def surr_charge_rate(t):
     month of a year.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), table.index.max_int())
-    return table.lookup_float(key, "surr_charge_rate")
+    key = min(policy_year(t), int(table.index.max()))
+    return float(table.loc[key, "surr_charge_rate"])
 
 
 def vest_rate(t):
@@ -1224,8 +1226,13 @@ def vest_rate(t):
     clawback.
     """
     table = data.surr_charge_table()                                 # noqa: F821
-    key = min(policy_year(t), table.index.max_int())
-    return table.lookup_float(key, "vest_rate")
+    key = min(policy_year(t), int(table.index.max()))
+    return float(table.loc[key, "vest_rate"])
+
+
+def rollup_schedule():
+    """The policy's benefit-base rollup schedule, by first contract year of each band."""
+    return data.rollup_table().loc[rollup_id()]                      # noqa: F821
 
 
 def rollup_rate(t):
@@ -1236,16 +1243,10 @@ def rollup_rate(t):
     zero after [S2]; another documented design is a flat 3.00% over fifteen anniversaries
     [S9].
     """
-    schedule = rollup_schedule()
-    year = policy_year(t)
-    if year < pdn.first_key(schedule):
+    sub = rollup_schedule()
+    if policy_year(t) < sub.index[0]:
         return 0.0
-    return float(schedule.previous(year, "rollup_rate"))
-
-
-def rollup_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The rollup table for the model point’s selected schedule."""
-    return data.rollup_table().slice(rollup_id())                     # noqa: F821
+    return float(sub.loc[sub.index.asof(policy_year(t)), "rollup_rate"])
 
 
 def payout_rate(a, basis):
@@ -1255,19 +1256,17 @@ def payout_rate(a, basis):
     [S1][S3].  Zero below the first band, because no lifetime withdrawal is permitted
     there; the last band holds above its upper age.
     """
-    if basis == "single":
+    if basis == GlwbBasis.single:
         column = "payout_rate_single"
-    elif basis == "joint":
+    elif basis == GlwbBasis.joint:
         column = "payout_rate_joint"
     else:
         raise ValueError("invalid glwb_basis")
-    table = data.payout_rate_table()
-    keys = list(table.index)
-    for key in keys:
-        row = table.slice(key)
+    table = data.payout_rate_table()                                 # noqa: F821
+    for _, row in table.iterrows():
         if int(row["age_lo"]) <= a <= int(row["age_hi"]):
             return float(row[column])
-    last = table.slice(keys[-1])
+    last = table.iloc[-1]
     return float(last[column]) if a > int(last["age_hi"]) else 0.0
 
 
@@ -1330,7 +1329,7 @@ def is_exercise(t):
         return False
     prev = year_open_mth(t)
     prior = phase_init() if prev < entry_mth() else phase(prev)
-    if prior != "ACCUM":
+    if prior != Phase.ACCUM:
         return False
     if not rider_in_force_open(t):
         return False
@@ -1351,8 +1350,8 @@ def phase_open(t):
         return phase_init()
     prev = year_open_mth(t)
     opening = phase_init() if prev < entry_mth() else phase(prev)
-    if opening == "ACCUM" and is_exercise(t):
-        return "INCOME"
+    if opening == Phase.ACCUM and is_exercise(t):
+        return Phase.INCOME
     return opening
 
 
@@ -1391,18 +1390,18 @@ def phase(t):
     if t < entry_mth():
         return phase_init()
     opening = phase_open(t)
-    if opening == "TERMINATED":
-        return "TERMINATED"
-    if opening == "DEPLETED":
-        return "DEPLETED"
+    if opening == Phase.TERMINATED:
+        return Phase.TERMINATED
+    if opening == Phase.DEPLETED:
+        return Phase.DEPLETED
     if not is_anniv(t):
         return opening
     if glwb_elected() and benefit_base_pp(t) <= 0.0:
-        return "TERMINATED"
+        return Phase.TERMINATED
     if av_pp(t) <= 0.0:
-        if opening == "INCOME" and not depletion_cause(t):
-            return "DEPLETED"
-        return "TERMINATED"
+        if opening == Phase.INCOME and not depletion_cause(t):
+            return Phase.DEPLETED
+        return Phase.TERMINATED
     return opening
 
 
@@ -1439,7 +1438,7 @@ def rider_in_force(t):
         return False
     if not rider_in_force_open(t):
         return False
-    if phase(t) == "TERMINATED":
+    if phase(t) == Phase.TERMINATED:
         return False
     return benefit_base_pp(t) > 0.0
 
@@ -1459,7 +1458,7 @@ def in_growth_period(t):
     if policy_year(t) > growth_period_max:                           # noqa: F821
         return False
     prev = year_open_mth(t)
-    return (phase_init() if prev < entry_mth() else phase(prev)) == "ACCUM"
+    return (phase_init() if prev < entry_mth() else phase(prev)) == Phase.ACCUM
 
 
 def step_up_applies(t):
@@ -1483,11 +1482,11 @@ def step_up_applies(t):
         return False
     if not glwb_elected():
         return False
-    if phase_open(t) in ("DEPLETED", "TERMINATED"):
+    if phase_open(t) in (Phase.DEPLETED, Phase.TERMINATED):
         return False
-    if step_up_mode == "annual":                                     # noqa: F821
+    if step_up_mode == StepUpMode.annual:                                     # noqa: F821
         return True
-    elif step_up_mode == "at_exercise":                              # noqa: F821
+    elif step_up_mode == StepUpMode.at_exercise:                              # noqa: F821
         return is_exercise(t)
     else:
         raise ValueError("invalid step_up_mode")
@@ -1545,23 +1544,23 @@ def benefit_base_pp_at(t, timing):
     prev = year_open_mth(t)
     opening = (benefit_base_pp_init() if prev < entry_mth()
                else benefit_base_pp(prev))
-    if timing == "BEF_ROLLUP":
+    if timing == Timing.BEF_ROLLUP:
         return opening
     val = opening + rollup_pp(t) + stack_pp(t)
-    if timing == "BEF_STEP_UP":
+    if timing == Timing.BEF_STEP_UP:
         return val
     if step_up_applies(t):
-        val = max(val, av_pp_at(t, "BEF_WD"))
-    if timing == "BEF_WD":
+        val = max(val, av_pp_at(t, Timing.BEF_WD))
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return val * (1.0 - wd_reduction_rate(t))
     raise ValueError("invalid timing")
 
 
 def benefit_base_pp(t):
     """BB(t): the GLWB benefit base per contract closing month t."""
-    return benefit_base_pp_at(t, "EOY")
+    return benefit_base_pp_at(t, Timing.EOY)
 
 
 def rollup_base_pp(t):
@@ -1577,9 +1576,9 @@ def rollup_base_pp(t):
     prev = year_open_mth(t)
     opening = (rollup_base_pp_init() if prev < entry_mth()
                else rollup_base_pp(prev))
-    if rb_wd_convention == "pro_rata":                               # noqa: F821
+    if rb_wd_convention == RbWdConvention.pro_rata:                               # noqa: F821
         return opening * (1.0 - wd_reduction_rate(t))
-    elif rb_wd_convention == "dollar":                               # noqa: F821
+    elif rb_wd_convention == RbWdConvention.dollar:                               # noqa: F821
         return max(0.0, opening - wd_pp(t))
     else:
         raise ValueError("invalid rb_wd_convention")
@@ -1600,30 +1599,30 @@ def lw_pp_at(t, timing):
     """
     if t < entry_mth():
         return lw_pp_init()
-    if timing not in ("BEF_WD", "EOY"):
+    if timing not in (Timing.BEF_WD, Timing.EOY):
         raise ValueError("invalid timing")
     prev = year_open_mth(t)
     prior = lw_pp_init() if prev < entry_mth() else lw_pp(prev)
     opening = phase_open(t)
     if not is_anniv(t):
-        return 0.0 if opening == "TERMINATED" else prior
-    if opening == "TERMINATED":
+        return 0.0 if opening == Phase.TERMINATED else prior
+    if opening == Phase.TERMINATED:
         val = 0.0
-    elif opening == "DEPLETED":
+    elif opening == Phase.DEPLETED:
         val = prior
-    elif opening == "INCOME":
-        candidate = payout_rate_locked(t) * benefit_base_pp_at(t, "BEF_WD")
+    elif opening == Phase.INCOME:
+        candidate = payout_rate_locked(t) * benefit_base_pp_at(t, Timing.BEF_WD)
         val = candidate if is_exercise(t) else max(prior, candidate)
     else:
         val = 0.0
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
     return val * (1.0 - wd_reduction_rate(t))
 
 
 def lw_pp(t):
     """LW(t): the lifetime withdrawal amount per contract closing month t."""
-    return lw_pp_at(t, "EOY")
+    return lw_pp_at(t, Timing.EOY)
 
 
 def wd_scheduled_pp(t):
@@ -1640,7 +1639,7 @@ def wd_scheduled_pp(t):
         return 0.0
     table = data.withdrawal_table()                                  # noqa: F821
     key = (wd_schedule_id(), duration(t))
-    return table.lookup_float(key, "wd_amount", 0.0)
+    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
 
 
 def wd_pp(t):
@@ -1656,12 +1655,12 @@ def wd_pp(t):
     if t < entry_mth() or not is_anniv(t):
         return 0.0
     opening = phase_open(t)
-    if opening == "TERMINATED":
+    if opening == Phase.TERMINATED:
         return 0.0
-    if opening == "DEPLETED":
-        return lw_pp_at(t, "BEF_WD")
-    if opening == "INCOME":
-        return utilization_intensity() * lw_pp_at(t, "BEF_WD") + wd_scheduled_pp(t)
+    if opening == Phase.DEPLETED:
+        return lw_pp_at(t, Timing.BEF_WD)
+    if opening == Phase.INCOME:
+        return utilization_intensity() * lw_pp_at(t, Timing.BEF_WD) + wd_scheduled_pp(t)
     return wd_scheduled_pp(t)
 
 
@@ -1672,7 +1671,7 @@ def wd_guar_pp(t):
     reduces the account value dollar for dollar and leaves the benefit base and the
     income amount unchanged [S9].
     """
-    return min(wd_pp(t), lw_pp_at(t, "BEF_WD"))
+    return min(wd_pp(t), lw_pp_at(t, Timing.BEF_WD))
 
 
 def wd_excess_pp(t):
@@ -1684,7 +1683,7 @@ def wd_excess_pp(t):
     :func:`wd_charge_base_pp` here.  Before exercise ``LW`` is zero, so the whole
     withdrawal is an excess.
     """
-    return max(0.0, wd_pp(t) - lw_pp_at(t, "BEF_WD"))
+    return max(0.0, wd_pp(t) - lw_pp_at(t, Timing.BEF_WD))
 
 
 def wd_unfunded_pp(t):
@@ -1711,9 +1710,9 @@ def wd_unfunded_pp(t):
     """
     if t < entry_mth():
         return 0.0
-    if phase(t) != "TERMINATED":
+    if phase(t) != Phase.TERMINATED:
         return 0.0
-    return wd_pp(t) - min(wd_pp(t), max(0.0, av_pp_at(t, "BEF_WD")))
+    return wd_pp(t) - min(wd_pp(t), max(0.0, av_pp_at(t, Timing.BEF_WD)))
 
 
 def wd_guar_paid_pp(t):
@@ -1787,8 +1786,8 @@ def wd_free_pp(t):
     """
     if t < entry_mth() or not is_anniv(t):
         return 0.0
-    if phase_open(t) == "INCOME":
-        return min(free_wd_allow(t), lw_pp_at(t, "BEF_WD"))
+    if phase_open(t) == Phase.INCOME:
+        return min(free_wd_allow(t), lw_pp_at(t, Timing.BEF_WD))
     return min(free_wd_allow(t), wd_pp(t))
 
 
@@ -1812,9 +1811,9 @@ def wd_charge_base_pp(t):
     if t < entry_mth():
         return 0.0
     opening = phase_open(t)
-    if opening in ("DEPLETED", "TERMINATED"):
+    if opening in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
-    if opening == "INCOME":
+    if opening == Phase.INCOME:
         return max(0.0, wd_excess_pp(t) - free_wd_remain(t))
     return max(0.0, wd_pp(t) - free_wd_allow(t))
 
@@ -1828,7 +1827,7 @@ def surr_charge_base_pp(t):
     """
     if t < entry_mth():
         return 0.0
-    if phase(t) == "DEPLETED":
+    if phase(t) == Phase.DEPLETED:
         return 0.0
     return max(0.0, av_pp(t) - free_wd_remain(t))
 
@@ -1863,7 +1862,7 @@ def mva_ref_yield(y):
     index; generic here **[std]**, and named as Barclay's US Credit Index in the
     linear-form products [S6][S7].
     """
-    return scenario_value(y, "mva_ref_yield")
+    return scenario_value(y, ScenarioField.mva_ref_yield)
 
 
 def mva_term(t):
@@ -1938,9 +1937,9 @@ def mva_pp_on(t, base, gross):
     worked example reproduces under either; they differ only where the notes say nothing.
     """
     raw = mva_rate(t) * base
-    if mva_collar_basis == "gross":                                  # noqa: F821
+    if mva_collar_basis == MvaCollarBasis.gross:                                  # noqa: F821
         reference = gross
-    elif mva_collar_basis == "surrender_value":                      # noqa: F821
+    elif mva_collar_basis == MvaCollarBasis.surrender_value:                      # noqa: F821
         reference = av_pp(t)
     else:
         raise ValueError("invalid mva_collar_basis")
@@ -2012,12 +2011,12 @@ def wd_reduction_rate(t):
     if t < entry_mth():
         return 0.0
     opening = phase_open(t)
-    if opening in ("DEPLETED", "TERMINATED"):
+    if opening in (Phase.DEPLETED, Phase.TERMINATED):
         return 0.0
-    if opening == "INCOME":
-        return wd_reduction_rate_on(av_pp_at(t, "BEF_WD"),
-                                    lw_pp_at(t, "BEF_WD"), wd_pp(t))
-    return wd_reduction_rate_on(av_pp_at(t, "BEF_WD"), 0.0, wd_pp(t))
+    if opening == Phase.INCOME:
+        return wd_reduction_rate_on(av_pp_at(t, Timing.BEF_WD),
+                                    lw_pp_at(t, Timing.BEF_WD), wd_pp(t))
+    return wd_reduction_rate_on(av_pp_at(t, Timing.BEF_WD), 0.0, wd_pp(t))
 
 
 def surr_charge_pp(t):
@@ -2042,7 +2041,7 @@ def surr_value_pp(t):
     on the pre-deduction excess, then the floor** — the chassis's order, and the one
     contractual element the FIA notes inherit rather than restate.
     """
-    if phase(t) == "DEPLETED":
+    if phase(t) == Phase.DEPLETED:
         return 0.0
     return (av_pp(t) - surr_charge_pp(t) - surr_clawback_pp(t) + mva_pp(t))
 
@@ -2054,7 +2053,7 @@ def surr_benefit_pp(t):
     binding floor is **not** a separate cash flow — it raises the benefit, and
     ``MGV - SV`` is a reconciliation quantity only.
     """
-    if phase(t) == "DEPLETED":
+    if phase(t) == Phase.DEPLETED:
         return 0.0
     return max(surr_value_pp(t), mgsv_pp(t))
 
@@ -2130,11 +2129,6 @@ def mgsv_rate_is_compliant(cmt5, option_cost):
     return mgsv_rate >= mgsv_rate_statutory(cmt5, option_cost)       # noqa: F821
 
 
-def mortality_schedule() -> "modelx_helpers.immutable_inputs.Table":
-    """The annual mortality table for the model point’s sex."""
-    return data.mort_table().slice(sex())                             # noqa: F821
-
-
 def mort_rate(t):
     """q(t): the **annual** mortality rate of the contract year containing month t.
 
@@ -2154,7 +2148,7 @@ def mort_rate(t):
     [REG-R61]; the spelling is the library's shared one, so the A/E factor reads the same
     in every model that has one.
     """
-    base = mortality_schedule().lookup_float(age(t), "mort_rate")
+    base = float(data.mort_table().loc[(age(t), sex()), "mort_rate"])  # noqa: F821
     return min(1.0, mort_ae_factor * base)                           # noqa: F821
 
 
@@ -2182,7 +2176,7 @@ def shock_lapse_rate(t):
     """
     if not glwb_elected() or not rider_in_force_open(t):
         return shock_lapse_no_rider                                  # noqa: F821
-    if phase_open(t) == "ACCUM":
+    if phase_open(t) == Phase.ACCUM:
         return shock_lapse_rider_idle                                # noqa: F821
     return shock_lapse_rider_active                                  # noqa: F821
 
@@ -2247,12 +2241,12 @@ def lapse_rate(t):
     if t < entry_mth():
         return 0.0
     a = anniv_mth(t)
-    if phase_open(a) == "TERMINATED":
+    if phase_open(a) == Phase.TERMINATED:
         return 0.0
     closing = phase(a)
-    if closing == "TERMINATED":
+    if closing == Phase.TERMINATED:
         return 1.0
-    if closing == "DEPLETED":
+    if closing == Phase.DEPLETED:
         return 0.0
     return min(lapse_rate_max,                                       # noqa: F821
                lapse_rate_base(t) * lapse_moneyness_factor(t))
@@ -2302,7 +2296,7 @@ def pols_if(t):
         return pols_if_init()
     if t >= proj_len():
         return 0.0
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -2317,13 +2311,13 @@ def pols_if_at(t, timing):
     if t < entry_mth():
         return pols_if_init()
     pols = pols_if(t)
-    if timing in ("BEF_DECR", "BEF_MORT"):
+    if timing in (PolTiming.BEF_DECR, PolTiming.BEF_MORT):
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -2331,13 +2325,13 @@ def pols_if_at(t, timing):
 def pols_death(t):
     """Deaths in month t, on the monthly mortality rate."""
     return (0.0 if t < entry_mth()
-            else pols_if_at(t, "BEF_MORT") * mort_rate_mth(t))
+            else pols_if_at(t, PolTiming.BEF_MORT) * mort_rate_mth(t))
 
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of that month's mortality."""
     return (0.0 if t < entry_mth()
-            else pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t))
+            else pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t))
 
 
 def pols_maturity(t):
@@ -2348,7 +2342,7 @@ def pols_maturity(t):
     1.000000 at age 120, hence a monthly rate of 1.0, so the projection closes itself; see
     the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
@@ -2374,7 +2368,7 @@ def claim_pp(t, kind):
     All three are **zero in DEPLETED**: there is no account value, no surrender value and
     no death benefit, and the only exit is death [S1][S9].
     """
-    if phase(t) == "DEPLETED":
+    if phase(t) == Phase.DEPLETED:
         return 0.0
     if kind == Claim.DEATH:
         return max(av_pp(t), mgsv_pp(t))
@@ -2432,7 +2426,7 @@ def wd_guar(t):
     rider no longer covers.  Zero in ``DEPLETED``, where the same payment is reported as
     :func:`income_payments` so the two lines partition the total rather than overlap.
     """
-    if t < entry_mth() or phase_open(t) == "DEPLETED":
+    if t < entry_mth() or phase_open(t) == Phase.DEPLETED:
         return 0.0
     return wd_guar_paid_pp(t) * pols_if(t)
 
@@ -2464,9 +2458,9 @@ def income_payments(t):
     """
     if t < entry_mth() or not is_anniv(t):
         return 0.0
-    if phase_open(t) != "DEPLETED":
+    if phase_open(t) != Phase.DEPLETED:
         return 0.0
-    return lw_pp_at(t, "BEF_WD") * pols_if(t)
+    return lw_pp_at(t, Timing.BEF_WD) * pols_if(t)
 
 
 def withdrawals(t):
@@ -2482,7 +2476,7 @@ def withdrawals(t):
 
 
 def claims(t, kind):
-    """Benefit outgo in month t, for one ``kind`` or, with ``kind=Claim.ALL``, all three."""
+    """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
     if kind == Claim.ALL:
         return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
@@ -2572,9 +2566,9 @@ def av_at(t, timing):
     """
     if t < entry_mth():
         return 0.0
-    if timing in ("BEF_PREM", "BEF_INV", "BEF_FEE", "BEF_WD"):
+    if timing in (Timing.BEF_PREM, Timing.BEF_INV, Timing.BEF_FEE, Timing.BEF_WD):
         return av_pp_at(t, timing) * pols_if(t)
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return av_pp(t) * pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -2607,7 +2601,7 @@ def av_change(t):
     in.  Away from the first month ``av_at(t, "BEF_PREM")`` is exactly the previous
     month's closing value.
     """
-    return av_at(t, "EOY") - av_at(t, "BEF_PREM")
+    return av_at(t, Timing.EOY) - av_at(t, Timing.BEF_PREM)
 
 
 def check_av_roll_fwd_resid(t):
@@ -2740,7 +2734,7 @@ def result_pols():
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2758,12 +2752,12 @@ def result_av():
     ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
+            "av_pp_bef_inv": [av_pp_at(t, Timing.BEF_INV) for t in ts],
             "credit_rate": [credit_rate(t) for t in ts],
             "index_credit_pp": [index_credit_pp(t) for t in ts],
             "fixed_interest_pp": [fixed_interest_pp(t) for t in ts],
             "rider_charge_pp": [rider_charge_pp(t) for t in ts],
-            "av_pp_bef_wd": [av_pp_at(t, "BEF_WD") for t in ts],
+            "av_pp_bef_wd": [av_pp_at(t, Timing.BEF_WD) for t in ts],
             "wd_pp": [wd_pp(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "mgsv_pp": [mgsv_pp(t) for t in ts],
@@ -2788,10 +2782,10 @@ def result_glwb():
     ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "phase": [phase(t) for t in ts],
+            "phase": [phase(t).name for t in ts],
             "rollup_pp": [rollup_pp(t) for t in ts],
             "stack_pp": [stack_pp(t) for t in ts],
-            "bb_pp_bef_step_up": [benefit_base_pp_at(t, "BEF_STEP_UP") for t in ts],
+            "bb_pp_bef_step_up": [benefit_base_pp_at(t, Timing.BEF_STEP_UP) for t in ts],
             "benefit_base_pp": [benefit_base_pp(t) for t in ts],
             "rollup_base_pp": [rollup_base_pp(t) for t in ts],
             "lw_pp": [lw_pp(t) for t in ts],
@@ -2820,10 +2814,13 @@ def result_cf_annual():
     claims fall in the month of exit, and maintenance expense accrues monthly.  That gap is
     the point of the finer grid — see the Space docstring.
     """
-    monthly = pdn.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in monthly.index]
-    annual = pdn.group_sum(monthly, years, first=('pols_if',))
-    return pdn.to_pandas(annual, index_name="policy_year")
+    df = result_cf()
+    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
+                     name="policy_year")
+    out = df.drop(columns="pols_if").groupby(years).sum()
+    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
+    return out
+
 
 
 # ---------------------------------------------------------------------------
@@ -2862,12 +2859,6 @@ rider_charge_rate_max = 0.015
 rider_charge_from_mgsv = False
 
 growth_period_max = 20
-
-step_up_mode = "annual"
-
-rb_wd_convention = "pro_rata"
-
-mva_collar_basis = "gross"
 
 min_income_age = 50
 
@@ -2939,8 +2930,34 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-Claim = ("Pickle", 1)
+Sex = ("Pickle", 1)
 
-enum_definitions = ("Pickle", 2)
+TaxStatus = ("Pickle", 2)
 
-pdn = ("Module", "modelx_helpers.pdn")
+GlwbBasis = ("Pickle", 3)
+
+CreditMethod = ("Pickle", 4)
+
+Phase = ("Pickle", 5)
+
+StepUpMode = ("Pickle", 6)
+
+RbWdConvention = ("Pickle", 7)
+
+MvaCollarBasis = ("Pickle", 8)
+
+ScenarioField = ("Pickle", 9)
+
+Timing = ("Pickle", 10)
+
+PolTiming = ("Pickle", 11)
+
+Claim = ("Pickle", 12)
+
+step_up_mode = ("Pickle", 13)
+
+rb_wd_convention = ("Pickle", 14)
+
+mva_collar_basis = ("Pickle", 15)
+
+enum_definitions = ("Pickle", 16)
