@@ -353,12 +353,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the model point, e.g. ``EN-JP-0001``."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def cell():
@@ -368,15 +368,12 @@ def cell():
     ``education`` is 学資保険, whose benefits are a staged 学資金 schedule plus a maturity
     payment, whose death payment is a return of premiums, and which carries the waiver.
     """
-    v = pdn.lookup_str(prepared_model_point(), "cell")
-    if v not in ("endowment", "education"):
-        raise ValueError("invalid cell: " + v)
-    return v
+    return Cell[model_point()["cell"]]
 
 
 def sex():
     """The sex (M / F) of the 被保険者 (*hihokensha*), the insured life."""
-    return pdn.lookup_str(prepared_model_point(), "sex")
+    return Sex[model_point()["sex"]]
 
 
 def issue_age():
@@ -389,7 +386,7 @@ def issue_age():
     resulting understatement of up to half a year of age is named in the technical notes
     rather than hidden.
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def ph_sex():
@@ -399,9 +396,9 @@ def ph_sex():
     error, not a missing value: there is no waiver there and nothing for a second life to
     do.
     """
-    if cell() != "education":
+    if cell() != Cell.education:
         raise ValueError("the endowment cell has no 契約者 life")
-    return pdn.lookup_str(prepared_model_point(), "ph_sex")
+    return Sex[model_point()["ph_sex"]]
 
 
 def ph_issue_age():
@@ -410,9 +407,9 @@ def ph_issue_age():
     The second life of the education cell, whose decrement drives the waiver and runs
     over ``t = 0 .. m - 1`` only — the premium-paying periods.
     """
-    if cell() != "education":
+    if cell() != Cell.education:
         raise ValueError("the endowment cell has no 契約者 life")
-    return pdn.lookup_int(prepared_model_point(), "ph_issue_age")
+    return int(model_point()["ph_issue_age"])
 
 
 def sum_assured():
@@ -424,12 +421,12 @@ def sum_assured():
     premiums run to nearly twice it — which is why the acquisition deduction is re-based
     on one annual premium rather than on ``S``.
     """
-    return pdn.lookup_float(prepared_model_point(), "sum_assured")
+    return float(model_point()["sum_assured"])
 
 
 def policy_term():
     """n: the 保険期間 in years.  The projection is exactly this long."""
-    return pdn.lookup_int(prepared_model_point(), "policy_term")
+    return int(model_point()["policy_term"])
 
 
 def prem_term():
@@ -439,7 +436,7 @@ def prem_term():
     retrieved 約款 carries a unilateral repricing right, so every year of premium and
     every year of benefit sits inside any defensible contract boundary.
     """
-    m = pdn.lookup_int(prepared_model_point(), "prem_term")
+    m = int(model_point()["prem_term"])
     if m > policy_term():
         raise ValueError("prem_term exceeds policy_term")
     return m
@@ -455,7 +452,7 @@ def premium_pp():
     return ratio the product is sold on moves with it.  On the other model points the
     premium is the net premium grossed at the anchor cell's implied loading **[std]**.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_annual")
+    return float(model_point()["premium_annual"])
 
 
 def schedule_id():
@@ -465,7 +462,7 @@ def schedule_id():
     be changed after issue, so this is a model point attribute and never a projected
     decision.
     """
-    return pdn.lookup_str(prepared_model_point(), "schedule_id")
+    return str(model_point()["schedule_id"])
 
 
 def waiver():
@@ -475,8 +472,8 @@ def waiver():
     days, during 保険料払込期間.  The first two are inside the table rate already; the third
     is not, and :func:`wv_load` is the multiplier that would add it.
     """
-    v = pdn.lookup_bool(prepared_model_point(), "waiver")
-    if v and cell() != "education":
+    v = bool(model_point()["waiver"])
+    if v and cell() != Cell.education:
         raise ValueError("the waiver is written on the education cell only")
     return v
 
@@ -489,7 +486,7 @@ def apl_elected():
     of the six carriers in the source set do not offer the APL at all, so the off
     position is a product variant and not merely a switch.
     """
-    return pdn.lookup_bool(prepared_model_point(), "apl_elected")
+    return bool(model_point()["apl_elected"])
 
 
 def apl_default_mult():
@@ -498,7 +495,7 @@ def apl_default_mult():
     The switch that turns the automatic premium loan module on.  Zero on every shipped
     model point but 8, which runs the table rates in full.
     """
-    return pdn.lookup_float(prepared_model_point(), "apl_default_mult")
+    return float(model_point()["apl_default_mult"])
 
 
 def pol_loan_util():
@@ -508,7 +505,7 @@ def pol_loan_util():
     rolls up at ``i_loan``; it produces no cash flow of its own and nets off the death
     benefit and the surrender benefit instead.
     """
-    return pdn.lookup_float(prepared_model_point(), "pol_loan_util")
+    return float(model_point()["pol_loan_util"])
 
 
 def dividend_type():
@@ -522,13 +519,11 @@ def dividend_type():
     :func:`net_cf` evaluates this, so the rejection reaches the projection rather than
     waiting for a caller who might never ask.
     """
-    v = pdn.lookup_str(prepared_model_point(), "dividend_type")
-    if v == "five_year":
+    v = DividendType[model_point()["dividend_type"]]
+    if v == DividendType.five_year:
         raise ValueError(
             "dividend_type 'five_year' is out of scope: the ５年ごと利差配当 variant needs "
             "a 配当基準 no retrieved source publishes")
-    if v != "none":
-        raise ValueError("invalid dividend_type: " + v)
     return v
 
 
@@ -539,7 +534,7 @@ def dyn_lapse():
     cumulative premiums on either cell, so the multiplier never leaves 1.  That the
     module is inert is the finding, not a defect.
     """
-    return pdn.lookup_bool(prepared_model_point(), "dyn_lapse")
+    return bool(model_point()["dyn_lapse"])
 
 
 def mort_be_factor():
@@ -550,7 +545,7 @@ def mort_be_factor():
     best-estimate basis is an adjustment of it.  It moves the projection decrement and
     **not** the policy value, which is a contractual quantity on the pricing basis.
     """
-    return pdn.lookup_float(prepared_model_point(), "mort_adj")
+    return float(model_point()["mort_adj"])
 
 
 def wv_load():
@@ -563,7 +558,7 @@ def wv_load():
     ``wv_load`` at 1.00 therefore *understates* the waiver — the exact opposite of the
     ruling on 高度障害, and confusing the two is a pitfall.
     """
-    return pdn.lookup_float(prepared_model_point(), "wv_load")
+    return float(model_point()["wv_load"])
 
 
 def wv_frac():
@@ -574,7 +569,7 @@ def wv_frac():
     責任準備金 paid to the 契約者's legal heirs.  That is what
     :func:`claims` ``(t, "PH_DEATH")`` pays, and it is identically zero while this is 1.
     """
-    return pdn.lookup_float(prepared_model_point(), "wv_frac")
+    return float(model_point()["wv_frac"])
 
 
 def wv_lapse_mult():
@@ -584,7 +579,7 @@ def wv_lapse_mult():
     premium and has a strictly dominant reason to persist.  It is named so that it can be
     moved, and model point 5 halves it.
     """
-    return pdn.lookup_float(prepared_model_point(), "wv_lapse_mult")
+    return float(model_point()["wv_lapse_mult"])
 
 
 # --- structure
@@ -706,7 +701,7 @@ def mort_rate_at_age(sx, z):
     contractual quantity on the pricing basis; :func:`mort_rate` and :func:`mort_rate_ph`
     apply the projection's own multipliers on top.
     """
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sx, z), 'mort_rate')        # noqa: F821
+    return float(data.mort_table().loc[(sx, z), "mort_rate"])        # noqa: F821
 
 
 def mort_rate(t):
@@ -767,7 +762,7 @@ def lapse_rate_base(t):
     sanity ceiling and nothing more.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
 
 
 def dyn_lapse_factor(t):
@@ -833,7 +828,7 @@ def default_rate(t):
     if not apl_elected() or t % 12 != 0 or t >= prem_period_months():
         return 0.0
     tbl = data.lapse_table()                                         # noqa: F821
-    rate = pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "default_rate")
+    rate = float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "default_rate"])
     return min(1.0, rate * apl_default_mult())
 
 
@@ -853,9 +848,12 @@ def benefit_schedule():
     both cells and is held separately, so that a schedule with no rows still matures.
     """
     sid = schedule_id()
-    tbl = data.prepared_benefit_schedule_table_calculation()
-    return {pdn.lookup_int(tbl, key, "k"): pdn.lookup_float(tbl, key, "benefit_pct")
-            for key in pdn.keys(tbl) if pdn.lookup_object(tbl, key, "schedule_id") == sid}
+    tbl = data.benefit_schedule_table()                              # noqa: F821
+    if sid not in tbl.index:
+        return {}
+    sub = tbl.loc[sid]
+    return {int(a): float(sub.loc[a, "benefit_pct"])
+            for a in sub.index}
 
 
 def benefit_pct(k):
@@ -872,7 +870,7 @@ def benefit_pct(k):
 
 def benefit_pct_cum(k):
     """G(k): the cumulative staged fraction paid to and including anniversary k."""
-    return pdn.sum_values((v for (s, v) in benefit_schedule().items() if s <= k))
+    return sum(v for s, v in benefit_schedule().items() if s <= k)
 
 
 # --- the cash-value construction
@@ -900,7 +898,7 @@ def endow_epv(z, k, i):
         return 1.0
     v = 1.0 / (1.0 + i)
     total = 0.0
-    for j in pdn.periods(k):
+    for j in range(k):
         total += (v ** (j + 1)) * surv_prob(z, j) * mort_rate_at_age(sex(), z + j)
     return total + (v ** k) * surv_prob(z, k)
 
@@ -911,7 +909,7 @@ def annuity_due(z, k, i):
     In years of premium, so ``S x A / a-due`` is yen per year.  ``k = 0`` returns 0.
     """
     v = 1.0 / (1.0 + i)
-    return pdn.sum_values(((v ** j) * surv_prob(z, j) for j in pdn.periods(k)))
+    return sum((v ** j) * surv_prob(z, j) for j in range(k))
 
 
 def edu_epv(k, i):
@@ -930,7 +928,8 @@ def edu_epv(k, i):
     v = 1.0 / (1.0 + i)
     z = issue_age() + k
     n = policy_term()
-    total = pdn.sum_values((g * (v ** (s - k)) * surv_prob(z, s - k) for (s, g) in benefit_schedule().items() if s > k))
+    total = sum(g * (v ** (s - k)) * surv_prob(z, s - k)
+                for s, g in benefit_schedule().items() if s > k)
     return sum_assured() * (total + (v ** (n - k)) * surv_prob(z, n - k))
 
 
@@ -941,7 +940,7 @@ def prem_net_level_at(i):
     ``EPV(0) / a-due(x, m)`` where it is not.  A derived quantity, never an input: the
     gross premium is sourced and the loading is what falls out.
     """
-    if cell() == "endowment":
+    if cell() == Cell.endowment:
         return (sum_assured() * endow_epv(issue_age(), policy_term(), i)
                 / annuity_due(issue_age(), prem_term(), i))
     return edu_epv(0, i) / annuity_due(issue_age(), prem_term(), i)
@@ -973,7 +972,7 @@ def implied_rate():
     """
     lo, hi = -0.20, 0.50
     target = premium_pp()
-    for _ in pdn.periods(80):
+    for _ in range(80):
         mid = 0.5 * (lo + hi)
         if prem_net_level_at(mid) > target:
             lo = mid
@@ -994,7 +993,7 @@ def pol_val_at(k, i):
     """
     n, m = policy_term(), prem_term()
     ann = annuity_due(issue_age() + k, max(m - k, 0), i)
-    if cell() == "endowment":
+    if cell() == Cell.endowment:
         return (sum_assured() * endow_epv(issue_age() + k, n - k, i)
                 - prem_net_level_at(i) * ann)
     return edu_epv(k, i) - prem_net_level_at(i) * ann
@@ -1030,7 +1029,7 @@ def pol_val_db_pp(k):
     constructions: an endowment assurance carries the death benefit inside its EPV, while
     the education cell's death payment releases the value instead of adding to it.
     """
-    return sum_assured() if cell() == "endowment" else 0.0
+    return sum_assured() if cell() == Cell.endowment else 0.0
 
 
 def reserve_pp(k):
@@ -1172,7 +1171,7 @@ def death_ben_pp(t):
     each year until the value pulls clear for good in policy year 13.  A model that
     hard-codes either limb is right eleven months a year at best.
     """
-    if cell() == "endowment":
+    if cell() == Cell.endowment:
         return sum_assured() - loan_pp(duration(t))
     refund = (prem_cum_pp_m(t + 1)
               - sum_assured() * benefit_pct_cum(duration(t))
@@ -1252,7 +1251,7 @@ def pols_if_pay(t):
         return 0.0
     if t == 0:
         return 1.0
-    return pols_if_pay_at(t - 1, "AFT_DECR")
+    return pols_if_pay_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_wv(t):
@@ -1267,7 +1266,7 @@ def pols_wv(t):
         return 0.0
     if t == 0:
         return 0.0
-    return pols_wv_at(t - 1, "AFT_DECR")
+    return pols_wv_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_pay_at(t, timing):
@@ -1287,15 +1286,15 @@ def pols_if_pay_at(t, timing):
         l_p(t + 1), the end-of-month state, and zero from ``proj_len() - 1`` on because
         everything closes at the end of the term.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if_pay(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return (pols_if_pay(t) * (1.0 - mort_rate_mth(t))
                 * (1.0 - mort_rate_ph_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
-        return pols_if_pay_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_if_pay_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1316,14 +1315,14 @@ def pols_wv_at(t, timing):
         a waived policy that surrenders at half the ordinary pace does so at half the pace
         every month rather than at half an annual rate spread unevenly.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_wv(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_wv(t) * (1.0 - mort_rate_mth(t)) + pols_waived(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
-        return pols_wv_at(t, "BEF_LAPSE") * (
+        return pols_wv_at(t, PolTiming.BEF_LAPSE) * (
             1.0 - min(1.0, wv_lapse_mult() * lapse_rate_mth(t)))
     raise ValueError("invalid timing: " + str(timing))
 
@@ -1399,7 +1398,7 @@ def pols_surv(t):
     ``l_p_after(t) + h_after(t)``.  This is what the staged benefit and the maturity benefit
     are paid to, in **both** states.
     """
-    return pols_if_pay_at(t, "BEF_LAPSE") + pols_wv_at(t, "BEF_LAPSE")
+    return pols_if_pay_at(t, PolTiming.BEF_LAPSE) + pols_wv_at(t, PolTiming.BEF_LAPSE)
 
 
 def pols_lapse(t):
@@ -1410,8 +1409,8 @@ def pols_lapse(t):
     benefit just paid**.  Zero in the final month ``t = 12n - 1``, where :func:`lapse_rate`
     is zero.
     """
-    return (pols_if_pay_at(t, "BEF_LAPSE")
-            + pols_wv_at(t, "BEF_LAPSE") * wv_lapse_mult()) * lapse_rate_mth(t)
+    return (pols_if_pay_at(t, PolTiming.BEF_LAPSE)
+            + pols_wv_at(t, PolTiming.BEF_LAPSE) * wv_lapse_mult()) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1450,7 +1449,7 @@ def premiums(t):
     return (premium_pp() - apl_advance_pp(t)) * pols_if_pay(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     Every limb falls at the **end of the month**, which is where the value family is read.
@@ -1477,19 +1476,20 @@ def claims(t, kind=None):
         where a waiver carve-out terminates the contract.  Identically **zero** in the
         base run, and published as a column of zeros because the zero is the product fact.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "STAGED", "MATURITY", "LAPSE", "PH_DEATH")))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in
+                   (Kind.DEATH, Kind.STAGED, Kind.MATURITY, Kind.LAPSE, Kind.PH_DEATH))
+    if kind == Kind.DEATH:
         return max(0.0, death_ben_pp(t)) * pols_death(t)
-    if kind == "STAGED":
+    if kind == Kind.STAGED:
         if (t + 1) % 12 != 0:
             return 0.0
         return sum_assured() * benefit_pct((t + 1) // 12) * pols_surv(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return sum_assured() * pols_maturity(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return max(0.0, cv_at_m(t + 1) - loan_pp(duration(t))) * pols_lapse(t)
-    if kind == "PH_DEATH":
+    if kind == Kind.PH_DEATH:
         return pol_val_pre_at_m(t + 1) * pols_ph_term(t)
     raise ValueError("invalid kind: " + str(kind))
 
@@ -1592,7 +1592,7 @@ def net_cf(t):
     cash flow instead of being projected silently under a 有配当 label.
     """
     dividend_type()
-    return (premiums(t) - claims(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 
@@ -1608,7 +1608,7 @@ def henreiritsu():
     payment frequency and volume band, so a ratio computed from a 月払 premium is a lower
     bound on a carrier's own published figure.
     """
-    total = sum_assured() * (pdn.sum_values(benefit_schedule().values()) + 1.0)
+    total = sum_assured() * (sum(benefit_schedule().values()) + 1.0)
     return total / (premium_pp() * prem_term())
 
 
@@ -1636,7 +1636,8 @@ def check_pols_roll_fwd():
     The library-wide form of a roll-forward check: no argument, one bool over all t.
     :func:`check_pols_roll_fwd_resid` gives the signed residual of the month that failed.
     """
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_pol_val_roll_fwd_resid(k):
@@ -1673,7 +1674,8 @@ def check_pol_val_roll_fwd():
     since the residual accumulates rounding on an amount of that size.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return pdn.all_true((abs(check_pol_val_roll_fwd_resid(k)) <= tol for k in pdn.periods(proj_years())))
+    return all(abs(check_pol_val_roll_fwd_resid(k)) <= tol
+               for k in range(proj_years()))
 
 
 def check_pol_val_terminal_resid(k):
@@ -1697,7 +1699,8 @@ def check_pol_val_terminal():
     signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return pdn.all_true((abs(check_pol_val_terminal_resid(k)) <= tol for k in pdn.periods(proj_years() + 1)))
+    return all(abs(check_pol_val_terminal_resid(k)) <= tol
+               for k in range(proj_years() + 1))
 
 
 def check_surr_charge_resid(k):
@@ -1721,7 +1724,8 @@ def check_surr_charge():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return pdn.all_true((abs(check_surr_charge_resid(k)) <= tol for k in pdn.periods(proj_years() + 1)))
+    return all(abs(check_surr_charge_resid(k)) <= tol
+               for k in range(proj_years() + 1))
 
 
 def check_staged_value_resid(k):
@@ -1743,7 +1747,8 @@ def check_staged_value():
     the signed residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return pdn.all_true((abs(check_staged_value_resid(k)) <= tol for k in pdn.periods(proj_years() + 1)))
+    return all(abs(check_staged_value_resid(k)) <= tol
+               for k in range(proj_years() + 1))
 
 
 def check_net_cf_resid(t):
@@ -1754,8 +1759,8 @@ def check_net_cf_resid(t):
     or a column counted twice, shows up here and nowhere else.
     """
     built = (premiums(t)
-             - claims(t, "DEATH") - claims(t, "STAGED") - claims(t, "MATURITY")
-             - claims(t, "LAPSE") - claims(t, "PH_DEATH")
+             - claims(t, Kind.DEATH) - claims(t, Kind.STAGED) - claims(t, Kind.MATURITY)
+             - claims(t, Kind.LAPSE) - claims(t, Kind.PH_DEATH)
              - claim_expenses(t) - expenses(t) - commissions(t))
     return net_cf(t) - built
 
@@ -1767,7 +1772,8 @@ def check_net_cf():
     residual.
     """
     tol = val_tol * max(1.0, sum_assured())                        # noqa: F821
-    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_net_cf_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 # --- result tables
@@ -1788,18 +1794,18 @@ def result_cf():
     ``claims_ph_death`` is a column of zeros in the base run by product design and is
     published rather than dropped; see the Space docstring.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "pols_if_pay": [pols_if_pay(t) for t in ts],
             "pols_wv": [pols_wv(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_staged": [claims(t, "STAGED") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_ph_death": [claims(t, "PH_DEATH") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_staged": [claims(t, Kind.STAGED) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_ph_death": [claims(t, Kind.PH_DEATH) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1816,7 +1822,7 @@ def result_pols():
     are the annual rates the assumption tables are stated on and the notes quote, and the
     ``*_mth`` columns the rates actually applied to the month.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1855,7 +1861,7 @@ def result_val():
     or a death **between** anniversaries is settled on is :func:`cv_at_m` and
     :func:`pol_val_pre_at_m`, which interpolate these columns.
     """
-    ks = list(pdn.periods(proj_years() + 1))
+    ks = list(range(proj_years() + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pol_val_pre_pp": [pol_val_pre_pp(k) for k in ks],
@@ -1869,11 +1875,6 @@ def result_val():
         },
         index=pd.Index(ks, name="k"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1913,4 +1914,14 @@ val_tol = 1e-9
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Cell = ("Pickle", 2)
+
+Sex = ("Pickle", 1)
+
+DividendType = ("Pickle", 3)
+
+PolTiming = ("Pickle", 4)
+
+Kind = ("Pickle", 5)
+
+enum_definitions = ("Pickle", 6)
