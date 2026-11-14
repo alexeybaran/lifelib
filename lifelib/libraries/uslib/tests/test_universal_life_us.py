@@ -32,7 +32,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.universal_life.enums import Claim, DeathBenefitOption, Timing
+from lifelib.libraries.uslib.products.universal_life.enums import Claim, DeathBenefitOption, PolTiming, Timing
 
 MODEL_PATH = LIB / "products/universal_life/UL_US_S"
 
@@ -706,7 +706,7 @@ def test_pols_if_is_the_start_of_month_weight(anchor, in_force):
         assert proj.pols_if(0) == proj.pols_if_init()
         assert df.loc[0, "pols_if"] == proj.pols_if_init()
         assert all(proj.pols_if_at(0, timing) == proj.pols_if(0)
-                   for timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"))
+                   for timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR))
 
 
 # ---------------------------------------------------------------------------
