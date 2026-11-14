@@ -23,7 +23,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.deferred_income_annuity.categories import Claim, DeathBenefit, FactorBasis, MortalityBasis, PaymentTiming, PayoutForm, ReductionTrigger
+from lifelib.libraries.uslib.products.deferred_income_annuity.enums import Claim, DbForm, FactorBasis, IncomeForm, MarketType, MortBasis, PaymentTiming, Phase, ReductionTrigger
 
 MODEL_PATH = LIB / "products/deferred_income_annuity/DIA_US_S"
 
@@ -154,7 +154,7 @@ def test_death_benefit_fork(deferred_income_annuity, anchor):
     ROP form pays $150,000 and the no-death-benefit form pays nothing.
     """
     fork = deferred_income_annuity.Projection[4]
-    assert fork.db_form() == DeathBenefit.NONE
+    assert fork.db_form() == DbForm.NONE
     assert fork.purchase_rate(0) == 0.386727
     assert fork.purchase_rate(60) == 0.298977
     assert fork.annual_income(60) == pytest.approx(53621.55, abs=CENT)
@@ -263,8 +263,8 @@ def test_the_first_instalment_falls_at_the_end_of_month_T(anchor):
     assert anchor.is_payment_mth(239) is False
     assert anchor.is_payment_mth(240) is True
     assert sum(anchor.is_payment_mth(t) for t in range(240, 252)) == 12
-    assert anchor.phase(239) == "DEFERRAL"
-    assert anchor.phase(240) == "PAYOUT"
+    assert anchor.phase(239) == Phase.DEFERRAL
+    assert anchor.phase(240) == Phase.PAYOUT
     assert anchor.payment_surv_mth(240) == 241
     assert anchor.claims(239, Claim.DEATH) > 0.0
     assert anchor.claims(240, Claim.DEATH) == 0.0
@@ -326,7 +326,7 @@ def test_cash_refund_carries_no_certain_floor(anchor):
     n_g = CP(T)/B; the projected stream is life-contingent with a lump sum at death.
     Carrying the pricing guarantee into the projection would pay it twice.
     """
-    assert anchor.payout_form() == PayoutForm.CR
+    assert anchor.payout_form() == IncomeForm.CR
     assert anchor.guarantee_mths_pricing() == pytest.approx(40.6691, abs=5e-4)
     assert anchor.certain_mths_eff() == 0
     assert anchor.certain_floor(250) == 0.0
@@ -338,7 +338,7 @@ def test_installment_refund_derives_its_certain_period(deferred_income_annuity):
     purchase payments", so the guarantee is 41 monthly instalments on this cell.
     """
     ir = deferred_income_annuity.Projection[5]
-    assert ir.payout_form() == PayoutForm.IR
+    assert ir.payout_form() == IncomeForm.IR
     assert ir.certain_mths_refund() == 41
     assert ir.certain_mths_eff() == 41
     assert ir.certain_floor(240) == 1.0
@@ -633,7 +633,7 @@ def test_qlac_overlay_flags_but_generates_no_cash_flows(deferred_income_annuity)
 
 
 def test_a_nonqualified_contract_raises_no_qlac_flags(anchor):
-    assert anchor.market_type() == "NQ"
+    assert anchor.market_type() == MarketType.NQ
     assert anchor.is_qlac() is False
     assert anchor.qlac_flags() == []
 
@@ -647,8 +647,8 @@ def test_generational_construction(deferred_income_annuity, anchor):
     the issue-age rate is the table rate times 0.99^14.
     """
     gen = deferred_income_annuity.Projection[16]
-    assert gen.mort_basis() == MortalityBasis.generational
-    assert anchor.mort_basis() == MortalityBasis.anchor
+    assert gen.mort_basis() == MortBasis.generational
+    assert anchor.mort_basis() == MortBasis.anchor
     assert gen.calendar_year(0) - gen.mort_table_year == 14
     assert gen.improvement_rate(0, 1) == 0.01
     assert gen.mort_rate(0, 1) == pytest.approx(
@@ -752,8 +752,8 @@ def test_result_cf_shape(anchor):
     assert len(df) == anchor.proj_len()
     assert df.index[0] == 0
     assert df.index[-1] == anchor.proj_len() - 1
-    assert anchor.phase(anchor.proj_len() - 1) == "PAYOUT"
-    assert anchor.phase(anchor.proj_len()) == "TERMINATED"
+    assert anchor.phase(anchor.proj_len() - 1) == Phase.PAYOUT
+    assert anchor.phase(anchor.proj_len()) == Phase.TERMINATED
     assert df.loc[0, "premiums"] == 100000.0
     assert df.loc[60, "premiums"] == pytest.approx(48750.0, abs=CENT)
     assert df.loc[0, "net_cf"] == pytest.approx(
@@ -802,6 +802,6 @@ def test_the_premium_schedule_is_a_separate_table(deferred_income_annuity):
     cannot live in a fixed set of model point columns."""
     anchor = deferred_income_annuity.Projection[1]
     assert anchor.premium_by_mth() == {0: 100000.0, 60: 50000.0}
-    assert len(anchor.premium_schedule().index) == 2
+    assert len(anchor.premium_schedule()) == 2
     single = deferred_income_annuity.Projection[11]
     assert single.premium_by_mth() == {0: 210000.0}
