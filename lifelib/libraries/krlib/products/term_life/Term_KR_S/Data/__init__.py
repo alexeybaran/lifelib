@@ -173,8 +173,8 @@ def model_point_table():
     해약환급금 미지급형 — which is both the 감독규정 기준연령 요건 [REG-R9] and the
     disclosure's 대표계약 [S5].
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -191,9 +191,9 @@ def mort_table():
     for the 재해사망 uplift variant.  See the Space docstring for why the two columns may
     come from different carriers.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def rate_class_table():
@@ -213,9 +213,10 @@ def rate_class_table():
     flat across ages **[std]**: the disclosures are at three ages and the ratios move
     little between them.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rate_class_file,                               # noqa: F821
-        index_col=["rate_class", "sex"])
+    frame = pd.read_csv(input_dir() / rate_class_file)               # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["rate_class", "sex"]))
 
 
 def prem_rate_table():
@@ -228,9 +229,10 @@ def prem_rate_table():
     eight are the 갱신형 ladder of the carrier that publishes an 예상 갱신보험료 예시
     [S6] [S7].
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / prem_rate_file,                                # noqa: F821
-        index_col=["form", "sex", "issue_age", "term_y"])
+    frame = pd.read_csv(input_dir() / prem_rate_file)                # noqa: F821
+    frame["form"] = [MaturityForm[name] for name in frame["form"]]
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["form", "sex", "issue_age", "term_y"]))
 
 
 def prem_anchor_table():
@@ -241,7 +243,7 @@ def prem_anchor_table():
     which for the 순수보장형 is the doubly prescribed cell [REG-R9] [S5].
     """
     tbl = prem_rate_table().reset_index()
-    return tbl[tbl["is_anchor"] == 1].set_index(["form", "sex"])
+    return pdn.table(tbl[tbl["is_anchor"] == 1].set_index(["form", "sex"]))
 
 
 def lapse_table():
@@ -252,44 +254,9 @@ def lapse_table():
     endpoints are disclosed [S12] [S1] and the log-linear shape between them is
     prescribed [REG-R27]; ``Projection.lapse_rate`` builds the curve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="segment")         # noqa: F821
-
-
-def prepared_rate_class_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(rate_class_table(),
-                        columns=('mort_ratio', 'prem_ratio'),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate', 'acc_mort_rate'),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_prem_rate_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_prem_anchor_table_rows():
-    """Own calculation selection; retain the public source dependency."""
-    return pdn.table(prem_anchor_table(), rows=True, indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_prem_rate_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(prem_rate_table().index)
+    frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
+    frame["segment"] = [Segment[name] for name in frame["segment"]]
+    return pdn.table(frame.set_index("segment"))
 
 
 # ---------------------------------------------------------------------------
@@ -308,3 +275,11 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+RateClass = ("Pickle", 2)
+
+MaturityForm = ("Pickle", 3)
+
+Segment = ("Pickle", 4)
