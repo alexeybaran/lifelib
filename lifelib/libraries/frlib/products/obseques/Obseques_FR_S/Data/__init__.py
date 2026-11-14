@@ -90,8 +90,8 @@ def model_point_table():
     an entry-70 cell, a 25-year temporary, a cessation age of 80, simple revalorisation
     and monthly instalments.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -106,9 +106,9 @@ def mort_table():
     ``provenance`` column says which row is the anchor and which are constructions.
     Sorted on read, because ``Projection.mort_rate_base`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def select_table():
@@ -124,9 +124,9 @@ def select_table():
     years beyond the table take its last row.  **[std]** throughout: the magnitude has no
     public calibration of any kind.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / select_table_file,                             # noqa: F821
-        index_col="policy_year").sort_index()
+        index_col="policy_year").sort_index())
 
 
 def lapse_table():
@@ -139,9 +139,9 @@ def lapse_table():
     lapse, surrender or paid-up rate for this product, and on a contract whose surrender
     value is a real cash flow this rate moves the liability in both directions at once.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_table_file,                              # noqa: F821
-        index_col="policy_year").sort_index()
+        index_col="policy_year").sort_index())
 
 
 def surr_scale_table():
@@ -166,9 +166,9 @@ def surr_scale_table():
     **[std]**, since a *prime unique* contract surrendered at once returns a provision
     rather than nothing.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surr_scale_file,                               # noqa: F821
-        index_col=["scale", "month"]).sort_index()
+    frame = pd.read_csv(input_dir() / surr_scale_file)                     # noqa: F821
+    frame["scale"] = [SurrScale[name] for name in frame["scale"]]
+    return pdn.table(frame.set_index(["scale", "month"]).sort_index())
 
 
 def single_prem_table():
@@ -181,55 +181,9 @@ def single_prem_table():
     *prime unique* premium form, and it is what turns a mathematical provision into a
     *valeur de reduction* when a policy stops paying and is made paid-up.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / single_prem_file,                              # noqa: F821
-        index_col="age").sort_index()
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_select_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(select_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_single_prem_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(single_prem_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_surr_scale_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(surr_scale_table(), groups=('scale',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_select_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(select_table().index)
-
-
-
-def prepared_single_prem_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(single_prem_table().index)
+        index_col="age").sort_index())
 
 
 # ---------------------------------------------------------------------------
@@ -250,3 +204,7 @@ single_prem_file = "single_prem_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+SurrScale = ("Pickle", 2)
