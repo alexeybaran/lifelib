@@ -955,3 +955,28 @@ def test_round_trip_is_stable(tmp_path):
         reread.close()
 
     assert model_files(dest) == model_files(MODEL_DIR)
+
+
+def test_the_scenario_segments_must_not_overlap():
+    """W3.3 (D68): uc_return_mth reads the last segment starting at or before the month, so
+    the reader refuses overlapping segments rather than answering differently."""
+    import pandas as pd
+    model = mx.read_model(MODEL_DIR, name="UC_FR_S_d68")
+    try:
+        src = model.Data.input_dir() / "uc_scenario_table.csv"
+        broken = pd.read_csv(src)
+        extra = broken[broken["scenario_id"] == "stress_yr1"].iloc[[0]].copy()
+        extra["from_month"] = 3
+        extra["to_month"] = 8
+        broken = pd.concat([broken, extra], ignore_index=True)
+        alt = "uc_scenario_table_d68_broken.csv"
+        broken.to_csv(model.Data.input_dir() / alt, index=False)
+        try:
+            model.Data.uc_scenario_table_file = alt
+            model.Data.clear_all()
+            with pytest.raises(FormulaError, match="uc_scenario_table"):
+                model.Data.uc_scenario_table()
+        finally:
+            (model.Data.input_dir() / alt).unlink(missing_ok=True)
+    finally:
+        model.close()
