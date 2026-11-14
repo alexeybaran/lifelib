@@ -323,12 +323,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def chassis():
@@ -340,10 +340,7 @@ def chassis():
     continuous across the renewal, so the projection horizon is unchanged; what the
     renewal really does is reprice, and that is the ``renew_reprice_rate`` switch.
     """
-    v = pdn.lookup_object(prepared_model_point(), "chassis")
-    if v not in ("shushin", "teiki"):
-        raise ValueError("invalid chassis")
-    return v
+    return Chassis[model_point()["chassis"]]
 
 
 def issue_age():
@@ -355,7 +352,7 @@ def issue_age():
     half a year; the base run accepts the offset **[std]** and ``mort_age_offset`` is the
     switch that removes it.
     """
-    v = pdn.lookup_int(prepared_model_point(), "issue_age")
+    v = int(model_point()["issue_age"])
     if not 20 <= v <= 75:
         raise ValueError("issue_age outside the composite's 20-75 range")
     return v
@@ -368,10 +365,7 @@ def sex():
     male and female incidence curves cross: female incidence is nearly three times male at
     35-39 and half of it at 70-74.
     """
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def base_amount():
@@ -381,7 +375,7 @@ def base_amount():
     because it is the amount at which the published multiples and the published ¥1,000,000
     headline diagnosis benefit are mutually consistent.
     """
-    return pdn.lookup_float(prepared_model_point(), "base_amount")
+    return float(model_point()["base_amount"])
 
 
 def diag_benefit():
@@ -391,7 +385,7 @@ def diag_benefit():
     fresh 再発 / 転移 / 新生 once the cycle has expired, with **no lifetime cap** and no
     termination on payment.
     """
-    return pdn.lookup_float(prepared_model_point(), "diag_benefit")
+    return float(model_point()["diag_benefit"])
 
 
 def cycle_months():
@@ -402,7 +396,7 @@ def cycle_months():
     the previous payment, and from the start date of the last hospitalisation; only the
     first needs no second date carried alongside, and it is the one modelled.
     """
-    return pdn.lookup_int(prepared_model_point(), "cycle_months")
+    return int(model_point()["cycle_months"])
 
 
 def insitu_pct():
@@ -413,7 +407,7 @@ def insitu_pct():
     on its own cap, is not payable after a full-rate benefit, and does not trigger the
     premium waiver.
     """
-    return pdn.lookup_float(prepared_model_point(), "insitu_pct")
+    return float(model_point()["insitu_pct"])
 
 
 def daily_amount():
@@ -423,7 +417,7 @@ def daily_amount():
     no 通算 lifetime limit** — the structural difference from the medical chassis, whose 60
     or 120-day and 1,095-day ledgers dominate its model.
     """
-    return pdn.lookup_float(prepared_model_point(), "daily_amount")
+    return float(model_point()["daily_amount"])
 
 
 def surg_mult():
@@ -432,7 +426,7 @@ def surg_mult():
     Unlimited count; simultaneous procedures count as one.  Payable in full on 上皮内新生物 as
     well, which is why :func:`claims` ``(t, "SURGERY")`` has two limbs.
     """
-    return pdn.lookup_float(prepared_model_point(), "surg_mult")
+    return float(model_point()["surg_mult"])
 
 
 def treat_benefit():
@@ -442,7 +436,7 @@ def treat_benefit():
     months pays one month, and two triggers in one month pay once.  Any formula in which a
     day count reaches this benefit is wrong by construction.
     """
-    return pdn.lookup_float(prepared_model_point(), "treat_benefit")
+    return float(model_point()["treat_benefit"])
 
 
 def treat_cap():
@@ -454,7 +448,7 @@ def treat_cap():
     long-course minority — which is what a 60-month cap is for, and why
     :func:`treat_months` cannot be dropped as immaterial.
     """
-    return pdn.lookup_int(prepared_model_point(), "treat_cap")
+    return int(model_point()["treat_cap"])
 
 
 def outp_daily():
@@ -464,7 +458,7 @@ def outp_daily():
     chemotherapy, not attendance for follow-up — and with no day limit.  Not payable for a
     day of attendance during a stay for which the inpatient benefit is paid.
     """
-    return pdn.lookup_float(prepared_model_point(), "outp_daily")
+    return float(model_point()["outp_daily"])
 
 
 def wait_months():
@@ -474,7 +468,7 @@ def wait_months():
     calendar months instead.  On a monthly grid these are the same boundary **[std]** and
     the model does not claim a precision it does not have.
     """
-    return pdn.lookup_int(prepared_model_point(), "wait_months")
+    return int(model_point()["wait_months"])
 
 
 def prem_period_type():
@@ -488,10 +482,7 @@ def prem_period_type():
     arises** on any retrieved contract; the 短期払 variant is the only route by which this
     chassis acquires a surrender value at all, which the model does not carry either way.
     """
-    v = pdn.lookup_object(prepared_model_point(), "prem_period")
-    if v not in ("whole_life", "to_65"):
-        raise ValueError("invalid prem_period")
-    return v
+    return PremPeriod[model_point()["prem_period"]]
 
 
 def premium_mth_pp():
@@ -510,7 +501,7 @@ def premium_mth_pp():
     the anchor's ¥3,000 is a round modelling figure in that neighbourhood and no result in
     this library depends on its being a market rate.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def prem_mode():
@@ -520,7 +511,7 @@ def prem_mode():
     a monthly grid whose step *is* the payment interval.  It is also why the 90-day waiting
     period lands exactly on a grid boundary.
     """
-    return pdn.lookup_object(prepared_model_point(), "prem_mode")
+    return PremMode[model_point()["prem_mode"]]
 
 
 def waiver_trigger():
@@ -534,10 +525,7 @@ def waiver_trigger():
     :func:`lapse_rate_canc_mth`.  The disability incidence itself is out of scope
     **[std scope]**: no basis for it appears in this product's source set.
     """
-    v = pdn.lookup_object(prepared_model_point(), "waiver_trigger")
-    if v not in ("cancer_diag", "disability", "none"):
-        raise ValueError("invalid waiver_trigger")
-    return v
+    return WaiverTrigger[model_point()["waiver_trigger"]]
 
 
 def adv_rider():
@@ -547,7 +535,7 @@ def adv_rider():
     top-up capped at ¥500,000 per 療養; the rider terminates when the cap is reached, which
     :func:`adv_pay` implements as a draw against :func:`adv_paid`.
     """
-    return pdn.lookup_bool(prepared_model_point(), "adv_rider")
+    return bool(model_point()["adv_rider"])
 
 
 def disch_rider():
@@ -557,7 +545,7 @@ def disch_rider():
     technical notes carry the flag but not a formula for it, so the benefit is a **[std]**
     construction here; see the Space docstring and ``model.md``.
     """
-    return pdn.lookup_bool(prepared_model_point(), "disch_rider")
+    return bool(model_point()["disch_rider"])
 
 
 def repeat_conditioned():
@@ -568,7 +556,7 @@ def repeat_conditioned():
     hospitalised at another — and the switch multiplies the relapse hazard by
     ``treat_prob``, so the two designs differ by an order of magnitude.
     """
-    return pdn.lookup_bool(prepared_model_point(), "repeat_conditioned")
+    return bool(model_point()["repeat_conditioned"])
 
 
 # ===== Cells: the projection frame =====
@@ -582,7 +570,7 @@ def omega_age():
     projection ends where the published table ends rather than where a fitted curve
     happens to close.
     """
-    return omega_age_male if sex() == "M" else omega_age_female      # noqa: F821
+    return omega_age_male if sex() == Sex.M else omega_age_female      # noqa: F821
 
 
 def proj_len():
@@ -645,13 +633,13 @@ def mort_rate_at_age(a):
     ``mort_age_offset`` needs.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    top = int(pdn.last_key(pdn.subtable(data.prepared_mort_table_groups_1(), sex())))
+    top = int(tbl.loc[sex()].index.max())
     lo = min(int(a), top)
-    q0 = pdn.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo), "mort_rate")
+    q0 = float(tbl.loc[(sex(), lo), "mort_rate"])
     frac = a - lo
     if frac <= 0.0 or lo >= top:
         return q0
-    q1 = pdn.lookup_float(data.prepared_mort_table_scalar_loc(), (sex(), lo + 1), "mort_rate")
+    q1 = float(tbl.loc[(sex(), lo + 1), "mort_rate"])
     return q0 + frac * (q1 - q0)
 
 
@@ -691,7 +679,7 @@ def surv_5y():
     background; it converts instead into an excess hazard, which is what :func:`mu_ex`
     does.
     """
-    return pdn.lookup_float(data.prepared_survival_table_loc(), sex(), 'surv_5y')        # noqa: F821
+    return float(data.survival_table().loc[sex(), "surv_5y"])        # noqa: F821
 
 
 def mu_ex():
@@ -730,7 +718,7 @@ def lapse_rate(t):
     years against it.  Policy years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
 
 
 def lapse_rate_mth(t):
@@ -754,7 +742,7 @@ def lapse_rate_canc_mth(t):
     the product exists to pay.  On the disability-trigger and no-waiver designs the premium
     does not stop, and the rate becomes the healthy one scaled by ``lapse_canc_factor``.
     """
-    if waiver_trigger() == "cancer_diag":
+    if waiver_trigger() == WaiverTrigger.cancer_diag:
         return 0.0
     return lapse_rate_mth(t) * lapse_canc_factor                     # noqa: F821
 
@@ -794,7 +782,7 @@ def inc_band_at_age(a):
     """
     tbl = data.incidence_table()                                     # noqa: F821
     b = 5 * (int(a) // 5)
-    return min(max(b, int(min(pdn.keys(data.prepared_incidence_table_index_selection())))), int(pdn.max_value(pdn.keys(data.prepared_incidence_table_index_selection()))))
+    return min(max(b, int(tbl.index.min())), int(tbl.index.max()))
 
 
 def inc_rate_both(t):
@@ -805,7 +793,7 @@ def inc_rate_both(t):
     assumption in the model that is genuinely sourced.
     """
     tbl = data.incidence_table()                                     # noqa: F821
-    return pdn.lookup_float(data.prepared_incidence_table_scalar_loc(), inc_band_at_age(age(t)), "rate_per_100k") / 100000.0
+    return float(tbl.loc[inc_band_at_age(age(t)), "rate_per_100k"]) / 100000.0
 
 
 def sex_factor(a):
@@ -830,9 +818,9 @@ def sex_factor(a):
     by-sex grid from the same workbook replaces the construction.
     """
     tbl = data.sex_factor_table()                                    # noqa: F821
-    a0, a1 = float(min(pdn.keys(data.prepared_sex_factor_table_index_selection()))), float(pdn.max_value(pdn.keys(data.prepared_sex_factor_table_index_selection())))
-    f0 = pdn.lookup_float(data.prepared_sex_factor_table_scalar_loc(), a0, "f_male")
-    f1 = pdn.lookup_float(data.prepared_sex_factor_table_scalar_loc(), a1, "f_male")
+    a0, a1 = float(tbl.index.min()), float(tbl.index.max())
+    f0 = float(tbl.loc[a0, "f_male"])
+    f1 = float(tbl.loc[a1, "f_male"])
     return min(2.0, max(0.0, f0 + (f1 - f0) * (a - a0) / (a1 - a0)))
 
 
@@ -848,7 +836,7 @@ def inc_rate(t):
     """
     both = inc_rate_both(t)
     f = sex_factor(inc_band_at_age(age(t)) + 2.5)
-    limb = f if sex() == "M" else 2.0 - f
+    limb = f if sex() == Sex.M else 2.0 - f
     return both * limb * sel_lapse_factor(t)
 
 
@@ -965,7 +953,7 @@ def unlock(t):
     if cohort == 0.0:
         return 0.0
     factor = 1.0
-    for v in pdn.periods(s, t):
+    for v in range(s, t):
         factor = factor * surv_canc(v)
     return cohort * factor
 
@@ -1043,13 +1031,13 @@ def pols_if_at(t, timing):
     :func:`result_pols` — for the state movement; ``pols_if_at`` answers only how many
     lives are left, never which state they are in.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return ((pols_healthy(t) - diag_first(t)) * (1.0 - mort_rate_mth(t))
                 + (pols_cancer(t) + diag_first(t))
                 * (1.0 - mort_rate_canc_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1155,6 +1143,11 @@ def pols_lapse(t):
 # ===== Cells: the care-benefit bases and their ledgers =====
 
 
+def hosp_stay_schedule():
+    """The mean-stay rows of the model's basis, keyed by age_from."""
+    return data.hosp_stay_table().loc[hosp_stay_basis()]             # noqa: F821
+
+
 def hosp_stay_days(t):
     """L: the mean cancer hospitalisation in days.
 
@@ -1164,16 +1157,8 @@ def hosp_stay_days(t):
     because the gradient is published on four broad bands and the incidence on twenty-one
     narrow ones.
     """
-    groups = data.prepared_hosp_stay_table_calculation()
-    basis = "age_band" if hosp_age_gradient else "all_ages"
-    if not pdn.has_group(groups, basis):
-        raise IndexError("single positional indexer is out-of-bounds")
-    table = pdn.subtable(groups, basis)
-    attained_age = age(t)
-    eligible = [cutoff for cutoff in pdn.keys(table) if cutoff <= attained_age]
-    if not eligible:
-        raise IndexError("single positional indexer is out-of-bounds")
-    return pdn.lookup_float(table, eligible[-1], "days")
+    sub = hosp_stay_schedule()
+    return float(sub.loc[sub.index.asof(age(t)), "days"])
 
 
 def hosp_rate_mth(t):
@@ -1288,7 +1273,7 @@ def pols_payer(t):
     cancer diagnosis does not stop the premium.  Weighting the premium by ``pols_if`` on
     the composite overstates income by exactly the waived population.
     """
-    if waiver_trigger() == "cancer_diag":
+    if waiver_trigger() == WaiverTrigger.cancer_diag:
         return pols_healthy(t)
     return pols_if(t)
 
@@ -1301,7 +1286,7 @@ def premium_factor(t):
     expiry at a flat rate and records the tension rather than resolving it; set
     ``renew_reprice_rate`` above zero to step the premium at each renewal instead.
     """
-    if chassis() != "teiki" or renew_reprice_rate == 0.0:            # noqa: F821
+    if chassis() != Chassis.teiki or renew_reprice_rate == 0.0:            # noqa: F821
         return 1.0
     return (1.0 + renew_reprice_rate) ** (t // renewal_months)       # noqa: F821
 
@@ -1313,7 +1298,7 @@ def prem_payable(t):
     after which the cover continues unpaid — and so does the maintenance expense, which is
     what makes expense inflation a first-order lever on a short-pay design.
     """
-    if prem_period_type() == "to_65" and age(t) >= 65:
+    if prem_period_type() == PremPeriod.to_65 and age(t) >= 65:
         return 0.0
     return 1.0
 
@@ -1330,7 +1315,7 @@ def premiums(t):
     return premium_mth_pp() * premium_factor(t) * pols_payer(t) * prem_payable(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DIAG"``
@@ -1381,35 +1366,35 @@ def claims(t, kind=None):
     check: ¥3,000.00 inpatient, ¥1,458.33 surgery, ¥10,000.00 treatment, ¥916.67
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in (
-            "DIAG", "INSITU", "HOSP", "SURGERY", "TREAT", "OUTPATIENT",
-            "ADVANCED", "DISCHARGE", "LAPSE")))
-    if kind == "DIAG":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (
+            Kind.DIAG, Kind.INSITU, Kind.HOSP, Kind.SURGERY, Kind.TREAT, Kind.OUTPATIENT,
+            Kind.ADVANCED, Kind.DISCHARGE, Kind.LAPSE))
+    if kind == Kind.DIAG:
         return diag_benefit() * trig(t)
-    if kind == "INSITU":
+    if kind == Kind.INSITU:
         return insitu_pct() * diag_benefit() * insitu_ev(t)
-    if kind == "HOSP":
+    if kind == Kind.HOSP:
         return (daily_amount() * hosp_stay_days(t) * hosp_rate_mth(t)
                 * pols_cancer(t))
-    if kind == "SURGERY":
+    if kind == Kind.SURGERY:
         return surg_mult() * base_amount() * (
             surg_per_hosp * hosp_rate_mth(t) * pols_cancer(t)        # noqa: F821
             + surg_per_insitu * insitu_ev(t))                        # noqa: F821
-    if kind == "TREAT":
+    if kind == Kind.TREAT:
         return treat_benefit() * paid_months(t) * pols_cancer(t)
-    if kind == "OUTPATIENT":
+    if kind == Kind.OUTPATIENT:
         return outp_daily() * (outp_days / 12.0) * pols_cancer(t)    # noqa: F821
-    if kind == "ADVANCED":
+    if kind == Kind.ADVANCED:
         pay = adv_pay(t)
         top_up = min(adv_topup_rate * pay, adv_topup_cap)            # noqa: F821
         return adv_freq_mth() * (pay + top_up) * pols_cancer(t)
-    if kind == "DISCHARGE":
+    if kind == Kind.DISCHARGE:
         if not disch_rider():
             return 0.0
         return (disch_mult * base_amount() * disch_qual_share        # noqa: F821
                 * hosp_rate_mth(t) * pols_cancer(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1495,7 +1480,7 @@ def net_cf(t):
     disjoint.  Every error in incidence therefore hits both sides of the cash flow at once,
     roughly doubling its effect here.
     """
-    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 
@@ -1525,7 +1510,8 @@ def check_pols_roll_fwd():
     signed residual of the month that failed.
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_cancer_roll_fwd_resid(t):
@@ -1543,7 +1529,8 @@ def check_cancer_roll_fwd_resid(t):
 def check_cancer_roll_fwd():
     """True when the diagnosed-state roll-forward closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return pdn.all_true((abs(check_cancer_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_cancer_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_cycle_ledger_resid(t):
@@ -1557,7 +1544,7 @@ def check_cycle_ledger_resid(t):
     """
     built = 0.0
     factor = 1.0
-    for s in pdn.periods(t - 1, max(t - cycle_months(), -1), -1):
+    for s in range(t - 1, max(t - cycle_months(), -1), -1):
         factor = factor * surv_canc(s)
         built = built + trig(s) * factor
     return pols_locked(t) - built
@@ -1566,7 +1553,8 @@ def check_cycle_ledger_resid(t):
 def check_cycle_ledger():
     """True when the two-year cycle ledger closes in every projected month."""
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                       # noqa: F821
-    return pdn.all_true((abs(check_cycle_ledger_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_cycle_ledger_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_insitu_ledger_resid(t):
@@ -1590,7 +1578,8 @@ def check_insitu_ledger():
     — keeps running against nobody.  Those months carry no information and are excluded
     rather than papered over.
     """
-    return pdn.all_true((abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len()) if pols_healthy(t) > 0.0))
+    return all(abs(check_insitu_ledger_resid(t)) <= roll_fwd_tol     # noqa: F821
+               for t in range(proj_len()) if pols_healthy(t) > 0.0)
 
 
 def check_treat_cap_resid(t):
@@ -1608,7 +1597,8 @@ def check_treat_cap_resid(t):
 
 def check_treat_cap():
     """True when the treatment-month ledger stays inside its cap in every month."""
-    return pdn.all_true((abs(check_treat_cap_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_treat_cap_resid(t)) <= roll_fwd_tol         # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_adv_cap_resid(t):
@@ -1624,10 +1614,11 @@ def check_adv_cap_resid(t):
 
 def check_adv_cap():
     """True when the 先進医療 ledger stays inside its cap in every month."""
-    return pdn.all_true((abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap for t in pdn.periods(proj_len())))
+    return all(abs(check_adv_cap_resid(t)) <= roll_fwd_tol * adv_cap  # noqa: F821
+               for t in range(proj_len()))
 
 
-def check_net_cf_resid(t) -> object:
+def check_net_cf_resid(t):
     """The published cash-flow statement's residual in month t; zero everywhere.
 
     Rebuilds ``net_cf`` from the columns of :func:`result_cf` rather than from
@@ -1641,16 +1632,17 @@ def check_net_cf_resid(t) -> object:
     without a reader having to know which of them to skip.  A benefit line added to the
     table and not to :func:`net_cf` is caught by the same sweep.
     """
-    row = pdn.row(prepared_result_cf_rows(), t)
-    outgo = pdn.sum_values((pdn.lookup_object(row, c) for c in pdn.keys(row) if str(c).startswith("claims_")))
-    return (pdn.lookup_object(row, "premiums") - outgo - pdn.lookup_object(row, "expenses") - pdn.lookup_object(row, "claim_expenses")
-            - pdn.lookup_object(row, "commissions") - pdn.lookup_object(row, "net_cf"))
+    row = result_cf().loc[t]
+    outgo = sum(row[c] for c in row.index if str(c).startswith("claims_"))
+    return (row["premiums"] - outgo - row["expenses"] - row["claim_expenses"]
+            - row["commissions"] - row["net_cf"])
 
 
 def check_net_cf():
     """True when the published cash-flow statement adds up in every projected month."""
     tol = roll_fwd_tol * max(premium_mth_pp(), 1.0)                      # noqa: F821
-    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_net_cf_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 # ===== Cells: result tables =====
@@ -1686,22 +1678,22 @@ def result_cf():
     it is the *column* that is not published.  :func:`check_net_cf` asserts the identity
     off this table in every projected month.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "pols_healthy": [pols_healthy(t) for t in ts],
             "pols_cancer": [pols_cancer(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_diag": [claims(t, "DIAG") for t in ts],
-            "claims_insitu": [claims(t, "INSITU") for t in ts],
-            "claims_hosp": [claims(t, "HOSP") for t in ts],
-            "claims_surgery": [claims(t, "SURGERY") for t in ts],
-            "claims_treat": [claims(t, "TREAT") for t in ts],
-            "claims_outpatient": [claims(t, "OUTPATIENT") for t in ts],
-            "claims_advanced": [claims(t, "ADVANCED") for t in ts],
-            "claims_discharge": [claims(t, "DISCHARGE") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_diag": [claims(t, Kind.DIAG) for t in ts],
+            "claims_insitu": [claims(t, Kind.INSITU) for t in ts],
+            "claims_hosp": [claims(t, Kind.HOSP) for t in ts],
+            "claims_surgery": [claims(t, Kind.SURGERY) for t in ts],
+            "claims_treat": [claims(t, Kind.TREAT) for t in ts],
+            "claims_outpatient": [claims(t, Kind.OUTPATIENT) for t in ts],
+            "claims_advanced": [claims(t, Kind.ADVANCED) for t in ts],
+            "claims_discharge": [claims(t, Kind.DISCHARGE) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1717,7 +1709,7 @@ def result_pols():
     The same 0-based frame as :func:`result_cf`: ``proj_len()`` rows indexed
     ``t = 0, 1, ..., proj_len() - 1``.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1741,16 +1733,9 @@ def result_pols():
     )
 
 
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
-
-
-
-
-def prepared_result_cf_rows():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(result_cf(), rows=True, preserve_scalar_types = True)
+def hosp_stay_basis():
+    """The mean-stay basis chosen by ``hosp_age_gradient``: the age bands or all ages."""
+    return StayBasis.age_band if hosp_age_gradient else StayBasis.all_ages  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -1836,4 +1821,20 @@ math = ("Module", "math")
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Chassis = ("Pickle", 3)
+
+Sex = ("Pickle", 1)
+
+PremPeriod = ("Pickle", 4)
+
+PremMode = ("Pickle", 5)
+
+WaiverTrigger = ("Pickle", 6)
+
+StayBasis = ("Pickle", 2)
+
+PolTiming = ("Pickle", 7)
+
+Kind = ("Pickle", 8)
+
+enum_definitions = ("Pickle", 9)

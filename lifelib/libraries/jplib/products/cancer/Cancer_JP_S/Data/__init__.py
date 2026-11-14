@@ -103,8 +103,8 @@ def model_point_table():
     the 算出方法書 is not a published document, so every premium in the table is a **[std]**
     modelling value.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -115,9 +115,9 @@ def mort_table():
     why the distinction is load-bearing.  Read as the valuation-basis rate, which
     ``Projection.mort_rate`` scales by ``mort_be_factor``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def incidence_table():
@@ -128,8 +128,8 @@ def incidence_table():
     values reproduced with their attribution, in deliberate contrast to
     :func:`mort_table`.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_table_file, index_col="band_start")  # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / incidence_table_file, index_col="band_start"))  # noqa: F821
 
 
 def sex_factor_table():
@@ -140,8 +140,8 @@ def sex_factor_table():
     them; replacing this two-row file and the interpolation with the by-sex age-band grid
     from the same workbook is the first thing a serious user should do.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / sex_factor_file, index_col="age")              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / sex_factor_file, index_col="age"))              # noqa: F821
 
 
 def survival_table():
@@ -151,8 +151,9 @@ def survival_table():
     converts into an **excess hazard added to** the baseline rather than a replacement for
     it; ``Projection.mu_ex`` does that conversion.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / survival_table_file, index_col="sex")          # noqa: F821
+    frame = pd.read_csv(input_dir() / survival_table_file)           # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index("sex"))                         # noqa: F821
 
 
 def lapse_table():
@@ -164,8 +165,8 @@ def lapse_table():
     sum assured cannot enter; the shipped curve averages 5.5% over its first ten years
     against that 5.6%.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def hosp_stay_table():
@@ -175,76 +176,9 @@ def hosp_stay_table():
     14.4-day figure the base run uses, and ``age_band`` is the sourced four-band gradient
     that ``Projection.hosp_age_gradient`` switches to.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / hosp_stay_file)                                # noqa: F821
-
-
-def prepared_survival_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(survival_table(),
-                        columns=('surv_5y',),
-                        indexing='loc')
-
-
-def prepared_incidence_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(incidence_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_sex_factor_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(sex_factor_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_hosp_stay_table_calculation():
-    """Own exact filter-then-quicksort selections at every input age boundary."""
-    frame = hosp_stay_table()
-    frame["days"]  # Validate the source column even when there are no rows.
-    values = []
-    for basis in frame["basis"].drop_duplicates():
-        rows = frame[frame["basis"] == basis]
-        for cutoff in sorted(rows["age_from"].dropna().unique()):
-            selected = rows[rows["age_from"] <= cutoff].sort_values("age_from")
-            values.append((basis, cutoff, selected["days"].iloc[-1]))
-    prepared = pd.DataFrame(values, columns=("basis", "age_from", "days"))
-    prepared = prepared.assign(days=pd.Series([value[2] for value in values], dtype=object))
-    return pdn.table(prepared.set_index(["basis", "age_from"]),
-                        groups=("basis",), preserve_scalar_types=True)
-
-
-def prepared_incidence_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(incidence_table().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_sex_factor_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(sex_factor_table().index)
+    frame = pd.read_csv(input_dir() / hosp_stay_file)                # noqa: F821
+    frame["basis"] = [StayBasis[name] for name in frame["basis"]]
+    return pdn.table(frame.set_index(["basis", "age_from"]))         # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -267,3 +201,7 @@ hosp_stay_file = "hosp_stay_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+StayBasis = ("Pickle", 2)
