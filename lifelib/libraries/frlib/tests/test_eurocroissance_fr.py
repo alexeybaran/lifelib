@@ -1325,3 +1325,24 @@ def test_result_cf_annual_is_the_monthly_frame_summed(eurocroissance, fr_ec_anch
     assert ann.loc[3, "premiums"] == pytest.approx(2000.00, abs=CENT)
     assert ann["premiums"].sum() == pytest.approx(12000.00, abs=CENT)
     assert ann.loc[10, "claims_maturity"] == pytest.approx(12765.89, abs=CENT)
+
+
+def test_every_scenario_must_run_to_the_same_last_year():
+    """W3.3 (D68): the last scenario year is read from the policy's scenario, so the reader
+    refuses a table whose scenarios end in different years rather than clamping differently."""
+    model = mx.read_model(MODEL_DIR, name="EC_FR_S_d68")
+    try:
+        src = model.Data.input_dir() / "scenario_table.csv"
+        broken = pd.read_csv(src)
+        broken = broken[~((broken["scenario"] == "base") & (broken["year"] == broken["year"].max()))]
+        alt = "scenario_table_d68_broken.csv"
+        broken.to_csv(model.Data.input_dir() / alt, index=False)
+        try:
+            model.Data.scenario_table_file = alt
+            model.Data.clear_all()
+            with pytest.raises(FormulaError, match="scenario_table"):
+                model.Data.scenario_table()
+        finally:
+            (model.Data.input_dir() / alt).unlink(missing_ok=True)
+    finally:
+        model.close()

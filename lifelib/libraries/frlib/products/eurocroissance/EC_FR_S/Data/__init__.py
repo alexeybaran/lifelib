@@ -148,6 +148,8 @@ def scenario_table():
     """
     frame = pd.read_csv(input_dir() / scenario_table_file)                     # noqa: F821
     frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
+    if (frame.groupby("scenario")["year"].max() != frame["year"].max()).any():
+        raise ValueError("scenario_table: every scenario must run to the same last year")
     return pdn.table(frame.set_index(["scenario", "year"]).sort_index())
 
 
@@ -176,6 +178,8 @@ def tec_curve():
     """
     frame = pd.read_csv(input_dir() / tec_curve_file)                     # noqa: F821
     frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
+    if (frame.groupby("scenario")["year"].max() != frame["year"].max()).any():
+        raise ValueError("tec_curve: every scenario must run to the same last year")
     return pdn.table(frame.set_index(["scenario", "year", "maturity"]).sort_index())
 
 
