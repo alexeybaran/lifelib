@@ -33,6 +33,7 @@ import contextlib
 
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
@@ -648,7 +649,7 @@ def test_indexation_is_restricted_to_the_level_shape(term_assurance):
     """No fetched insurer offers indexed decreasing cover, so the combination is barred."""
     model = mx.read_model(MODEL_DIR, name="Term_UK_S_idxshape")
     try:
-        table = model.Data.model_point_table()
+        table = pdn.to_pandas(model.Data.model_point_table())
         assert not (table["indexation"] & (table["shape"] != "level")).any()
     finally:
         model.close()

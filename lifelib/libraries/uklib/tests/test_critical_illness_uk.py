@@ -26,6 +26,7 @@ wrong:
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
@@ -538,7 +539,7 @@ def test_standalone_joint_is_refused_rather_than_invented(critical_illness):
     Refusing is better than inventing one, so the combination raises.  No shipped model
     point carries it.
     """
-    table = critical_illness.Data.model_point_table()
+    table = pdn.to_pandas(critical_illness.Data.model_point_table())
     combined = ((table["contract_type"] == "standalone")
                 & (table["life_basis"] == "joint_first_event"))
     assert not combined.any()

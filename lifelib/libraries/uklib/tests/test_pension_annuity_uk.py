@@ -32,6 +32,7 @@ modelling pitfalls, because each is a way an implementation can look right and b
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
@@ -388,8 +389,9 @@ def test_the_advance_value_protection_netting_rule(pension_annuity):
     try:
         # Point 5 is single-life monthly in advance; it ships without value protection,
         # so give it some in the in-memory table before anything is evaluated.
-        tbl = model.Data.model_point_table()      # warm the reader, then edit its frame
+        tbl = pdn.to_pandas(model.Data.model_point_table())      # warm the reader, then edit its frame
         tbl.loc[5, "vp_pct"] = 0.50
+        model.Data.model_point_table[()] = pdn.table(tbl)
         proj = model.Projection[5]
         assert proj.payment_timing() == PaymentTiming.advance
         assert proj.vp_pct() == 0.50              # the edit reached the projection
@@ -426,7 +428,7 @@ def test_the_proportionate_final_payment(pension_annuity):
 
 def test_proportion_is_an_arrears_only_option(pension_annuity):
     """A model point combining it with advance timing raises rather than guessing."""
-    table = pension_annuity.Data.model_point_table()
+    table = pdn.to_pandas(pension_annuity.Data.model_point_table())
     assert not (table["proportion"] & (table["timing"] != "arrears")).any()
 
 
