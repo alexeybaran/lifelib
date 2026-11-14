@@ -85,26 +85,20 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True)
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def mort_table():
     """Annual mortality by attained age and sex, read from *mort_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["age", "sex"]),
-        columns=("mort_rate",), groups=("sex",))
-
-
-def mortality_max_age():
-    """The highest attained age in the mortality input."""
-    return max(table.index.max_int() for table in mort_table().values())
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["age", "sex"]))
 
 
 def fund_table():
     """Subaccount allocations and fund expense ratios, from *fund_table.csv*."""
     return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / fund_file, index_col=["fund_set", "sub_id"]),
-        columns=("alloc", "fund_expense"), groups=("fund_set",))
+        input_dir() / fund_file, index_col=["fund_set", "sub_id"]))   # noqa: F821
 
 
 def return_scenario():
@@ -117,8 +111,7 @@ def return_scenario():
     """
     return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / return_scenario_file,                          # noqa: F821
-        index_col=["scenario_id", "sub_id", "t"]),
-        columns=("gross_return",), groups=("scenario_id", "sub_id"))
+        index_col=["scenario_id", "sub_id", "t"]))
 
 
 def rate_scenario():
@@ -132,7 +125,7 @@ def rate_scenario():
     """
     return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / rate_scenario_file,                            # noqa: F821
-        index_col=["scenario_id", "t"]), groups=("scenario_id",))
+        index_col=["scenario_id", "t"]))
 
 
 def gawa_pct_table():
@@ -142,8 +135,7 @@ def gawa_pct_table():
     at or below the attained age at the first withdrawal [S3].
     """
     return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / gawa_pct_file, index_col=["gawa_grid", "age_from"]),
-        columns=("gawa_pct",), groups=("gawa_grid",))
+        input_dir() / gawa_pct_file, index_col=["gawa_grid", "age_from"]))  # noqa: F821
 
 
 def cdsc_table():
@@ -154,8 +146,7 @@ def cdsc_table():
     """
     return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / cdsc_file,                                     # noqa: F821
-        index_col=["cdsc_schedule", "completed_years"]),
-        columns=("surr_charge_rate",), groups=("cdsc_schedule",))
+        index_col=["cdsc_schedule", "completed_years"]))
 
 
 def transaction_table():
@@ -167,8 +158,7 @@ def transaction_table():
     GLWB, which is how the excess algebra is exercised.
     """
     return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / transaction_file, index_col=["txn_id", "t"]),
-        columns=("prem_amount", "wd_amount"), groups=("txn_id",))
+        input_dir() / transaction_file, index_col=["txn_id", "t"]))   # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +183,5 @@ transaction_file = "transaction_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)

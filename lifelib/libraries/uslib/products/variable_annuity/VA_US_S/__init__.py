@@ -210,9 +210,3 @@ _spaces = [
     "Projection"
 ]
 
-
-
-# ---------------------------------------------------------------------------
-# References
-
-enums = ("Module", "lifelib.libraries.uslib.products.variable_annuity.enums")
