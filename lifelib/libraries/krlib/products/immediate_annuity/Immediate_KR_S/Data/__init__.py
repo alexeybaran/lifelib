@@ -84,8 +84,8 @@ def model_point_table():
     is carried per model point because no source gives a surrender rate for this product
     and its effect has to be isolable.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -102,9 +102,9 @@ def mort_table():
     what the residual at 보험나이 50 is.  Sorted on read, because ``Projection.mort_rate``
     indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,
-        index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def charge_table():
@@ -118,8 +118,9 @@ def charge_table():
     policyholder's payment.  ``acq_expense_rate`` is the load less the commission, so that
     the charge taken from the fund at inception exactly meets the outgo at inception.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_table_file, index_col="shape")          # noqa: F821
+    frame = pd.read_csv(input_dir() / charge_table_file)             # noqa: F821
+    frame["shape"] = [Shape[name] for name in frame["shape"]]
+    return pdn.table(frame.set_index("shape"))
 
 
 def crediting_table():
@@ -133,32 +134,9 @@ def crediting_table():
     Max[공시이율, 최저보증이율] resolves to the floor at every duration and the stepping is
     exercised by a shipped model point.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / crediting_table_file)                          # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-
-def prepared_crediting_groups_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(crediting_table().set_index("basis_id", append=True), groups=("basis_id",), preserve_scalar_types = True)
-
-
-def prepared_charge_table_rows():
-    """Own calculation selection; retain the public source dependency."""
-    return pdn.table(charge_table(), rows=True, indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_crediting_table_calculation_rows():
-    """Own original input values for calculation operations."""
-    return pdn.table(crediting_table(), groups=(), rows=True, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / crediting_table_file)          # noqa: F821
+    frame["basis_id"] = [CreditingBasis[name] for name in frame["basis_id"]]
+    return pdn.table(frame.set_index(["basis_id", "dur_from"]))
 
 
 # ---------------------------------------------------------------------------
@@ -175,3 +153,9 @@ crediting_table_file = "crediting_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Shape = ("Pickle", 2)
+
+CreditingBasis = ("Pickle", 3)
