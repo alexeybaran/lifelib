@@ -1567,7 +1567,7 @@ def tar_p_act(t):
         mu_i = -math.log(1.0 - min(tar_inc_rate(t), 1.0 - 1e-12))    # noqa: F821
     total = mu_a + mu_i
     stay = math.exp(-total / 12.0)                                   # noqa: F821
-    return (stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay))
+    return [stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay)]
 
 
 def tar_p_pg(t, g):
@@ -1589,7 +1589,7 @@ def tar_p_pg(t, g):
     total = mu_g + mu_d + mu_r
     stay = math.exp(-total / 12.0)                                   # noqa: F821
     rest = 1.0 - stay
-    return (stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest)
+    return [stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest]
 
 
 def tar_pols_act(t):
