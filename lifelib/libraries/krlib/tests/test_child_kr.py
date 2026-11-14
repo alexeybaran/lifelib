@@ -68,6 +68,7 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.child.enums import BasisParam, Cover, CvForm, Kind, LapseBasis, NeoTiming, PolTiming, Sex
@@ -748,7 +749,8 @@ def test_the_neonatal_module_is_most_of_the_month_of_birth(kr_child_anchor):
     strain and leave the rest of the table looking right.
     """
     a = kr_child_anchor
-    morbidity = sum(a.claims(5, k) for k in BENEFIT_KINDS)
+    morbidity = sum(a.claims(5, k) for k in (Kind.DISABILITY, Kind.DIAGNOSIS, Kind.SURGERY, Kind.HOSPITAL,
+                                             Kind.EVENT, Kind.LIABILITY, Kind.NEONATAL))
     assert morbidity == pytest.approx(59526.9860432723, abs=CASH)
     assert a.claims(5, Kind.NEONATAL) / morbidity == pytest.approx(0.8561, abs=5e-5)
 
@@ -1447,7 +1449,7 @@ def test_pitfall_the_notional_face_amount_is_read_at_the_reference_age(
     """
     a = kr_child_anchor
     refs = child.Projection.refs
-    assert refs["ref_age"] == 40 and refs["ref_sex"] == "M"
+    assert refs["ref_age"] == 40 and refs["ref_sex"] == Sex.M
     assert a.mort_rate_at_age(40, Sex.M) == 0.0011
     assert a.sa_notional_pp() == pytest.approx(
         a.risk_prem_ann_pp() / 0.0011, rel=TRACE)
@@ -1812,7 +1814,7 @@ def test_the_shipped_model_points_exercise_every_switch(child):
     changed to duplicate another shows up as a gap rather than as nothing.
     """
     table = child.Data.model_point_table()
-    assert len(table) == 10
+    assert len(pdn.to_pandas(table)) == 10
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["foetal"]) == {0, 1}
     assert set(table["cv_form"]) == {"std", "susp", "graded"}
@@ -2031,7 +2033,7 @@ def test_the_std_scalar_references_are_the_ones_the_notes_state(child):
     assert refs["min_guar_rate"] == 0.003         # 최저보증이율 [S2]
     assert refs["avg_decl_rate"] == 0.025         # 평균공시이율 [S2]
     assert refs["ref_age"] == 40                  # 기준연령 요건, 남자 만 40세 [REG-R9]
-    assert refs["ref_sex"] == "M"
+    assert refs["ref_sex"] == Sex.M
     assert refs["surr_chg_prem_rate"] == 0.05     # [별표 14]'s 5%
     assert refs["surr_chg_sa_rate"] == 0.01       # 10/1000 of the 보험가입금액
     assert refs["surr_chg_cap_months"] == 13.0    # the FSC's 보장성보험 13배 [REG-R29]
@@ -2059,12 +2061,12 @@ def test_the_std_basis_table_is_the_one_the_notes_state(child):
     """
     table = child.Data.basis_table()
     expected = {
-        "disab_severity": 0.12, "disease_disab_severity": 0.15,
-        "surgery_rate_cancer": 0.85, "surgery_rate_cerebral": 0.50,
-        "surgery_rate_cardiac": 0.70, "liability_severity": 600000.0,
-        "hosp_cap_factor": 0.92, "waiver_disab_share": 0.08,
-        "payer_disab_ratio": 0.25, "leak_share": 0.40, "void_rate_ann": 0.012,
-        "broad_def_factor": 4.0, "net_prem_ratio": 0.75,
+        BasisParam.disab_severity: 0.12, BasisParam.disease_disab_severity: 0.15,
+        BasisParam.surgery_rate_cancer: 0.85, BasisParam.surgery_rate_cerebral: 0.50,
+        BasisParam.surgery_rate_cardiac: 0.70, BasisParam.liability_severity: 600000.0,
+        BasisParam.hosp_cap_factor: 0.92, BasisParam.waiver_disab_share: 0.08,
+        BasisParam.payer_disab_ratio: 0.25, BasisParam.leak_share: 0.40, BasisParam.void_rate_ann: 0.012,
+        BasisParam.broad_def_factor: 4.0, BasisParam.net_prem_ratio: 0.75,
     }
     assert set(table.index) == set(expected)
     for name, value in expected.items():
@@ -2081,12 +2083,12 @@ def test_the_neonatal_module_limbs_are_the_ones_the_notes_state(child):
     length-of-stay question, and the supervisor's own worked claim — ₩16,836,420 on a
     32-week, 1.84 kg birth [R3] — is two orders of magnitude above the expected cost.
     """
-    table = child.Data.neonatal_table()
+    table = pdn.to_pandas(child.Data.neonatal_table())
     assert len(table) == 9
-    assert set(table["timing"]) == {"birth", "block"}
-    assert set(table.index[table["timing"] == "birth"]) == {
+    assert set(table["timing"]) == {NeoTiming.birth, NeoTiming.block}
+    assert set(table.index[table["timing"] == NeoTiming.birth]) == {
         "birth_risk_low", "birth_risk_disab", "birth_risk_severe", "preterm"}
-    assert set(table.index[table["timing"] == "block"]) == {
+    assert set(table.index[table["timing"] == NeoTiming.block]) == {
         "incubator", "perinatal_cash", "congenital_diag", "congenital_surg",
         "neonatal_haem"}
     assert float(table.loc["incubator", "amount"]) == 50000.0
@@ -2098,7 +2100,7 @@ def test_the_neonatal_module_limbs_are_the_ones_the_notes_state(child):
 
     a = child.Projection[1]
     sa = a.sum_assured(Cover.neonatal)
-    for timing, total in (("birth", NEONATAL_BIRTH), ("block", NEONATAL_BLOCK)):
+    for timing, total in ((NeoTiming.birth, NEONATAL_BIRTH), (NeoTiming.block, NEONATAL_BLOCK)):
         rows = table[table["timing"] == timing]
         built = sum(float(r["freq"]) * float(r["units"])
                     * (float(r["amount"]) + float(r["amount_ratio"]) * sa)
@@ -2433,7 +2435,7 @@ def test_the_projection_docstring_describes_the_shipped_model_points(child):
     assert "Ten, covering both sexes" in doc
     assert "birth at policy month 5" in doc
     table = child.Data.model_point_table()
-    assert len(table) == 10
+    assert len(pdn.to_pandas(table)) == 10
     reader = flat(child.Data.cells["model_point_table"].doc)
     assert "point_id = 1" in reader and "anchor" in reader
 
