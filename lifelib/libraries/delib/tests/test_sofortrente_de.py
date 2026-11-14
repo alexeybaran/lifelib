@@ -1166,3 +1166,26 @@ def test_the_shipped_tables_mark_their_own_provenance():
     assert "provenance" not in points.columns    # a configuration, not an assumption
     assert len(points) == 14 and str(points.loc[1, "policy_id"]) == "SOF-000001"
     assert float(points.loc[1, "single_prem"]) == 100000.00
+
+
+def test_the_mortality_groups_must_span_the_same_ages():
+    """W3.3 (D68): the age clamp reads one (basis, sex) group, so the reader refuses a table
+    whose groups span different ages rather than clamping differently."""
+    import pandas as pd
+    model = mx.read_model(MODEL_DIR, name="Sofort_DE_S_d68")
+    try:
+        src = model.Data.input_dir() / "mort_table.csv"
+        broken = pd.read_csv(src)
+        broken = broken[~((broken["basis"] == "SECOND") & (broken["sex"] == "F")
+                          & (broken["age"] == broken["age"].max()))]
+        alt = "mort_table_d68_broken.csv"
+        broken.to_csv(model.Data.input_dir() / alt, index=False)
+        try:
+            model.Data.mort_table_file = alt
+            model.Data.clear_all()
+            with pytest.raises(FormulaError, match="mort_table"):
+                model.Data.mort_table()
+        finally:
+            (model.Data.input_dir() / alt).unlink(missing_ok=True)
+    finally:
+        model.close()
