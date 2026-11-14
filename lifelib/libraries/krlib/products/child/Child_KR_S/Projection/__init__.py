@@ -805,6 +805,19 @@ def inc_pivots(cause):
     return [(int(a), float(s.loc[a, "rate"])) for a in s.index]
 
 
+def inc_pivot_ages(cause):
+    """The pivot ages of ``cause`` for this model point's sex, as integers in age order (the keys
+    of :func:`inc_pivots`)."""
+    s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
+    return [int(s.index[i]) for i in range(len(s.index))]
+
+
+def inc_pivot_rates(cause):
+    """The pivot rates of ``cause`` for this model point's sex, at :func:`inc_pivot_ages`."""
+    s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
+    return [float(s.loc[s.index[i], "rate"]) for i in range(len(s.index))]
+
+
 def inc_rate_at(x, cause):
     """i_j(x): the annual incidence of cause ``j`` at 만나이 ``x``, log-linearly graduated.
 
@@ -821,18 +834,21 @@ def inc_rate_at(x, cause):
     the one 적용위험률 published anywhere in this file [S1].  The provenance column of each
     row names the authority its shape rests on.
     """
-    pv = inc_pivots(cause)
-    if x <= pv[0][0]:
-        return pv[0][1]
-    if x >= pv[-1][0]:
-        return pv[-1][1]
-    for a, r in pv:
-        if a == x:
-            return r
+    xs = inc_pivot_ages(cause)
+    ys = inc_pivot_rates(cause)
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+    for i in range(len(xs)):
+        if xs[i] == x:
+            return ys[i]
     import math
-    for i in range(len(pv) - 1):
-        x0, y0 = pv[i]
-        x1, y1 = pv[i + 1]
+    for i in range(len(xs) - 1):
+        x0 = xs[i]
+        y0 = ys[i]
+        x1 = xs[i + 1]
+        y1 = ys[i + 1]
         if x0 <= x <= x1:
             w = (x - x0) / (x1 - x0)
             return math.exp(math.log(y0) + w * (math.log(y1) - math.log(y0)))
@@ -1318,9 +1334,16 @@ def cum_prem_pp(t):
     return premium_mth() * min(t, prem_period_mths())
 
 
-def av_build_curve():
-    """The ``build`` curve of av_table: the published 환급률 by duration in years."""
-    return data.av_table().loc[AvCurve.build]                        # noqa: F821
+def av_build_keys():
+    """The ``build`` pivots of av_table: the durations in years, as floats, in key order."""
+    tab = av_build_curve()
+    return [float(tab.index[i]) for i in range(len(tab.index))]
+
+
+def av_build_values():
+    """The ``build`` pivots of av_table: the values at :func:`av_build_keys`, as floats."""
+    tab = av_build_curve()
+    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
 
 
 def refund_build(d):
@@ -1337,23 +1360,32 @@ def refund_build(d):
     공시이율 while the 보장부분 reserve is still building.  And only a hundred-year term
     can do it.
     """
-    tab = av_build_curve()                      # noqa: F821
-    pv = [(float(k), float(tab.loc[k, "value"])) for k in tab.index]
-    if d <= pv[0][0]:
-        return pv[0][1]
-    if d >= pv[-1][0]:
-        return pv[-1][1]
-    for i in range(len(pv) - 1):
-        x0, y0 = pv[i]
-        x1, y1 = pv[i + 1]
+    xs = av_build_keys()
+    ys = av_build_values()
+    if d <= xs[0]:
+        return ys[0]
+    if d >= xs[-1]:
+        return ys[-1]
+    for i in range(len(xs) - 1):
+        x0 = xs[i]
+        y0 = ys[i]
+        x1 = xs[i + 1]
+        y1 = ys[i + 1]
         if x0 <= d <= x1:
             return y0 + (d - x0) / (x1 - x0) * (y1 - y0)
     raise ValueError("duration out of range")
 
 
-def av_taper_curve():
-    """The ``taper`` curve of av_table: the terminal collapse factor by runoff fraction."""
-    return data.av_table().loc[AvCurve.taper]                        # noqa: F821
+def av_taper_keys():
+    """The ``taper`` pivots of av_table: the runoff fractions, as floats, in key order."""
+    tab = av_taper_curve()
+    return [float(tab.index[i]) for i in range(len(tab.index))]
+
+
+def av_taper_values():
+    """The ``taper`` pivots of av_table: the values at :func:`av_taper_keys`, as floats."""
+    tab = av_taper_curve()
+    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
 
 
 def refund_taper(r):
@@ -1366,15 +1398,17 @@ def refund_taper(r):
     16.0% on a 100세만기 contract; indexing on the fraction of the term rather than on a
     duration is what lets one shipped grid also serve the 30세만기 and 110세만기 points.
     """
-    tab = av_taper_curve()                      # noqa: F821
-    pv = [(float(k), float(tab.loc[k, "value"])) for k in tab.index]
-    if r <= pv[0][0]:
-        return pv[0][1]
-    if r >= pv[-1][0]:
-        return pv[-1][1]
-    for i in range(len(pv) - 1):
-        x0, y0 = pv[i]
-        x1, y1 = pv[i + 1]
+    xs = av_taper_keys()
+    ys = av_taper_values()
+    if r <= xs[0]:
+        return ys[0]
+    if r >= xs[-1]:
+        return ys[-1]
+    for i in range(len(xs) - 1):
+        x0 = xs[i]
+        y0 = ys[i]
+        x1 = xs[i + 1]
+        y1 = ys[i + 1]
         if x0 <= r <= x1:
             return y0 + (r - x0) / (x1 - x0) * (y1 - y0)
     raise ValueError("runoff out of range")
@@ -2251,6 +2285,16 @@ def result_val():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
+
+
+def av_build_curve():
+    """The ``build`` curve of av_table: the published 환급률 by duration in years."""
+    return data.av_table().loc[AvCurve.build]                        # noqa: F821
+
+
+def av_taper_curve():
+    """The ``taper`` curve of av_table: the terminal collapse factor by runoff fraction."""
+    return data.av_table().loc[AvCurve.taper]                        # noqa: F821
 
 
 # ---------------------------------------------------------------------------
