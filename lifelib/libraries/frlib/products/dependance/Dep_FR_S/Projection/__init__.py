@@ -938,8 +938,7 @@ def mort_rate_total_mth(t):
 
 def mort_top_age():
     """The last attained age of the mortality rates at the policy's sex."""
-    ages = [a for s, a in data.mort_table().index if s == sex()]     # noqa: F821
-    return max(ages)
+    return mort_schedule().index.max()
 
 
 def mort_force_at(x):
