@@ -116,8 +116,8 @@ def model_point_table():
     the other nine exercise the product's variants, its optional modules and the edges of
     its issue-age and sum-assured envelopes.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -130,8 +130,9 @@ def mort_table():
     chassis, so a projection using it must not add a disability decrement — the disability
     trigger on a Korean 종신보험 waives the premium instead, and that is a separate state.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def lapse_table():
@@ -144,30 +145,9 @@ def lapse_table():
     parameters rather than a rate per policy year because the convergence point is
     납입완료, which differs by model point.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="lapse_basis")     # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_rows():
-    """Own pandas-style rows for repeated calculation selection."""
-    return pdn.table(lapse_table(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_mort_table_calculation_groups_1():
-    """Own original input values for calculation operations."""
-    return pdn.table(mort_table(), groups=('sex',), rows=False, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
+    frame["lapse_basis"] = [LapseBasis[name] for name in frame["lapse_basis"]]
+    return pdn.table(frame.set_index("lapse_basis"))
 
 
 # ---------------------------------------------------------------------------
@@ -182,3 +162,7 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+LapseBasis = ("Pickle", 2)
