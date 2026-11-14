@@ -427,20 +427,17 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The model point's policy identifier, for reporting."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def sex():
     """The sex (M / F) of the model point; the mortality table is sex-distinct."""
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def issue_age():
@@ -450,7 +447,7 @@ def issue_age():
     mortality drives the *timing* of the `dénouement`, not the benefit amount, because
     the death benefit is the `épargne acquise` itself.
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def duration_init():
@@ -460,7 +457,7 @@ def duration_init():
     threshold that drives the surrender step - falls inside the projection, in the twelve
     months ``t = 24 ... 35``.
     """
-    return pdn.lookup_int(prepared_model_point(), "duration_init")
+    return int(model_point()["duration_init"])
 
 
 def pols_if_init():
@@ -470,12 +467,12 @@ def pols_if_init():
     anchor cell: every per-policy amount is identical and every cash flow is 250 times
     as large.
     """
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def av_pp_init():
     """AV(0): the `épargne acquise` per policy at the valuation date."""
-    return pdn.lookup_float(prepared_model_point(), "av_pp_init")
+    return float(model_point()["av_pp_init"])
 
 
 def ppb_pp_init():
@@ -486,7 +483,7 @@ def ppb_pp_init():
     contracts in law; attributing a per-policy share is the device that makes the
     eight-year clock visible at model-point level **[std]**.
     """
-    return pdn.lookup_float(prepared_model_point(), "ppb_pp_init")
+    return float(model_point()["ppb_pp_init"])
 
 
 def ppb_vintages_init():
@@ -498,7 +495,7 @@ def ppb_vintages_init():
     therefore no forced release before ``y = 4``.  **[std]**: no insurer publishes its own
     vintage profile, and this is the assumption that decides *when* the clock bites.
     """
-    n = pdn.lookup_int(prepared_model_point(), "ppb_vintages_init")
+    n = int(model_point()["ppb_vintages_init"])
     if n < 1:
         raise ValueError("ppb_vintages_init must be at least 1")
     return n
@@ -510,7 +507,7 @@ def prem_charge_rate():
     0.00% on the composite, which is what the bank-distributed and direct contracts
     charge; 0.50% on model point 9, the observed association-contract level.
     """
-    return pdn.lookup_float(prepared_model_point(), "prem_charge_rate")
+    return float(model_point()["prem_charge_rate"])
 
 
 def wd_prog_pp():
@@ -522,7 +519,7 @@ def wd_prog_pp():
     a year - nil before ``wd_start_year`` and capped at the balance it comes out of - and
     :func:`withdrawals_mth_pp` is the month's twelfth of it.
     """
-    return pdn.lookup_float(prepared_model_point(), "wd_pp")
+    return float(model_point()["wd_pp"])
 
 
 def wd_start_year():
@@ -533,7 +530,7 @@ def wd_start_year():
     is the "never" sentinel a paid-up cell carries.  It is compared against
     ``proj_year(t)``, never against ``t``.
     """
-    return pdn.lookup_int(prepared_model_point(), "wd_start_year")
+    return int(model_point()["wd_start_year"])
 
 
 def fee_rate():
@@ -545,7 +542,7 @@ def fee_rate():
     **[std]**; the charge itself and its 31 December pro rata temporis timing are
     sourced.
     """
-    return pdn.lookup_float(prepared_model_point(), "fee_rate")
+    return float(model_point()["fee_rate"])
 
 
 def tmg_rate():
@@ -558,7 +555,7 @@ def tmg_rate():
     docstring for why no positive-TMG cell is shipped, and for what a positive TMG would
     have to do inside the year.
     """
-    return pdn.lookup_float(prepared_model_point(), "tmg_rate")
+    return float(model_point()["tmg_rate"])
 
 
 def ts_target():
@@ -571,12 +568,12 @@ def ts_target():
     drains its PPB in a handful of years trying to pay it.  **[std]**: no insurer's
     forward crediting policy is public.
     """
-    return pdn.lookup_float(prepared_model_point(), "ts_target")
+    return float(model_point()["ts_target"])
 
 
 def soc_levy_rate():
     """The `prélèvements sociaux` rate, 17.2%, withheld as interest is credited."""
-    return pdn.lookup_float(prepared_model_point(), "soc_levy_rate")
+    return float(model_point()["soc_levy_rate"])
 
 
 def guarantee_form():
@@ -589,10 +586,7 @@ def guarantee_form():
     both designs run inside one insurer and even inside one notice, so the model carries
     the choice on the model point rather than fixing it.
     """
-    v = pdn.lookup_object(prepared_model_point(), "guarantee_form")
-    if v not in ("net", "gross"):
-        raise ValueError("invalid guarantee_form")
-    return v
+    return GuaranteeForm[model_point()["guarantee_form"]]
 
 
 def avance_on():
@@ -602,7 +596,7 @@ def avance_on():
     duration - into a separate document that was not retrieved, so a model point electing
     one would have to invent them.  This validates rather than guessing.
     """
-    v = pdn.lookup_int(prepared_model_point(), "avance_on")
+    v = int(model_point()["avance_on"])
     if v != 0:
         raise ValueError("avance terms are unpublished; no avance cell is supported")
     return False
@@ -610,10 +604,7 @@ def avance_on():
 
 def scenario_id():
     """The financial scenario the model point runs on: ``base``, ``low`` or ``high``."""
-    v = pdn.lookup_str(prepared_model_point(), "scenario_id")
-    if v not in tuple(pdn.keys(data.prepared_fin_rate_scenarios())):        # noqa: F821
-        raise ValueError("unknown scenario_id")
-    return v
+    return Scenario[model_point()["scenario_id"]]
 
 
 def proj_len():
@@ -705,6 +696,11 @@ def policy_year(t):
     return duration(t) + 1
 
 
+def scenario_rates():
+    """The policy's financial scenario: r_fin and ref_rate by projection year."""
+    return data.fin_rate_table().loc[scenario_id()]                  # noqa: F821
+
+
 def r_fin(y):
     """r(y): the fund's financial return rate in projection year y, from the scenario.
 
@@ -717,8 +713,8 @@ def r_fin(y):
     The scenario table is an **annual** path and stays one; the month reaches it through
     ``proj_year(t)``.
     """
-    tbl = pdn.subtable(data.prepared_fin_rate_table_groups_1(), scenario_id())                   # noqa: F821
-    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "r_fin"))
+    tbl = scenario_rates()
+    return float(tbl.loc[min(y, int(tbl.index.max())), "r_fin"])
 
 
 def ref_rate(y):
@@ -728,8 +724,8 @@ def ref_rate(y):
     table rather than as a Reference because in a different financial scenario the rate
     available elsewhere is a different rate too.
     """
-    tbl = pdn.subtable(data.prepared_fin_rate_table_groups_1(), scenario_id())                   # noqa: F821
-    return float(pdn.lookup_object(tbl, min(y, int(pdn.last_key(tbl))), "ref_rate"))
+    tbl = scenario_rates()
+    return float(tbl.loc[min(y, int(tbl.index.max())), "ref_rate"])
 
 
 def prem_gross_pp(y):
@@ -741,7 +737,7 @@ def prem_gross_pp(y):
     credit different rates on identical funds.  :func:`prem_to_av_mth_pp` is what reaches
     the account in a month.
     """
-    return pdn.lookup_float(prepared_model_point(), "prem_gross_pp")
+    return float(model_point()["prem_gross_pp"])
 
 
 def prem_to_av_pp(y):
@@ -825,9 +821,10 @@ def pm_avg_pp(y):
     election has emptied the account, in which case every rate below is nil rather than
     undefined.
     """
-    return av_pp(12 * y) + pdn.sum_values(
-        (prem_wt_mth(k) * (prem_to_av_mth_pp(12 * y + k)
-                          - withdrawals_mth_pp(12 * y + k)) for k in pdn.periods(12)))
+    return av_pp(12 * y) + sum(
+        prem_wt_mth(k) * (prem_to_av_mth_pp(12 * y + k)
+                          - withdrawals_mth_pp(12 * y + k))
+        for k in range(12))
 
 
 def fee_pp(y):
@@ -1034,7 +1031,8 @@ def ppb_vintage_release_pp(y, v):
     """
     if v < ppb_vintage_first() or v >= y:
         return 0.0
-    drawn = pdn.sum_values((ppb_vintage_release_pp(y, u) for u in pdn.periods(ppb_vintage_first(), v)))
+    drawn = sum(ppb_vintage_release_pp(y, u)
+                for u in range(ppb_vintage_first(), v))
     return min(max(0.0, ppb_release_pp(y) - drawn), ppb_vintage_pp(y, v))
 
 
@@ -1044,7 +1042,8 @@ def ppb_ledger_pp(y):
     Computed independently of :func:`ppb_pp`, which runs its own aggregate recursion, so
     that :func:`check_ppb_roll_fwd` compares two things rather than restating one.
     """
-    return pdn.sum_values((ppb_vintage_pp(y, v) for v in pdn.periods(ppb_vintage_first(), max(y, 0))))
+    return sum(ppb_vintage_pp(y, v)
+               for v in range(ppb_vintage_first(), max(y, 0)))
 
 
 def ppb_dotation_pp(y):
@@ -1077,7 +1076,8 @@ def ppb_forced_pp(y):
     **deadline**, and it can exceed what the insurer would have chosen to release - which
     is the whole reason the ledger is per vintage.
     """
-    return pdn.sum_values((ppb_vintage_pp(y, v) for v in pdn.periods(ppb_vintage_first(), y - 7)))
+    return sum(ppb_vintage_pp(y, v)
+               for v in range(ppb_vintage_first(), y - 7))
 
 
 def ppb_release_pp(y):
@@ -1240,14 +1240,14 @@ def av_pp_at(t, timing):
     sense: it is a tax the insurer withholds and remits, and keeping it out of the timing
     ladder is what keeps it out of ``net_cf``.
     """
-    if timing == "BEF_PREM":
+    if timing == AvTiming.BEF_PREM:
         return av_pp(t)
-    if timing == "AFT_PREM":
+    if timing == AvTiming.AFT_PREM:
         return av_pp(t) + prem_to_av_mth_pp(t)
-    if timing == "AFT_WD":
-        return av_pp_at(t, "AFT_PREM") - withdrawals_mth_pp(t)
-    if timing == "AFT_INT":
-        return av_pp_at(t, "AFT_WD") + int_credited_mth_pp(t)
+    if timing == AvTiming.AFT_WD:
+        return av_pp_at(t, AvTiming.AFT_PREM) - withdrawals_mth_pp(t)
+    if timing == AvTiming.AFT_INT:
+        return av_pp_at(t, AvTiming.AFT_WD) + int_credited_mth_pp(t)
     raise ValueError("invalid timing")
 
 
@@ -1261,7 +1261,7 @@ def av_pp(t):
     """
     if t == 0:
         return av_pp_init()
-    return av_pp_at(t - 1, "AFT_INT") - soc_levy_mth_pp(t - 1)
+    return av_pp_at(t - 1, AvTiming.AFT_INT) - soc_levy_mth_pp(t - 1)
 
 
 def av_at(t, timing):
@@ -1297,9 +1297,14 @@ def guar_floor_pp(t):
         return av_pp_init()
     prev = (guar_floor_pp(t - 1) + prem_to_av_mth_pp(t - 1)
             - withdrawals_mth_pp(t - 1))
-    if guarantee_form() == "net" and is_anniv(t - 1):
+    if guarantee_form() == GuaranteeForm.net and is_anniv(t - 1):
         prev = prev - fee_pp(proj_year(t - 1))
     return prev
+
+
+def mort_schedule():
+    """The mortality rates at the policy's sex, by attained age."""
+    return data.mort_table().loc[sex()]                              # noqa: F821
 
 
 def mort_rate(t):
@@ -1319,7 +1324,8 @@ def mort_rate(t):
     released - far less than in any protection product.
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, float(mort_schedule().loc[
+        x, "mort_rate"]) * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1344,7 +1350,8 @@ def lapse_rate_base(t):
     step is **twelve months wide**, ``t = 24 ... 35`` on the anchor cell.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate_base")
+    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
+                         "lapse_rate_base"])
 
 
 def lapse_dyn_add(t):
@@ -1394,7 +1401,7 @@ def pols_if(t):
     """l(t): the number of policies in force at the **start** of month t."""
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1416,12 +1423,12 @@ def pols_if_at(t, timing):
     month actually closes on: see the Space docstring on what a mid-year `dénouement` is
     paid.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1432,7 +1439,7 @@ def pols_death(t):
 
 def pols_lapse(t):
     """`Rachats totaux` at the end of month t, from the survivors of mortality."""
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def db_pp(t):
@@ -1474,26 +1481,26 @@ def claim_pp(t, kind):
 
     There is no ``"MATURITY"``: the euro support has no term.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return db_pp(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return cv_pp(t)
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"`` and ``"LAPSE"`` weight :func:`claim_pp` by the corresponding decrement.
     `Rachats partiels` are **not** here: they are an owner election and live in
     :func:`withdrawals`.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
-    if kind == "DEATH":
-        return claim_pp(t, "DEATH") * pols_death(t)
-    if kind == "LAPSE":
-        return claim_pp(t, "LAPSE") * pols_lapse(t)
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
+    if kind == Kind.DEATH:
+        return claim_pp(t, Kind.DEATH) * pols_death(t)
+    if kind == Kind.LAPSE:
+        return claim_pp(t, Kind.LAPSE) * pols_lapse(t)
     raise ValueError("invalid kind")
 
 
@@ -1545,7 +1552,7 @@ def liability_cf(t):
     revalorisation and the social levy are not in it: the first is a state movement and
     the second is a tax.
     """
-    return (claims(t, "DEATH") + claims(t, "LAPSE") + withdrawals(t)
+    return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE) + withdrawals(t)
             + expenses(t) - premiums(t))
 
 
@@ -1566,7 +1573,7 @@ def check_av_roll_fwd_resid(t):
     per-policy recursion.
     """
     return (av(t) + premiums(t) - withdrawals(t) + int_credited(t)
-            - soc_levy(t) - claims(t, "DEATH") - claims(t, "LAPSE")
+            - soc_levy(t) - claims(t, Kind.DEATH) - claims(t, Kind.LAPSE)
             - av(t + 1))
 
 
@@ -1582,7 +1589,8 @@ def check_av_roll_fwd():
     wrong.
     """
     scale = max(av_pp_init() * pols_if_init(), 1.0)
-    return pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale for t in pdn.periods(proj_len())))
+    return all(abs(check_av_roll_fwd_resid(t)) <= 1e-9 * scale
+               for t in range(proj_len()))
 
 
 def check_ppb_roll_fwd_resid(y):
@@ -1611,7 +1619,7 @@ def check_ppb_roll_fwd():
     The range is ``proj_years``, not ``proj_len()``: this is a financial-year statement
     and restating it at 480 months would cost twelve times as much for the same answer.
     """
-    for y in pdn.periods(proj_years):                                      # noqa: F821
+    for y in range(proj_years):                                      # noqa: F821
         if ppb_pp(y) < -1e-9:
             return False
         if abs(ppb_ledger_pp(y) - ppb_pp(y)) > 1e-8:
@@ -1630,7 +1638,8 @@ def check_ppb_clock_resid(y):
     the index: a vintage with ``v = y - 8`` is due *during* year y and is still standing at
     its start - that is what :func:`ppb_forced_pp` is about to take out.
     """
-    return pdn.sum_values((ppb_vintage_pp(y, v) for v in pdn.periods(ppb_vintage_first(), y - 8)))
+    return sum(ppb_vintage_pp(y, v)
+               for v in range(ppb_vintage_first(), y - 8))
 
 
 def check_ppb_clock():
@@ -1642,7 +1651,8 @@ def check_ppb_clock():
     being spent - a breach that is invisible in the balance and obvious in the ledger.
     The clock counts financial years, so the sweep does too.
     """
-    return pdn.all_true((abs(check_ppb_clock_resid(y)) <= 1e-8 for y in pdn.periods(proj_years)))                           # noqa: F821
+    return all(abs(check_ppb_clock_resid(y)) <= 1e-8
+               for y in range(proj_years))                           # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1659,7 +1669,8 @@ def check_pols_roll_fwd():
     understates the exits by ``q_m w_m l(t)`` a month.
     """
     scale = max(pols_if_init(), 1.0)
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= 1e-10 * scale
+               for t in range(proj_len()))
 
 
 def check_decrements_compound_resid(t):
@@ -1683,7 +1694,8 @@ def check_decrements_compound():
     checked at each year's first month, because the annual rates are properties of the
     policy year and do not move inside it.
     """
-    return pdn.all_true((abs(check_decrements_compound_resid(t)) <= 1e-12 for t in pdn.periods(0, proj_len(), 12)))
+    return all(abs(check_decrements_compound_resid(t)) <= 1e-12
+               for t in range(0, proj_len(), 12))
 
 
 def check_pb_allocation_resid(y):
@@ -1715,7 +1727,8 @@ def check_pb_allocation():
     the balance goes to the PPB and not to the insurer.
     """
     scale = max(av_pp_init(), 1.0)
-    return pdn.all_true((abs(check_pb_allocation_resid(y)) <= 1e-9 * scale for y in pdn.periods(proj_years)))                           # noqa: F821
+    return all(abs(check_pb_allocation_resid(y)) <= 1e-9 * scale
+               for y in range(proj_years))                           # noqa: F821
 
 
 def check_cliquet_resid(y):
@@ -1752,7 +1765,8 @@ def check_cliquet():
     non-decreasing" is a listed pitfall; :func:`check_guar_floor` is the weaker and
     correct statement about the balance.
     """
-    return pdn.all_true((abs(check_cliquet_resid(y)) <= 1e-8 for y in pdn.periods(proj_years)))                           # noqa: F821
+    return all(abs(check_cliquet_resid(y)) <= 1e-8
+               for y in range(proj_years))                           # noqa: F821
 
 
 def check_guar_floor_resid(t):
@@ -1777,7 +1791,8 @@ def check_guar_floor():
     looked at.  On the shipped scenarios it never binds, and knowing that it does not bind
     is the reason to check it.
     """
-    return pdn.all_true((check_guar_floor_resid(t) <= 1e-6 for t in pdn.periods(proj_len())))
+    return all(check_guar_floor_resid(t) <= 1e-6
+               for t in range(proj_len()))
 
 
 def result_cf():
@@ -1790,14 +1805,14 @@ def result_cf():
     income-positive; ``liability_cf`` is the notes' outgo-positive orientation, verbatim.
     :func:`result_cf_annual` sums the same frame into projection years.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "int_credited": [int_credited(t) for t in ts],
             "soc_levy": [soc_levy(t) for t in ts],
@@ -1823,10 +1838,11 @@ def result_cf_annual():
     the end of the month of exit, and the year's revalorisation is weighted by the
     December in force.  That gap is the point of the finer grid.
     """
-    monthly = pdn.table(result_cf(), report=True)
-    years = [proj_year(t) for t in pdn.keys(monthly)]
-    annual = pdn.group_sum(monthly, years, first=('pols_if',))
-    return pdn.to_pandas(annual, index_name='y')
+    df = result_cf()
+    years = pd.Index([proj_year(t) for t in df.index], name="y")     # noqa: F821
+    out = df.drop(columns="pols_if").groupby(years).sum()
+    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
+    return out
 
 
 def result_pb():
@@ -1846,7 +1862,7 @@ def result_pb():
     values ``av_pp(12y)`` and ``guar_floor_pp(12y)``.  So on the anchor cell the ``y = 0``
     row shows ``ppb_pp`` 3 637.06 while the cells ``ppb_pp(0)`` is the 4 000.00 carried in.
     """
-    ys = list(pdn.periods(proj_years))                                     # noqa: F821
+    ys = list(range(proj_years))                                     # noqa: F821
     return pd.DataFrame(                                             # noqa: F821
         {
             "r_fin": [r_fin(y) for y in ys],
@@ -1868,11 +1884,6 @@ def result_pb():
         },
         index=pd.Index(ys, name="y"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1902,4 +1913,16 @@ lapse_cap = 0.3
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+GuaranteeForm = ("Pickle", 3)
+
+Scenario = ("Pickle", 2)
+
+AvTiming = ("Pickle", 4)
+
+PolTiming = ("Pickle", 5)
+
+Kind = ("Pickle", 6)
+
+enum_definitions = ("Pickle", 7)

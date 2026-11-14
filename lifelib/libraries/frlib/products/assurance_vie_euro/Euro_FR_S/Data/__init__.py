@@ -84,8 +84,8 @@ def model_point_table():
     scenarios, a small new-business cell with an entry charge, a drawdown cell and a
     grouped cell carrying 250 policies.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -102,8 +102,9 @@ def mort_table():
     the notes' placeholder ``q = 0.0060`` at male age 60 exactly.  Sorted on read,
     because ``Projection.mort_rate`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def lapse_table():
@@ -118,9 +119,9 @@ def lapse_table():
     age or vintage - and the dynamic term layered on them in ``Projection.lapse_rate``
     matters more than the levels do.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_table_file,                              # noqa: F821
-        index_col="policy_duration").sort_index()
+        index_col="policy_duration").sort_index())
 
 
 def fin_rate_table():
@@ -138,37 +139,9 @@ def fin_rate_table():
     ``ref_rate`` is 2.20% throughout, the 2025 average Livret A rate.  These are
     **[std]** scenarios, not forecasts.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / fin_rate_file,                                 # noqa: F821
-        index_col=["scenario_id", "y"]).sort_index()
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_fin_rate_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(fin_rate_table(), groups=('scenario_id',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-def prepared_fin_rate_scenarios():
-    """Own the original financial-scenario index level, including unused labels."""
-    return pdn.index(fin_rate_table().index.levels[0])
+    frame = pd.read_csv(input_dir() / fin_rate_file)                       # noqa: F821
+    frame["scenario_id"] = [Scenario[name] for name in frame["scenario_id"]]
+    return pdn.table(frame.set_index(["scenario_id", "y"]).sort_index())
 
 
 # ---------------------------------------------------------------------------
@@ -185,3 +158,7 @@ fin_rate_file = "fin_rate_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Scenario = ("Pickle", 2)
