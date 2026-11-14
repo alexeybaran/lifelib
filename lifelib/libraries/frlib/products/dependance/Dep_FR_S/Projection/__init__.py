@@ -1739,17 +1739,17 @@ def claims(t, kind):
         s_p = 1.0 - mort_rate_partial_mth(t)
         s_t = 1.0 - mort_rate_total_mth(t)
         rho = partial_ratio_paid()
-        amounts = {}
+        last_y = 0
+        a = 0.0
         out = 0.0
         for z in range(franchise_months() + 1, len(part) + 1):
             p, o, v = part[z - 1], tot[z - 1], val[z - 1]
             if p == 0.0 and o == 0.0 and v == 0.0:
                 continue
             y_e = max(1, policy_year(t - z))
-            a = amounts.get(y_e)
-            if a is None:
+            if y_e != last_y:  # y_e is non-increasing in z: the last value is the memo
                 a = rente_pay_pp(t, z)
-                amounts[y_e] = a
+                last_y = y_e
             out += (rho * a * p * s_p + a * o * s_t + v * s_t)
         return out
     if kind == Kind.CAPITAL:
