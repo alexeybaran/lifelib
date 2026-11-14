@@ -864,7 +864,7 @@ def test_pitfall_10_the_tariff_is_unisex_and_the_decrement_is_not(
     finally:
         alt.close()
     # The blend itself is computed, not a row of the CSV.
-    assert set(male.data.mort_table().index.get_level_values("sex")) == {"M", "F"}
+    assert set(male.data.mort_table().index.get_level_values("sex")) == {Sex.M, Sex.F}
     assert male.mix_male == 0.45
     assert male.mort_rate_at_age(70, Sex.U, Basis.FIRST) == pytest.approx(
         0.45 * male.mort_rate_at_age(70, Sex.M, Basis.FIRST)

@@ -1436,7 +1436,8 @@ def test_the_accessors_validate_and_the_within_year_reads_are_consistent(
     """claims(t) sums the six kinds, the enum accessors validate, and the timings agree."""
     p = de_riester_anchor
     for t in (0, 192, 204, 348):
-        assert p.claims(t, Kind.ALL) == approx(sum(p.claims(t, k) for k in CLAIM_KINDS), rel=1e-12)
+        assert p.claims(t, Kind.ALL) == approx(sum(p.claims(t, k) for k in (
+            Kind.DEATH, Kind.LAPSE, Kind.TRANSFER, Kind.LUMPSUM, Kind.COMMUTATION, Kind.ANNUITY)), rel=1e-12)
     assert p.claims(204, Kind.ALL) == approx(10536.610861 + 71.301877, abs=CENT)
     with pytest.raises(FormulaError):
         p.claims(0, "SURRENDER")

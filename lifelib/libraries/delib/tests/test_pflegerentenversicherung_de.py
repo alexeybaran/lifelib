@@ -196,9 +196,9 @@ UNISEX_CROSS_SUBSIDY = 5969.98         # net_cf(male) - net_cf(female), undiscou
 # The rates that drive the two cells apart: male active mortality is higher at every age,
 # male incidence lower, and incidence wins.
 SEX_RATES = {
-    ("M", 45, "mort"): 0.0016636521, ("F", 45, "mort"): 0.0007795609,
-    ("M", 85, "mort"): 0.1049833018, ("F", 85, "mort"): 0.0699052076,
-    ("M", 85, "inc"): 0.1342986651, ("F", 85, "inc"): 0.1808911145,
+    (Sex.M, 45, "mort"): 0.0016636521, (Sex.F, 45, "mort"): 0.0007795609,
+    (Sex.M, 85, "mort"): 0.1049833018, (Sex.F, 85, "mort"): 0.0699052076,
+    (Sex.M, 85, "inc"): 0.1342986651, (Sex.F, 85, "inc"): 0.1808911145,
 }
 
 # The notes' switchable-variant table: four cells on the same tables, differing only in
@@ -537,9 +537,9 @@ def test_the_male_twin_totals_and_the_unisex_cross_subsidy(
         table = mort if kind == "mort" else inc
         column = "mort_rate" if kind == "mort" else "inc_rate"
         assert float(table.at[(sex, age), column]) == pytest.approx(value, abs=5e-11)
-    assert SEX_RATES[("M", 45, "mort")] > SEX_RATES[("F", 45, "mort")]
-    assert SEX_RATES[("M", 85, "mort")] > SEX_RATES[("F", 85, "mort")]
-    assert SEX_RATES[("M", 85, "inc")] < SEX_RATES[("F", 85, "inc")]
+    assert SEX_RATES[(Sex.M, 45, "mort")] > SEX_RATES[(Sex.F, 45, "mort")]
+    assert SEX_RATES[(Sex.M, 85, "mort")] > SEX_RATES[(Sex.F, 85, "mort")]
+    assert SEX_RATES[(Sex.M, 85, "inc")] < SEX_RATES[(Sex.F, 85, "inc")]
 
 
 # The switchable variants beside the anchor
@@ -1420,7 +1420,7 @@ def test_the_shipped_tables_mark_their_own_provenance():
     assert INPUT_CSVS == {p.name for p in MODEL_DIR.parent.iterdir()
                           if p.suffix == ".csv"}
     assert not any(p.suffix == ".csv" for p in MODEL_DIR.rglob("*"))
-    assert model_files(MODEL_DIR) == {"__init__.py", "_system.json"}
+    assert model_files(MODEL_DIR) == {"__init__.py", "_system.json", "data.pickle"}
     mort = pd.read_csv(MODEL_DIR.parent / "mort_table.csv", index_col=["sex", "age"])
     assert all(p.startswith("[std]") for p in mort["provenance"])
     assert all("not redistributed" in mort.at[(s, a), "provenance"]
