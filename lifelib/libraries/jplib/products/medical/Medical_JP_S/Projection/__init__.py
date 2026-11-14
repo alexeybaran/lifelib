@@ -778,7 +778,8 @@ def los_days(band):
     mode and the 160-day band for the psychiatric and neurological tail that drives the
     sourced national mean [REG-R27].
     """
-    return tuple(int(d) for d in data.los_table().loc[band].index)   # noqa: F821
+    sub = data.los_table().loc[band]                                 # noqa: F821
+    return tuple(int(d) for d in sub.index)
 
 
 def los_probs(band):
