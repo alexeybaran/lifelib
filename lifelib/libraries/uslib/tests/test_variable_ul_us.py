@@ -24,7 +24,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.variable_ul.categories import Claim, Timing
+from lifelib.libraries.uslib.products.variable_ul.enums import Claim, DeathBenefitOption, PolTiming, Qualification, RateClass, Sex, Timing
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -94,11 +94,11 @@ def anchor(variable_ul):
 def test_worked_example_step0_opening_balances(anchor):
     """Step 0: the model point opens where the worked example opens."""
     assert anchor.age_at_entry() == 45
-    assert anchor.sex() == "M"
-    assert anchor.rate_class() == "StdNT"
+    assert anchor.sex() == Sex.M
+    assert anchor.rate_class() == RateClass.StdNT
     assert anchor.sum_assured() == 500000.0
-    assert anchor.db_option() == "A"
-    assert anchor.qual_test() == "GPT"
+    assert anchor.db_option() == DeathBenefitOption.A
+    assert anchor.qual_test() == Qualification.GPT
     assert anchor.duration_mth_init() == 24
     assert anchor.duration_mth(0) == 24
     assert anchor.policy_year(0) == 3          # "policy year 3"
@@ -676,7 +676,7 @@ def test_result_av_and_result_net_shapes(anchor):
 
 def test_every_model_point_allocates_the_whole_premium(variable_ul):
     """alpha_1 + alpha_2 + alpha_F = 1, or a net premium would vanish."""
-    for point_id in variable_ul.Data.model_point_table()["keys"]:
+    for point_id in variable_ul.Data.model_point_table().index:
         p = variable_ul.Projection[point_id]
         total = sum(p.alloc(i) for i in p.subaccount_ids()) + p.alloc_fixed()
         assert total == pytest.approx(1.0, abs=1e-12)
@@ -709,7 +709,7 @@ def test_fixed_option_earns_the_declared_rate(variable_ul):
 def test_option_b_death_benefit_tracks_the_account_value(variable_ul):
     """Option B: DB = F + AV', so the net amount at risk stays at the face amount."""
     p = variable_ul.Projection[3]
-    assert p.db_option() == "B"
+    assert p.db_option() == DeathBenefitOption.B
     for t in (0, 11, 119):
         assert p.db_pp(t) == pytest.approx(
             max(p.sum_assured_at(t) + p.av_pp_at(t, Timing.BEF_FEE), p.db_corridor_pp(t)),
@@ -749,7 +749,7 @@ def test_timing_and_kind_arguments_are_validated(anchor):
     _rejects("invalid kind", anchor.claim_pp, 0, "ANNUITIZATION")
     _rejects("invalid kind", anchor.claims, 0, "ANNUITIZATION")
     _rejects("invalid kind", anchor.claims_from_av, 0, "ANNUITIZATION")
-    for timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    for timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         assert anchor.pols_if_at(0, timing) == anchor.pols_if(0)
     assert anchor.claims_from_av(0, Claim.MATURITY) == 0.0
 
@@ -775,7 +775,7 @@ def test_a_withdrawal_is_not_a_claim(variable_ul, anchor):
             anchor.premiums(t) - anchor.claims(t, Claim.ALL) - anchor.withdrawals(t)
             - anchor.expenses(t) - anchor.premium_taxes(t), rel=1e-12)
     # every shipped model point has W(t) = 0, the notes' baseline
-    for point_id in variable_ul.Data.model_point_table()["keys"]:
+    for point_id in variable_ul.Data.model_point_table().index:
         p = variable_ul.Projection[point_id]
         assert p.withdrawals(0) == 0.0
         assert p.result_cf()["withdrawals"].abs().max() == 0.0
@@ -790,7 +790,7 @@ def test_pols_if_is_the_start_of_month_weight(anchor):
     """
     df = anchor.result_cf()
     for t in (0, 1, 11, 119):
-        assert anchor.pols_if_at(t, "BEF_DECR") == anchor.pols_if(t)
+        assert anchor.pols_if_at(t, PolTiming.BEF_DECR) == anchor.pols_if(t)
         assert (anchor.premiums(t) / anchor.premium_pp(t)
                 == pytest.approx(anchor.pols_if(t), rel=1e-12))
         assert df.loc[t, "premiums"] / anchor.premium_pp(t) == pytest.approx(

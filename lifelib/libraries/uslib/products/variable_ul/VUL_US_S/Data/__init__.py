@@ -96,7 +96,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"), rows=True, report=True)  # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
 
 
 def subaccount_table():
@@ -117,11 +117,9 @@ def scenario_table():
     projection, so a table row is the fund's own return before any charge.  The index
     is sorted on read so partial slices of the three-level key are lexsorted.
     """
-    values = pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / scenario_file,                                 # noqa: F821
-        index_col=["scenario_id", "subaccount_id", "t"]).sort_index()
-    return pdn.table(values, groups=values.index.names[:-1],
-                        columns=("gross_return_mth",))
+        index_col=["scenario_id", "subaccount_id", "t"]).sort_index())
 
 
 def coi_rates():
@@ -130,11 +128,10 @@ def coi_rates():
     Per $1,000 of net amount at risk, keyed by issue-age cell and policy year.  An
     illustrative **[std]** stand-in for the licensed 2017 CSO ultimate ANB table.
     """
-    values = pd.read_csv(                                              # noqa: F821
-        input_dir() / coi_rates_file,                                # noqa: F821
-        index_col=["sex", "rate_class", "age_at_entry", "policy_year"])
-    return pdn.table(values, groups=values.index.names[:-1],
-                        columns=("coi_rate_guar",), report=True)
+    frame = pd.read_csv(input_dir() / coi_rates_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index(["sex", "rate_class", "age_at_entry", "policy_year"]))
 
 
 def corridor_factors():
@@ -149,7 +146,9 @@ def mort_table():
 
 def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / class_factor_file, index_col="rate_class"))  # noqa: F821
+    frame = pd.read_csv(input_dir() / class_factor_file)             # noqa: F821
+    frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
+    return pdn.table(frame.set_index("rate_class"))
 
 
 def lapse_table():
@@ -197,3 +196,7 @@ surr_charge_file = "surr_charge_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+RateClass = ("Pickle", 2)
