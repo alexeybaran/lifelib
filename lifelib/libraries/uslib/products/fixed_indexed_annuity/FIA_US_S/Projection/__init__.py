@@ -1625,6 +1625,16 @@ def lw_pp(t):
     return lw_pp_at(t, Timing.EOY)
 
 
+def has_withdrawals():
+    """Whether the withdrawal table has rows for the model point's withdrawal programme."""
+    return wd_schedule_id() in data.withdrawal_table().index         # noqa: F821
+
+
+def withdrawal_rows():
+    """The model point's scheduled withdrawals (only read when has_withdrawals())."""
+    return data.withdrawal_table().loc[wd_schedule_id()]             # noqa: F821
+
+
 def wd_scheduled_pp(t):
     """The ad hoc gross withdrawal scheduled at the anniversary of month t's year, else zero.
 
@@ -1637,9 +1647,11 @@ def wd_scheduled_pp(t):
     """
     if not is_anniv(t):
         return 0.0
-    table = data.withdrawal_table()                                  # noqa: F821
-    key = (wd_schedule_id(), duration(t))
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    if not has_withdrawals():
+        return 0.0
+    rows = withdrawal_rows()
+    m = duration(t)
+    return float(rows.loc[m, "wd_amount"]) if m in rows.index else 0.0
 
 
 def wd_pp(t):
