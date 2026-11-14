@@ -1774,5 +1774,5 @@ def test_the_inputs_live_beside_the_model_and_are_all_referenced(variable_annuit
     assert variable_annuity.Data.input_dir() == pathlib.Path(MODEL_DIR).parent
     inside = {p.name for p in MODEL_DIR.rglob("*")
               if p.is_file() and "__pycache__" not in p.parts}
-    assert inside == {"__init__.py", "_system.json"}
+    assert inside == {"__init__.py", "_system.json", "data.pickle"}
     assert not list(MODEL_DIR.glob("*.csv"))
