@@ -85,8 +85,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -100,9 +100,9 @@ def mort_table():
     rate — the worked example's entry age — gives exactly 0.5000% p.a.  Sorted on read,
     because ``Projection.mort_rate`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def lapse_table():
@@ -123,8 +123,8 @@ def lapse_table():
     level does: a saver who surrenders a 2° engagement while its guarantee is in the money
     gives up the entire guarantee, which is the strongest exit deterrent in the product.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year").sort_index()
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year").sort_index())
 
 
 def scenario_table():
@@ -146,9 +146,9 @@ def scenario_table():
     convex in the asset shock, so a deterministic run understates it and the *mémoire*
     duly runs 1 000 risk-neutral scenarios.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / scenario_table_file,                           # noqa: F821
-        index_col=["scenario", "year"]).sort_index()
+    frame = pd.read_csv(input_dir() / scenario_table_file)                     # noqa: F821
+    frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
+    return pdn.table(frame.set_index(["scenario", "year"]).sort_index())
 
 
 def tec_curve():
@@ -174,49 +174,9 @@ def tec_curve():
     nothing more precise was retrieved.  Sorted on read, because the interpolation walks
     the maturity index in order.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / tec_curve_file,                                # noqa: F821
-        index_col=["scenario", "year", "maturity"]).sort_index()
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_scenario_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(scenario_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_tec_curve_calculation_groups_2():
-    """Own original input values for calculation operations."""
-    return pdn.table(tec_curve(), groups=('scenario', 'year'), rows=False, preserve_scalar_types=True)
-
-
-
-def prepared_tec_curve_years():
-    """Own original input values for calculation operations."""
-    return pdn.index(tec_curve().index.get_level_values("year"))
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_scenario_table_index_selection_level_year():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(scenario_table().index.get_level_values("year"))
+    frame = pd.read_csv(input_dir() / tec_curve_file)                     # noqa: F821
+    frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
+    return pdn.table(frame.set_index(["scenario", "year", "maturity"]).sort_index())
 
 
 # ---------------------------------------------------------------------------
@@ -235,3 +195,7 @@ tec_curve_file = "tec_curve.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Scenario = ("Pickle", 2)

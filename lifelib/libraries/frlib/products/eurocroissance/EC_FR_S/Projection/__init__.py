@@ -504,7 +504,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def chassis():
@@ -514,10 +514,7 @@ def chassis():
     them its own provision structure, surrender value and maturity amount.  A value
     outside the pair is a data error and raises rather than defaulting to one of them.
     """
-    v = pdn.lookup_object(prepared_model_point(), "engagement_modality")
-    if v not in ("euro_and_parts", "parts_only"):
-        raise ValueError("invalid engagement_modality: " + str(v))
-    return v
+    return EngagementModality[model_point()["engagement_modality"]]
 
 
 def is_euro_leg():
@@ -526,7 +523,7 @@ def is_euro_leg():
     On Chassis B ``pm`` is identically zero, the whole engagement is expressed in parts,
     and the guarantee is carried by the insurer's own funds until the *échéance*.
     """
-    return chassis() == "euro_and_parts"
+    return chassis() == EngagementModality.euro_and_parts
 
 
 def issue_age():
@@ -535,7 +532,7 @@ def issue_age():
     A. 335-1 applies the homologated tables with the annexed *décalages d'âge* rather than
     fixing a model age basis, so the basis is a standardization.
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def sex():
@@ -544,10 +541,7 @@ def sex():
     A. 132-18 requires the mortality basis to be by sex, so the decrement table is
     sex-distinct even though the tariff itself may not be.
     """
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex: " + str(v))
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def policy_term():
@@ -555,7 +549,7 @@ def policy_term():
 
     The retrieved market range is 8 to 40 years; the worked example uses 10.
     """
-    return pdn.lookup_int(prepared_model_point(), "policy_term")
+    return int(model_point()["policy_term"])
 
 
 def duration_inforce():
@@ -564,7 +558,7 @@ def duration_inforce():
     An in-force cell is seeded from its extract's assets, parts and guaranteed amount and
     carries no accumulated *provision mathématique* — see :func:`pm_init`.
     """
-    return pdn.lookup_int(prepared_model_point(), "duration_ifo")
+    return int(model_point()["duration_ifo"])
 
 
 def guarantee_rate():
@@ -574,12 +568,12 @@ def guarantee_rate():
     saver.  This is the product's single largest dial: it sets how much of the account is
     locked into the guaranteed leg and therefore how much of it can bear risk.
     """
-    return pdn.lookup_float(prepared_model_point(), "guarantee_rate")
+    return float(model_point()["guarantee_rate"])
 
 
 def premium_gross_init():
     """The initial gross *versement* paid at issue; nil on an in-force cell."""
-    return pdn.lookup_float(prepared_model_point(), "premium_gross")
+    return float(model_point()["premium_gross"])
 
 
 def premium_regular_pp():
@@ -587,12 +581,12 @@ def premium_regular_pp():
 
     Zero on a single-*versement* cell, which is the ordinary eurocroissance shape.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_regular")
+    return float(model_point()["premium_regular"])
 
 
 def premium_regular_years():
     """The number of policy years over which the scheduled *versement* is paid."""
-    return pdn.lookup_int(prepared_model_point(), "premium_regular_years")
+    return int(model_point()["premium_regular_years"])
 
 
 def premium_top_up_pp():
@@ -603,12 +597,12 @@ def premium_top_up_pp():
     buys parts at the part value just struck and raises the guaranteed amount by ``g``
     times its net amount.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_top_up")
+    return float(model_point()["premium_top_up"])
 
 
 def premium_top_up_year():
     """The policy year at whose end the free additional *versement* is paid; 0 if none."""
-    return pdn.lookup_int(prepared_model_point(), "premium_top_up_t")
+    return int(model_point()["premium_top_up_t"])
 
 
 def entry_charge_rate():
@@ -618,7 +612,7 @@ def entry_charge_rate():
     for any eurocroissance support.  It is deducted **before** rights are created, which
     is why the guarantee is a percentage of *net* *versements* — see :func:`mg`.
     """
-    return pdn.lookup_float(prepared_model_point(), "entry_charge_rate")
+    return float(model_point()["entry_charge_rate"])
 
 
 def parts_charge_rate():
@@ -629,7 +623,7 @@ def parts_charge_rate():
     levy only in an auxiliary account holding no 1° engagements, and no base permits any
     levy on the *provision mathématique*.
     """
-    return pdn.lookup_float(prepared_model_point(), "parts_charge_rate")
+    return float(model_point()["parts_charge_rate"])
 
 
 def perf_charge_rate():
@@ -639,7 +633,7 @@ def perf_charge_rate():
     anniversary, and nothing at all on a negative one — which is why the worked example's
     policy-year-6 performance levy, at month ``t`` = 71, is zero.
     """
-    return pdn.lookup_float(prepared_model_point(), "perf_charge_rate")
+    return float(model_point()["perf_charge_rate"])
 
 
 def exit_charge_rate():
@@ -648,7 +642,7 @@ def exit_charge_rate():
     Zero in the reference configuration — the code permits it and neither retrieved
     insurer shows one.
     """
-    return pdn.lookup_float(prepared_model_point(), "exit_charge_rate")
+    return float(model_point()["exit_charge_rate"])
 
 
 def surrender_indemnity_rate():
@@ -659,7 +653,7 @@ def surrender_indemnity_rate():
     been in force more than ten years — a permission, not a prohibition.
     :func:`surrender_indemnity` takes that permission up unconditionally **[std]**.
     """
-    return pdn.lookup_float(prepared_model_point(), "surrender_indemnity_rate")
+    return float(model_point()["surrender_indemnity_rate"])
 
 
 def part_value_init():
@@ -669,7 +663,7 @@ def part_value_init():
     assumption: what matters is the ratio of the part value to its floor, since that is
     how far the diversification provision can fall before the floor binds.
     """
-    return pdn.lookup_float(prepared_model_point(), "part_value_init")
+    return float(model_point()["part_value_init"])
 
 
 def min_part_value():
@@ -682,7 +676,7 @@ def min_part_value():
     the insurer must start contributing assets.  Without it the worked example's Chassis A
     ``prov_div`` would go to **-1,095.35** at the anniversary of policy year 6, ``t`` = 71.
     """
-    return pdn.lookup_float(prepared_model_point(), "min_part_value")
+    return float(model_point()["min_part_value"])
 
 
 def lock_up_years():
@@ -691,7 +685,7 @@ def lock_up_years():
     Zero in the reference configuration.  The L. 132-23 hardship exits are not separately
     modelled **[std]**.
     """
-    v = pdn.lookup_int(prepared_model_point(), "lock_up_years")
+    v = int(model_point()["lock_up_years"])
     if v > min(policy_term(), lock_up_cap):                          # noqa: F821
         raise ValueError("lock_up_years exceeds the R. 134-5 cap")
     return v
@@ -704,7 +698,7 @@ def death_floor_flag():
     floored at cumulative net *versements*.  It is not the maturity guarantee and does not
     become payable because the saver died before the *échéance*.
     """
-    return pdn.lookup_bool(prepared_model_point(), "death_floor_flag")
+    return bool(model_point()["death_floor_flag"])
 
 
 def annuity_option_flag():
@@ -715,7 +709,7 @@ def annuity_option_flag():
     projection that continues past the *échéance*.  No shipped model point elects it, and
     a cell that did raises rather than being paid a lump sum in silence.
     """
-    v = pdn.lookup_bool(prepared_model_point(), "annuity_option_flag")
+    v = bool(model_point()["annuity_option_flag"])
     if v:
         raise ValueError("the rente viagère option at the échéance is out of scope")
     return v
@@ -727,7 +721,7 @@ def wd_factor():
     The worked example takes none, which is what lets its provision path be read as the
     cash flow path.
     """
-    return pdn.lookup_float(prepared_model_point(), "wd_factor")
+    return float(model_point()["wd_factor"])
 
 
 def apport_rate():
@@ -737,12 +731,12 @@ def apport_rate():
     and **endows the PCDD**; it is never credited to the savers' diversification
     provision, and switching it on changes no policyholder value by one cent.
     """
-    return pdn.lookup_float(prepared_model_point(), "apport_rate")
+    return float(model_point()["apport_rate"])
 
 
 def apport_year():
     """The policy year at whose end the *apport d'actifs* is made; 0 if none."""
-    return pdn.lookup_int(prepared_model_point(), "apport_t")
+    return int(model_point()["apport_t"])
 
 
 def decrement_basis():
@@ -753,10 +747,7 @@ def decrement_basis():
     the per-policy provision path **is** the cash flow path, which is what makes the
     notes' two tables readable as provisions rather than as expected values.
     """
-    v = pdn.lookup_object(prepared_model_point(), "decrement_basis")
-    if v not in ("table", "none"):
-        raise ValueError("invalid decrement_basis: " + str(v))
-    return v
+    return DecrementBasis[model_point()["decrement_basis"]]
 
 
 def scenario():
@@ -768,7 +759,7 @@ def scenario():
     visible, and pairing an equity fall with an unchanged curve would understate the
     *provision mathématique* by the whole rate effect.
     """
-    return pdn.lookup_object(prepared_model_point(), "scenario")
+    return Scenario[model_point()["scenario"]]
 
 
 def own_assets_init():
@@ -778,17 +769,17 @@ def own_assets_init():
     contribution, which is not the savers' money.  Zero on a new-business cell, where
     :func:`own_assets` seeds from the initial net *versement* instead.
     """
-    return pdn.lookup_float(prepared_model_point(), "own_assets_ifo")
+    return float(model_point()["own_assets_ifo"])
 
 
 def parts_init():
     """N: the number of *parts de provision de diversification* at the valuation date."""
-    return pdn.lookup_float(prepared_model_point(), "parts_ifo")
+    return float(model_point()["parts_ifo"])
 
 
 def mg_init():
     """mg: the guaranteed amount payable at the *échéance*, at the valuation date."""
-    return pdn.lookup_float(prepared_model_point(), "mg_ifo")
+    return float(model_point()["mg_ifo"])
 
 
 def pm_init():
@@ -799,17 +790,17 @@ def pm_init():
     a projection cannot roll it forward — it is re-derived every year, and comparing the
     two is how a reader discovers an extract built by accumulation.
     """
-    return pdn.lookup_float(prepared_model_point(), "pm_ifo")
+    return float(model_point()["pm_ifo"])
 
 
 def cum_prem_net_init():
     """The cumulative net *versements* at the valuation date: the death-floor base."""
-    return pdn.lookup_float(prepared_model_point(), "cum_prem_net_ifo")
+    return float(model_point()["cum_prem_net_ifo"])
 
 
 def pols_if_init():
     """Initial number of policies in force; 1.0 on a single-policy model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def proj_start():
@@ -935,6 +926,16 @@ def age_anniv(t):
     return issue_age() + duration(t) + 1
 
 
+def scenario_last_year():
+    """The last year of the scenario table: later years read it."""
+    return int(data.scenario_table().index.get_level_values("year").max())  # noqa: F821
+
+
+def scenario_returns():
+    """The asset returns of the policy's scenario, by year."""
+    return data.scenario_table().loc[scenario()]                     # noqa: F821
+
+
 def asset_return(t):
     """r(t): the **annual** gross asset return of the policy year containing month t **[std]**.
 
@@ -949,9 +950,8 @@ def asset_return(t):
     issue, reads row ``duration(t) + 1``; its row 0 is the inception placeholder and is
     never read.  The last row is held beyond the table.
     """
-    tbl = data.scenario_table()                                      # noqa: F821
-    y = min(duration(t) + 1, int(pdn.max_value(pdn.keys(data.prepared_scenario_table_index_selection_level_year()))))
-    return pdn.lookup_float(data.prepared_scenario_table_scalar_loc(), (scenario(), y), "asset_return")
+    y = min(duration(t) + 1, scenario_last_year())
+    return float(scenario_returns().loc[y, "asset_return"])
 
 
 def asset_return_mth(t):
@@ -968,6 +968,16 @@ def asset_return_mth(t):
     figure intact.
     """
     return (1.0 + asset_return(t)) ** (1.0 / 12.0) - 1.0
+
+
+def tec_last_year():
+    """The last year of the TEC curve table: later years read it."""
+    return int(data.tec_curve().index.get_level_values("year").max())  # noqa: F821
+
+
+def tec_schedule():
+    """The TEC curves of the policy's scenario, by year and maturity."""
+    return data.tec_curve().loc[scenario()]                          # noqa: F821
 
 
 def tec_rate(m):
@@ -1002,23 +1012,17 @@ def tec_rate(m):
     ``product-spec.md`` states the article as retrieved.  The two readings differ only on a
     sloped curve, which is what shipped model point 10 exercises.
     """
-    y = min(m // 12, int(pdn.max_value(pdn.keys(data.prepared_tec_curve_years()))))
-    try:
-        curve = pdn.subtable(pdn.subtable(data.prepared_tec_curve_calculation_groups_2(), scenario()), y)
-    except KeyError:
-        # Preserve the original partial-MultiIndex selector error contract.
-        data.tec_curve().loc[(scenario(), y), "tec_rate"]
-        raise
-    ms = [int(v) for v in pdn.keys(curve)]
+    y = min(m // 12, tec_last_year())
+    curve = tec_schedule().loc[y]
+    ms = [int(v) for v in curve.index]
     mat = rem_term(m)
     if mat <= ms[0]:
-        return pdn.lookup_float(curve, ms[0], "tec_rate")
+        return float(curve.loc[ms[0], "tec_rate"])
     if mat >= ms[-1]:
-        return pdn.lookup_float(curve, ms[-1], "tec_rate")
+        return float(curve.loc[ms[-1], "tec_rate"])
     for lo, hi in zip(ms[:-1], ms[1:]):
         if lo <= mat <= hi:
-            r_lo = pdn.lookup_float(curve, lo, "tec_rate")
-            r_hi = pdn.lookup_float(curve, hi, "tec_rate")
+            r_lo, r_hi = float(curve.loc[lo, "tec_rate"]), float(curve.loc[hi, "tec_rate"])
             return r_lo + (r_hi - r_lo) * (mat - lo) / (hi - lo)
     raise ValueError("no bracketing maturity for " + str(mat))
 
@@ -1161,7 +1165,7 @@ def parts_added_bom(t):
     p = prem_after_charge_pp(t)
     if p <= 0.0 or t < proj_start():
         return 0.0
-    u = part_value_at(t, "BOM")
+    u = part_value_at(t, AcctTiming.BOM)
     if u <= 0.0:
         return 0.0
     pm_add = guarantee_rate() * p * disc_factor(t) if is_euro_leg() else 0.0
@@ -1182,7 +1186,7 @@ def parts_added_top_up(t):
     p = premium_top_up_net_pp(t)
     if p <= 0.0:
         return 0.0
-    u = part_value_at(t, "AFT_STRIKE")
+    u = part_value_at(t, AcctTiming.AFT_STRIKE)
     if u <= 0.0:
         return 0.0
     pm_add = guarantee_rate() * p * disc_factor(t + 1) if is_euro_leg() else 0.0
@@ -1197,8 +1201,8 @@ def wd_rate_base(t):
     at ``policy_year(t)``; policy years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection()))))
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "wd_rate")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "wd_rate"])
 
 
 def wd_rate(t):
@@ -1217,7 +1221,7 @@ def wd_rate(t):
     partial surrender takes the same proportion of every element of the engagement — the
     parts, the guaranteed amount and the death-floor base all run down pro rata with it.
     """
-    if decrement_basis() == "none" or wd_factor() <= 0.0:
+    if decrement_basis() == DecrementBasis.none or wd_factor() <= 0.0:
         return 0.0
     if (t < proj_start() or duration(t) < lock_up_years()
             or duration(t) >= policy_term() - 1):
@@ -1256,7 +1260,7 @@ def wd_gross_pp(t):
     """
     if t < proj_start():
         return 0.0
-    return wd_rate_mth(t) * provision_value_at(t, "BOM")
+    return wd_rate_mth(t) * provision_value_at(t, AcctTiming.BOM)
 
 
 def wd_pp(t):
@@ -1291,18 +1295,18 @@ def mg_at(t, timing):
         after any free *versement* on the anniversary; the closing
         guaranteed amount, and the same number as :func:`mg`.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return mg(t - 1)
         if duration_inforce() > 0:
             return mg_init()
         return guarantee_rate() * prem_init_after_charge()
-    if timing == "AFT_EXIT":
-        return mg_at(t, "BOM") * (1.0 - wd_rate_mth(t))
-    if timing == "AFT_PREM":
-        return mg_at(t, "AFT_EXIT") + guarantee_rate() * prem_after_charge_pp(t)
-    if timing == "AFT_TOP_UP":
-        return (mg_at(t, "AFT_PREM")
+    if timing == AcctTiming.AFT_EXIT:
+        return mg_at(t, AcctTiming.BOM) * (1.0 - wd_rate_mth(t))
+    if timing == AcctTiming.AFT_PREM:
+        return mg_at(t, AcctTiming.AFT_EXIT) + guarantee_rate() * prem_after_charge_pp(t)
+    if timing == AcctTiming.AFT_TOP_UP:
+        return (mg_at(t, AcctTiming.AFT_PREM)
                 + guarantee_rate() * premium_top_up_net_pp(t))
     raise ValueError("invalid timing: " + str(timing))
 
@@ -1317,7 +1321,7 @@ def mg(t):
     """
     if t < proj_start():
         return 0.0
-    return mg_at(t, "AFT_TOP_UP")
+    return mg_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def cum_prem_net_at(t, timing):
@@ -1329,7 +1333,7 @@ def cum_prem_net_at(t, timing):
         on a new-business cell or the extract's ``cum_prem_net_ifo`` on
         an in-force one.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return cum_prem_net(t - 1)
         if duration_inforce() > 0:
@@ -1348,7 +1352,7 @@ def cum_prem_net(t):
     """
     if t < proj_start():
         return 0.0
-    return (cum_prem_net_at(t, "BOM") * (1.0 - wd_rate_mth(t))
+    return (cum_prem_net_at(t, AcctTiming.BOM) * (1.0 - wd_rate_mth(t))
             + prem_after_charge_pp(t) + premium_top_up_net_pp(t))
 
 
@@ -1371,7 +1375,7 @@ def parts_levy(t):
     """
     if t < proj_start() or duration_mth(t) % 12 != 0:
         return 0.0
-    return parts_charge_rate() * prov_div_at(t, "BOM")
+    return parts_charge_rate() * prov_div_at(t, AcctTiming.BOM)
 
 
 def invest_income(t):
@@ -1382,7 +1386,7 @@ def invest_income(t):
     they **sum** to the annual model's ``A_a r``, which is what makes the anniversary
     performance levy reproduce it.
     """
-    return own_assets_at(t, "AFT_PREM") * asset_return_mth(t)
+    return own_assets_at(t, AcctTiming.AFT_PREM) * asset_return_mth(t)
 
 
 def invest_income_ytd(t):
@@ -1460,24 +1464,24 @@ def own_assets_at(t, timing):
     the participation account is struck, after its balance has been allocated — rather
     than being arithmetic convenience.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return own_assets(t - 1)
         if duration_inforce() > 0:
             return own_assets_init()
         return prem_init_after_charge()
-    if timing == "AFT_LEVY":
-        return own_assets_at(t, "BOM") - parts_levy(t)
-    if timing == "AFT_EXIT":
-        return own_assets_at(t, "AFT_LEVY") - wd_gross_pp(t)
-    if timing == "AFT_PREM":
-        return own_assets_at(t, "AFT_EXIT") + prem_after_charge_pp(t)
-    if timing == "AFT_RETURN":
-        return own_assets_at(t, "AFT_PREM") * (1.0 + asset_return_mth(t))
-    if timing == "AFT_PERF":
-        return own_assets_at(t, "AFT_RETURN") - perf_levy(t)
-    if timing == "AFT_TOP_UP":
-        return own_assets_at(t, "AFT_PERF") + premium_top_up_net_pp(t)
+    if timing == AcctTiming.AFT_LEVY:
+        return own_assets_at(t, AcctTiming.BOM) - parts_levy(t)
+    if timing == AcctTiming.AFT_EXIT:
+        return own_assets_at(t, AcctTiming.AFT_LEVY) - wd_gross_pp(t)
+    if timing == AcctTiming.AFT_PREM:
+        return own_assets_at(t, AcctTiming.AFT_EXIT) + prem_after_charge_pp(t)
+    if timing == AcctTiming.AFT_RETURN:
+        return own_assets_at(t, AcctTiming.AFT_PREM) * (1.0 + asset_return_mth(t))
+    if timing == AcctTiming.AFT_PERF:
+        return own_assets_at(t, AcctTiming.AFT_RETURN) - perf_levy(t)
+    if timing == AcctTiming.AFT_TOP_UP:
+        return own_assets_at(t, AcctTiming.AFT_PERF) + premium_top_up_net_pp(t)
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1493,7 +1497,7 @@ def own_assets(t):
     """
     if t < proj_start():
         return 0.0
-    return own_assets_at(t, "AFT_TOP_UP")
+    return own_assets_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def parts_at(t, timing):
@@ -1523,23 +1527,23 @@ def parts_at(t, timing):
         just struck part value; the closing count, and the same number as
         :func:`parts`.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return parts(t - 1)
         if duration_inforce() > 0:
             return parts_init()
         u = part_value_init()
-        return prov_div_at(t, "BOM") / u if u > 0.0 else 0.0
-    if timing == "AFT_LEVY":
+        return prov_div_at(t, AcctTiming.BOM) / u if u > 0.0 else 0.0
+    if timing == AcctTiming.AFT_LEVY:
         if duration_mth(t) % 12 != 0:
-            return parts_at(t, "BOM")
-        return parts_at(t, "BOM") * (1.0 - parts_charge_rate())
-    if timing == "AFT_EXIT":
-        return parts_at(t, "AFT_LEVY") * (1.0 - wd_rate_mth(t))
-    if timing == "AFT_PREM":
-        return parts_at(t, "AFT_EXIT") + parts_added_bom(t)
-    if timing == "AFT_TOP_UP":
-        return parts_at(t, "AFT_PREM") + parts_added_top_up(t)
+            return parts_at(t, AcctTiming.BOM)
+        return parts_at(t, AcctTiming.BOM) * (1.0 - parts_charge_rate())
+    if timing == AcctTiming.AFT_EXIT:
+        return parts_at(t, AcctTiming.AFT_LEVY) * (1.0 - wd_rate_mth(t))
+    if timing == AcctTiming.AFT_PREM:
+        return parts_at(t, AcctTiming.AFT_EXIT) + parts_added_bom(t)
+    if timing == AcctTiming.AFT_TOP_UP:
+        return parts_at(t, AcctTiming.AFT_PREM) + parts_added_top_up(t)
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1553,7 +1557,7 @@ def parts(t):
     """
     if t < proj_start():
         return 0.0
-    return parts_at(t, "AFT_TOP_UP")
+    return parts_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def pm_at(t, timing):
@@ -1581,14 +1585,14 @@ def pm_at(t, timing):
     """
     if not is_euro_leg():
         return 0.0
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return pm(t - 1)
-        return mg_at(t, "BOM") * disc_factor(t)
-    if timing == "AFT_STRIKE":
-        return mg_at(t, "AFT_PREM") * disc_factor(t + 1)
-    if timing == "AFT_TOP_UP":
-        return mg_at(t, "AFT_TOP_UP") * disc_factor(t + 1)
+        return mg_at(t, AcctTiming.BOM) * disc_factor(t)
+    if timing == AcctTiming.AFT_STRIKE:
+        return mg_at(t, AcctTiming.AFT_PREM) * disc_factor(t + 1)
+    if timing == AcctTiming.AFT_TOP_UP:
+        return mg_at(t, AcctTiming.AFT_TOP_UP) * disc_factor(t + 1)
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1613,7 +1617,7 @@ def pm(t):
     """
     if t < proj_start() or not is_euro_leg():
         return 0.0
-    return pm_at(t, "AFT_TOP_UP")
+    return pm_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def prov_div_at(t, timing):
@@ -1629,19 +1633,19 @@ def prov_div_at(t, timing):
     extract, leaves over the opening PM.  It is the base of the parts levy in the months
     that carry one.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return prov_div(t - 1)
         if duration_inforce() > 0:
-            return max(own_assets_at(t, "BOM") - pm_at(t, "BOM"),
+            return max(own_assets_at(t, AcctTiming.BOM) - pm_at(t, AcctTiming.BOM),
                        parts_init() * min_part_value())
-        return max(own_assets_at(t, "BOM") - pm_at(t, "BOM"), 0.0)
-    if timing == "AFT_STRIKE":
-        return max(own_assets_at(t, "AFT_PERF") - pm_at(t, "AFT_STRIKE"),
-                   parts_at(t, "AFT_PREM") * min_part_value())
-    if timing == "AFT_TOP_UP":
-        return max(own_assets_at(t, "AFT_TOP_UP") - pm_at(t, "AFT_TOP_UP"),
-                   parts_at(t, "AFT_TOP_UP") * min_part_value())
+        return max(own_assets_at(t, AcctTiming.BOM) - pm_at(t, AcctTiming.BOM), 0.0)
+    if timing == AcctTiming.AFT_STRIKE:
+        return max(own_assets_at(t, AcctTiming.AFT_PERF) - pm_at(t, AcctTiming.AFT_STRIKE),
+                   parts_at(t, AcctTiming.AFT_PREM) * min_part_value())
+    if timing == AcctTiming.AFT_TOP_UP:
+        return max(own_assets_at(t, AcctTiming.AFT_TOP_UP) - pm_at(t, AcctTiming.AFT_TOP_UP),
+                   parts_at(t, AcctTiming.AFT_TOP_UP) * min_part_value())
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1657,7 +1661,7 @@ def prov_div(t):
     """
     if t < proj_start():
         return 0.0
-    return prov_div_at(t, "AFT_TOP_UP")
+    return prov_div_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def part_value_at(t, timing):
@@ -1669,17 +1673,17 @@ def part_value_at(t, timing):
     beginning-of-month *versement* buys parts at.  ``"AFT_STRIKE"`` is what a free
     *versement* on the anniversary buys parts at.
     """
-    if timing == "BOM":
+    if timing == AcctTiming.BOM:
         if t > proj_start():
             return part_value(t - 1)
-        n_t = parts_at(t, "BOM")
-        return prov_div_at(t, "BOM") / n_t if n_t > 0.0 else part_value_init()
-    if timing == "AFT_STRIKE":
-        n_t = parts_at(t, "AFT_PREM")
-        return prov_div_at(t, "AFT_STRIKE") / n_t if n_t > 0.0 else 0.0
-    if timing == "AFT_TOP_UP":
-        n_t = parts_at(t, "AFT_TOP_UP")
-        return prov_div_at(t, "AFT_TOP_UP") / n_t if n_t > 0.0 else 0.0
+        n_t = parts_at(t, AcctTiming.BOM)
+        return prov_div_at(t, AcctTiming.BOM) / n_t if n_t > 0.0 else part_value_init()
+    if timing == AcctTiming.AFT_STRIKE:
+        n_t = parts_at(t, AcctTiming.AFT_PREM)
+        return prov_div_at(t, AcctTiming.AFT_STRIKE) / n_t if n_t > 0.0 else 0.0
+    if timing == AcctTiming.AFT_TOP_UP:
+        n_t = parts_at(t, AcctTiming.AFT_TOP_UP)
+        return prov_div_at(t, AcctTiming.AFT_TOP_UP) / n_t if n_t > 0.0 else 0.0
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1699,7 +1703,7 @@ def part_value(t):
     """
     if t < proj_start():
         return 0.0
-    return part_value_at(t, "AFT_TOP_UP")
+    return part_value_at(t, AcctTiming.AFT_TOP_UP)
 
 
 def provision_value(t):
@@ -1718,8 +1722,8 @@ def provision_value_at(t, timing):
         the opening provisions — the base a beginning-of-month *rachat
         partiel* takes its pro-rata share of.
     """
-    if timing == "BOM":
-        return pm_at(t, "BOM") + prov_div_at(t, "BOM")
+    if timing == AcctTiming.BOM:
+        return pm_at(t, AcctTiming.BOM) + prov_div_at(t, AcctTiming.BOM)
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -1967,13 +1971,18 @@ def claim_pp(t, kind):
         :func:`maturity_value` in the last projected month and nil
         elsewhere.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return death_payout(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return surrender_value(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return maturity_value(t)
     raise ValueError("invalid kind: " + str(kind))
+
+
+def mort_schedule():
+    """The mortality rates at the policy's sex, by attained age."""
+    return data.mort_table().loc[sex()]                              # noqa: F821
 
 
 def mort_rate(t):
@@ -1992,10 +2001,11 @@ def mort_rate(t):
     Nil where the model point switches the decrements off, which is the worked example's
     configuration.
     """
-    if decrement_basis() == "none" or t < proj_start():
+    if decrement_basis() == DecrementBasis.none or t < proj_start():
         return 0.0
     x = min(age_anniv(t), omega_age)                                 # noqa: F821
-    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, float(mort_schedule().loc[
+        x, "mort_rate"]) * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -2021,8 +2031,8 @@ def lapse_rate_base(t):
     table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection()))))
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate"])
 
 
 def guarantee_imminent(t):
@@ -2085,7 +2095,7 @@ def lapse_rate(t):
     maturity claim, which is the single most likely place for the conversion to introduce
     a silent error.
     """
-    if decrement_basis() == "none":
+    if decrement_basis() == DecrementBasis.none:
         return 0.0
     if (t < proj_start() or duration(t) < lock_up_years()
             or duration(t) >= policy_term() - 1):
@@ -2127,18 +2137,18 @@ def pols_if_at(t, timing):
     them compound back to exactly the policy year's annual factors, which is why
     ``pols_if(12k)`` is what the annual-step model carried for policy year ``k + 1``.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         if t < proj_start():
             return 0.0
         if t == proj_start():
             return pols_if_init()
-        return pols_if_at(t - 1, "AFT_DECR")
-    if timing == "BEF_LAPSE":
-        return pols_if_at(t, "BEF_DECR") * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+        return pols_if_at(t - 1, PolTiming.AFT_DECR)
+    if timing == PolTiming.BEF_LAPSE:
+        return pols_if_at(t, PolTiming.BEF_DECR) * (1.0 - mort_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
         if t >= proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing: " + str(timing))
 
 
@@ -2161,21 +2171,21 @@ def pols_if(t):
     """
     if t < proj_start() or t >= proj_len():
         return 0.0
-    return pols_if_at(t, "BEF_DECR")
+    return pols_if_at(t, PolTiming.BEF_DECR)
 
 
 def pols_death(t):
     """Deaths in month t, against the start-of-month in force, at ``mort_rate_mth``."""
     if t < proj_start():
         return 0.0
-    return pols_if_at(t, "BEF_DECR") * mort_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_DECR) * mort_rate_mth(t)
 
 
 def pols_lapse(t):
     """Full surrenders at the end of month t, from the survivors of that month's mortality."""
     if t < proj_start():
         return 0.0
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -2187,7 +2197,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "BEF_LAPSE")
+    return pols_if_at(t, PolTiming.BEF_LAPSE)
 
 
 def premiums(t):
@@ -2199,7 +2209,7 @@ def premiums(t):
     entry charge — the charge is reported as insurer income in :func:`charges_taken`
     rather than netted out of the premium line.
     """
-    return total_premium_pp(t) * pols_if_at(t, "BEF_DECR")
+    return total_premium_pp(t) * pols_if_at(t, PolTiming.BEF_DECR)
 
 
 def withdrawals(t):
@@ -2208,10 +2218,10 @@ def withdrawals(t):
     An **owner election** rather than a claim, which is why it has its own name and column:
     the contract stays in force and continues on the reduced parts and reduced guarantee.
     """
-    return wd_pp(t) * pols_if_at(t, "BEF_DECR")
+    return wd_pp(t) * pols_if_at(t, PolTiming.BEF_DECR)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Deaths and surrenders are now settled in the **month they happen**, priced on that
@@ -2223,14 +2233,14 @@ def claims(t, kind=None):
     contribution, which :func:`rider_claims` reports separately; it is a decomposition of
     this column and not a fourth kind.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY")))
-    if kind == "DEATH":
-        return claim_pp(t, "DEATH") * pols_death(t)
-    if kind == "LAPSE":
-        return claim_pp(t, "LAPSE") * pols_lapse(t)
-    if kind == "MATURITY":
-        return claim_pp(t, "MATURITY") * pols_maturity(t)
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
+    if kind == Kind.DEATH:
+        return claim_pp(t, Kind.DEATH) * pols_death(t)
+    if kind == Kind.LAPSE:
+        return claim_pp(t, Kind.LAPSE) * pols_lapse(t)
+    if kind == Kind.MATURITY:
+        return claim_pp(t, Kind.MATURITY) * pols_maturity(t)
     raise ValueError("invalid kind: " + str(kind))
 
 
@@ -2273,8 +2283,8 @@ def expenses(t):
     if t == proj_start() and duration_inforce() == 0:
         acq += expense_comm_rate * premium_gross_init()              # noqa: F821
     maint = (expense_maint_rate / 12.0 * provision_value(t)          # noqa: F821
-             * pols_if_at(t, "AFT_DECR"))
-    return acq * pols_if_at(t, "BEF_DECR") + maint
+             * pols_if_at(t, PolTiming.AFT_DECR))
+    return acq * pols_if_at(t, PolTiming.BEF_DECR) + maint
 
 
 def charges_taken(t):
@@ -2289,7 +2299,7 @@ def charges_taken(t):
     inside = (parts_levy(t) + perf_levy(t) + entry_charge(t)
               + (wd_gross_pp(t) - wd_pp(t)))
     on_surr = (provision_value(t) - surrender_value(t)) * pols_lapse(t)
-    return inside * pols_if_at(t, "BEF_DECR") + on_surr
+    return inside * pols_if_at(t, PolTiming.BEF_DECR) + on_surr
 
 
 def liability_cf(t):
@@ -2299,7 +2309,7 @@ def liability_cf(t):
     appear nowhere in it — they are state variables, not cash flows — and neither do the
     insurer's own-funds items, which are capital rather than benefit.
     """
-    return (claims(t) + withdrawals(t) + expenses(t) - premiums(t))
+    return (claims(t, Kind.ALL) + withdrawals(t) + expenses(t) - premiums(t))
 
 
 def net_cf(t):
@@ -2332,9 +2342,9 @@ def check_assets_roll_fwd_resid(t):
     """
     if t < proj_start():
         return 0.0
-    base = (own_assets_at(t, "BOM")
+    base = (own_assets_at(t, AcctTiming.BOM)
             - parts_levy(t)
-            - wd_rate_mth(t) * provision_value_at(t, "BOM")
+            - wd_rate_mth(t) * provision_value_at(t, AcctTiming.BOM)
             + prem_after_charge_pp(t))
     built = (base * (1.0 + asset_return_mth(t))
              - perf_levy(t)
@@ -2344,7 +2354,8 @@ def check_assets_roll_fwd_resid(t):
 
 def check_assets_roll_fwd():
     """True when the account-asset recursion closes in every projected month."""
-    return pdn.all_true((abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_assets_roll_fwd_resid(t)) <= roll_fwd_tol   # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_parts_roll_fwd_resid(t):
@@ -2360,14 +2371,15 @@ def check_parts_roll_fwd_resid(t):
     if t < proj_start():
         return 0.0
     levy = ((1.0 - parts_charge_rate()) if duration_mth(t) % 12 == 0 else 1.0)
-    built = (parts_at(t, "BOM") * levy * (1.0 - wd_rate_mth(t))
+    built = (parts_at(t, AcctTiming.BOM) * levy * (1.0 - wd_rate_mth(t))
              + parts_added_bom(t) + parts_added_top_up(t))
     return parts(t) - built
 
 
 def check_parts_roll_fwd():
     """True when the parts recursion closes in every projected month."""
-    return pdn.all_true((abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_parts_roll_fwd_resid(t)) <= roll_fwd_tol    # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_guarantee_roll_fwd_resid(t):
@@ -2382,14 +2394,15 @@ def check_guarantee_roll_fwd_resid(t):
     """
     if t < proj_start():
         return 0.0
-    built = (mg_at(t, "BOM") * (1.0 - wd_rate_mth(t))
+    built = (mg_at(t, AcctTiming.BOM) * (1.0 - wd_rate_mth(t))
              + guarantee_rate() * (prem_after_charge_pp(t) + premium_top_up_net_pp(t)))
     return mg(t) - built
 
 
 def check_guarantee_roll_fwd():
     """True when the guaranteed-amount recursion closes in every projected month."""
-    return pdn.all_true((abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_guarantee_roll_fwd_resid(t)) <= roll_fwd_tol  # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -2400,14 +2413,15 @@ def check_pols_roll_fwd_resid(t):
     """
     if t < proj_start():
         return 0.0
-    return (pols_if(t) - pols_if_at(t, "AFT_DECR") - pols_death(t)
+    return (pols_if(t) - pols_if_at(t, PolTiming.AFT_DECR) - pols_death(t)
             - pols_lapse(t) - pols_maturity(t))
 
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0) for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t))
+               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_guarantee_funding_resid(t):
@@ -2439,7 +2453,8 @@ def check_guarantee_funding_resid(t):
 
 def check_guarantee_funding():
     """True when the *provision mathématique* funds the guarantee exactly, at every t."""
-    return pdn.all_true((abs(check_guarantee_funding_resid(t)) <= funding_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_guarantee_funding_resid(t)) <= funding_tol  # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_pgt_covers_guarantee_resid(t):
@@ -2462,7 +2477,8 @@ def check_pgt_covers_guarantee_resid(t):
 
 def check_pgt_covers_guarantee():
     """True when the diversification provision and the own-funds provisions cover the guarantee."""
-    return pdn.all_true((check_pgt_covers_guarantee_resid(t) >= -funding_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(check_pgt_covers_guarantee_resid(t) >= -funding_tol   # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_part_value_floor_resid(t):
@@ -2481,7 +2497,8 @@ def check_part_value_floor_resid(t):
 
 def check_part_value_floor():
     """True when the part value stays at or above its contractual minimum, every month."""
-    return pdn.all_true((check_part_value_floor_resid(t) >= -floor_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(check_part_value_floor_resid(t) >= -floor_tol         # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_own_funds_not_paid_resid(t):
@@ -2507,7 +2524,8 @@ def check_own_funds_not_paid_resid(t):
 
 def check_own_funds_not_paid():
     """True when no benefit before the *échéance* exceeds the savers' two provisions."""
-    return pdn.all_true((check_own_funds_not_paid_resid(t) <= funding_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(check_own_funds_not_paid_resid(t) <= funding_tol      # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def check_pm_restruck_resid(t):
@@ -2531,12 +2549,13 @@ def check_pm_restruck_resid(t):
     """
     if (t != proj_start() or duration_inforce() == 0 or not is_euro_leg()):
         return 0.0
-    return pm_at(t, "BOM") - pm_init()
+    return pm_at(t, AcctTiming.BOM) - pm_init()
 
 
 def check_pm_restruck():
     """True when a shipped in-force *provision mathématique* agrees with R. 134-2."""
-    return pdn.all_true((abs(check_pm_restruck_resid(t)) <= inforce_tol for t in pdn.periods(proj_start(), proj_len())))
+    return all(abs(check_pm_restruck_resid(t)) <= inforce_tol        # noqa: F821
+               for t in range(proj_start(), proj_len()))
 
 
 def result_cf():
@@ -2553,14 +2572,14 @@ def result_cf():
     memo lines outside ``net_cf`` — the first is a transfer inside the account from the
     savers to the insurer, and the second is already inside ``claims_death``.
     """
-    ts = list(pdn.periods(proj_start(), proj_len()))
+    ts = list(range(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "charges_taken": [charges_taken(t) for t in ts],
@@ -2601,10 +2620,12 @@ def result_cf_annual():
     The frame opens on the policy year the model point's first projected month opens, so
     an in-force cell is indexed from ``duration_inforce() + 1`` rather than from 1.
     """
-    monthly = pdn.table(result_cf(), report=True)
-    years = [duration(t) + 1 for t in pdn.keys(monthly)]
-    annual = pdn.group_sum(monthly, years, first=('pols_if',))
-    return pdn.to_pandas(annual, index_name='policy_year')
+    df = result_cf()
+    years = pd.Index(                                                # noqa: F821
+        [duration(t) + 1 for t in df.index], name="policy_year")
+    out = df.drop(columns="pols_if").groupby(years).sum()
+    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
+    return out
 
 
 def result_provisions():
@@ -2623,7 +2644,7 @@ def result_provisions():
     A. 134-1 rate at the month-end boundary, since :func:`i_pm` is indexed by a month
     boundary.
     """
-    ts = list(pdn.periods(proj_start(), proj_len()))
+    ts = list(range(proj_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "i_pm": [i_pm(t + 1) for t in ts],
@@ -2645,11 +2666,6 @@ def result_provisions():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2703,4 +2719,18 @@ inforce_tol = 0.005
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+EngagementModality = ("Pickle", 3)
+
+Sex = ("Pickle", 1)
+
+DecrementBasis = ("Pickle", 4)
+
+Scenario = ("Pickle", 2)
+
+AcctTiming = ("Pickle", 5)
+
+PolTiming = ("Pickle", 6)
+
+Kind = ("Pickle", 7)
+
+enum_definitions = ("Pickle", 8)
