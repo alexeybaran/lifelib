@@ -792,7 +792,8 @@ def los_probs(band):
     distribution with the same mean and a fatter tail changes the capped expectation
     without changing the calibration target at all.
     """
-    return tuple(float(p) for p in data.los_table().loc[band]["prob"])  # noqa: F821
+    sub = data.los_table().loc[band]                                 # noqa: F821
+    return tuple(float(sub.loc[d, "prob"]) for d in sub.index)
 
 
 def min_days_floor():
