@@ -829,8 +829,6 @@ def disclosed_inc_at(x):
     """
     tbl = inc_schedule()
     ages = inc_ages()
-    def rate(a):
-        return float(tbl.loc[a, "rate_g1"]) + float(tbl.loc[a, "rate_g2"])
     lo, hi = ages[0], ages[-1]
     if x <= lo:
         a, b = ages[0], ages[1]
@@ -838,8 +836,10 @@ def disclosed_inc_at(x):
         a, b = ages[-2], ages[-1]
     else:
         a, b = next((p, q) for p, q in zip(ages[:-1], ages[1:]) if p <= x <= q)
-    g = math.log(rate(b) / rate(a)) / (b - a)                        # noqa: F821
-    return rate(a) * math.exp(g * (x - a))                           # noqa: F821
+    r_a = float(tbl.loc[a, "rate_g1"]) + float(tbl.loc[a, "rate_g2"])
+    r_b = float(tbl.loc[b, "rate_g1"]) + float(tbl.loc[b, "rate_g2"])
+    g = math.log(r_b / r_a) / (b - a)                                # noqa: F821
+    return r_a * math.exp(g * (x - a))                               # noqa: F821
 
 
 def sub65_gradient():
