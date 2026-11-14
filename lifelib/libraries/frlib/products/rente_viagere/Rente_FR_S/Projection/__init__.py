@@ -312,7 +312,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def purchase_price():
@@ -323,7 +323,7 @@ def purchase_price():
     date, not a projected cash flow: the projection carries no premium income.  It enters
     the projection only through :func:`annual_income_init`.
     """
-    return pdn.lookup_float(prepared_model_point(), "purchase_price")
+    return float(model_point()["purchase_price"])
 
 
 def effective_year():
@@ -332,7 +332,7 @@ def effective_year():
     The model carries the calendar and not merely the duration, because revalorisation
     and expense inflation step at 31 December.
     """
-    return pdn.lookup_int(prepared_model_point(), "effective_year")
+    return int(model_point()["effective_year"])
 
 
 def effective_month():
@@ -342,7 +342,7 @@ def effective_month():
     date needs no day part.  M0 fixes the length of the first partial calendar year,
     13 - M0 months, over which the first revalorisation is pro-rated.
     """
-    v = pdn.lookup_int(prepared_model_point(), "effective_month")
+    v = int(model_point()["effective_month"])
     if not 1 <= v <= 12:
         raise ValueError("invalid effective_month")
     return v
@@ -358,9 +358,9 @@ def age_at_entry(life):
     inside a calendar year.
     """
     if life == 1:
-        return pdn.lookup_int(prepared_model_point(), "annuitant_age")
+        return int(model_point()["annuitant_age"])
     if life == 2 and reversion_pct() > 0.0:
-        return pdn.lookup_int(prepared_model_point(), "reversion_age")
+        return int(model_point()["reversion_age"])
     raise ValueError("invalid life")
 
 
@@ -372,9 +372,9 @@ def birth_year(life):
     else about the calendar.
     """
     if life == 1:
-        return pdn.lookup_int(prepared_model_point(), "annuitant_birth_year")
+        return int(model_point()["annuitant_birth_year"])
     if life == 2 and reversion_pct() > 0.0:
-        return pdn.lookup_int(prepared_model_point(), "reversion_birth_year")
+        return int(model_point()["reversion_birth_year"])
     raise ValueError("invalid life")
 
 
@@ -386,14 +386,12 @@ def sex(life):
     only; the tariff is ``tariff_table_sex`` for every life, whatever this returns.
     """
     if life == 1:
-        v = pdn.lookup_object(prepared_model_point(), "annuitant_sex")
+        v = model_point()["annuitant_sex"]
     elif life == 2 and reversion_pct() > 0.0:
-        v = pdn.lookup_object(prepared_model_point(), "reversion_sex")
+        v = model_point()["reversion_sex"]
     else:
         raise ValueError("invalid life")
-    if v not in ("M", "F", "mix"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[v]
 
 
 def annuity_rate():
@@ -405,7 +403,7 @@ def annuity_rate():
     decimals; :func:`check_taux_rente` asserts that agreement, and
     :func:`taux_rente_tariff` is the derivation.
     """
-    return pdn.lookup_float(prepared_model_point(), "annuity_rate")
+    return float(model_point()["annuity_rate"])
 
 
 def reversion_pct():
@@ -415,8 +413,8 @@ def reversion_pct():
     1st day of the month following it.  Mutually exclusive with the *annuités garanties*
     in the representative design.
     """
-    v = pdn.lookup_object(prepared_model_point(), "reversion_pct")
-    return 0.0 if pdn.is_missing(pd.isna, v) else float(v)                           # noqa: F821
+    v = model_point()["reversion_pct"]
+    return 0.0 if pd.isna(v) else float(v)                           # noqa: F821
 
 
 def guarantee_mths():
@@ -426,7 +424,7 @@ def guarantee_mths():
     amount and rising with the same revalorisation index.  No lump-sum commutation of the
     remaining term is offered.
     """
-    return 12 * pdn.lookup_int(prepared_model_point(), "guarantee_years")
+    return 12 * int(model_point()["guarantee_years"])
 
 
 def palier_scheme():
@@ -435,10 +433,7 @@ def palier_scheme():
     A *rente par paliers* is a level-within-step function of duration, not an escalation:
     nothing compounds and the steps are contractual percentages of the initial level.
     """
-    v = pdn.lookup_object(prepared_model_point(), "palier_scheme")
-    if v not in ("none", "inc1", "inc2", "dec1", "dec2"):
-        raise ValueError("invalid palier_scheme")
-    return v
+    return PalierScheme[model_point()["palier_scheme"]]
 
 
 def palier_step_years():
@@ -447,8 +442,8 @@ def palier_step_years():
     The second step is "d'une durée égale" to the first, which is why one number
     parameterizes both.
     """
-    v = pdn.lookup_int(prepared_model_point(), "palier_step_years")
-    if palier_scheme() == "none":
+    v = int(model_point()["palier_step_years"])
+    if palier_scheme() == PalierScheme.none:
         return 0
     if v not in (5, 10):
         raise ValueError("invalid palier_step_years")
@@ -457,7 +452,7 @@ def palier_step_years():
 
 def payment_freq():
     """m: payments per year, in {12, 4, 2, 1}."""
-    v = pdn.lookup_int(prepared_model_point(), "payment_freq")
+    v = int(model_point()["payment_freq"])
     if v not in (12, 4, 2, 1):
         raise ValueError("invalid payment_freq")
     return v
@@ -472,10 +467,7 @@ def payment_timing():
     survival for advance payments understates the liability by roughly one period's
     mortality per payment, which is material at annuitant ages.
     """
-    v = pdn.lookup_object(prepared_model_point(), "payment_timing")
-    if v not in ("arrears", "advance"):
-        raise ValueError("invalid payment_timing")
-    return v
+    return PaymentTiming[model_point()["payment_timing"]]
 
 
 def arrerage_charge_rate():
@@ -486,7 +478,7 @@ def arrerage_charge_rate():
     a flat per-instalment fee they do not, and the payment frequency then changes the
     total.  Ranges from 0.00% to 3% across the retrieved carriers.
     """
-    return pdn.lookup_float(prepared_model_point(), "arrerage_charge_rate")
+    return float(model_point()["arrerage_charge_rate"])
 
 
 def technical_rate():
@@ -497,7 +489,7 @@ def technical_rate():
     discounts at the risk-free term structure, and reusing i for that produces neither a
     price nor a reserve.  It is carried so a reader can see which rate rho was struck on.
     """
-    return pdn.lookup_float(prepared_model_point(), "technical_rate")
+    return float(model_point()["technical_rate"])
 
 
 def mort_basis():
@@ -508,10 +500,7 @@ def mort_basis():
     worked example - which is a scenario, not an expectation - reproduces exactly.  It
     never reaches the pricing side.  See the Space docstring.
     """
-    v = pdn.lookup_object(prepared_model_point(), "mort_basis")
-    if v not in ("table", "scenario"):
-        raise ValueError("invalid mort_basis")
-    return v
+    return MortBasis[model_point()["mort_basis"]]
 
 
 def death_mth(life):
@@ -526,13 +515,13 @@ def death_mth(life):
     - is 0 from ``t = d + 1`` and the *arrérage* of month d is nevertheless due in full,
     as the *prorata*.
     """
-    v = pdn.lookup_object(prepared_model_point(), "death_mth_1" if life == 1 else "death_mth_2")
-    return -1 if pdn.is_missing(pd.isna, v) else int(v)                              # noqa: F821
+    v = model_point()["death_mth_1" if life == 1 else "death_mth_2"]
+    return -1 if pd.isna(v) else int(v)                              # noqa: F821
 
 
 def pols_if_init():
     """Initial number of contracts in force; 1.0 on a single-contract model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def duration(t):
@@ -616,13 +605,11 @@ def mort_rate_at_age(table_sex, gen, x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    if table_sex == "mix":
-        return (portfolio_male_share * mort_rate_at_age("M", gen, x)  # noqa: F821
+    if table_sex == Sex.mix:
+        return (portfolio_male_share * mort_rate_at_age(Sex.M, gen, x)  # noqa: F821
                 + (1.0 - portfolio_male_share)                       # noqa: F821
-                * mort_rate_at_age("F", gen, x))
-    if table_sex not in ("M", "F"):
-        raise ValueError("invalid table_sex")
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (table_sex, gen, x), 'mort_rate')  # noqa: F821
+                * mort_rate_at_age(Sex.F, gen, x))
+    return float(data.mort_table().loc[(table_sex, gen, x), "mort_rate"])  # noqa: F821
 
 
 def mort_rate(t, life):
@@ -661,7 +648,7 @@ def lives_if(t, life):
         return 0.0
     if t <= 0:
         return 1.0
-    if mort_basis() == "scenario":
+    if mort_basis() == MortBasis.scenario:
         d = death_mth(life)
         return 0.0 if (d >= 0 and t > d) else 1.0
     return lives_if(t - 1, life) * (1.0 - mort_rate_mth(t - 1, life))
@@ -713,7 +700,8 @@ def annuity_factor(table_sex):
     not over the projection frame's month indices, so it does not move with the frame.
     """
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return pdn.sum_values((tariff_lives(t, table_sex) * v ** t for t in pdn.periods(1, tariff_horizon_mths() + 1))) / 12.0
+    return sum(tariff_lives(t, table_sex) * v ** t
+               for t in range(1, tariff_horizon_mths() + 1)) / 12.0
 
 
 def taux_rente_tariff():
@@ -764,7 +752,8 @@ def certain_excess_years():
     if n <= 0:
         return 0.0
     v = (1.0 + technical_rate()) ** (-1.0 / 12.0)
-    return pdn.sum_values(((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t for t in pdn.periods(1, n + 1))) / 12.0
+    return sum((1.0 - tariff_lives(t, tariff_table_sex)) * v ** t    # noqa: F821
+               for t in range(1, n + 1)) / 12.0
 
 
 def guarantee_coeff():
@@ -799,14 +788,12 @@ def reversion_coeff():
     if reversion_pct() <= 0.0:
         return 1.0
     d = birth_year(2) - birth_year(1)
-    tbl = data.prepared_reversion_coeff_table_calculation()
-    hit = [key for key in pdn.keys(tbl)
-           if abs(pdn.lookup_float(tbl, key, "reversion_pct") - reversion_pct()) < 1e-9
-           and pdn.lookup_float(tbl, key, "gen_diff_lo") <= d
-           and d <= pdn.lookup_float(tbl, key, "gen_diff_hi")]
+    tbl = data.reversion_coeff_table()                               # noqa: F821
+    hit = tbl[((tbl["reversion_pct"] - reversion_pct()).abs() < 1e-9)
+              & (tbl["gen_diff_lo"] <= d) & (d <= tbl["gen_diff_hi"])]
     if len(hit) != 1:
         raise ValueError("no published reversion coefficient for this model point")
-    return pdn.lookup_float(tbl, hit[0], "reversion_coeff")
+    return float(hit["reversion_coeff"].iloc[0])
 
 
 def option_coeff():
@@ -867,13 +854,13 @@ def palier_factor(t):
     further 12S months.
     """
     scheme = palier_scheme()
-    if scheme == "none":
+    if scheme == PalierScheme.none:
         return 1.0
-    if scheme == "inc1":
+    if scheme == PalierScheme.inc1:
         steps = (1.0, 2.0)
-    elif scheme == "inc2":
+    elif scheme == PalierScheme.inc2:
         steps = (1.0, 1.25, 1.50)
-    elif scheme == "dec1":
+    elif scheme == PalierScheme.dec1:
         steps = (1.0, 0.50)
     else:
         steps = (1.0, 0.75, 0.50)
@@ -907,7 +894,7 @@ def is_payment_mth(t):
     if t < 0:
         return False
     step = 12 // payment_freq()
-    if payment_timing() == "arrears":
+    if payment_timing() == PaymentTiming.arrears:
         return (t + 1) % step == 0
     return t % step == 0
 
@@ -920,7 +907,7 @@ def payment_surv_mth(t):
     advance instalment falls at the start of the month; 0 for the first instalment, where
     ``lives_if`` is 1.
     """
-    return t + 1 if payment_timing() == "arrears" else t
+    return t + 1 if payment_timing() == PaymentTiming.arrears else t
 
 
 def annuity_pp(t):
@@ -956,7 +943,7 @@ def prorata_pp(t):
     where the instalment covering the month of death was already paid at its start and
     nothing has accrued unpaid.
     """
-    if payment_timing() != "arrears":
+    if payment_timing() != PaymentTiming.arrears:
         return 0.0
     step = 12.0 / payment_freq()
     return (mths_since_payment(t) + 1) / step * annual_income(t) / payment_freq()
@@ -1039,9 +1026,9 @@ def cum_annuity_pp(t, kind):
     carrying a month-zero row: ``G(0)`` is what month 0 itself pays.
     """
     prev = 0.0 if t <= 0 else cum_annuity_pp(t - 1, kind)
-    if kind == "ANNUITANT":
+    if kind == AnnuityKind.ANNUITANT:
         return prev + annuity_pp(t)
-    if kind == "ALL":
+    if kind == AnnuityKind.ALL:
         paid = (annuity_pp(t) * (payment_factor(t) + reversion_factor(t))
                 + prorata_pp(t) * prorata_factor(t))
         return prev + paid
@@ -1081,7 +1068,7 @@ def annuity_payments(t):
             * (payment_factor(t) + reversion_factor(t)))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Expected death-settlement outgo in month t, by kind; the total when kind is omitted.
 
     ``"PRORATA"``
@@ -1092,9 +1079,9 @@ def claims(t, kind=None):
         design is *capital aliéné*, with no death capital and no refund of any
         part of the *capital constitutif*.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("PRORATA",)))
-    if kind == "PRORATA":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.PRORATA,))
+    if kind == Kind.PRORATA:
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
     raise ValueError("invalid kind")
 
@@ -1107,7 +1094,7 @@ def arrerage_charges(t):
     positive column and **subtracted** in :func:`liability_cf`, because the insurer keeps
     it: it is the one component of this statement that runs the other way.
     """
-    return arrerage_charge_rate() * (annuity_payments(t) + claims(t, "PRORATA"))
+    return arrerage_charge_rate() * (annuity_payments(t) + claims(t, Kind.PRORATA))
 
 
 def pols_if(t):
@@ -1168,7 +1155,7 @@ def liability_cf(t):
     no surrender value at any duration, and no death capital, the representative design
     being *capital aliéné*.
     """
-    return (annuity_payments(t) + claims(t) - arrerage_charges(t)
+    return (annuity_payments(t) + claims(t, Kind.ALL) - arrerage_charges(t)
             + expenses(t))
 
 
@@ -1198,7 +1185,7 @@ def check_lives_roll_fwd_resid(t):
     **time**, as in :func:`lives_if`: the survival rebuilt here is the one to time t.
     """
     res = 0.0
-    scenario = mort_basis() == "scenario"
+    scenario = mort_basis() == MortBasis.scenario
     for life in (1, 2):
         if life == 2 and reversion_pct() <= 0.0:
             continue
@@ -1209,7 +1196,7 @@ def check_lives_roll_fwd_resid(t):
             built = 1.0
             full = t // 12
             rest = t - 12 * full
-            for j in pdn.periods(full):
+            for j in range(full):
                 built *= 1.0 - mort_rate_at_age(
                     sex(life), birth_year(life), age_at_entry(life) + j)
             if rest:
@@ -1229,7 +1216,8 @@ def check_lives_roll_fwd():
     the **time points** the frame reads, ``t = 0 .. proj_len()``: the last projected
     month, ``proj_len() - 1``, closes at time ``proj_len()``.
     """
-    return bool(pdn.all_true((abs(check_lives_roll_fwd_resid(t)) < 1e-10 for t in pdn.periods(proj_len() + 1))))
+    return bool(all(abs(check_lives_roll_fwd_resid(t)) < 1e-10
+                    for t in range(proj_len() + 1)))
 
 
 def check_revalo_roll_fwd_resid(t):
@@ -1255,7 +1243,8 @@ def check_revalo_roll_fwd_resid(t):
 
 def check_revalo_roll_fwd():
     """Whether the revalorisation index closes against its closed form at every month."""
-    return bool(pdn.all_true((abs(check_revalo_roll_fwd_resid(t)) < 1e-12 for t in pdn.periods(proj_len()))))
+    return bool(all(abs(check_revalo_roll_fwd_resid(t)) < 1e-12
+                    for t in range(proj_len())))
 
 
 def check_cum_annuity_roll_fwd_resid(t):
@@ -1269,14 +1258,15 @@ def check_cum_annuity_roll_fwd_resid(t):
     advance.
     """
     step = 12 // payment_freq()
-    start = step - 1 if payment_timing() == "arrears" else 0
-    built = pdn.sum_values((annuity_pp(s) for s in pdn.periods(start, t + 1, step)))
-    return built - cum_annuity_pp(t, "ANNUITANT")
+    start = step - 1 if payment_timing() == PaymentTiming.arrears else 0
+    built = sum(annuity_pp(s) for s in range(start, t + 1, step))
+    return built - cum_annuity_pp(t, AnnuityKind.ANNUITANT)
 
 
 def check_cum_annuity_roll_fwd():
     """Whether the cumulative *arrérages* schedule closes at every projected month."""
-    return bool(pdn.all_true((abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8 for t in pdn.periods(proj_len()))))
+    return bool(all(abs(check_cum_annuity_roll_fwd_resid(t)) < 1e-8
+                    for t in range(proj_len())))
 
 
 def check_calendar_index_resid(t):
@@ -1293,7 +1283,8 @@ def check_calendar_index_resid(t):
 
 def check_calendar_index():
     """Whether the calendar index agrees with the calendar at every projected month."""
-    return bool(pdn.all_true((check_calendar_index_resid(t) == 0 for t in pdn.periods(proj_len()))))
+    return bool(all(check_calendar_index_resid(t) == 0
+                    for t in range(proj_len())))
 
 
 def check_payment_factor_resid(t):
@@ -1308,7 +1299,8 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """Whether the guarantee stays a floor rather than a second stream, at every month."""
-    return bool(pdn.all_true((abs(check_payment_factor_resid(t)) < 1e-12 for t in pdn.periods(proj_len()))))
+    return bool(all(abs(check_payment_factor_resid(t)) < 1e-12
+                    for t in range(proj_len())))
 
 
 def check_revalo_floor():
@@ -1319,7 +1311,8 @@ def check_revalo_floor():
     ``revalo_rate`` fed into the model must therefore leave the annuity where it was
     rather than cutting it.  The sweep starts at month 1, month 0 having no predecessor.
     """
-    return bool(pdn.all_true((revalo_factor(t) >= revalo_factor(t - 1) - 1e-15 for t in pdn.periods(1, proj_len()))))
+    return bool(all(revalo_factor(t) >= revalo_factor(t - 1) - 1e-15
+                    for t in range(1, proj_len())))
 
 
 def check_options_xor():
@@ -1369,12 +1362,12 @@ def result_cf():
 
     The index is the 0-based month, ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_prorata": [claims(t, "PRORATA") for t in ts],
+            "claims_prorata": [claims(t, Kind.PRORATA) for t in ts],
             "arrerage_charges": [arrerage_charges(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1392,7 +1385,7 @@ def result_pols():
     a table of periods, so the row carries the closing value, which is also the point an
     arrears instalment is measured at.  The index is ``t = 0 .. proj_len() - 1``.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "lives_if_1": [lives_if(t + 1, 1) for t in ts],
@@ -1405,16 +1398,11 @@ def result_pols():
             "reversion_factor": [reversion_factor(t) for t in ts],
             "prorata_factor": [prorata_factor(t) for t in ts],
             "annuity_pp": [annuity_pp(t) for t in ts],
-            "cum_annuity_all": [cum_annuity_pp(t, "ALL") for t in ts],
+            "cum_annuity_all": [cum_annuity_pp(t, AnnuityKind.ALL) for t in ts],
             "pols_if": [pols_if(t) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1425,8 +1413,6 @@ data = ("Interface", ("..", "Data"), "auto")
 point_id = 1
 
 omega_age = 120
-
-tariff_table_sex = "F"
 
 portfolio_male_share = 0.45
 
@@ -1442,4 +1428,18 @@ inflation_rate = 0.015
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+PalierScheme = ("Pickle", 2)
+
+PaymentTiming = ("Pickle", 3)
+
+MortBasis = ("Pickle", 4)
+
+AnnuityKind = ("Pickle", 5)
+
+Kind = ("Pickle", 6)
+
+tariff_table_sex = ("Pickle", 7)
+
+enum_definitions = ("Pickle", 8)
