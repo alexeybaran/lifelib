@@ -146,8 +146,8 @@ def model_point_table():
     This is the one input file exempt from the ``provenance`` column, because a model point
     is a *configuration* -- one policy's own terms -- rather than an assumption.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -159,9 +159,9 @@ def mort_table():
     See the Space docstring for why the distinction is load-bearing.  Ages 15 to 100, the
     composite's issue-age range and its 100세 만기.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def incidence_table():
@@ -173,9 +173,9 @@ def incidence_table():
     extrapolations and their ``provenance`` says so.  These are sourced values reproduced
     with their attribution, in deliberate contrast to :func:`mort_table`.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_table_file,                          # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / incidence_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def tier_share_table():
@@ -188,9 +188,9 @@ def tier_share_table():
     **additive** to it because the 유사암 tier is outside the base rate's own definition.
     Anchored at ages 20, 40, 60 and 80 and interpolated linearly in age.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / tier_share_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / tier_share_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def tier_table():
@@ -203,8 +203,9 @@ def tier_table():
     유사암, which is the product's two-start-date structure; ``waives_premium`` is 1 for
     일반암 and 고액암 alone [S3 제14조제1항] [S1 제9조제1항].
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / tier_table_file, index_col="tier")             # noqa: F821
+    frame = pd.read_csv(input_dir() / tier_table_file)                     # noqa: F821
+    frame["tier"] = [Tier[name] for name in frame["tier"]]
+    return pdn.table(frame.set_index("tier"))
 
 
 def survival_table():
@@ -217,9 +218,10 @@ def survival_table():
     The 유사암 tier is absent from the file by design: 갑상선 relative survival is 100.2%
     and lifetime 갑상선 mortality risk 0.1% [R1], so a 유사암 diagnosis changes no state.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / survival_table_file,                           # noqa: F821
-        index_col=["sex", "tier", "dur_year"])
+    frame = pd.read_csv(input_dir() / survival_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["tier"] = [Tier[name] for name in frame["tier"]]
+    return pdn.table(frame.set_index(["sex", "tier", "dur_year"]))
 
 
 def care_table():
@@ -232,8 +234,8 @@ def care_table():
     patient, and the one published utilisation grid on the 보험개발원 display is a
     질병입원율 for all disease rather than for cancer [R5].
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / care_table_file, index_col="dur_year")         # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / care_table_file, index_col="dur_year"))         # noqa: F821
 
 
 def lapse_table():
@@ -246,71 +248,9 @@ def lapse_table():
     ``Projection.lapse_rate`` interpolates log-linearly between the first two and steps to
     the third at 납입완료.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="segment")         # noqa: F821
-
-
-def prepared_survival_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(survival_table(),
-                        columns=('excess_hazard',),
-                        indexing='loc')
-
-
-
-def prepared_care_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(care_table(),
-                        columns=('treat_hazard_yr', 'hosp_days_adm'),
-                        indexing='loc')
-
-
-
-def prepared_tier_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(tier_table(),
-                        columns=('benefit_ratio',),
-                        indexing='loc')
-
-
-def prepared_care_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(care_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(mort_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_tier_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(tier_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_incidence_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(incidence_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_mort_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
-
-
-
-def prepared_tier_share_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(tier_share_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
+    frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
+    frame["segment"] = [Segment[name] for name in frame["segment"]]
+    return pdn.table(frame.set_index("segment"))
 
 
 # ---------------------------------------------------------------------------
@@ -335,3 +275,9 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Tier = ("Pickle", 2)
+
+Segment = ("Pickle", 3)
