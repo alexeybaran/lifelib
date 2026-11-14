@@ -542,8 +542,23 @@ def premium_by_mth():
     return out
 
 
+def premium_vec():
+    """The policy's premium by month as a vector: element k is premium_by_mth()'s value at k, else 0.0."""
+    m = premium_by_mth()
+    n = max(m) + 1 if m else 0
+    out = [0.0] * n
+    for k in range(n):
+        out[k] = m.get(k, 0.0)
+    return out
+
+
 def premium_pp(t):
     """P_k: the premium per contract paid at the **start** of month t; 0 if none falls."""
+    v = premium_vec()
+    if t >= len(v):
+        return 0.0
+    if t >= 0:
+        return v[t]
     return premium_by_mth().get(t, 0.0)
 
 
