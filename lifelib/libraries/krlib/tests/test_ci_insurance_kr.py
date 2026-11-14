@@ -695,9 +695,9 @@ def test_worked_example_per_cause_incidence(kr_ci_anchor, attained):
     """
     a = kr_ci_anchor
     expected = WORKED_EXAMPLE_CAUSES[attained]
-    for cause, value in zip(CAUSE_ORDER, expected):
+    for cause, value in zip((Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc), expected):
         assert a.ci_rate_at_age(attained, cause) == pytest.approx(value, abs=CAUSE), cause
-    total = sum(a.ci_rate_at_age(attained, c) for c in CAUSE_ORDER)
+    total = sum(a.ci_rate_at_age(attained, c) for c in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc))
     assert total == pytest.approx(sum(expected), abs=CAUSE)
     if attained == 99:
         ltc = a.ci_rate_at_age(99, Cause.ltc)
@@ -724,7 +724,7 @@ def test_the_ninety_day_waiting_period_is_a_date_and_not_a_proration(kr_ci_ancho
     conversion **moves** the wait without resizing the first policy year's exposure.
     """
     a = kr_ci_anchor
-    table_sum = sum(a.ci_rate_at_age(40, c) for c in CAUSE_ORDER)
+    table_sum = sum(a.ci_rate_at_age(40, c) for c in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc))
     assert table_sum == pytest.approx(CI_TABLE_SUM_40, abs=CAUSE)
     # The ANNUAL rate is now the table sum itself: the wait belongs to the month.
     assert a.ci_rate(0) == pytest.approx(table_sum, abs=1e-15)
@@ -808,7 +808,7 @@ def test_the_first_year_reduced_cohorts_on_both_sexes(ci_insurance, kr_ci_anchor
         # policy year, the 감액 running for a policy year and not for a projection step.
         assert all(p.ci_reduced_share(t) == 0.0 for t in (12, 13, 60, 240, 700))
     # The share is the breast-cancer part of the covered cancer limb, not of the whole.
-    total = sum(male.ci_rate_at_age(40, c) for c in CAUSE_ORDER)
+    total = sum(male.ci_rate_at_age(40, c) for c in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc))
     full = 1.0 - (1.0 - total) ** (1.0 / 12.0)
     assert male.ci_reduced_share(3) == pytest.approx(
         0.005 * full * male.ci_rate_at_age(40, Cause.cancer) / total / male.ci_rate_mth(3),
@@ -1713,7 +1713,7 @@ def test_pitfall_ci_rate_is_a_first_event_rate(ci_insurance, kr_ci_anchor):
     """
     a = kr_ci_anchor
     assert a.ci_rate(240) == pytest.approx(
-        sum(a.ci_rate_at_age(60, c) for c in CAUSE_ORDER), abs=1e-15)
+        sum(a.ci_rate_at_age(60, c) for c in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc)), abs=1e-15)
     # There is exactly one CI decrement and one acceleration benefit kind.
     names = set(ci_insurance.Projection.cells) | set(ci_insurance.Projection.refs)
     for absent in ("ci_rate_cancer", "ci_rate_ami", "ci_rate_stroke",
