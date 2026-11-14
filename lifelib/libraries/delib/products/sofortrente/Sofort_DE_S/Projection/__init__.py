@@ -557,6 +557,16 @@ def calendar_year(t):
     return entry_year() + t // 12
 
 
+def mort_age_max():
+    """The last age of the mortality table (every (basis, sex) group spans the same ages, checked at load)."""
+    return int(data.mort_table().index.max()[2])                     # noqa: F821
+
+
+def mort_age_min():
+    """The first age of the mortality table (every (basis, sex) group spans the same ages, checked at load)."""
+    return int(data.mort_table().index.min()[2])                     # noqa: F821
+
+
 def mort_rate_at_age(x, table_sex, basis):
     """The table's annual death rate at attained age ``x``.
 
@@ -572,9 +582,19 @@ def mort_rate_at_age(x, table_sex, basis):
     if table_sex == Sex.U:
         return (mix_male * mort_rate_at_age(x, Sex.M, basis)           # noqa: F821
                 + (1.0 - mix_male) * mort_rate_at_age(x, Sex.F, basis))   # noqa: F821
-    sub = data.mort_table().loc[(basis, table_sex)]                  # noqa: F821
-    xx = min(max(int(x), int(sub.index.min())), int(sub.index.max()))
-    return float(sub.loc[xx, "mort_rate"])
+    tab = data.mort_table()                                          # noqa: F821
+    xx = min(max(int(x), mort_age_min()), mort_age_max())
+    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+
+
+def improve_age_max():
+    """The last age of the improvement table (every basis spans the same ages, checked at load)."""
+    return int(data.improvement_table().index.max()[1])              # noqa: F821
+
+
+def improve_age_min():
+    """The first age of the improvement table (every basis spans the same ages, checked at load)."""
+    return int(data.improvement_table().index.min()[1])              # noqa: F821
 
 
 def improve_rate_at_age(x, basis):
@@ -586,9 +606,9 @@ def improve_rate_at_age(x, basis):
     **rate** of improvement as well as its level, because the improvement compounds over a
     forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
     """
-    sub = data.improvement_table().loc[basis]                        # noqa: F821
-    xx = min(max(int(x), int(sub.index.min())), int(sub.index.max()))
-    return float(sub.loc[xx, "improve_rate"])
+    tab = data.improvement_table()                                   # noqa: F821
+    xx = min(max(int(x), improve_age_min()), improve_age_max())
+    return float(tab.loc[(basis, xx), "improve_rate"])
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
