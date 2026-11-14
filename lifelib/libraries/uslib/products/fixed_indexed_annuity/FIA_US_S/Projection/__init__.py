@@ -1263,11 +1263,11 @@ def payout_rate(a, basis):
     else:
         raise ValueError("invalid glwb_basis")
     table = data.payout_rate_table()                                 # noqa: F821
-    for _, row in table.iterrows():
-        if int(row["age_lo"]) <= a <= int(row["age_hi"]):
-            return float(row[column])
-    last = table.iloc[-1]
-    return float(last[column]) if a > int(last["age_hi"]) else 0.0
+    for k in table.index:
+        if int(k) <= a <= int(table.loc[k, "age_hi"]):
+            return float(table.loc[k, column])
+    last = table.index.max()
+    return float(table.loc[last, column]) if a > int(table.loc[last, "age_hi"]) else 0.0
 
 
 def payout_rate_locked(t):

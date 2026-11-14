@@ -131,7 +131,7 @@ def payout_rate_table():
     Banded rather than keyed: each row gives an inclusive attained-age band with the
     single-life and joint-life percentages [S3].
     """
-    return pd.read_csv(input_dir() / payout_rate_file)               # noqa: F821
+    return pdn.table(pd.read_csv(input_dir() / payout_rate_file, index_col="age_lo").sort_index())               # noqa: F821
 
 
 def rate_scenario():
