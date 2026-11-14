@@ -1930,7 +1930,7 @@ def mort_rate(t):
     annuitant mortality is a different and generally lighter basis [REG-R59].
     """
     table = data.mort_table()                                        # noqa: F821
-    top = max(a for a, s in table.index)
+    top = table.index.max()[0]
     return float(table.loc[(min(age(t), top), sex()), "mort_rate"])
 
 
