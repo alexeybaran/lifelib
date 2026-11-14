@@ -43,6 +43,7 @@ import shutil
 import modelx as mx
 import pandas as pd
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import MODELS, LIB
@@ -1616,7 +1617,7 @@ def test_the_five_year_dividend_variant_is_rejected_by_name(endowment, tmp_path)
     dividend term.  Projecting it under a 有配当 label would present a non-guaranteed
     element as certain.
     """
-    assert (endowment.Data.model_point_table()["dividend_type"] == "none").all()
+    assert (pdn.to_pandas(endowment.Data.model_point_table())["dividend_type"] == "none").all()
     model = variant_model(tmp_path, {90: (2, {"policy_id": "EN-JP-DIV",
                                               "dividend_type": "five_year"})},
                           "Endowment_JP_S_div")
@@ -1899,7 +1900,7 @@ def test_the_model_point_table_covers_both_cells_and_every_module(endowment):
     table = endowment.Data.model_point_table()
     assert list(table.index) == list(range(1, 10))
     assert set(table["cell"]) == {"endowment", "education"}
-    assert list(table.loc[[1, 2], "policy_id"]) == ["EN-JP-0001", "EN-JP-0002"]
+    assert list(pdn.to_pandas(table).loc[[1, 2], "policy_id"]) == ["EN-JP-0001", "EN-JP-0002"]
     assert set(table["schedule_id"]) == {"none", "S_0_1", "J"}
     assert (table["apl_default_mult"] > 0).sum() == 1
     assert (table["pol_loan_util"] > 0).sum() == 1

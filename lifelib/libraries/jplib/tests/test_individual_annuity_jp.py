@@ -1638,8 +1638,8 @@ def test_the_female_basis_is_sourced_on_one_table_and_a_setback_on_the_other(
 
     # The payout table really is a setback ...
     for age in (60, 80, 100):
-        assert female.mort_rate_at_age(SETBACK_TABLE, age + 4) == pytest.approx(
-            male.mort_rate_at_age(SETBACK_TABLE, age), rel=1e-12)
+        assert female.mort_rate_at_age(MortTable.annuity_payout_2007, age + 4) == pytest.approx(
+            male.mort_rate_at_age(MortTable.annuity_payout_2007, age), rel=1e-12)
     # ... and the death-cover table is not.
     for age, rate in PUBLISHED_ANCHORS[("death_cover_2018", "F")].items():
         assert female.mort_rate_at_age(MortTable.death_cover_2018, age) == pytest.approx(

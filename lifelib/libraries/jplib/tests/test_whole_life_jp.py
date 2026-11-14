@@ -53,6 +53,7 @@ import shutil
 import modelx as mx
 import pandas as pd
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import model_path
@@ -1488,7 +1489,7 @@ def test_the_model_point_premiums_follow_the_documented_rule(whole_life):
     assert gross_to_net == pytest.approx(0.990608, abs=5e-7)
 
     table = whole_life.Data.model_point_table()
-    assert len(table) == 10
+    assert len(pdn.to_pandas(table)) == 10
     priced_ordinary = set()
     for point_id in table.index:
         p = whole_life.Projection[point_id]

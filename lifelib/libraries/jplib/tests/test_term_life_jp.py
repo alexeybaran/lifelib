@@ -44,6 +44,7 @@ than of the projection year, and there are no tail states of any kind.
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
@@ -475,7 +476,7 @@ def test_pitfall_truncation_shortens_the_term_not_the_horizon(term_life):
     # The final term is priced over its own five years, not over ten: term_len feeds the
     # rate lookup, so the shortened term carries a cheaper mean than a ten-year one would.
     assert p.mort_table_mean(70, 5) < p.mort_table_mean(70, 10)
-    anchor = term_life.Data.prem_anchor_table().loc["M"]
+    anchor = term_life.Data.prem_anchor_table().loc[Sex.M]
     assert p.prem_rate_m(480) == pytest.approx(
         float(anchor["rate_per_5m"]) * p.mort_table_mean(75, 5)
         / p.mort_table_mean(50, 10), rel=1e-12)
@@ -804,8 +805,8 @@ def test_the_premium_scale_uses_published_cells_where_they_exist(term_life):
     assert (a.prem_rate_m(0), a.prem_rate_m(120), a.prem_rate_m(240)) == (
         363.0, 787.5, 1842.5)
     anchor = term_life.Data.prem_anchor_table()
-    assert int(anchor.loc["M", "issue_age"]) == 50
-    assert int(anchor.loc["F", "issue_age"]) == 30
+    assert int(anchor.loc[Sex.M, "issue_age"]) == 50
+    assert int(anchor.loc[Sex.F, "issue_age"]) == 30
     # The extension: r = r_anchor x qbar(x, m) / qbar(x_a, m_a), on table rates.
     for t in (360, 480):
         x_k = a.term_start_age(a.term_index(t))
@@ -1451,7 +1452,7 @@ def test_the_model_point_table_exercises_the_product(term_life):
     rather than left to a reader counting rows.
     """
     table = term_life.Data.model_point_table()
-    assert len(table) == 9
+    assert len(pdn.to_pandas(table)) == 9
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["term_type"]) == {"nen", "sai"}
     assert set(table["contract_boundary"]) == {"ceiling", "current_term"}

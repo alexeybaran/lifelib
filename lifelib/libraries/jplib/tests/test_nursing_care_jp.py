@@ -60,6 +60,7 @@ import modelx as mx
 import numpy as np
 import pandas as pd
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
@@ -1312,12 +1313,12 @@ def test_result_cf_publishes_the_worked_examples_columns(nursing_care, jp_ltc_an
 # rows between two anchors are interpolated. The same eighteen values, with the same
 # provenance strings, ship with every jplib product that reads this table.
 QUOTED_ANCHORS = {
-    ("M", 40): 0.00076, ("M", 60): 0.00548, ("M", 65): 0.00845,
-    ("M", 75): 0.02242, ("M", 80): 0.04046, ("M", 85): 0.07110,
-    ("M", 90): 0.11657, ("M", 115): 0.58241, ("M", 116): 1.0,
-    ("F", 40): 0.00043, ("F", 60): 0.00209, ("F", 65): 0.00317,
-    ("F", 70): 0.00510, ("F", 75): 0.00967, ("F", 80): 0.01899,
-    ("F", 85): 0.03843, ("F", 90): 0.07574, ("F", 118): 1.0,
+    (Sex.M, 40): 0.00076, (Sex.M, 60): 0.00548, (Sex.M, 65): 0.00845,
+    (Sex.M, 75): 0.02242, (Sex.M, 80): 0.04046, (Sex.M, 85): 0.07110,
+    (Sex.M, 90): 0.11657, (Sex.M, 115): 0.58241, (Sex.M, 116): 1.0,
+    (Sex.F, 40): 0.00043, (Sex.F, 60): 0.00209, (Sex.F, 65): 0.00317,
+    (Sex.F, 70): 0.00510, (Sex.F, 75): 0.00967, (Sex.F, 80): 0.01899,
+    (Sex.F, 85): 0.03843, (Sex.F, 90): 0.07574, (Sex.F, 118): 1.0,
 }
 
 
@@ -1351,7 +1352,7 @@ def test_the_shipped_mortality_table_is_a_construction_not_a_copy(nursing_care):
     # tolerance is the shipped file's own rounding to eight decimals - a thousandth of the
     # smallest step, so a genuinely different shape could not hide inside it. The segment
     # closing on a terminal age is skipped: q jumps to 1 there by definition.
-    for sex, omega in (("M", 116), ("F", 118)):
+    for sex, omega in ((Sex.M, 116), (Sex.F, 118)):
         rows = tbl.loc[sex, "mort_rate"]
         ages = sorted(a for (s, a) in QUOTED_ANCHORS if s == sex)
         for a, b in zip(ages, ages[1:]):
@@ -1379,7 +1380,7 @@ def test_the_model_point_table_covers_the_products_variants(nursing_care):
     A model point table that stopped exercising a module would leave the module's second
     position untested while every test above still passed.
     """
-    table = nursing_care.Data.model_point_table()
+    table = pdn.to_pandas(nursing_care.Data.model_point_table())
     assert len(table) == 8
     assert list(table.index) == list(range(1, 9))
     assert set(table["sex"]) == {"M", "F"}

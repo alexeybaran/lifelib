@@ -37,6 +37,7 @@ from contextlib import contextmanager
 
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import model_path
@@ -1348,7 +1349,7 @@ def test_the_model_point_table_carries_its_eight_variants(cancer):
     instance of the model rather than a second one built here.
     """
     table = cancer.Data.model_point_table()
-    assert len(table) == 8
+    assert len(pdn.to_pandas(table)) == 8
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["chassis"]) == {"shushin", "teiki"}
     assert set(table["prem_period"]) == {"whole_life", "to_65"}
@@ -1406,7 +1407,7 @@ def test_the_graduation_is_log_linear_between_the_sourced_anchors(cancer):
     """
     p = cancer.Projection[1]
     tbl = cancer.Data.mort_table()
-    for sex, a, b in (("M", 40, 60), ("M", 90, 115), ("F", 65, 70), ("F", 85, 90)):
+    for sex, a, b in ((Sex.M, 40, 60), (Sex.M, 90, 115), (Sex.F, 65, 70), (Sex.F, 85, 90)):
         qa, qb = tbl.loc[(sex, a), "mort_rate"], tbl.loc[(sex, b), "mort_rate"]
         for x in range(a + 1, b):
             expected = qa * (qb / qa) ** ((x - a) / (b - a))
@@ -1416,7 +1417,7 @@ def test_the_graduation_is_log_linear_between_the_sourced_anchors(cancer):
             assert "ANCHOR" not in tbl.loc[(sex, x), "provenance"], (sex, x)
     # Cut to the ages this model reads: the composite's 20-75 issue-age range run out to
     # each sex's terminal age, 116 male and 118 female.
-    for sex, top in (("M", 116), ("F", 118)):
+    for sex, top in ((Sex.M, 116), (Sex.F, 118)):
         ages = sorted(a for (s, a) in tbl.index if s == sex)
         assert ages == list(range(20, top + 1)), sex
     assert p.mort_rate_at_age(40) == 0.00076
@@ -1444,7 +1445,7 @@ def test_the_incidence_basis_is_sourced_and_reproduced(cancer):
     assert cancer.Data.survival_table()["provenance"].str.contains(
         attribution, regex=False).all()
     sf = cancer.Data.sex_factor_table()
-    assert len(sf) == 2
+    assert len(pdn.to_pandas(sf)) == 2
     assert sf.loc[37.5, "f_male"] == pytest.approx(72.92 / 132.21, abs=5e-6)
     assert sf.loc[72.5, "f_male"] == pytest.approx(2684.60 / 1948.71, abs=5e-6)
     surv = cancer.Data.survival_table()

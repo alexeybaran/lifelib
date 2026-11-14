@@ -41,6 +41,7 @@ import shutil
 import modelx as mx
 import pandas as pd
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import model_path
@@ -413,7 +414,7 @@ def test_pitfall_the_ledgers_are_live_though_they_read_zero(tmp_path):
     model = _sandbox(tmp_path, "Medical_JP_S_bind")
     try:
         table = model.Data.model_point_table()
-        tight = table.loc[[1]].copy()
+        tight = pdn.to_pandas(table).loc[[1]].copy()
         tight["limit_agg"] = 5
         alt = "model_point_table_tight.csv"
         tight.to_csv(model.Data.input_dir() / alt)
@@ -955,7 +956,7 @@ def test_the_sex_factors_cross_the_incidence_ordering_between_30_and_40(medical)
     table = medical.Data.incidence_table()
     assert table.loc[30, "inc_factor_f"] == 1.45
     assert table.loc[40, "inc_factor_f"] == 0.80
-    assert (table["inc_factor_m"] == 1.00).all()
+    assert (pdn.to_pandas(table)["inc_factor_m"] == 1.00).all()
     f30, f40 = medical.Projection[2], medical.Projection[5]
     m40 = medical.Projection[1]
     assert f30.sex() == Sex.F and f30.issue_age() == 30

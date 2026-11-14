@@ -52,7 +52,7 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
-from lifelib.libraries.jplib.products.income_guarantee.enums import Kind, PolTiming, PremMode
+from lifelib.libraries.jplib.products.income_guarantee.enums import Kind, PolTiming, PremMode, RateClass
 
 
 MODEL_DIR = LIB / MODELS["IncomeTerm_JP_S"][0]
@@ -800,8 +800,8 @@ def test_the_rate_class_factors_normalize_to_the_all_lives_table(income_guarante
     assert a.check_class_factor_norm() is True
     assert a.check_class_factor_norm_resid(0) == pytest.approx(0.0, abs=1e-12)
     table = income_guarantee.Data.rate_class_table()
-    assert sorted(table.index) == ["nonsmoker_preferred", "nonsmoker_standard",
-                                   "smoker_preferred", "smoker_standard"]
+    assert sorted(table.index) == sorted([RateClass.nonsmoker_preferred, RateClass.nonsmoker_standard,
+                                          RateClass.smoker_preferred, RateClass.smoker_standard])
     assert table["provenance"].notna().all()
     weighted = (table["class_factor"] * table["mix_weight"]).sum()
     assert weighted / table["mix_weight"].sum() == pytest.approx(1.0, abs=1e-12)
