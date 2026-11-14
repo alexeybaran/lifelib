@@ -141,8 +141,8 @@ def model_point_table():
     cell; the other eight exercise the product's variants, its optional modules and the
     two ends of its issue-age and sum-assured envelopes.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -154,8 +154,9 @@ def mort_table():
     a ``provenance`` column saying, row by row, whether the rate is an anchor, a fit, a
     ramp or the terminal age.  ω is the first age at which the rate reaches 1.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def ci_incidence_table():
@@ -173,9 +174,10 @@ def ci_incidence_table():
     site-specific incidences instead would be wrong in the direction the regulation
     specifically addresses.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / ci_incidence_file,                             # noqa: F821
-        index_col=["sex", "age", "cause"])
+    frame = pd.read_csv(input_dir() / ci_incidence_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["cause"] = [Cause[name] for name in frame["cause"]]
+    return pdn.table(frame.set_index(["sex", "age", "cause"]))
 
 
 def lapse_table():
@@ -189,38 +191,8 @@ def lapse_table():
     로그-선형 원칙모형 of [REG-R27] instead, which is a formula and lives in
     :mod:`~.CI_KR_S.Projection`.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_ci_incidence_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(ci_incidence_table(),
-                        columns=('ci_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_table_calculation_groups_1():
-    """Own original input values for calculation operations."""
-    return pdn.table(mort_table(), groups=('sex',), rows=False, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -237,3 +209,7 @@ lapse_table_file = "lapse_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Cause = ("Pickle", 2)
