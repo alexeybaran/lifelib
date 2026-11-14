@@ -29,7 +29,7 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from lifelib.libraries.uslib.products.whole_life.enums import DividendOption, Kind, PolTiming, PremiumMode, RiskClass, Sex
+from lifelib.libraries.uslib.products.whole_life.enums import DividendOption, Kind, PolTiming, PremiumMode, PremiumPeriod, RiskClass, Sex
 
 MODEL_PATH = LIB / "products/whole_life/WholeLife_US_S"
 
@@ -311,8 +311,8 @@ def test_the_two_interpolations_are_exact_at_the_anniversary(newbiz, whole_life)
     """
     cv = whole_life.Data.cv_table()["cv_per_1000"]
     for year in (0, 9, 30):
-        lo = 0.0 if year == 0 else cv.loc[("TO_100", "M", X, year)] * 100
-        hi = cv.loc[("TO_100", "M", X, year + 1)] * 100
+        lo = 0.0 if year == 0 else cv.loc[(PremiumPeriod.TO_100, Sex.M, X, year)] * 100
+        hi = cv.loc[(PremiumPeriod.TO_100, Sex.M, X, year + 1)] * 100
         assert newbiz.cv_pp_anniv(year + 1) == pytest.approx(hi, abs=CENT)
         assert newbiz.cv_pp(anniv(year)) == pytest.approx(hi, abs=CENT)
         for k in range(12):
@@ -526,7 +526,7 @@ def test_the_guarantee_basis_is_not_one_construction(anchor, whole_life):
 
     # (4) So the shipped NSP curve is not the endowment NSP on the shipped mortality.
     mort = whole_life.Data.mort_table()
-    assert _endow_nsp(mort, "M", 55) == pytest.approx(0.330820, abs=1e-6)
+    assert _endow_nsp(mort, Sex.M, 55) == pytest.approx(0.330820, abs=1e-6)
     assert anchor.nsp(55) == 0.42                     # +27.0% on the recomputed value
     assert _endow_nsp(mort, "M", 45) == pytest.approx(0.236184, abs=1e-6)
     assert anchor.nsp(45) == pytest.approx(0.258170, abs=1e-6)
@@ -566,17 +566,17 @@ def test_np_guar_is_the_notes_endowment_period_net_level_premium(whole_life):
     nsp_tbl = whole_life.Data.nsp_table()["nsp"]
     npg = whole_life.Data.np_guar_table()["np_guar_per_1000"]
 
-    for sex, x in (("M", 45), ("F", 45), ("M", 65), ("F", 65)):
+    for sex, x in ((Sex.M, 45), (Sex.F, 45), (Sex.M, 65), (Sex.F, 65)):
         want = round(1000 * float(nsp_tbl.loc[(sex, x)])
                      / _annuity_due(mort, sex, x, 100 - x), 2)
         rows = npg.xs((sex, x), level=("sex", "issue_age"))
         assert len(rows) >= 2
         assert set(rows) == {want}, (sex, x, sorted(set(rows)), want)
 
-    assert round(1000 * float(nsp_tbl.loc[("M", 45)])
-                 / _annuity_due(mort, "M", 45, 55), 2) == 13.00      # the notes' reading
-    assert round(1000 * float(nsp_tbl.loc[("M", 45)])
-                 / _annuity_due(mort, "M", 45, 10), 2) == 30.85      # the m reading, not used
+    assert round(1000 * float(nsp_tbl.loc[(Sex.M, 45)])
+                 / _annuity_due(mort, Sex.M, 45, 55), 2) == 13.00      # the notes' reading
+    assert round(1000 * float(nsp_tbl.loc[(Sex.M, 45)])
+                 / _annuity_due(mort, Sex.M, 45, 10), 2) == 30.85      # the m reading, not used
 
     # every premium period on the same cell now sees the same NP_g
     for point_id in (2, 9):                     # TO_100 and PAY_10, both M45 / 100k
@@ -594,17 +594,17 @@ def test_cv_schedule_is_sex_distinct(whole_life):
     cv = whole_life.Data.cv_table()["cv_per_1000"]
     cells = set(cv.index.droplevel("policy_year"))
     checked = 0
-    for pp in ("TO_100", "PAY_10", "PAY_20", "TO_65"):
+    for pp in (PremiumPeriod.TO_100, PremiumPeriod.PAY_10, PremiumPeriod.PAY_20, PremiumPeriod.TO_65):
         for x in (45, 65):
-            if (pp, "M", x) not in cells or (pp, "F", x) not in cells:
+            if (pp, Sex.M, x) not in cells or (pp, Sex.F, x) not in cells:
                 continue
             checked += 1
             T = 100 - x
             # the CSV is keyed by the contractual 1-based policy_year, not by t
             for py in range(1, T):
-                m, f = cv.loc[(pp, "M", x, py)], cv.loc[(pp, "F", x, py)]
+                m, f = cv.loc[(pp, Sex.M, x, py)], cv.loc[(pp, Sex.F, x, py)]
                 assert f < m, (pp, x, py, m, f)         # lower mortality, lower schedule
-            assert cv.loc[(pp, "M", x, T)] == cv.loc[(pp, "F", x, T)] == 1000.00
+            assert cv.loc[(pp, Sex.M, x, T)] == cv.loc[(pp, Sex.F, x, T)] == 1000.00
     assert checked == 6
 
     male, female = whole_life.Projection[2], whole_life.Projection[10]

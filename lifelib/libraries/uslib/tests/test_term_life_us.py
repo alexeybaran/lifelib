@@ -393,8 +393,8 @@ def test_model_folder_holds_formulas_only():
     basiclife/BasicTerm_S, which stores its inputs inside the model.
     """
     folder = LIB / MODELS["Term_US_S"][0]
-    assert not (folder / "_data").exists()
-    assert not list(folder.rglob("*.pickle"))
+    assert list((folder / "_data").iterdir()) == [folder / "_data" / "data.pickle"]
+    assert list(folder.rglob("*.pickle")) == [folder / "_data" / "data.pickle"]
     assert not list(folder.rglob("*.csv"))
     assert not list(folder.rglob("*.xlsx"))
     assert {p.name for p in folder.iterdir() if p.is_file()} == {

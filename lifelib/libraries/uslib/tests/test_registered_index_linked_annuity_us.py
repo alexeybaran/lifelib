@@ -78,9 +78,9 @@ TERM_START = {
     "index": 100.0,
     "notional": 100000.00,
     "fixed_proxy": 89936.81,
-    "ATM_CALL": 21567.95,
-    "OTM_CALL": -3344.55,
-    "OTM_PUT": -8160.20,
+    OptionLeg.ATM_CALL: 21567.95,
+    OptionLeg.OTM_CALL: -3344.55,
+    OptionLeg.OTM_PUT: -8160.20,
     "deriv_proxy": 10063.19,
     "trading_cost": 33.07,
     "strategy_value": 100000.00,
@@ -194,9 +194,9 @@ def test_option_budget_decomposes_as_the_notes_print_it(anchor):
     """Pi(100, 6) = 0.215679 - 0.033445 - 0.081602 = 0.100632."""
     legs = {leg: anchor.opt_component(0, leg, 100.0, 6.0, MarketQuote.TERM_START)
             for leg in anchor.opt_legs()}
-    assert legs["ATM_CALL"] == pytest.approx(0.215679, abs=5e-7)
-    assert legs["OTM_CALL"] == pytest.approx(-0.033445, abs=5e-7)
-    assert legs["OTM_PUT"] == pytest.approx(-0.081602, abs=5e-7)
+    assert legs[OptionLeg.ATM_CALL] == pytest.approx(0.215679, abs=5e-7)
+    assert legs[OptionLeg.OTM_CALL] == pytest.approx(-0.033445, abs=5e-7)
+    assert legs[OptionLeg.OTM_PUT] == pytest.approx(-0.081602, abs=5e-7)
     assert sum(legs.values()) == pytest.approx(BETA, abs=5e-7)
 
 
@@ -317,8 +317,8 @@ def test_homogeneity_the_interim_value_falls_by_exactly_the_cash(scenario_b):
             scenario_b.opt_component_pp(35, leg, Timing.BEF_ROLL) * scale, rel=1e-12)
     for cells in ("fixed_proxy_pp", "deriv_proxy_pp", "trading_cost_pp",
                   "budget_amort_pp"):
-        before = getattr(scenario_b, cells)(35, "BEF_ROLL")
-        after = getattr(scenario_b, cells)(35, "AFT_WD")
+        before = getattr(scenario_b, cells)(35, Timing.BEF_ROLL)
+        after = getattr(scenario_b, cells)(35, Timing.AFT_WD)
         assert after == pytest.approx(before * scale, rel=1e-12)
 
 
@@ -417,7 +417,7 @@ def test_step_and_edge_discontinuities_are_not_smoothed(rila):
 def test_floor_needs_four_options_not_three(rila):
     """The floor design buys back an out-of-the-money put so the short exposure stops [S5]."""
     p = _point(rila, 6)
-    assert p.opt_legs() == ("ATM_CALL", "OTM_CALL", "ATM_PUT", "FLOOR_PUT")
+    assert p.opt_legs() == (OptionLeg.ATM_CALL, OptionLeg.OTM_CALL, OptionLeg.ATM_PUT, OptionLeg.FLOOR_PUT)
     assert p.credit_rate_term(35) == pytest.approx(-0.10, abs=RATE)   # R = -20%, f = 10%
     # the bought-back put is the only positive-signed put in the set
     assert p.opt_component(35, OptionLeg.FLOOR_PUT, 80.0, 0.5, MarketQuote.CURRENT) > 0.0
