@@ -91,8 +91,8 @@ def model_point_table():
     bases, a *quotité* below 1, the *franchise* menu, a cell whose ITT/IPT cover ends
     long before its loan, and one claim in payment in each of the two disabled states.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -106,8 +106,9 @@ def mort_table():
     standard-risk book and understates it for a book written without medical selection.
     The female rows are 0.60 x male, a pick; one sampled insurer is unisex instead.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def itt_inception_table():
@@ -120,9 +121,9 @@ def itt_inception_table():
     shipped rates are the *franchise* 90 days column; :func:`franchise_table` scales them
     to the other four.  Every value is **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / itt_inception_file,                            # noqa: F821
-        index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / itt_inception_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def itt_termination_table():
@@ -136,9 +137,9 @@ def itt_termination_table():
     and the reason the in-claim population needs a duration dimension at all.  The values
     are **[std]** proxies with no French anchor.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / itt_termination_file,                          # noqa: F821
-        index_col="claim_duration_year")
+        index_col="claim_duration_year"))
 
 
 def franchise_table():
@@ -149,8 +150,8 @@ def franchise_table():
     1.00 at the 90-day pick the inception table is written on.  The menu is sourced; the
     factors are **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / franchise_file, index_col="franchise_days")    # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / franchise_file, index_col="franchise_days"))    # noqa: F821
 
 
 def lapse_table():
@@ -164,8 +165,8 @@ def lapse_table():
     French series are counts of substitution *requests*, not portfolio lapse rates, so
     the whole table is **[std]**.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def crd_rate_table():
@@ -176,62 +177,8 @@ def crd_rate_table():
     **[std]**: it is calibrated so its present value over the worked-example cell matches
     the level 0.84 % *capital initial* scale to about 0.11 %.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / crd_rate_file, index_col="age")                # noqa: F821
-
-
-def prepared_franchise_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(franchise_table(),
-                        columns=('franchise_factor',),
-                        indexing='loc')
-
-
-
-def prepared_itt_termination_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(itt_termination_table(),
-                        columns=('itt_recovery_rate', 'itt_to_ipt_rate', 'itt_mort_rate'),
-                        indexing='loc')
-
-
-
-
-def prepared_mort_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(mort_table(), groups=('sex',), preserve_scalar_types = True)
-
-
-def prepared_itt_inception_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(itt_inception_table(), groups=('sex',), preserve_scalar_types = True)
-
-
-def prepared_crd_rate_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(crd_rate_table(), preserve_scalar_types = True)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_franchise_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(franchise_table().index)
-
-
-
-def prepared_itt_termination_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(itt_termination_table().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / crd_rate_file, index_col="age"))                # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -254,3 +201,5 @@ crd_rate_file = "crd_rate_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
