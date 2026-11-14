@@ -288,7 +288,7 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def chassis():
@@ -299,10 +299,7 @@ def chassis():
     [S7][S9][S10].  The composite takes 終身 — the majority design, and the one that
     exercises the lifetime aggregate limit, which a ten-year term does not.
     """
-    v = pdn.lookup_object(prepared_model_point(), "chassis")
-    if v not in ("shushin", "teiki"):
-        raise ValueError("invalid chassis")
-    return v
+    return Chassis[model_point()["chassis"]]
 
 
 def issue_age():
@@ -311,7 +308,7 @@ def issue_age():
     満年齢 is the attained age at the 契約日 with the fraction discarded, incremented at
     each 年単位の契約応当日 [S4][S10].
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def sex():
@@ -321,10 +318,7 @@ def sex():
     at 20 and 30, below from 40 on [S3][S8] — which is a morbidity feature, not a
     pricing artefact, and is what the **[std]** sex factors on incidence reproduce.
     """
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def daily_amount():
@@ -334,7 +328,7 @@ def daily_amount():
     structure, not a sum-assured structure, so ``D`` multiplies *days* and never a
     benefit amount.
     """
-    return pdn.lookup_float(prepared_model_point(), "daily_amount")
+    return float(model_point()["daily_amount"])
 
 
 def limit_per_hosp():
@@ -344,7 +338,7 @@ def limit_per_hosp():
     attribute and not a state variable.  Any code path that varies it over ``t`` models a
     contract term that does not exist.
     """
-    v = pdn.lookup_int(prepared_model_point(), "limit_per_hosp")
+    v = int(model_point()["limit_per_hosp"])
     if v <= 0:
         raise ValueError("limit_per_hosp must be positive")
     return v
@@ -358,7 +352,7 @@ def limit_agg():
     the 疾病 and 災害 limbs is the disclosed treatment at two carriers and is what this
     model implements — see :func:`agg_days_dis` and :func:`agg_days_acc`.
     """
-    return pdn.lookup_float(prepared_model_point(), "limit_agg")
+    return float(model_point()["limit_agg"])
 
 
 def prem_period_type():
@@ -368,10 +362,7 @@ def prem_period_type():
     no surrender value ever arises; the 短期払 variant is the only route by which this
     chassis acquires one at all.
     """
-    v = pdn.lookup_object(prepared_model_point(), "prem_period")
-    if v not in ("whole_life", "to_65"):
-        raise ValueError("invalid prem_period")
-    return v
+    return PremPeriod[model_point()["prem_period"]]
 
 
 def premium_mth_pp():
@@ -387,7 +378,7 @@ def premium_mth_pp():
     Level and 無配当 with no insurer repricing right on the 終身 chassis [S3][S6][S8], so
     every future premium is inside the contract boundary.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def prem_mode():
@@ -398,12 +389,12 @@ def prem_mode():
     company-set discount [S4] is an immaterial modal refinement and is not modelled
     **[std scope]**.
     """
-    return pdn.lookup_object(prepared_model_point(), "prem_mode")
+    return PremMode[model_point()["prem_mode"]]
 
 
 def surg_mult_ih():
     """m_ih: the 手術給付金 multiple of D for surgery **in hospital**, 20 or 10 [S1][S3]."""
-    return pdn.lookup_float(prepared_model_point(), "surg_mult_ih")
+    return float(model_point()["surg_mult_ih"])
 
 
 def surg_mult_op():
@@ -412,7 +403,7 @@ def surg_mult_op():
     Zero is a real market design, not a missing value: one carrier pays a flat 10倍 in
     hospital and does not cover outpatient surgery at all [S10].
     """
-    return pdn.lookup_float(prepared_model_point(), "surg_mult_op")
+    return float(model_point()["surg_mult_op"])
 
 
 def min_days_5():
@@ -423,12 +414,12 @@ def min_days_5():
     model choice and the two cannot be averaged: against a 28.4-day national mean stay
     the floor is invisible, against a 2.4-day 白内障 stay it roughly doubles the payment.
     """
-    return pdn.lookup_bool(prepared_model_point(), "min_days_5")
+    return bool(model_point()["min_days_5"])
 
 
 def adv_rider():
     """Whether the 先進医療特約 is attached [S1][S3][S5][S6][S7][S9]."""
-    return pdn.lookup_bool(prepared_model_point(), "adv_rider")
+    return bool(model_point()["adv_rider"])
 
 
 def lump_rider():
@@ -438,7 +429,7 @@ def lump_rider():
     as the mean stay falls a per-day benefit shrinks and a per-admission benefit does
     not.
     """
-    return pdn.lookup_bool(prepared_model_point(), "lump_rider")
+    return bool(model_point()["lump_rider"])
 
 
 def tokusoku_3dis():
@@ -450,7 +441,7 @@ def tokusoku_3dis():
     about 61.1% for men and 50.1% for women [REG-R28], so this is a mass-market feature
     rather than a fringe option.
     """
-    return pdn.lookup_bool(prepared_model_point(), "tokusoku_3dis")
+    return bool(model_point()["tokusoku_3dis"])
 
 
 def waiver_3dis():
@@ -460,7 +451,7 @@ def waiver_3dis():
     急性心筋梗塞 or on 脳卒中 under the conditions the 特則 sets [S1] — which is why
     :func:`waived` is an absorbing state rather than a two-state chain.
     """
-    return pdn.lookup_bool(prepared_model_point(), "waiver_3dis")
+    return bool(model_point()["waiver_3dis"])
 
 
 def surg_after_limit():
@@ -471,7 +462,7 @@ def surg_after_limit():
     [S4] — the only positively stated treatment among the retrieved 約款 — and carries
     the alternative as this switch.  See :func:`surg_ih_eff`.
     """
-    return pdn.lookup_bool(prepared_model_point(), "surg_after_limit")
+    return bool(model_point()["surg_after_limit"])
 
 
 def pols_if_init():
@@ -491,7 +482,7 @@ def omega_age():
     Read off ``mort_table.csv`` rather than hard-coded, so that replacing the table
     replaces the horizon with it.
     """
-    return int(pdn.last_key(pdn.subtable(data.prepared_mort_table_groups_1(), sex())))             # noqa: F821
+    return int(data.mort_table().loc[sex()].index.max())             # noqa: F821
 
 
 def expiry_age():
@@ -502,7 +493,7 @@ def expiry_age():
     of 「renewable to age 80」 as *the last renewal whose term completes at or before 80*
     is **[std]**.  Meaningless on the 終身 chassis, which is why it raises there.
     """
-    if chassis() != "teiki":
+    if chassis() != Chassis.teiki:
         raise ValueError("expiry_age applies to the teiki chassis only")
     n = (teiki_expiry_age - issue_age()) // teiki_renewal_term       # noqa: F821
     if n < 1:
@@ -528,7 +519,7 @@ def proj_len():
     directions; ``jplib`` projects to final expiry and records the tension rather than
     resolving it.
     """
-    if chassis() == "teiki":
+    if chassis() == Chassis.teiki:
         return 12 * (expiry_age() - issue_age())
     return 12 * (omega_age() - issue_age() + 1)
 
@@ -559,7 +550,7 @@ def prem_end_month():
     ``proj_len()`` under 終身払, so a premium falls in every projected month; under the
     65歳払済 variant the month of the 契約応当日 at age 65.
     """
-    if prem_period_type() == "to_65":
+    if prem_period_type() == PremPeriod.to_65:
         m = 12 * (prem_period_end_age - issue_age())                 # noqa: F821
         if m <= 0:
             raise ValueError("prem_period to_65 needs an issue age below 65")
@@ -581,7 +572,7 @@ def mort_rate_at_age(x):
     terminal age take the terminal rate.
     """
     a = min(int(x), omega_age())
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), a), 'mort_rate')     # noqa: F821
+    return float(data.mort_table().loc[(sex(), a), "mort_rate"])     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -654,8 +645,8 @@ def lapse_rate(t):
     t // 12 + 1``, so the first twelve months, ``t = 0 ... 11``, all read policy year 1.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection()))))
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate"])
 
 
 def lapse_rate_mth(t):
@@ -706,9 +697,9 @@ def sel_lapse_factor(t):
 
 def inc_band(t):
     """The five-year 入院受療率 band containing ``age(t)``, keyed by its lower edge."""
-    idx = pdn.keys(data.prepared_incidence_index_generators())                               # noqa: F821
+    tbl = data.incidence_table()                               # noqa: F821
     a = age(t)
-    return int(pdn.max_value((b for b in idx if b <= a)))
+    return int(tbl.index.asof(a))
 
 
 def inc_rate_base(t):
@@ -737,10 +728,14 @@ def inc_rate_base(t):
     not the age x sex cross-tabulation, which lives in an e-Stat table that was not
     downloaded [R6][R7][REG-R33].
     """
-    row = pdn.row(data.prepared_incidence_table_rows(), inc_band(t))                    # noqa: F821
-    f = float(pdn.lookup_object(row, "inc_factor_m" if sex() == "M" else "inc_factor_f"))
-    return (float(pdn.lookup_object(row, "juryoritsu_per_100k")) / 100000.0
-            * 365.0 / float(pdn.lookup_object(row, "alos_days")) * f)
+    tbl = data.incidence_table()                                     # noqa: F821
+    b = inc_band(t)
+    if sex() == Sex.M:
+        f = float(tbl.loc[b, "inc_factor_m"])
+    else:
+        f = float(tbl.loc[b, "inc_factor_f"])
+    return (float(tbl.loc[b, "juryoritsu_per_100k"]) / 100000.0
+            * 365.0 / float(tbl.loc[b, "alos_days"]) * f)
 
 
 def inc_rate(t):
@@ -771,9 +766,9 @@ def los_band(t):
     against the five-year bands of 受療率 — the band mapping is itself **[std]**
     [REG-R26][REG-R27].
     """
-    idx = pdn.keys(data.prepared_los_index_generators())                                     # noqa: F821
+    tbl = data.los_band_table()                                     # noqa: F821
     a = age(t)
-    return int(pdn.max_value((b for (b, _) in idx if b <= a)))
+    return int(tbl.index.asof(a))
 
 
 def los_days(band):
@@ -783,7 +778,7 @@ def los_days(band):
     mode and the 160-day band for the psychiatric and neurological tail that drives the
     sourced national mean [REG-R27].
     """
-    return tuple((int(d) for d in pdn.keys(pdn.lookup_object(data.prepared_los_table_generators(), band))))   # noqa: F821
+    return tuple(int(d) for d in data.los_table().loc[band].index)   # noqa: F821
 
 
 def los_probs(band):
@@ -797,7 +792,7 @@ def los_probs(band):
     distribution with the same mean and a fatter tail changes the capped expectation
     without changing the calibration target at all.
     """
-    return tuple((float(p) for p in pdn.column(pdn.lookup_object(data.prepared_los_table_generators(), band), "prob")))  # noqa: F821
+    return tuple(float(p) for p in data.los_table().loc[band]["prob"])  # noqa: F821
 
 
 def min_days_floor():
@@ -816,7 +811,7 @@ def d_raw(t):
     平均在院日数 that :func:`los_probs` is calibrated to [REG-R27].
     """
     b = los_band(t)
-    return pdn.sum_values((p * g for (g, p) in pdn.zip_values((los_days(b), los_probs(b)))))
+    return sum(p * g for g, p in zip(los_days(b), los_probs(b)))
 
 
 def d_pay_capped(t):
@@ -828,7 +823,8 @@ def d_pay_capped(t):
     *mean* instead would give ``min(20.20, 60) = 20.20`` and remove the limit silently.
     """
     b = los_band(t)
-    return pdn.sum_values((p * min(g, limit_per_hosp()) for (g, p) in pdn.zip_values((los_days(b), los_probs(b)))))
+    return sum(p * min(g, limit_per_hosp())
+               for g, p in zip(los_days(b), los_probs(b)))
 
 
 def d_ben_capped(t):
@@ -840,7 +836,8 @@ def d_ben_capped(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return pdn.sum_values((p * max(f, min(g, limit_per_hosp())) for (g, p) in pdn.zip_values((los_days(b), los_probs(b)))))
+    return sum(p * max(f, min(g, limit_per_hosp()))
+               for g, p in zip(los_days(b), los_probs(b)))
 
 
 def d_ben_raw(t):
@@ -851,7 +848,7 @@ def d_ben_raw(t):
     """
     b = los_band(t)
     f = min_days_floor()
-    return pdn.sum_values((p * max(f, g) for (g, p) in pdn.zip_values((los_days(b), los_probs(b)))))
+    return sum(p * max(f, g) for g, p in zip(los_days(b), los_probs(b)))
 
 
 def share_free():
@@ -1128,7 +1125,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1147,14 +1144,14 @@ def pols_if_at(t, timing):
         benefit-driven termination are taken, and zero in the final projected month
         because the cover ends there.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
-        return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
                 * (1.0 - term_rate(t)))
     raise ValueError("invalid timing")
 
@@ -1175,7 +1172,7 @@ def pols_lapse(t):
     Pays nothing on the 終身払 anchor — see :func:`cv_pp` — so on that model point this
     moves :func:`pols_if` and nothing else.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_term(t):
@@ -1184,7 +1181,7 @@ def pols_term(t):
     Cover ceases when **both** 通算 limbs are exhausted [S9].  Zero on every shipped
     model point's expectation; see :func:`term_rate`.
     """
-    return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
             * term_rate(t))
 
 
@@ -1201,7 +1198,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
             * (1.0 - term_rate(t)))
 
 
@@ -1243,7 +1240,7 @@ def cv_pp(t):
     - 1``, so the last one is paid a month earlier.  ``claims(t, "LAPSE")`` pays month
     ``t``'s end-of-month lapses at that start-of-month value.
     """
-    if prem_period_type() == "to_65" and t >= prem_end_month():
+    if prem_period_type() == PremPeriod.to_65 and t >= prem_end_month():
         return cv_mult_short_pay * daily_amount()                    # noqa: F821
     return 0.0
 
@@ -1272,7 +1269,7 @@ def surg_ih_eff(t):
     return surg_ih_per_hosp * d_pay_capped(t) / raw                  # noqa: F821
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the **end** of policy month t, by kind; the total when omitted.
 
     ``"HOSP"``
@@ -1300,20 +1297,21 @@ def claims(t, kind=None):
         rather than left to inference: it is the product fact, and a non-zero lapse row
         imported from a cash-value model is one of the notes' pitfalls.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE")))
-    if kind == "HOSP":
+    if kind == Kind.ALL:
+        return sum(claims(t, k)
+                   for k in (Kind.HOSP, Kind.SURGERY, Kind.ADVANCED, Kind.LUMP, Kind.LAPSE))
+    if kind == Kind.HOSP:
         return (pols_if(t) * daily_amount() * inc_rate_mth(t)
                 * (s_dis * d_ben_dis(t) + s_acc * d_ben_acc(t)))     # noqa: F821
-    if kind == "SURGERY":
+    if kind == Kind.SURGERY:
         return (pols_if(t) * inc_rate_mth(t) * daily_amount()
                 * (surg_ih_eff(t) * surg_mult_ih()
                    + surg_op_per_hosp * surg_mult_op()))             # noqa: F821
-    if kind == "ADVANCED":
+    if kind == Kind.ADVANCED:
         return pols_if(t) * adv_claim_pp(t)
-    if kind == "LUMP":
+    if kind == Kind.LUMP:
         return pols_if(t) * lump_amount * lump_claims_pp(t)          # noqa: F821
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * cv_pp(t)
     raise ValueError("invalid kind")
 
@@ -1390,8 +1388,8 @@ def net_cf(t):
     claims on the anchor cell are 21.5% of year-1 premium.
     """
     return (premiums(t)
-            - claims(t, "HOSP") - claims(t, "SURGERY")
-            - claims(t, "ADVANCED") - claims(t, "LUMP") - claims(t, "LAPSE")
+            - claims(t, Kind.HOSP) - claims(t, Kind.SURGERY)
+            - claims(t, Kind.ADVANCED) - claims(t, Kind.LUMP) - claims(t, Kind.LAPSE)
             - expenses(t) - claim_expenses(t) - commissions(t))
 
 
@@ -1421,7 +1419,8 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_agg_days_resid(t):
@@ -1446,7 +1445,8 @@ def check_agg_days_resid(t):
 
 def check_agg_days():
     """True when both 通算 day ledgers roll forward and stay inside their limit."""
-    return pdn.all_true((abs(check_agg_days_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_agg_days_resid(t)) <= roll_fwd_tol          # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_day_limits_resid(t):
@@ -1472,7 +1472,8 @@ def check_day_limits_resid(t):
 
 def check_day_limits():
     """True when the three day limits act in the notes' order in every projected month."""
-    return pdn.all_true((abs(check_day_limits_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_day_limits_resid(t)) <= roll_fwd_tol        # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_adv_ledger_resid(t):
@@ -1488,7 +1489,8 @@ def check_adv_ledger_resid(t):
 
 def check_adv_ledger():
     """True when the 先進医療 ledger rolls forward and stays inside its cap."""
-    return pdn.all_true((abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap for t in pdn.periods(proj_len())))
+    return all(abs(check_adv_ledger_resid(t)) <= roll_fwd_tol * adv_cap  # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_lump_ledger_resid(t):
@@ -1503,7 +1505,8 @@ def check_lump_ledger_resid(t):
 
 def check_lump_ledger():
     """True when the 入院一時金 count ledger rolls forward and stays inside its limit."""
-    return pdn.all_true((abs(check_lump_ledger_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_lump_ledger_resid(t)) <= roll_fwd_tol       # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_waiver_roll_fwd_resid(t):
@@ -1520,7 +1523,8 @@ def check_waiver_roll_fwd_resid(t):
 
 def check_waiver_roll_fwd():
     """True when the premium waiver state rolls forward in every projected month."""
-    return pdn.all_true((abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_waiver_roll_fwd_resid(t)) <= roll_fwd_tol   # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_net_cf_resid(t):
@@ -1532,13 +1536,14 @@ def check_net_cf_resid(t):
     but missing from the printed statement, or counted twice, shows up here; so does a
     claim expense folded back into :func:`expenses` instead of standing on its own line.
     """
-    return net_cf(t) - (premiums(t) - claims(t) - expenses(t)
+    return net_cf(t) - (premiums(t) - claims(t, Kind.ALL) - expenses(t)
                         - claim_expenses(t) - commissions(t))
 
 
 def check_net_cf():
     """True when the printed cash flow statement adds to ``net_cf`` in every month."""
-    return pdn.all_true((abs(check_net_cf_resid(t)) <= cash_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_net_cf_resid(t)) <= cash_tol                # noqa: F821
+               for t in range(proj_len()))
 
 
 # --- Result tables ----------------------------------------------------------
@@ -1558,16 +1563,16 @@ def result_cf():
     every 終身払 model point — there is no surrender value — and is published rather than
     dropped; see the Space docstring.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_hosp": [claims(t, "HOSP") for t in ts],
-            "claims_surgery": [claims(t, "SURGERY") for t in ts],
-            "claims_advanced": [claims(t, "ADVANCED") for t in ts],
-            "claims_lump": [claims(t, "LUMP") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_hosp": [claims(t, Kind.HOSP) for t in ts],
+            "claims_surgery": [claims(t, Kind.SURGERY) for t in ts],
+            "claims_advanced": [claims(t, Kind.ADVANCED) for t in ts],
+            "claims_lump": [claims(t, Kind.LUMP) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1582,7 +1587,7 @@ def result_pols():
 
     Same frame as :func:`result_cf`: ``t = 0, 1, ..., proj_len() - 1``.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1610,7 +1615,7 @@ def result_days():
     table reads as one policyholder's consumption of the 通算 limits and not as the
     block's.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1624,11 +1629,6 @@ def result_days():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1698,4 +1698,16 @@ cash_tol = 1e-06
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Chassis = ("Pickle", 2)
+
+Sex = ("Pickle", 1)
+
+PremPeriod = ("Pickle", 3)
+
+PremMode = ("Pickle", 4)
+
+PolTiming = ("Pickle", 5)
+
+Kind = ("Pickle", 6)
+
+enum_definitions = ("Pickle", 7)

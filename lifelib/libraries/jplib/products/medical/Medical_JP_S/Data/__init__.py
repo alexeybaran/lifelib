@@ -126,8 +126,8 @@ def model_point_table():
     anchor cell; the others exercise the product's 型 elections, its riders, its 特則
     and its edge ages.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -139,9 +139,9 @@ def mort_table():
     notes quote and the real table's terminal ages.  See the Space docstring.  Read as
     the *valuation* rate; ``Projection.mort_be_factor`` turns it into a best estimate.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def lapse_table():
@@ -157,8 +157,8 @@ def lapse_table():
     ``Projection.lapse_rate(t)`` reads it through ``policy_year(t) = t // 12 + 1``, so
     months ``t = 0 ... 11`` read policy year 1.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def incidence_table():
@@ -169,8 +169,8 @@ def incidence_table():
     is the granularity each statistic is published at **[std]**.  ``inc_factor_m`` and
     ``inc_factor_f`` are the **[std]** sex factors on incidence.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_table_file, index_col="age_start")   # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / incidence_table_file, index_col="age_start"))   # noqa: F821
 
 
 def los_table():
@@ -181,53 +181,15 @@ def los_table():
     is not usable on this product: the sourced per-cause means run from 2.4 days to
     290.4, and a 60-day cap bites at one end and never at the other.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / los_table_file,                                # noqa: F821
-        index_col=["band_start", "stay_days"])
+        index_col=["band_start", "stay_days"]))
 
 
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-
-def prepared_los_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(los_table(), groups=('band_start',), preserve_scalar_types = True)
-
-
-def prepared_los_index_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.index(los_table().index)
-
-
-def prepared_incidence_index_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.index(incidence_table().index)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_incidence_table_rows():
-    """Own calculation selection; retain the public source dependency."""
-    return pdn.table(incidence_table(), rows=True, indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+def los_band_table():
+    """The length-of-stay bands of :func:`los_table`, one row per band, keyed by band_start."""
+    frame = los_table().reset_index()
+    return pdn.table(frame[["band_start", "band_end"]].drop_duplicates().set_index("band_start"))  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -246,3 +208,5 @@ los_table_file = "los_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
