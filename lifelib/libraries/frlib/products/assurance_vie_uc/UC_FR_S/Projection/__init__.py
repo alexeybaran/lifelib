@@ -289,12 +289,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def policy_id():
     """The policy identifier of the selected model point, for reporting."""
-    return pdn.lookup_str(prepared_model_point(), "policy_id")
+    return str(model_point()["policy_id"])
 
 
 def issue_age():
@@ -304,7 +304,7 @@ def issue_age():
     attained age at the calculation date [S4 Annexe I] and are read at :func:`age`, so the
     tariff steps at each policy anniversary rather than on the insured's birthday.
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def sex():
@@ -315,7 +315,7 @@ def sex():
     insurer's expected strain and never the price it charges - which is one half of the
     reason the sign of the rider's margin at any age is genuinely unknown.
     """
-    return pdn.lookup_str(prepared_model_point(), "sex")
+    return Sex[model_point()["sex"]]
 
 
 def premium():
@@ -326,7 +326,7 @@ def premium():
     :func:`cum_prem_net` and to :func:`uc_cost_basis` on the same date and changes no
     recursion.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium")
+    return float(model_point()["premium"])
 
 
 def prem_charge_rate():
@@ -337,12 +337,12 @@ def prem_charge_rate():
     the net-premium and gross-premium floor bases indistinguishable and hides the question
     the plancher definition turns on.
     """
-    return pdn.lookup_float(prepared_model_point(), "prem_charge_rate")
+    return float(model_point()["prem_charge_rate"])
 
 
 def uc_alloc():
     """alpha: the share of the net premium allocated to the UC leg, 0.70 **[std]**."""
-    return pdn.lookup_float(prepared_model_point(), "uc_alloc")
+    return float(model_point()["uc_alloc"])
 
 
 def euro_alloc():
@@ -359,7 +359,7 @@ def unit_price_init():
     A scaling convention, not a fact: the unit count and the liquidation value are
     reciprocal, and only their product enters the liability.
     """
-    return pdn.lookup_float(prepared_model_point(), "unit_price_init")
+    return float(model_point()["unit_price_init"])
 
 
 def mgmt_fee_rate_uc():
@@ -372,7 +372,7 @@ def mgmt_fee_rate_uc():
     factor of three on the dominant income line, and **no statutory ceiling on any French
     life charge appears in the retrieved texts**.
     """
-    return pdn.lookup_float(prepared_model_point(), "mgmt_fee_rate_uc")
+    return float(model_point()["mgmt_fee_rate_uc"])
 
 
 def euro_credit_rate():
@@ -383,7 +383,7 @@ def euro_credit_rate():
     are specified and implemented in ``Euro_FR_S``, and the euro leg therefore produces no
     margin line here at all.
     """
-    return pdn.lookup_float(prepared_model_point(), "euro_credit_rate")
+    return float(model_point()["euro_credit_rate"])
 
 
 def arbitrage_fee_rate():
@@ -393,7 +393,7 @@ def arbitrage_fee_rate():
     number of free arbitrages a year.  Flat-fee minima - 30 EUR by post, 15 EUR online -
     are administrative and do not scale, so they are not modeled.
     """
-    return pdn.lookup_float(prepared_model_point(), "arbitrage_fee_rate")
+    return float(model_point()["arbitrage_fee_rate"])
 
 
 def plancher_flag():
@@ -404,7 +404,7 @@ def plancher_flag():
     deduction from an existing account and not a new premium, which matters for contract
     boundaries.
     """
-    return pdn.lookup_bool(prepared_model_point(), "plancher_flag")
+    return bool(model_point()["plancher_flag"])
 
 
 def plancher_basis():
@@ -416,10 +416,7 @@ def plancher_basis():
     is carried so the model holds the three-way column and so the proportional-versus-
     nominal surrender adjustment can be asserted.
     """
-    v = pdn.lookup_str(prepared_model_point(), "plancher_basis")
-    if v not in ("simple", "indexee", "cliquet"):
-        raise ValueError("invalid plancher_basis")
-    return v
+    return PlancherBasis[model_point()["plancher_basis"]]
 
 
 def plancher_index_rate():
@@ -429,7 +426,7 @@ def plancher_index_rate():
     insurer's discretion, which makes it a class-(b) element the model holds as a
     snapshot.
     """
-    return pdn.lookup_float(prepared_model_point(), "plancher_index_rate")
+    return float(model_point()["plancher_index_rate"])
 
 
 def plancher_ratchet_months():
@@ -438,7 +435,7 @@ def plancher_ratchet_months():
     A one-month ratchet is the same recursion observed twelve times as often, and on the
     anchor path it locks in the pre-fall high: 98,476.25 against 94,216.29 at ``t = 11``.
     """
-    return pdn.lookup_int(prepared_model_point(), "plancher_ratchet_months")
+    return int(model_point()["plancher_ratchet_months"])
 
 
 def plancher_gross_basis():
@@ -450,7 +447,7 @@ def plancher_gross_basis():
     of the premium charge; on
     the gross basis the rider starts 1,000 EUR in the money on a 100,000 EUR premium.
     """
-    return pdn.lookup_bool(prepared_model_point(), "plancher_gross_basis")
+    return bool(model_point()["plancher_gross_basis"])
 
 
 def plancher_end_age():
@@ -462,7 +459,7 @@ def plancher_end_age():
     cessation age to 80 runs past the last published age, which is why
     :func:`plancher_rate` raises rather than extrapolates.
     """
-    return pdn.lookup_int(prepared_model_point(), "plancher_end_age")
+    return int(model_point()["plancher_end_age"])
 
 
 def plancher_cap():
@@ -472,7 +469,7 @@ def plancher_cap():
     instead is a different and much cruder contract.  It never binds on the anchor cell and
     binds precisely in the deep drawdowns where the guarantee is worth something.
     """
-    return pdn.lookup_float(prepared_model_point(), "plancher_cap")
+    return float(model_point()["plancher_cap"])
 
 
 def plancher_levy_source():
@@ -483,10 +480,7 @@ def plancher_levy_source():
     rider.  Where the euro balance cannot cover the premium the remainder cancels units
     whatever the election, which is the branch a 100%-UC allocation runs down.
     """
-    v = pdn.lookup_str(prepared_model_point(), "plancher_levy_source")
-    if v not in ("euro_first", "uc_units"):
-        raise ValueError("invalid plancher_levy_source")
-    return v
+    return LevySource[model_point()["plancher_levy_source"]]
 
 
 def wd_pattern():
@@ -498,10 +492,7 @@ def wd_pattern():
     eight-year tax design encourages, and it keeps the floor base falling in step with the
     account.
     """
-    v = pdn.lookup_str(prepared_model_point(), "wd_pattern")
-    if v not in ("none", "one_off", "programmed"):
-        raise ValueError("invalid wd_pattern")
-    return v
+    return WdPattern[model_point()["wd_pattern"]]
 
 
 def arb_pattern():
@@ -513,10 +504,7 @@ def arb_pattern():
     implemented: they matter because they systematically move value out of UC after a
     rise, shrinking the management-charge base and the plancher exposure at the same time.
     """
-    v = pdn.lookup_str(prepared_model_point(), "arb_pattern")
-    if v not in ("none", "one_off", "progressive"):
-        raise ValueError("invalid arb_pattern")
-    return v
+    return ArbPattern[model_point()["arb_pattern"]]
 
 
 def lapse_dynamic():
@@ -528,20 +516,17 @@ def lapse_dynamic():
     multipliers are **[std]** inventions with no evidence behind them, and a user
     replacing them should be able to see the base run underneath.
     """
-    v = pdn.lookup_str(prepared_model_point(), "lapse_dynamic")
-    if v not in ("none", "full"):
-        raise ValueError("invalid lapse_dynamic")
-    return v
+    return LapseDynamic[model_point()["lapse_dynamic"]]
 
 
 def uc_return_scenario():
     """The id of the UC return path in *uc_scenario_table.csv* this model point runs on."""
-    return pdn.lookup_str(prepared_model_point(), "uc_return_scenario")
+    return str(model_point()["uc_return_scenario"])
 
 
 def pols_if_init():
     """l(0): the in-force probability at issue; 1.0 on a single-policy model point."""
-    return pdn.lookup_float(prepared_model_point(), "pols_if_init")
+    return float(model_point()["pols_if_init"])
 
 
 def proj_len():
@@ -552,7 +537,7 @@ def proj_len():
     The contract is written `viagere` and has no maturity date, so the horizon is a
     modelling choice rather than a contractual one and it is a per-policy column.
     """
-    return pdn.lookup_int(prepared_model_point(), "proj_len")
+    return int(model_point()["proj_len"])
 
 
 def duration(t):
@@ -657,6 +642,11 @@ def euro_credit_factor_mth():
     return (1.0 + euro_credit_rate()) ** (1.0 / 12.0)
 
 
+def uc_scenario_segments():
+    """The month segments of the policy's UC return scenario (a pandas DataFrame)."""
+    return data.uc_scenario_table().loc[[uc_return_scenario()]]      # noqa: F821
+
+
 def uc_return_mth(t):
     """r_uc(t): the UC support's return in month t, from the elected scenario.
 
@@ -666,16 +656,10 @@ def uc_return_mth(t):
     segment of the elected scenario raises, rather than falling back on a last-row default -
     a projection that has run off the end of its scenario is not projecting anything.
     """
-    tbl = data.prepared_uc_scenario_table_calculation_rows()
-    selected = [key for key in pdn.keys(tbl)
-                if pdn.lookup_object(tbl, key, "scenario_id") == uc_return_scenario()]
-    if not selected:
-        # Retain the original pandas missing-list-selector error contract.
-        data.uc_scenario_table().loc[[uc_return_scenario()]]
-        raise KeyError(uc_return_scenario())
-    for key in selected:
-        if pdn.lookup_int(tbl, key, "from_month") <= t <= pdn.lookup_int(tbl, key, "to_month"):
-            return pdn.lookup_float(tbl, key, "uc_return_mth")
+    tbl = uc_scenario_segments()
+    for lo, hi, r in zip(tbl["from_month"], tbl["to_month"], tbl["uc_return_mth"]):
+        if int(lo) <= t <= int(hi):
+            return float(r)
     raise ValueError("no scenario segment covers this month")
 
 
@@ -741,12 +725,12 @@ def arb_sched_pp(t):
     :func:`arb_amount_pp`.
     """
     p = arb_pattern()
-    if p == "none":
+    if p == ArbPattern.none:
         return 0.0
-    if p == "one_off":
-        return (pdn.lookup_float(prepared_model_point(), "arb_amount")
-                if t == pdn.lookup_int(prepared_model_point(), "arb_month") else 0.0)
-    return pdn.lookup_float(prepared_model_point(), "arb_amount")
+    if p == ArbPattern.one_off:
+        return (float(model_point()["arb_amount"])
+                if t == int(model_point()["arb_month"]) else 0.0)
+    return float(model_point()["arb_amount"])
 
 
 def arb_amount_pp(t):
@@ -814,12 +798,12 @@ def av_euro_bef_wd_pp(t):
 def wd_sched_pp(t):
     """The partial surrender scheduled in month t, before the cap at the account value."""
     p = wd_pattern()
-    if p == "none":
+    if p == WdPattern.none:
         return 0.0
-    if p == "one_off":
-        return (pdn.lookup_float(prepared_model_point(), "wd_amount")
-                if t == pdn.lookup_int(prepared_model_point(), "wd_month") else 0.0)
-    return av_pp_at(t, "BEF_WD") * pdn.lookup_float(prepared_model_point(), "wd_rate") / 12.0
+    if p == WdPattern.one_off:
+        return (float(model_point()["wd_amount"])
+                if t == int(model_point()["wd_month"]) else 0.0)
+    return av_pp_at(t, AvTiming.BEF_WD) * float(model_point()["wd_rate"]) / 12.0
 
 
 def wd_amount_pp(t):
@@ -830,7 +814,7 @@ def wd_amount_pp(t):
     contract down to nothing rather than through it.  It reduces the floor base by its
     nominal amount, and it is the only event other than a premium that does.
     """
-    return min(wd_sched_pp(t), av_pp_at(t, "BEF_WD"))
+    return min(wd_sched_pp(t), av_pp_at(t, AvTiming.BEF_WD))
 
 
 def wd_uc_pp(t):
@@ -842,7 +826,7 @@ def wd_uc_pp(t):
     An election that emptied the loss-making support first would change
     :func:`uc_cost_basis` and therefore the `prelevements sociaux`.
     """
-    total = av_pp_at(t, "BEF_WD")
+    total = av_pp_at(t, AvTiming.BEF_WD)
     if total <= 0.0:
         return 0.0
     return wd_amount_pp(t) * av_uc_bef_wd_pp(t) / total
@@ -911,12 +895,12 @@ def plancher_ratchet(t):
     month is the account value at issue.
     """
     r = prem_to_av_pp() if t <= 0 else plancher_ratchet(t - 1)
-    total = av_pp_at(t, "BEF_WD")
+    total = av_pp_at(t, AvTiming.BEF_WD)
     if wd_amount_pp(t) > 0.0 and total > 0.0:
         r = r * (1.0 - wd_amount_pp(t) / total)
     n = plancher_ratchet_months()
     if n > 0 and (t + 1) % n == 0:
-        r = max(r, av_pp_at(t, "BEF_LEVY"))
+        r = max(r, av_pp_at(t, AvTiming.BEF_LEVY))
     return r
 
 
@@ -939,9 +923,9 @@ def plancher_amount(t):
         floor.
     """
     b = plancher_basis()
-    if b == "simple":
+    if b == PlancherBasis.simple:
         return cum_prem_net(t)
-    if b == "indexee":
+    if b == PlancherBasis.indexee:
         opening = cum_prem_net_init() if t <= 0 else plancher_amount(t - 1)
         return (opening
                 * (1.0 + plancher_index_rate()) ** (1.0 / 12.0)
@@ -965,9 +949,9 @@ def plancher_rate(t):
         return 0.0
     tbl = data.plancher_rate_table()                                 # noqa: F821
     a = age(t)
-    if a not in pdn.keys(data.prepared_plancher_rate_table_index_selection()):
+    if a not in tbl.index:
         raise ValueError("no plancher tariff at this attained age")
-    return pdn.lookup_float(data.prepared_plancher_rate_table_scalar_loc(), a, "premium_per_10000") / 10000.0
+    return float(tbl.loc[a, "premium_per_10000"]) / 10000.0
 
 
 def plancher_rate_mth(t):
@@ -996,7 +980,7 @@ def nar(t):
     if not plancher_flag() or age(t) >= plancher_end_age():
         return 0.0
     return min(plancher_cap(),
-               max(0.0, plancher_amount(t) - av_pp_at(t, "BEF_LEVY")))
+               max(0.0, plancher_amount(t) - av_pp_at(t, AvTiming.BEF_LEVY)))
 
 
 def plancher_charge_pp(t):
@@ -1011,7 +995,7 @@ def plancher_charge_pp(t):
     negative.  The 15-20 EUR monthly thresholds below which the real levy is deferred to
     the following month have no expected-value consequence and are not modeled.
     """
-    return min(nar(t) * plancher_rate_mth(t), av_pp_at(t, "BEF_LEVY"))
+    return min(nar(t) * plancher_rate_mth(t), av_pp_at(t, AvTiming.BEF_LEVY))
 
 
 def plancher_levy_eur_pp(t):
@@ -1020,7 +1004,7 @@ def plancher_levy_eur_pp(t):
     The whole of it under ``euro_first`` while the euro balance can cover it, and nothing
     under ``uc_units``.
     """
-    if plancher_levy_source() != "euro_first":
+    if plancher_levy_source() != LevySource.euro_first:
         return 0.0
     return min(plancher_charge_pp(t), max(0.0, av_euro_bef_levy_pp(t)))
 
@@ -1100,15 +1084,15 @@ def av_pp_at(t, timing):
     All five points are exposed so the ordering is inspectable rather than buried in one
     expression.
     """
-    if timing == "OPENING":
+    if timing == AvTiming.OPENING:
         return (units_open(t) * unit_price_open(t)) + av_euro_open_pp(t)
-    if timing == "BEF_FEE":
+    if timing == AvTiming.BEF_FEE:
         return units_open(t) * unit_price(t) + av_euro_aft_credit_pp(t)
-    if timing == "BEF_WD":
+    if timing == AvTiming.BEF_WD:
         return av_uc_bef_wd_pp(t) + av_euro_bef_wd_pp(t)
-    if timing == "BEF_LEVY":
+    if timing == AvTiming.BEF_LEVY:
         return av_uc_bef_levy_pp(t) + av_euro_bef_levy_pp(t)
-    if timing == "BEF_DECR":
+    if timing == AvTiming.BEF_DECR:
         return av_uc_pp(t) + av_euro_pp(t)
     raise ValueError("invalid timing")
 
@@ -1121,7 +1105,7 @@ def av_pp(t):
     value, matching the notes' row t, and not the start-of-month reading some other models
     in the library give the same name.
     """
-    return av_pp_at(t, "BEF_DECR")
+    return av_pp_at(t, AvTiming.BEF_DECR)
 
 
 def av_at(t, timing):
@@ -1132,7 +1116,7 @@ def av_at(t, timing):
     by the start-of-month exposure :func:`pols_if` that weights the month's *flows*.  At
     ``t = 11`` on the anchor cell ``77,330.08 x 0.968240 = 74,874.07``.
     """
-    return av_pp_at(t, timing) * pols_if_at(t, "AFT_DECR")
+    return av_pp_at(t, timing) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def av_uc_at(t):
@@ -1148,7 +1132,7 @@ def av_uc_at(t):
     plancher liability is a separate engagement and **no retrieved document states how it
     is provisioned**, so this library asserts nothing about it.
     """
-    return av_uc_pp(t) * pols_if_at(t, "AFT_DECR")
+    return av_uc_pp(t) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def av_euro_at(t):
@@ -1157,7 +1141,7 @@ def av_euro_at(t):
     Published for completeness; the euro engagement's own reserve and its `provision pour
     participation aux benefices` belong to ``Euro_FR_S``.
     """
-    return av_euro_pp(t) * pols_if_at(t, "AFT_DECR")
+    return av_euro_pp(t) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def uc_cost_basis_bef_wd(t):
@@ -1220,6 +1204,11 @@ def social_levy_decr_pp(t):
     return social_levy_rate * max(0.0, av_uc_pp(t) - uc_cost_basis(t))  # noqa: F821
 
 
+def mort_schedule():
+    """The mortality rates at the policy's sex, by attained age."""
+    return data.mort_table().loc[sex()]                              # noqa: F821
+
+
 def mort_rate(t):
     """q_a: the annual best-estimate mortality rate at the attained age **[std]**.
 
@@ -1231,7 +1220,8 @@ def mort_rate(t):
     test the two independently, never as a single "plancher basis".
     """
     x = min(age(t), omega_age)                                       # noqa: F821
-    return min(1.0, pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), x), 'mort_rate') * mort_be_factor)                  # noqa: F821
+    return min(1.0, float(mort_schedule().loc[
+        x, "mort_rate"]) * mort_be_factor)                  # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -1251,8 +1241,8 @@ def lapse_rate_base(t):
     years beyond the table take its last row.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    y = min(policy_year(t), int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection()))))
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), y, "lapse_rate")
+    y = min(policy_year(t), int(tbl.index.max()))
+    return float(tbl.loc[y, "lapse_rate"])
 
 
 def return_12m(t):
@@ -1290,7 +1280,7 @@ def plancher_factor(t):
     :func:`lapse_dynamic` elects it rather than the model wiring it in.  1.0 wherever the
     rider is not elected, the cover has ceased or the units are above the floor.
     """
-    if lapse_dynamic() != "full" or not plancher_flag() or nar(t) <= 0.0:
+    if lapse_dynamic() != LapseDynamic.full or not plancher_flag() or nar(t) <= 0.0:
         return 1.0
     return plancher_lapse_mult                                       # noqa: F821
 
@@ -1305,7 +1295,7 @@ def lapse_rate(t):
     **and** extinguishing an in-the-money guarantee, which is why persistency dominates
     this product's value and why the two effects pull in opposite directions.
     """
-    if lapse_dynamic() == "none":
+    if lapse_dynamic() == LapseDynamic.none:
         return lapse_rate_base(t)
     return min(lapse_rate_cap,                                       # noqa: F821
                lapse_rate_base(t) * perf_factor(t) * plancher_factor(t))
@@ -1355,13 +1345,13 @@ def pols_if_at(t, timing):
     shipped with before.
     """
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -1373,10 +1363,10 @@ def pols_death(t):
 
 def pols_lapse(t):
     """Total surrenders in month t, from the survivors of that month's mortality."""
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Gross benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1393,12 +1383,12 @@ def claims(t, kind=None):
     but they are not in :func:`net_cf`, because :func:`av_releases` cancels them against
     the account value - all except the death strain.  See the Space docstring.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
-    av = av_pp_at(t, "BEF_DECR")
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
+    av = av_pp_at(t, AvTiming.BEF_DECR)
+    if kind == Kind.DEATH:
         return pols_death(t) * (av + nar(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * av
     raise ValueError("invalid kind")
 
@@ -1419,7 +1409,7 @@ def av_releases(t):
     plancher death strain, which is the only part the insurer funds from its own
     resources.
     """
-    return av_pp_at(t, "BEF_DECR") * (pols_death(t) + pols_lapse(t))
+    return av_pp_at(t, AvTiming.BEF_DECR) * (pols_death(t) + pols_lapse(t))
 
 
 def prem_charge(t):
@@ -1544,10 +1534,10 @@ def check_av_roll_fwd_resid(t):
     month's price to it, forgetting that the arbitrage fee leaves the contract, or netting
     the withdrawal twice all show up here.
     """
-    built = (av_pp_at(t, "OPENING") + uc_growth_pp(t) + euro_interest_pp(t)
+    built = (av_pp_at(t, AvTiming.OPENING) + uc_growth_pp(t) + euro_interest_pp(t)
              - mgmt_fee_uc_pp(t) - arb_fee_pp(t) - wd_amount_pp(t)
              - plancher_charge_pp(t))
-    return av_pp_at(t, "BEF_DECR") - built
+    return av_pp_at(t, AvTiming.BEF_DECR) - built
 
 
 def check_av_roll_fwd():
@@ -1557,7 +1547,8 @@ def check_av_roll_fwd():
     one test can call the same check across every account-value model in the library.
     """
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return pdn.all_true((abs(check_av_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_av_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_unit_roll_fwd_resid(t):
@@ -1577,7 +1568,8 @@ def check_unit_roll_fwd_resid(t):
 def check_unit_roll_fwd():
     """True when the unit count closes in every projected month."""
     tol = roll_fwd_tol * max(1.0, units_init())                      # noqa: F821
-    return pdn.all_true((abs(check_unit_roll_fwd_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_unit_roll_fwd_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1588,13 +1580,14 @@ def check_pols_roll_fwd_resid(t):
     written `viagere`, so the projection simply stops at :func:`proj_len` with a positive
     in-force count rather than running the population out.
     """
-    return (pols_if(t) - pols_if_at(t, "AFT_DECR")
+    return (pols_if(t) - pols_if_at(t, PolTiming.AFT_DECR)
             - pols_death(t) - pols_lapse(t))
 
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= pols_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= pols_tol         # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_floor_base_resid(t):
@@ -1612,7 +1605,8 @@ def check_floor_base_resid(t):
 def check_floor_base():
     """True when the floor base moves on premiums and surrenders alone."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return pdn.all_true((abs(check_floor_base_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_floor_base_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def check_nar_bounds_resid(t):
@@ -1633,7 +1627,8 @@ def check_nar_bounds_resid(t):
 
 def check_nar_bounds():
     """True when the `capital sous risque` stays inside ``[0, cap]`` in every month."""
-    return pdn.all_true((check_nar_bounds_resid(t) == 0.0 for t in pdn.periods(proj_len())))
+    return all(check_nar_bounds_resid(t) == 0.0
+               for t in range(proj_len()))
 
 
 def check_benefit_funding_resid(t):
@@ -1648,13 +1643,14 @@ def check_benefit_funding_resid(t):
     whole benefit rather than as ``K``, would be inconsistent with these three cells and
     the residual would move.
     """
-    return claims(t) - av_releases(t) - plancher_strain(t)
+    return claims(t, Kind.ALL) - av_releases(t) - plancher_strain(t)
 
 
 def check_benefit_funding():
     """True when every benefit is funded by the account value plus the death strain."""
     tol = roll_fwd_tol * max(1.0, premium())                         # noqa: F821
-    return pdn.all_true((abs(check_benefit_funding_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_benefit_funding_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def result_cf():
@@ -1671,7 +1667,7 @@ def result_cf():
     published precisely because it is **not** in ``net_cf``: it is withheld from the
     policyholder and remitted.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1683,8 +1679,8 @@ def result_cf():
             "plancher_strain": [plancher_strain(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "av_releases": [av_releases(t) for t in ts],
             "social_levy_uc": [social_levy_uc(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1700,7 +1696,7 @@ def result_av():
     count, the two legs, the end-of-month account value, the floor, the `capital sous
     risque`, and the two per-policy charges.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "unit_price": [unit_price(t) for t in ts],
@@ -1717,11 +1713,6 @@ def result_av():
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1757,4 +1748,22 @@ pols_tol = 1e-12
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+PlancherBasis = ("Pickle", 2)
+
+LevySource = ("Pickle", 3)
+
+WdPattern = ("Pickle", 4)
+
+ArbPattern = ("Pickle", 5)
+
+LapseDynamic = ("Pickle", 6)
+
+AvTiming = ("Pickle", 7)
+
+PolTiming = ("Pickle", 8)
+
+Kind = ("Pickle", 9)
+
+enum_definitions = ("Pickle", 10)

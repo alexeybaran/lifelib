@@ -77,8 +77,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -100,8 +100,9 @@ def mort_table():
     mortality as an **assumption**, and the difference between them is the rider's
     expected margin.  Sorted on read, because ``Projection.mort_rate`` indexes into it.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"]).sort_index()
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
 
 
 def lapse_table():
@@ -117,8 +118,8 @@ def lapse_table():
     holding period printed in both retrieved key-information documents.  A model with no
     duration-8 spike has ignored the single strongest driver of French surrender timing.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")      # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))      # noqa: F821
 
 
 def plancher_rate_table():
@@ -134,8 +135,8 @@ def plancher_rate_table():
     attained age inside the cover falls outside the table, rather than extrapolating:
     extending the cessation age past 75 needs a tariff the sources do not contain.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / plancher_rate_table_file, index_col="age")      # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / plancher_rate_table_file, index_col="age"))      # noqa: F821
 
 
 def uc_scenario_table():
@@ -163,40 +164,6 @@ def uc_scenario_table():
         index_col="scenario_id").sort_index()
 
 
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_plancher_rate_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(plancher_rate_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_uc_scenario_table_calculation_rows():
-    """Own original input values for calculation operations."""
-    return pdn.table(uc_scenario_table().reset_index(), groups=(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_plancher_rate_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(plancher_rate_table().index)
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -213,3 +180,5 @@ uc_scenario_table_file = "uc_scenario_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
