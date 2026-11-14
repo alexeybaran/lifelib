@@ -1176,30 +1176,33 @@ def seg_bal_active_pp(t):
     before ``t = 0``, so the pool is empty in the first month.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t - 1, m) for m in range(lo, t))
+    return sum(seg_bal_pp(t - 1, t - 1 - m) for m in range(lo, t))
 
 
-def seg_share(t, m):
+def seg_share(t, segment_age):
     """Segment m's pro-rata share of a draw at BOM of month t.
 
     Its opening balance over the live pool.  Because a pro-rata draw leaves the
     proportions unchanged, the same shares serve the step-3 draw and the step-6
     deduction even though they are taken at different points in the month.
     """
+    m = t - segment_age
     pool = seg_bal_active_pp(t)
     if pool <= 0:
         return 0.0
-    return seg_bal_pp(t - 1, m) / pool
+    return seg_bal_pp(t - 1, t - 1 - m) / pool
 
 
-def seg_wd_pp(t, m):
+def seg_wd_pp(t, segment_age):
     """Segment m's contribution to the step-3 draw of month t."""
-    return draw_from_seg_pp(t) * seg_share(t, m)
+    m = t - segment_age
+    return draw_from_seg_pp(t) * seg_share(t, t - m)
 
 
-def seg_ded_pp(t, m):
+def seg_ded_pp(t, segment_age):
     """Segment m's contribution to the monthly deduction of month t."""
-    return mth_deduction_from_seg_pp(t) * seg_share(t, m)
+    m = t - segment_age
+    return mth_deduction_from_seg_pp(t) * seg_share(t, t - m)
 
 
 def sweep_pp(t):
@@ -1219,7 +1222,7 @@ def seg_new_pp(m):
     return sweep_pp(m)
 
 
-def seg_bal_pp(t, m):
+def seg_bal_pp(t, segment_age):
     """S_{k,t+1}: the balance at the end of month t of the segment created at month m.
 
     ``S_{k,t+1} = S_{k,t} - MD^seg - W^seg - B^seg``, with **no interim interest**: the
@@ -1234,32 +1237,35 @@ def seg_bal_pp(t, m):
     deduction -- so it bears eleven in-segment deductions.  The worked example
     stipulates twelve; see the README.
     """
+    m = t - segment_age
     if m < 0 or t < m or t > m + seg_term_mth - 1:                   # noqa: F821
         return 0.0
     if t == m:
         return seg_new_pp(m)
-    return seg_bal_pp(t - 1, m) - seg_wd_pp(t, m) - seg_ded_pp(t, m)
+    return seg_bal_pp(t - 1, t - 1 - m) - seg_wd_pp(t, t - m) - seg_ded_pp(t, t - m)
 
 
-def seg_ded_cum_pp(t, m):
+def seg_ded_cum_pp(t, segment_age):
     """Deductions charged to segment m from its creation through the end of month t.
 
     Zero in the creation month itself (the segment is created after that month's
     deduction) and outside the segment's life.
     """
+    m = t - segment_age
     if m < 0 or t <= m or t > m + seg_term_mth - 1:                  # noqa: F821
         return 0.0
-    return seg_ded_cum_pp(t - 1, m) + seg_ded_pp(t, m)
+    return seg_ded_cum_pp(t - 1, t - 1 - m) + seg_ded_pp(t, t - m)
 
 
-def seg_wd_cum_pp(t, m):
+def seg_wd_cum_pp(t, segment_age):
     """Withdrawals and loan transfers out of segment m through the end of month t.
 
     Zero in the creation month itself and outside the segment's life.
     """
+    m = t - segment_age
     if m < 0 or t <= m or t > m + seg_term_mth - 1:                  # noqa: F821
         return 0.0
-    return seg_wd_cum_pp(t - 1, m) + seg_wd_pp(t, m)
+    return seg_wd_cum_pp(t - 1, t - 1 - m) + seg_wd_pp(t, t - m)
 
 
 def seg_bal_tot_pp(t):
@@ -1268,7 +1274,7 @@ def seg_bal_tot_pp(t):
     The segments born at ``max(0, t - 11) ... t``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(seg_bal_pp(t, m) for m in range(lo, t + 1))
+    return sum(seg_bal_pp(t, t - m) for m in range(lo, t + 1))
 
 
 def seg_count(t):
@@ -1278,7 +1284,7 @@ def seg_count(t):
     for a model point with ``index_alloc_rate() == 0``.
     """
     lo = max(0, t - seg_term_mth + 1)                                # noqa: F821
-    return sum(1 for m in range(lo, t + 1) if seg_bal_pp(t, m) > 0)
+    return sum(1 for m in range(lo, t + 1) if seg_bal_pp(t, t - m) > 0)
 
 
 def seg_return(t):
@@ -1305,8 +1311,8 @@ def index_credit_pp(t):
     m = t - seg_term_mth                                             # noqa: F821
     if m < 0:
         return 0.0
-    init = seg_new_pp(m) - seg_wd_cum_pp(t - 1, m)
-    return index_credit(init, seg_ded_cum_pp(t - 1, m), seg_return(t))
+    init = seg_new_pp(m) - seg_wd_cum_pp(t - 1, t - 1 - m)
+    return index_credit(init, seg_ded_cum_pp(t - 1, t - 1 - m), seg_return(t))
 
 
 def index_credits(t):
@@ -1325,7 +1331,7 @@ def seg_roll_pp(t):
     m = t - seg_term_mth                                             # noqa: F821
     if m < 0:
         return 0.0
-    return seg_bal_pp(t - 1, m) + index_credit_pp(t)
+    return seg_bal_pp(t - 1, t - 1 - m) + index_credit_pp(t)
 
 
 def fa_pp_at(t, timing):
@@ -2162,11 +2168,11 @@ def check_seg_ladder():
         res.append(index_credit_pp(t) >= -1e-8)
         lo = max(0, t - seg_term_mth + 1)                            # noqa: F821
         for k in range(lo, t + 1):
-            res.append(seg_bal_pp(t, k) >= -1e-8)
+            res.append(seg_bal_pp(t, t - k) >= -1e-8)
         m = t - seg_term_mth                                         # noqa: F821
         if m >= 0:
-            closed = (seg_bal_pp(t - 1, m) + seg_ded_cum_pp(t - 1, m)
-                      + seg_wd_cum_pp(t - 1, m))
+            closed = (seg_bal_pp(t - 1, t - 1 - m) + seg_ded_cum_pp(t - 1, t - 1 - m)
+                      + seg_wd_cum_pp(t - 1, t - 1 - m))
             res.append(math.isclose(seg_new_pp(m), closed,           # noqa: F821
                                     rel_tol=1e-9, abs_tol=1e-8))
     return all(res)

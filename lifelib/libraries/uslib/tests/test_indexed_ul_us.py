@@ -218,18 +218,18 @@ def test_first_segment_credit_reproduces_from_its_own_ladder(anchor):
     fixed account.  Its credit is the level index return because 0% < 6.40% < 10.00%.
     """
     assert anchor.seg_new_pp(0) == pytest.approx(9383.636985, abs=1e-5)
-    assert anchor.seg_bal_pp(11, 0) == pytest.approx(8102.641000, abs=1e-5)
-    assert anchor.seg_ded_cum_pp(11, 0) == pytest.approx(1280.995985, abs=1e-5)
+    assert anchor.seg_bal_pp(11, 11) == pytest.approx(8102.641000, abs=1e-5)
+    assert anchor.seg_ded_cum_pp(11, 11) == pytest.approx(1280.995985, abs=1e-5)
     assert anchor.seg_return(12) == pytest.approx(0.064, rel=1e-12)
     assert anchor.index_credit_pp(12) == pytest.approx(
         0.064 * 8102.641000, abs=1e-5)
     # the credit base is the remaining balance, so the eleven deductions earn nothing
     assert anchor.index_credit_pp(12) == pytest.approx(
-        anchor.index_credit(anchor.seg_new_pp(0), anchor.seg_ded_cum_pp(11, 0), 0.064),
+        anchor.index_credit(anchor.seg_new_pp(0), anchor.seg_ded_cum_pp(11, 11), 0.064),
         rel=1e-12)
     # nothing matures in the first twelve months, and no segment predates t = 0
     assert all(anchor.index_credit_pp(t) == 0.0 for t in range(12))
-    assert anchor.seg_bal_pp(0, -1) == 0.0
+    assert anchor.seg_bal_pp(0, 1) == 0.0
 
 
 # ===========================================================================
@@ -320,7 +320,7 @@ def test_the_two_draws_on_the_segment_pool_cannot_together_overdraw_it(indexed_u
     assert p.seg_bal_active_pp(t) == pytest.approx(265.29, abs=CENT)
     assert p.draw_from_seg_pp(t) == pytest.approx(200.00, abs=CENT)
     assert p.mth_deduction_from_seg_pp(t) == pytest.approx(65.29, abs=CENT)
-    assert p.seg_bal_pp(t, 372) == pytest.approx(0.0, abs=1e-8)
+    assert p.seg_bal_pp(t, t - 372) == pytest.approx(0.0, abs=1e-8)
     assert p.index_credit_pp(384) >= 0.0 - 1e-8          # was -7.17
 
     # ... and the invariant behind it, every month of the projection
@@ -329,7 +329,7 @@ def test_the_two_draws_on_the_segment_pool_cannot_together_overdraw_it(indexed_u
                 <= p.seg_bal_active_pp(u) + 1e-8)
         assert p.index_credit_pp(u) >= -1e-8
         for m in range(max(0, u - p.seg_term_mth + 1), u + 1):
-            assert p.seg_bal_pp(u, m) >= -1e-8
+            assert p.seg_bal_pp(u, u - m) >= -1e-8
 
     # the deduction is still charged in full: the fixed account carries the excess
     assert (p.mth_deduction_from_fa_pp(t)
@@ -351,8 +351,8 @@ def test_pitfall_floor_is_not_an_in_segment_guarantee(anchor):
     assert anchor.index_floor == 0.0
     # a live segment loses exactly its deductions, month after month, and gains nothing
     for t in range(1, 11):
-        assert anchor.seg_bal_pp(t, 0) == pytest.approx(
-            anchor.seg_bal_pp(t - 1, 0) - anchor.seg_ded_pp(t, 0), rel=1e-12)
+        assert anchor.seg_bal_pp(t, t - 0) == pytest.approx(
+            anchor.seg_bal_pp(t - 1, t - 1 - 0) - anchor.seg_ded_pp(t, t - 0), rel=1e-12)
     # interest credited to the account value comes from the fixed and collateral
     # accounts only, never from a segment
     for t in (2, 6, 10):
