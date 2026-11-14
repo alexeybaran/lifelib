@@ -1429,8 +1429,8 @@ def apl_entry_years(t):
     over an entry list twelve times longer than the annual grid's.
     """
     if not apl_active():
-        return range(0)
-    return range(min(duration(t), prem_end() - 1) + 1)
+        return []
+    return [s for s in range(min(duration(t), prem_end() - 1) + 1)]
 
 
 def pols_apl_carried(t):
