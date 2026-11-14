@@ -110,8 +110,8 @@ def model_point_table():
     and the other eight exercise the thresholds, the terms, the surrender-value forms, the
     optional modules and the waiting-period variants.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -123,9 +123,9 @@ def mort_table():
     is no best-estimate adjustment factor, because the anchor is an experience statistic and
     not a valuation margin.  The largest age present is 120, where ``mort_rate`` is 1.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def prevalence_table():
@@ -136,8 +136,10 @@ def prevalence_table():
     logistic **[std]** fitted through them, ``prev_ceil``, ``prev_beta`` and ``prev_x_mid``.
     The anchors are carried for provenance; the model reads the three fitted parameters.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / prevalence_file, index_col=["sex", "param"])   # noqa: F821
+    frame = pd.read_csv(input_dir() / prevalence_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    frame["param"] = [PrevParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index(["sex", "param"]))
 
 
 def grade_share_table():
@@ -151,8 +153,9 @@ def grade_share_table():
     at 85 and over.  The grade keys are ASCII codes for the six-point statutory scale and
     the model point column ``benefit_grade`` holds one of them.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / grade_share_file, index_col=["grade", "age"])  # noqa: F821
+    frame = pd.read_csv(input_dir() / grade_share_file)                     # noqa: F821
+    frame["grade"] = [Grade[name] for name in frame["grade"]]
+    return pdn.table(frame.set_index(["grade", "age"]))
 
 
 def incidence_table():
@@ -165,8 +168,9 @@ def incidence_table():
     is the sub-65 age gradient and the sex ratio, and the ratio of the two is published by
     :func:`~.LTC_KR_S.Projection.disclosed_inc_ratio_at` as the calibration finding.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_file, index_col=["sex", "age"])      # noqa: F821
+    frame = pd.read_csv(input_dir() / incidence_file)                     # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]))
 
 
 def dementia_table():
@@ -177,8 +181,9 @@ def dementia_table():
     when ``dementia_rider`` is on, but read once per model regardless, as every table here
     is.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / dementia_file, index_col="param")              # noqa: F821
+    frame = pd.read_csv(input_dir() / dementia_file)                     # noqa: F821
+    frame["param"] = [DemParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index("param"))
 
 
 def lapse_table():
@@ -190,8 +195,9 @@ def lapse_table():
     durational *shape* between the first year and 납입완료 is the guidance's own log-linear
     principle model and is applied in :func:`~.LTC_KR_S.Projection.lapse_rate`.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="param")           # noqa: F821
+    frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
+    frame["param"] = [LapseParam[name] for name in frame["param"]]
+    return pdn.table(frame.set_index("param"))
 
 
 def av_table():
@@ -204,56 +210,8 @@ def av_table():
     office premiums paid, and ``runoff_fraction`` is the fraction of the way from 납입완료 to
     maturity, which is what lets one shipped progression serve every term and paying period.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / av_table_file, index_col="runoff_fraction")    # noqa: F821
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_lapse_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(lapse_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-def prepared_prevalence_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(prevalence_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-def prepared_dementia_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(dementia_table(),
-                        columns=('value',),
-                        indexing='loc')
-
-
-
-
-def prepared_incidence_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(incidence_table(), groups=('sex',), preserve_scalar_types = True)
-
-
-def prepared_av_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(av_table(), preserve_scalar_types = True)
-
-
-def prepared_grade_share_table_generators():
-    """Own generator inputs; depend on the unchanged public source Cell."""
-    return pdn.table(grade_share_table(), groups=('grade',), preserve_scalar_types = True)
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / av_table_file, index_col="runoff_fraction"))    # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -278,3 +236,13 @@ av_table_file = "av_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
+
+Grade = ("Pickle", 2)
+
+PrevParam = ("Pickle", 3)
+
+DemParam = ("Pickle", 4)
+
+LapseParam = ("Pickle", 5)
