@@ -926,14 +926,14 @@ def age_anniv(t):
     return issue_age() + duration(t) + 1
 
 
-def scenario_last_year():
-    """The last year of the scenario table: later years read it."""
-    return int(data.scenario_table().index.get_level_values("year").max())  # noqa: F821
-
-
 def scenario_returns():
     """The asset returns of the policy's scenario, by year."""
     return data.scenario_table().loc[scenario()]                     # noqa: F821
+
+
+def scenario_last_year():
+    """The last year of the scenario table: later years read it."""
+    return int(scenario_returns().index.max())
 
 
 def asset_return(t):
@@ -970,14 +970,14 @@ def asset_return_mth(t):
     return (1.0 + asset_return(t)) ** (1.0 / 12.0) - 1.0
 
 
-def tec_last_year():
-    """The last year of the TEC curve table: later years read it."""
-    return int(data.tec_curve().index.get_level_values("year").max())  # noqa: F821
-
-
 def tec_schedule():
     """The TEC curves of the policy's scenario, by year and maturity."""
     return data.tec_curve().loc[scenario()]                          # noqa: F821
+
+
+def tec_last_year():
+    """The last year of the TEC curve table: later years read it."""
+    return int(tec_schedule().index.max()[0])
 
 
 def tec_rate(m):
