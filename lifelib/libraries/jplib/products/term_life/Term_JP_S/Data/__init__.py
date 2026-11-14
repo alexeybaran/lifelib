@@ -117,8 +117,8 @@ def model_point_table():
     Indexed by ``point_id``; ``point_id = 1`` is the anchor cell of the technical notes'
     worked example.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def mort_table():
@@ -130,9 +130,9 @@ def mort_table():
     rates include 高度障害 [REG-R20] and carry the table's own valuation margin, which
     ``Projection.mort_be_factor`` removes.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
+    frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
 
 
 def lapse_table():
@@ -148,8 +148,8 @@ def lapse_table():
     row.  The table is **annual throughout** and is not restated per month: the rate is the
     observation, and the monthly decrement is derived from it in the projection.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
 
 
 def prem_rate_table():
@@ -160,9 +160,9 @@ def prem_rate_table():
     decomposed out of published rate cards [S2].  ``is_anchor`` marks the one row per
     sex from which :mod:`~.Term_JP_S.Projection` extends the scale to unpublished ages.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / prem_rate_file,                                # noqa: F821
-        index_col=["sex", "issue_age", "term_y"])
+    frame = pd.read_csv(input_dir() / prem_rate_file)                # noqa: F821
+    frame["sex"] = [Sex[name] for name in frame["sex"]]
+    return pdn.table(frame.set_index(["sex", "issue_age", "term_y"]))  # noqa: F821
 
 
 def prem_anchor_table():
@@ -174,54 +174,7 @@ def prem_anchor_table():
     cell, the only published female cell in the source set [S2].
     """
     tbl = prem_rate_table().reset_index()
-    return tbl[tbl["is_anchor"] == 1].set_index("sex")
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-
-def prepared_prem_anchor_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(prem_anchor_table(),
-                        columns=('policy_fee_m',),
-                        indexing='loc')
-
-
-def prepared_prem_anchor_table_rows():
-    """Own pandas-style rows for repeated calculation selection."""
-    return pdn.table(prem_anchor_table(), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_prem_rate_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(prem_rate_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_mort_table_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(mort_table(), groups=('sex',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
-
-
-
-def prepared_prem_rate_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(prem_rate_table().index)
+    return pdn.table(tbl[tbl["is_anchor"] == 1].set_index("sex"))
 
 
 # ---------------------------------------------------------------------------
@@ -238,3 +191,5 @@ prem_rate_file = "prem_rate_table.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+Sex = ("Pickle", 1)
