@@ -758,6 +758,11 @@ def phase(t):
     return Phase.DEPLETED if depleted_flag(t) else Phase.ACCUM
 
 
+def return_rows():
+    """The model point's return scenario: gross returns keyed by (subaccount, projection month)."""
+    return data.return_scenario().loc[scenario_id()]                 # noqa: F821
+
+
 def inv_return_mth(t, i):
     """r_i(t): the gross monthly fund return of subaccount i, a scenario input.
 
@@ -767,7 +772,7 @@ def inv_return_mth(t, i):
     to a crafted proxy fund, normally a linear combination of recognized market indices
     [R1]; the model takes the return series as an input rather than hard-coding one.
     """
-    sub = data.return_scenario().loc[(scenario_id(), i)]              # noqa: F821
+    sub = return_rows().loc[i]
     return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), "gross_return"])
 
 
@@ -924,17 +929,28 @@ def inv_income_pp(t):
     return av_pp_at(t, Timing.BEF_FEE) - av_pp_at(t, Timing.BEF_INV)
 
 
+def has_transactions():
+    """Whether the transaction table has rows for the model point's transaction id."""
+    return txn_id() in data.transaction_table().index                # noqa: F821
+
+
+def transaction_rows():
+    """The model point's scheduled transactions, keyed by contract month (only read when
+    has_transactions())."""
+    return data.transaction_table().loc[txn_id()]                    # noqa: F821
+
+
 def prem_scheduled_pp(t):
     """The gross premium scheduled for month t in *transaction_table.csv*, else zero.
 
     The file's ``t`` column is the **elapsed** policy month, so the key is
     :func:`duration_mth` ``(t)``.
     """
-    if t < 0:
+    if t < 0 or not has_transactions():
         return 0.0
-    table = data.transaction_table()                                 # noqa: F821
-    key = (txn_id(), duration_mth(t))
-    return float(table.loc[key, "prem_amount"]) if key in table.index else 0.0
+    rows = transaction_rows()
+    m = duration_mth(t)
+    return float(rows.loc[m, "prem_amount"]) if m in rows.index else 0.0
 
 
 def premium_pp(t):
@@ -969,11 +985,11 @@ def wd_scheduled_pp(t):
     Keyed on the **elapsed** policy month :func:`duration_mth` ``(t)``, as
     :func:`prem_scheduled_pp` is.
     """
-    if t < 0:
+    if t < 0 or not has_transactions():
         return 0.0
-    table = data.transaction_table()                                 # noqa: F821
-    key = (txn_id(), duration_mth(t))
-    return float(table.loc[key, "wd_amount"]) if key in table.index else 0.0
+    rows = transaction_rows()
+    m = duration_mth(t)
+    return float(rows.loc[m, "wd_amount"]) if m in rows.index else 0.0
 
 
 def is_wd_month(t):
