@@ -56,6 +56,7 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.cancer.enums import Chassis, CvForm, Kind, PolTiming, Sex, Tier, WaiverTrigger
@@ -333,10 +334,10 @@ MODEL_POINT_SUMMARY = {
 # The male select excess hazards of survival_table.csv, both tiers, and the five-year sums
 # they are calibrated to reproduce.
 EXCESS_HAZARD_M = {
-    "general": (0.14596111, 0.10425794, 0.07089540, 0.05421413, 0.04170317, 0.020),
-    "minor": (0.04850043, 0.03464316, 0.02355735, 0.01801444, 0.01385726, 0.008),
+    Tier.general: (0.14596111, 0.10425794, 0.07089540, 0.05421413, 0.04170317, 0.020),
+    Tier.minor: (0.04850043, 0.03464316, 0.02355735, 0.01801444, 0.01385726, 0.008),
 }
-FIVE_YEAR_SURVIVAL_M = {"general": 0.659, "minor": 0.8706}
+FIVE_YEAR_SURVIVAL_M = {Tier.general: 0.659, Tier.minor: 0.8706}
 
 # treat_avail(k), k = 1 .. 6, at the midpoint of each select year.
 TREAT_AVAIL = (0.5488116361, 0.2725317930, 0.2369277587,
@@ -778,11 +779,11 @@ def test_worked_example_the_four_features_of_the_first_sixteen_rows(kr_cancer_an
     assert a.claims(4, Kind.HOSP) > 0.0
     assert a.claims(0, Kind.DEATH) == 0.0 and a.claims(1, Kind.DEATH) > 0.0
     ratios = {kind: a.claims(12, kind) / a.claims(11, kind)
-              for kind in ("DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR")}
-    assert round(ratios["DIAG_GEN"], 4) == 2.1748
-    assert round(ratios["DIAG_HIGH"], 4) == 2.1596
-    assert round(ratios["DIAG_MINOR"], 4) == 2.2937
-    assert round(ratios["DIAG_SIMILAR"], 4) == 2.1175
+              for kind in (Kind.DIAG_GEN, Kind.DIAG_HIGH, Kind.DIAG_MINOR, Kind.DIAG_SIMILAR)}
+    assert round(ratios[Kind.DIAG_GEN], 4) == 2.1748
+    assert round(ratios[Kind.DIAG_HIGH], 4) == 2.1596
+    assert round(ratios[Kind.DIAG_MINOR], 4) == 2.2937
+    assert round(ratios[Kind.DIAG_SIMILAR], 4) == 2.1175
     assert a.commissions(11) == 0.0 and a.commissions(12) > 0.0
 
 
@@ -1816,7 +1817,7 @@ def test_pitfall_the_similar_tier_carries_no_excess_mortality_and_no_care(cancer
     have; it draws the lump sum and nothing continuing.
     """
     table = cancer.Data.survival_table()
-    assert set(table.index.get_level_values("tier")) == {"general", "minor"}
+    assert set(table.index.get_level_values("tier")) == {Tier.general, Tier.minor}
     with pytest.raises(KeyError):
         table.loc[(Sex.M, Tier.similar, 1)]
     a = kr_cancer_anchor
@@ -2452,7 +2453,7 @@ def test_the_model_point_table_exercises_the_product(cancer):
     three observed 유사암 ratios, the issue-age envelope from 15 to 65 and the sum-insured
     envelope from ₩10,000,000 to ₩100,000,000.
     """
-    table = cancer.Data.model_point_table()
+    table = pdn.to_pandas(cancer.Data.model_point_table())
     assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["chassis"]) == {"bi_gaengsin", "gaengsin"}
