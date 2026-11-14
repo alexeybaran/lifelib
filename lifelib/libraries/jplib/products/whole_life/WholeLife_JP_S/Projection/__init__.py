@@ -350,15 +350,12 @@ _spaces = []
 
 def model_point():
     """The selected model point as a Series."""
-    return pdn.select_row(data.model_point_table(), point_id)                    # noqa: F821
+    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def sex():
     """The sex of the insured, M or F; the two are rated and tabulated separately."""
-    v = pdn.lookup_object(prepared_model_point(), "sex")
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
+    return Sex[model_point()["sex"]]
 
 
 def age_at_entry():
@@ -372,7 +369,7 @@ def age_at_entry():
     age with no adjustment **[std]**, because no public mapping between the two exists.
     The resulting bias understates mortality by up to half a year of age.
     """
-    return pdn.lookup_int(prepared_model_point(), "issue_age")
+    return int(model_point()["issue_age"])
 
 
 def sum_assured():
@@ -382,7 +379,7 @@ def sum_assured():
     state defined in the 約款's 別表 — and paying the second extinguishes the contract.
     They are one decrement on one amount, never two.
     """
-    return pdn.lookup_float(prepared_model_point(), "sum_assured")
+    return float(model_point()["sum_assured"])
 
 
 def prem_term():
@@ -391,7 +388,7 @@ def prem_term():
     On a 終身払 contract there is no 払込満了 date, the 低解約払戻期間 runs for life and the
     cliff never occurs.  Use :func:`prem_period` for the effective number of years.
     """
-    return pdn.lookup_int(prepared_model_point(), "prem_term")
+    return int(model_point()["prem_term"])
 
 
 def prem_period():
@@ -440,7 +437,7 @@ def premium_pp():
     by 0.837 on the ordinary form, that being the one carrier's published ratio between
     its suppressed and its ordinary scale for one identical cell.
     """
-    return pdn.lookup_float(prepared_model_point(), "premium_annual")
+    return float(model_point()["premium_annual"])
 
 
 def low_cv():
@@ -450,7 +447,7 @@ def low_cv():
     are separately priced products, and the suppression buys a materially cheaper
     premium in exchange for a 30% haircut on the value during the premium-paying period.
     """
-    return pdn.lookup_bool(prepared_model_point(), "low_cv")
+    return bool(model_point()["low_cv"])
 
 
 def low_cv_rate():
@@ -460,7 +457,7 @@ def low_cv_rate():
     value**, not a second reserve basis: at duration 40, well past 払込満了, the suppressed
     and the ordinary product have identical surrender values.
     """
-    k = pdn.lookup_float(prepared_model_point(), "low_cv_rate")
+    k = float(model_point()["low_cv_rate"])
     if not low_cv() and k != 1.0:
         raise ValueError("low_cv_rate must be 1.0 when low_cv is not elected")
     if not 0.0 < k <= 1.0:
@@ -477,7 +474,7 @@ def apl_elected():
     prompt notice, which is why it is a flag with a default and never an unconditional
     no-lapse rule.
     """
-    return pdn.lookup_bool(prepared_model_point(), "apl_elected")
+    return bool(model_point()["apl_elected"])
 
 
 def default_rate(t):
@@ -496,7 +493,7 @@ def default_rate(t):
     """
     if not apl_elected() or t < 0 or t % 12 != 0 or policy_year(t) > prem_end():
         return 0.0
-    return pdn.lookup_float(prepared_model_point(), "default_rate")
+    return float(model_point()["default_rate"])
 
 
 def apl_active():
@@ -509,7 +506,7 @@ def apl_active():
     model point with no APL at all would otherwise pay for twelve times as many empty
     summands as before.
     """
-    return apl_elected() and pdn.lookup_float(prepared_model_point(), "default_rate") > 0.0
+    return apl_elected() and float(model_point()["default_rate"]) > 0.0
 
 
 def pol_loan_util():
@@ -518,7 +515,7 @@ def pol_loan_util():
     There is no public take-up data of any kind, so the level is a **[std]** model point
     input.  The contractual caps in :func:`loan_cap_rate` bind it whatever it is set to.
     """
-    return pdn.lookup_float(prepared_model_point(), "pol_loan_util")
+    return float(model_point()["pol_loan_util"])
 
 
 def dividend_type():
@@ -529,10 +526,7 @@ def dividend_type():
     contractual one.  ``five_year`` is the 5年ごと利差配当 variant, declared out of
     investment margin every fifth policy year; see :func:`dividends`.
     """
-    v = pdn.lookup_object(prepared_model_point(), "dividend_type")
-    if v not in ("none", "five_year"):
-        raise ValueError("invalid dividend_type")
-    return v
+    return DividendType[model_point()["dividend_type"]]
 
 
 def lapse_spike():
@@ -543,12 +537,12 @@ def lapse_spike():
     It is held as its own parameter so that setting it to zero and re-running reads its
     effect directly, which is the right way to challenge it.
     """
-    return pdn.lookup_float(prepared_model_point(), "lapse_spike")
+    return float(model_point()["lapse_spike"])
 
 
 def dyn_lapse():
     """Whether the dynamic-surrender module is on; off in the base run."""
-    return pdn.lookup_bool(prepared_model_point(), "dyn_lapse")
+    return bool(model_point()["dyn_lapse"])
 
 
 def mort_be_factor():
@@ -563,7 +557,7 @@ def mort_be_factor():
     Read from the model point's ``mort_adj`` column, which keeps that spelling; the
     cells carries the library-wide name for the factor.
     """
-    return pdn.lookup_float(prepared_model_point(), "mort_adj")
+    return float(model_point()["mort_adj"])
 
 
 def pua_year():
@@ -572,7 +566,7 @@ def pua_year():
     Off on every model point but one.  The conversion is made at the anniversary
     ``pua_year() - 1``, so the earliest meaningful value is 2.
     """
-    v = pdn.lookup_int(prepared_model_point(), "pua_year")
+    v = int(model_point()["pua_year"])
     if v == 1:
         raise ValueError("pua_year must be 0 or at least 2")
     return v
@@ -594,8 +588,8 @@ def omega_age():
     parameter and not a rounding: projecting a whole life contract to 100, a U.S. habit,
     truncates the liability, and projecting to 120 invents one.
     """
-    tbl = pdn.subtable(data.prepared_mort_table_calculation_groups_1(), sex())
-    return int([a for a in pdn.keys(tbl) if pdn.lookup_float(tbl, a, "mort_rate") >= 1.0][0])
+    tbl = data.mort_table().loc[sex()]                               # noqa: F821
+    return int(min(a for a in tbl.index if tbl.loc[a, "mort_rate"] >= 1.0))
 
 
 def proj_years():
@@ -670,7 +664,7 @@ def mort_rate_at_age(y):
     construction uses, unadjusted: ``mort_be_factor`` is a best-estimate lever on the
     *decrement*, not a change to the 算出方法書 basis.
     """
-    return pdn.lookup_float(data.prepared_mort_table_loc(), (sex(), y), 'mort_rate')     # noqa: F821
+    return float(data.mort_table().loc[(sex(), y), "mort_rate"])     # noqa: F821
 
 
 def mort_rate_base(t):
@@ -726,8 +720,8 @@ def lapse_rate_base(t):
     解約・失効率 of 5.6%, used here as a sanity ceiling and nothing more.
     """
     tbl = data.lapse_table()                                         # noqa: F821
-    return pdn.lookup_float(data.prepared_lapse_table_scalar_loc(), min(max(policy_year(t), 1),
-                             int(pdn.max_value(pdn.keys(data.prepared_lapse_table_index_selection())))), "lapse_rate")
+    return float(tbl.loc[min(max(policy_year(t), 1),
+                             int(tbl.index.max())), "lapse_rate"])
 
 
 def cum_prem_pp(d):
@@ -1163,7 +1157,7 @@ def pol_loan_year():
     while a draw of the contractual maximum late in the run compounds at ``i_loan``
     against a value growing at ``i_cv`` and reaches the loan-excess termination.
     """
-    v = pdn.lookup_int(prepared_model_point(), "pol_loan_year")
+    v = int(model_point()["pol_loan_year"])
     if v == 1:
         raise ValueError("pol_loan_year must be 0 or at least 2")
     return v
@@ -1218,7 +1212,7 @@ def loan_fail_year():
     The test stays annual because both sides of it are: the balance moves once a year and
     the notice it triggers is served at the anniversary.
     """
-    for d in pdn.periods(proj_years()):
+    for d in range(proj_years()):
         if loan_pp(d) > cv_pp(d):
             return d
     return proj_years()
@@ -1319,7 +1313,7 @@ def apl_fail_year(s):
     :func:`apl_fail_month` — and the policyholder may claim the surrender value net of the
     loan, floored at zero because the loan can exceed the value.
     """
-    for d in pdn.periods(s, proj_years()):
+    for d in range(s, proj_years()):
         if not apl_fires(d, s):
             return d
     return proj_years()
@@ -1343,7 +1337,8 @@ def apl_advances(s):
     **thirteen** on the ordinary one, from the same default at the same duration on the
     same underlying policy value.
     """
-    return pdn.sum_values((1 for d in pdn.periods(s, min(apl_fail_year(s), prem_end())) if apl_fires(d, s)))
+    return sum(1 for d in range(s, min(apl_fail_year(s), prem_end()))
+               if apl_fires(d, s))
 
 
 def pols_default(t):
@@ -1434,8 +1429,8 @@ def apl_entry_years(t):
     over an entry list twelve times longer than the annual grid's.
     """
     if not apl_active():
-        return pdn.periods(0)
-    return pdn.periods(min(duration(t), prem_end() - 1) + 1)
+        return range(0)
+    return range(min(duration(t), prem_end() - 1) + 1)
 
 
 def pols_apl_carried(t):
@@ -1448,17 +1443,18 @@ def pols_apl_carried(t):
     """
     if not apl_active() or t <= 0:
         return 0.0
-    return pdn.sum_values((pols_apl_in(t, s) for s in pdn.periods(min((t - 1) // 12, prem_end() - 1) + 1)))
+    return sum(pols_apl_in(t, s)
+               for s in range(min((t - 1) // 12, prem_end() - 1) + 1))
 
 
 def pols_apl(t):
     """The APL cohorts exposed to the month-t decrements, summed over entry anniversaries."""
-    return pdn.sum_values((pols_if_apl(t, s) for s in apl_entry_years(t)))
+    return sum(pols_if_apl(t, s) for s in apl_entry_years(t))
 
 
 def pols_apl_exit(t):
     """Policies terminating at the start of month t because the APL exhausted."""
-    return pdn.sum_values((pols_apl_exit_at(t, s) for s in apl_entry_years(t)))
+    return sum(pols_apl_exit_at(t, s) for s in apl_entry_years(t))
 
 
 def pols_loan_exit(t):
@@ -1500,14 +1496,14 @@ def pols_if_at(t, timing):
         l(t+1), the end-of-month state, and zero at ``proj_len() - 1`` because
         the table's terminal rate is 1 and nobody survives the final month.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return (pols_pay_bef_decr(t) + pols_apl(t)) * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_SPIKE":
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
-        return pols_if_at(t, "BEF_SPIKE") * (1.0 - lapse_spike_rate(t))
+    if timing == PolTiming.BEF_SPIKE:
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
+        return pols_if_at(t, PolTiming.BEF_SPIKE) * (1.0 - lapse_spike_rate(t))
     raise ValueError("invalid timing")
 
 
@@ -1528,7 +1524,7 @@ def pols_lapse_base(t):
 
     Taken from the survivors of mortality — death before lapse **[std order]**.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_lapse_spike(t):
@@ -1539,7 +1535,7 @@ def pols_lapse_spike(t):
     because it is the thing the product is about, and on the annual grid it could not be
     seen apart from a year of ordinary surrender.
     """
-    return pols_if_at(t, "BEF_SPIKE") * lapse_spike_rate(t)
+    return pols_if_at(t, PolTiming.BEF_SPIKE) * lapse_spike_rate(t)
 
 
 def pols_lapse(t):
@@ -1575,7 +1571,7 @@ def premiums(t):
     return premium_pp() * pols_pay_bef_decr(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1597,24 +1593,28 @@ def claims(t, kind=None):
     and, given long enough, the sum assured, and none of them may produce a negative
     payment.
     """
-    if kind is None:
-        return pdn.sum_values((claims(t, k) for k in ("DEATH", "LAPSE")))
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
     d = duration(t)
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         pay = max(0.0, sum_assured_at(t) - loan_pp(d)) * (
             pols_pay_bef_decr(t) * mort_rate_mth(t))
-        apl = pdn.sum_values((max(0.0, sum_assured_at(t) - loan_apl_pp(d, s))
-                  * pols_if_apl(t, s) * mort_rate_mth(t) for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0))
+        apl = sum(max(0.0, sum_assured_at(t) - loan_apl_pp(d, s))
+                  * pols_if_apl(t, s) * mort_rate_mth(t)
+                  for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0)
         return pay + apl
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         surv = 1.0 - mort_rate_mth(t)
         exit_rate = 1.0 - (1.0 - lapse_rate_mth(t)) * (1.0 - lapse_spike_rate(t))
         pay = max(0.0, cv_at_m(t + 1) - loan_pp(d)) * (
             pols_pay_bef_decr(t) * surv * exit_rate)
-        apl = pdn.sum_values((max(0.0, apl_test_val_m(t + 1) - loan_apl_pp(d, s))
-                  * pols_if_apl(t, s) * surv * exit_rate for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0))
-        exhausted = pdn.sum_values((max(0.0, apl_test_val(d) - loan_apl_pp(d, s))
-                        * pols_apl_exit_at(t, s) for s in apl_entry_years(t) if pols_apl_exit_at(t, s) != 0.0))
+        apl = sum(max(0.0, apl_test_val_m(t + 1) - loan_apl_pp(d, s))
+                  * pols_if_apl(t, s) * surv * exit_rate
+                  for s in apl_entry_years(t) if pols_if_apl(t, s) != 0.0)
+        exhausted = sum(max(0.0, apl_test_val(d) - loan_apl_pp(d, s))
+                        * pols_apl_exit_at(t, s)
+                        for s in apl_entry_years(t)
+                        if pols_apl_exit_at(t, s) != 0.0)
         excess = max(0.0, cv_pp(d) - loan_pp(d)) * pols_loan_exit(t)
         return pay + apl + exhausted + excess
     raise ValueError("invalid kind")
@@ -1697,11 +1697,11 @@ def dividends(t):
     timing are standardizations — the timing is the only part of it that is sourced, from
     the product name itself.
     """
-    if (dividend_type() != "five_year" or (t + 1) % 12 != 0
+    if (dividend_type() != DividendType.five_year or (t + 1) % 12 != 0
             or policy_year(t) % div_period != 0):                    # noqa: F821
         return 0.0
     return (div_spread * div_period * pol_val_pp(policy_year(t))     # noqa: F821
-            * pols_if_at(t, "BEF_LAPSE"))
+            * pols_if_at(t, PolTiming.BEF_LAPSE))
 
 
 def net_cf(t):
@@ -1722,7 +1722,7 @@ def net_cf(t):
     the annual grid could say the cliff cost a year and could not say what a month of it
     looked like.
     """
-    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
             - commissions(t) - dividends(t))
 
 
@@ -1745,7 +1745,8 @@ def check_pols_roll_fwd():
     one test can call it across every model.  :func:`check_pols_roll_fwd_resid` gives the
     signed residual of the month that failed.
     """
-    return pdn.all_true((abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+               for t in range(proj_len()))
 
 
 def pols_exit_cum(t):
@@ -1776,7 +1777,8 @@ def check_decrement_sum_resid(t):
 
 def check_decrement_sum():
     """True when every policy issued leaves by a modelled decrement, in every month."""
-    return pdn.all_true((abs(check_decrement_sum_resid(t)) <= roll_fwd_tol for t in pdn.periods(proj_len())))
+    return all(abs(check_decrement_sum_resid(t)) <= roll_fwd_tol     # noqa: F821
+               for t in range(proj_len()))
 
 
 def check_pol_val_roll_fwd_resid(d):
@@ -1811,7 +1813,8 @@ def check_pol_val_roll_fwd_resid(d):
 def check_pol_val_roll_fwd():
     """True when the policy value rolls forward on its own basis in every policy year."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return pdn.all_true((abs(check_pol_val_roll_fwd_resid(d)) <= tol for d in pdn.periods(proj_years())))
+    return all(abs(check_pol_val_roll_fwd_resid(d)) <= tol
+               for d in range(proj_years()))
 
 
 def check_reserve_identity_resid(d):
@@ -1838,7 +1841,8 @@ def check_reserve_identity():
     included: this is a statement about a value at a point in time, not about a period.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return pdn.all_true((abs(check_reserve_identity_resid(d)) <= tol for d in pdn.periods(proj_years() + 1)))
+    return all(abs(check_reserve_identity_resid(d)) <= tol
+               for d in range(proj_years() + 1))
 
 
 def check_loan_roll_fwd_resid(d):
@@ -1869,7 +1873,8 @@ def check_loan_roll_fwd():
     Stops one year short of the end because the residual reads ``loan_pp(d + 1)``.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return pdn.all_true((abs(check_loan_roll_fwd_resid(d)) <= tol for d in pdn.periods(proj_years() - 1)))
+    return all(abs(check_loan_roll_fwd_resid(d)) <= tol
+               for d in range(proj_years() - 1))
 
 
 def check_net_cf_resid(t):
@@ -1880,14 +1885,15 @@ def check_net_cf_resid(t):
     third kind added to :func:`claims` and left out of its total shows up here rather
     than silently vanishing from the statement.
     """
-    return (net_cf(t) - premiums(t) + claims(t, "DEATH") + claims(t, "LAPSE")
+    return (net_cf(t) - premiums(t) + claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
             + claim_expenses(t) + expenses(t) + commissions(t) + dividends(t))
 
 
 def check_net_cf():
     """True when the net cash flow equals the sum of its published columns, every month."""
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return pdn.all_true((abs(check_net_cf_resid(t)) <= tol for t in pdn.periods(proj_len())))
+    return all(abs(check_net_cf_resid(t)) <= tol
+               for t in range(proj_len()))
 
 
 def result_cf():
@@ -1902,13 +1908,13 @@ def result_cf():
     ``dividends`` is a column of zeros on the 無配当 composite and is published rather
     than dropped, because the participating variant is a real product in the source set.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1928,7 +1934,7 @@ def result_pols():
     month, and ``lapse_spike_rate`` the one-off cliff surge, which is neither — it is
     non-zero in exactly one row of the whole table.
     """
-    ts = list(pdn.periods(proj_len()))
+    ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -1963,7 +1969,7 @@ def result_val():
     flow.  The value a surrender **between** anniversaries is paid on is
     :func:`cv_at_m`, which interpolates these columns.
     """
-    ds = list(pdn.periods(proj_years() + 1))
+    ds = list(range(proj_years() + 1))
     return pd.DataFrame(                                             # noqa: F821
         {
             "prosp_val_pp": [prosp_val_pp(d) for d in ds],
@@ -1976,11 +1982,6 @@ def result_val():
         },
         index=pd.Index(ds, name="d"),                                # noqa: F821
     )
-
-
-def prepared_model_point():
-    """Own policy fields while preserving public scalar types and dependencies."""
-    return pdn.record(model_point(), preserve_scalar_types=True)
 
 
 # ---------------------------------------------------------------------------
@@ -2030,4 +2031,12 @@ val_tol = 1e-8
 
 pd = ("Module", "pandas")
 
-pdn = ("Module", "modelx_helpers.pdn")
+Sex = ("Pickle", 1)
+
+DividendType = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Kind = ("Pickle", 4)
+
+enum_definitions = ("Pickle", 5)
