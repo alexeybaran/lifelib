@@ -82,6 +82,7 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.long_term_care.enums import CvForm, DemParam, Grade, Kind, LapseForm, LapseParam, PolTiming, PremMode, PrevParam, Sex
@@ -1326,7 +1327,7 @@ def test_the_model_point_table_covers_the_products_variants(long_term_care):
     in both, the 간편심사 loading, and the 우체국-style 180-day / two-year combination.
     """
     table = long_term_care.Data.model_point_table()
-    assert len(table) == 9
+    assert len(pdn.to_pandas(table)) == 9
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["cv_form"]) == {"mijigeup", "half_during", "pyojun"}
     assert set(table["lapse_form"]) == {"mujihae", "pyojun"}
