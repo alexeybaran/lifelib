@@ -90,8 +90,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
 
 
 def premium_rate_table():
@@ -102,9 +102,9 @@ def premium_rate_table():
     ``sum_assured x prem_rate`` is the annual cotisation before the *surprime* and the
     fractionation loading.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / premium_rate_file,                             # noqa: F821
-        index_col=["rate_id", "age"])
+        index_col=["rate_id", "age"]))
 
 
 def mort_table():
@@ -113,8 +113,8 @@ def mort_table():
     A **[std]** proxy, not a homologated table; see the Space docstring for what it is
     and what a replacement must preserve.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col="age")               # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_table_file, index_col="age"))               # noqa: F821
 
 
 def lapse_table():
@@ -125,8 +125,8 @@ def lapse_table():
     the model's 0-based month index: ``Projection.lapse_rate_base`` reads it through
     ``Projection.policy_year(t) = t // 12 + 1``.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
 
 
 def freq_loading_table():
@@ -139,8 +139,9 @@ def freq_loading_table():
     corpus, and the first is what ``Projection.prem_cycle`` and
     ``Projection.prem_inst_pp`` collect them on.
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+    frame = pd.read_csv(input_dir() / freq_loading_file)                   # noqa: F821
+    frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
+    return pdn.table(frame.set_index("prem_freq"))
 
 
 def benefit_schedule():
@@ -155,59 +156,9 @@ def benefit_schedule():
     month index: ``Projection.benefit_factor`` reads it through
     ``Projection.policy_year(t) = t // 12 + 1``.
     """
-    return pd.read_csv(                                              # noqa: F821
+    return pdn.table(pd.read_csv(                                              # noqa: F821
         input_dir() / benefit_schedule_file,                         # noqa: F821
-        index_col=["schedule_id", "policy_year"])
-
-
-def prepared_premium_rate_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(premium_rate_table(),
-                        columns=('prem_rate',),
-                        indexing='loc')
-
-
-
-def prepared_freq_loading_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(freq_loading_table(),
-                        columns=('prem_freq_load', 'prem_freq_fee'),
-                        indexing='loc')
-
-
-
-def prepared_mort_table_loc():
-    """Own calculation columns; follow the public source Cell cache."""
-    return pdn.table(mort_table(),
-                        columns=('mort_rate',),
-                        indexing='loc')
-
-
-def prepared_freq_loading_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(freq_loading_table(), indexing='loc', preserve_scalar_types=True)
-
-
-
-def prepared_lapse_table_scalar_loc():
-    """Own original column scalars for calculation lookup."""
-    return pdn.table(lapse_table(), indexing='loc', preserve_scalar_types=True)
-
-
-def prepared_benefit_schedule_groups_1():
-    """Own labelled groups in original row and column order."""
-    return pdn.table(benefit_schedule(), groups=('schedule_id',), rows=True, preserve_scalar_types=True)
-
-
-def prepared_freq_loading_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(freq_loading_table().index)
-
-
-
-def prepared_lapse_table_index_selection():
-    """Own original labels and multiplicity for calculation traversal."""
-    return pdn.index(lapse_table().index)
+        index_col=["schedule_id", "policy_year"]))
 
 
 # ---------------------------------------------------------------------------
@@ -228,3 +179,5 @@ benefit_schedule_file = "benefit_schedule.csv"
 pd = ("Module", "pandas")
 
 pdn = ("Module", "modelx_helpers.pdn")
+
+PremFreq = ("Pickle", 1)
