@@ -32,6 +32,7 @@ which never touches an instalment; the *taux technique* reaching no cash flow; a
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from fr_registry import MODELS, LIB
@@ -229,7 +230,7 @@ def test_the_tariff_table_and_the_best_estimate_table_are_different_objects(
     for the revalorisation the contract shares.
     """
     p = rente_viagere.Projection[2]
-    assert rente_viagere.Projection.tariff_table_sex == "F"
+    assert rente_viagere.Projection.tariff_table_sex == Sex.F
     assert p.sex(1) == Sex.M
     # The tariff factor is struck on the female table whatever the annuitant's sex, and
     # the shipped proxy is anchored so it reproduces the notes' placeholder rho exactly.
@@ -612,7 +613,7 @@ def test_the_taux_technique_reaches_no_cash_flow(rente_viagere):
 
 def test_a_palier_never_reaches_the_reversion_stream(rente_viagere):
     """The options are mutually exclusive, so no shipped point can combine them."""
-    table = rente_viagere.Data.model_point_table()
+    table = pdn.to_pandas(rente_viagere.Data.model_point_table())
     stepped = table["palier_scheme"] != "none"
     assert not (stepped & (table["reversion_pct"] > 0)).any()
     for point_id in table.index:

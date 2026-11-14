@@ -107,7 +107,7 @@ NO_AGGRAVATION_IN_IDENTITY_P = '''
 def inc_rate_partial(t):
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("partial") * prev_slope(t)
+    num = (severity_share(Severity.partial) * prev_slope(t)
            + mort_partial_mult * mort_force(t) * pi_p - pi_p * mort_force_avg(t))
     return max(0.0, num / pi_h)
 '''
@@ -116,7 +116,7 @@ NO_AGGRAVATION_IN_IDENTITY_T = '''
 def inc_rate_total(t):
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("total") * prev_slope(t)
+    num = (severity_share(Severity.total) * prev_slope(t)
            + mort_total_mult * mort_force(t) * pi_t - pi_t * mort_force_avg(t))
     return max(0.0, num / pi_h)
 '''
@@ -1064,7 +1064,7 @@ def test_every_model_point_projects(dependance):
         else:
             assert list(df.columns) == columns, point_id
     assert {dependance.Projection[i].status() for i in ids} == {
-        "autonomous", "partial", "total", "reduced"}
+        Status.autonomous, Status.partial, Status.total, Status.reduced}
 
 
 def test_expenses_split_the_per_policy_and_the_per_event_halves(fr_dep_anchor):

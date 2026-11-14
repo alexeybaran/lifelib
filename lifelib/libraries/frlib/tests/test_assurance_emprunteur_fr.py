@@ -84,10 +84,10 @@ WORKED_EXAMPLE = {
 # The notes' column sums over t = 0..14.
 WORKED_EXAMPLE_SUMS = {
     "premiums": 2032.99,
-    "DEATH": 965.23,
-    "PTIA": 94.16,
-    "ITT": 72.95,
-    "IPT": 0.71,
+    Kind.DEATH: 965.23,
+    Kind.PTIA: 94.16,
+    Kind.ITT: 72.95,
+    Kind.IPT: 0.71,
     "expenses": 38.10,
 }
 
@@ -154,7 +154,7 @@ def test_worked_example_column_sums(fr_ade_anchor):
     ts = range(15)
     assert sum(p.premiums(t) for t in ts) == pytest.approx(
         WORKED_EXAMPLE_SUMS["premiums"], abs=CENT)
-    for kind in ("DEATH", "PTIA", "ITT", "IPT"):
+    for kind in (Kind.DEATH, Kind.PTIA, Kind.ITT, Kind.IPT):
         assert sum(p.claims(t, kind) for t in ts) == pytest.approx(
             WORKED_EXAMPLE_SUMS[kind], abs=CENT)
     assert sum(p.expenses(t) for t in ts) == pytest.approx(

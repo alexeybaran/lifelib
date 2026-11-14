@@ -1290,7 +1290,7 @@ def test_inputs_live_beside_the_model():
     expected = {"model_point_table.csv", "allocation_grid.csv", "mort_table.csv",
                 "exit_table.csv", "annuity_factor.csv"}
     assert expected == {p.name for p in PRODUCT_DIR.iterdir() if p.suffix == ".csv"}
-    assert model_files(MODEL_DIR) == {"__init__.py", "_system.json"}
+    assert model_files(MODEL_DIR) == {"__init__.py", "_system.json", "data.pickle"}
 
 
 def test_the_glide_path_can_be_swapped_without_touching_formulas():

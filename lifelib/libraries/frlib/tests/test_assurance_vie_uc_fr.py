@@ -41,6 +41,7 @@ rather than assumed.
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from fr_registry import LIB, MODELS
@@ -546,7 +547,7 @@ def test_the_tariff_is_not_extrapolated_past_the_table(assurance_vie_uc):
     """Push the cessation age past 74 and the model raises rather than inventing a rate."""
     model = mx.read_model(MODEL_DIR, name="UC_FR_S_tariff")
     try:
-        table = model.Data.model_point_table()
+        table = pdn.to_pandas(model.Data.model_point_table())
         table.loc[9, "plancher_end_age"] = 85
         alt = "model_point_table_late.csv"
         table.to_csv(model.Data.input_dir() / alt)

@@ -28,6 +28,7 @@ on.
 """
 import modelx as mx
 import pytest
+from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from fr_registry import LIB, MODELS
@@ -1066,7 +1067,7 @@ def test_no_model_point_elects_an_avance_or_carries_a_positive_tmg(assurance_vie
     monthly grid a positive TMG would also have to be accrued inside the year and squared
     up at 31 December, which no shipped cells does.
     """
-    table = assurance_vie_euro.Data.model_point_table()
+    table = pdn.to_pandas(assurance_vie_euro.Data.model_point_table())
     assert (table["avance_on"] == 0).all() and (table["tmg_rate"] == 0.0).all()
     assert assurance_vie_euro.Projection[1].avance_on() is False
     for point_id in table.index:
