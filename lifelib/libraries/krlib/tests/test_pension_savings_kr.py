@@ -65,9 +65,10 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
+from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
-from lifelib.libraries.krlib.products.pension_savings.enums import AnchorItem, AvTiming, ExpenseItem, Kind, LapseBasis, MortTable, MortVintage, PayoutForm, PolTiming, PricingItem, RateScenario, Sex, TaxItem
+from lifelib.libraries.krlib.products.pension_savings.enums import AnchorItem, AvTiming, ExpenseItem, Kind, LapseBasis, MortTable, MortVintage, PayoutForm, PolTiming, PricingItem, RateScenario, Segment, Sex, TaxItem
 
 WON = 0.005          # money displayed to 2 d.p.
 INFORCE = 5e-11      # counts and probabilities, displayed to 10 d.p.
@@ -289,18 +290,18 @@ CHECKS = {
 # The scalar assumptions the notes mark [std] — a modeller's choice with no contractual
 # counterpart — read off the model so a silent change fails a test.
 STD_SCALARS = {
-    "mort_be_factor": 1.15,
-    "loan_rate": 0.04,
-    "loan_draw_frac": 0.50,
-    "loan_draw_year": 15,
-    "holiday_start_year": 8,
+    PricingItem.mort_be_factor: 1.15,
+    PricingItem.loan_rate: 0.04,
+    PricingItem.loan_draw_frac: 0.50,
+    PricingItem.loan_draw_year: 15,
+    PricingItem.holiday_start_year: 8,
 }
 STD_EXPENSES = {
-    "expense_acq": 200000.0,
-    "expense_maint_defer": 30000.0,
-    "expense_maint_payout": 20000.0,
-    "expense_claim": 30000.0,
-    "inflation_rate": 0.02,
+    ExpenseItem.expense_acq: 200000.0,
+    ExpenseItem.expense_maint_defer: 30000.0,
+    ExpenseItem.expense_maint_payout: 20000.0,
+    ExpenseItem.expense_claim: 30000.0,
+    ExpenseItem.inflation_rate: 0.02,
 }
 
 # The scalar parameters the notes cite to a document rather than standardize.  A [std] tag
@@ -1494,7 +1495,7 @@ def test_the_model_point_table_exercises_the_product(pension_savings):
     free: the model rejects a point where it is not ``x + m + d``, because two spellings of
     one date is how a projection silently annuitises in the wrong year.
     """
-    table = pension_savings.Data.model_point_table()
+    table = pdn.to_pandas(pension_savings.Data.model_point_table())
     assert len(table) == 9
     assert list(table.index) == list(range(1, 10))
     assert set(table["sex"]) == {"M", "F"}
@@ -2244,9 +2245,9 @@ def test_the_lapse_table_ships_two_argued_vectors_and_not_a_fitted_one(pension_s
     be run side by side rather than asserted against each other in prose.
     """
     table = pension_savings.Data.lapse_table()
-    assert set(table.index.get_level_values(0)) == {"pension", "savings"}
-    assert set(table.index.get_level_values(1)) == {"premium_paying", "paid_up",
-                                                    "in_payment"}
+    assert set(table.index.get_level_values(0)) == {LapseBasis.pension, LapseBasis.savings}
+    assert set(table.index.get_level_values(1)) == {Segment.premium_paying, Segment.paid_up,
+                                                    Segment.in_payment}
     assert all("[std]" in v or "[S" in v for v in table["provenance"])
     pension = pension_savings.Projection[1]
     savings = pension_savings.Projection[5]
@@ -2289,8 +2290,8 @@ def test_the_mortality_table_is_a_construction_that_ships_its_own_recipe(
     assert female.mort_rate_at_age(MortTable.annuitant_issue, 65) == pytest.approx(
         a.mort_rate_at_age(MortTable.annuitant_issue, 61), abs=1e-12)
     table = pension_savings.Data.mort_table()
-    assert set(table.index.get_level_values(0)) == {"annuitant_issue",
-                                                    "annuitant_revised"}
+    assert set(table.index.get_level_values(0)) == {MortTable.annuitant_issue,
+                                                    MortTable.annuitant_revised}
     assert all("[std]" in v for v in table["provenance"])
 
 
@@ -2315,8 +2316,8 @@ def test_the_construction_reproduces_the_longevity_the_illustration_implies(
             total += survivors
         return total
 
-    male = curtate(kr_pension_anchor, "annuitant_issue", 65)
-    female = curtate(pension_savings.Projection[2], "annuitant_issue", 65)
+    male = curtate(kr_pension_anchor, MortTable.annuitant_issue, 65)
+    female = curtate(pension_savings.Projection[2], MortTable.annuitant_issue, 65)
     assert male == pytest.approx(33.31, abs=0.005)
     assert female == pytest.approx(36.97, abs=0.005)
     assert female - male == pytest.approx(3.66, abs=0.005)
