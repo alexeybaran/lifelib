@@ -1600,6 +1600,9 @@ def resid_db_pp(t, s):
     return max(resid_nominal_pp(s), resid_floor_mult() * pol_val_pp(t))
 
 
+_is_cached = False
+
+
 def resid_nom_min_pp(t):
     """The smallest nominal residual carried by any cohort live at the start of month t.
 
@@ -1897,6 +1900,9 @@ def pols_if_ci_at(t, s):
     if base <= 0.0:
         return 0.0
     return ci_cohort_entrants(s) * ci_surv(t) / base
+
+
+_is_cached = False
 
 
 def pols_if_ci(t):
