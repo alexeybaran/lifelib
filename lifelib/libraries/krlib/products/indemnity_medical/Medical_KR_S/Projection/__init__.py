@@ -851,26 +851,26 @@ def util_value(y, column):
     is applied against the stay length itself.
     """
     if column == UtilColumn.adm_rate:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "adm_rate"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "adm_rate"])
     elif column == UtilColumn.los_days:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "los_days"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "los_days"])
     elif column == UtilColumn.visit_rate_ge:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "visit_rate_ge"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "visit_rate_ge"])
     elif column == UtilColumn.visit_rate_np:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "visit_rate_np"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "visit_rate_np"])
     elif column == UtilColumn.act_rate_physio:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "act_rate_physio"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "act_rate_physio"])
     elif column == UtilColumn.act_rate_inject:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "act_rate_inject"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "act_rate_inject"])
     elif column == UtilColumn.act_rate_mri:
-        v = data.utilisation_table().loc[                      # noqa: F821
-            (sex(), util_band(y)), "act_rate_mri"]
+        v = float(data.utilisation_table().loc[                      # noqa: F821
+            (sex(), util_band(y)), "act_rate_mri"])
     else:
         raise ValueError("invalid column")
     if column == UtilColumn.los_days:
@@ -1020,7 +1020,7 @@ def sev_points(stream):
 def sev_costs(stream):
     """The costs of :func:`sev_points` as floats: the vector form of sev_points (rule V, D90)."""
     sub = data.severity_table().loc[stream]                          # noqa: F821
-    return [sub.loc[k, "cost"] for k in sub.index]
+    return [float(sub.loc[k, "cost"]) for k in sub.index]
 
 
 def sev_probs(stream):

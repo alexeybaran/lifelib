@@ -457,7 +457,7 @@ def pivot_interp(x, sex_, smoker_, column):
         lo = sub.index.asof(x)
         hi = sub.index[sub.index.searchsorted(x, side="right")]
     if column == RateColumn.i_ci:
-        r_lo = sub.loc[lo, "i_ci"]
+        r_lo = float(sub.loc[lo, "i_ci"])
         r_hi = float(sub.loc[hi, "i_ci"])
     elif column == RateColumn.q_d:
         r_lo = float(sub.loc[lo, "q_d"])
