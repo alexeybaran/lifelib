@@ -789,7 +789,7 @@ def inc_rate(t):
     tbl = inc_schedule()
     ages = inc_ages()
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = tbl.index.asof(a)
+    lo = int(tbl.index.asof(a))
     hi = min(g for g in ages if g >= a)
     r_lo = float(tbl.loc[lo, "inc_rate"])
     if hi == lo:
@@ -822,7 +822,7 @@ def tier_share(col, t):
     tbl = tier_share_schedule()
     ages = tier_share_ages()
     a = min(max(age(t), ages[0]), ages[-1])
-    lo = tbl.index.asof(a)
+    lo = int(tbl.index.asof(a))
     hi = min(g for g in ages if g >= a)
     if col == ShareColumn.minor_share:
         v_lo = float(tbl.loc[lo, "minor_share"])

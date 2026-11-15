@@ -1013,8 +1013,8 @@ def sev_points(stream):
     rule to a mean removes both kinks.
     """
     sub = data.severity_table().loc[stream]                          # noqa: F821
-    return list(zip([sub.loc[k, "cost"] for k in sub.index],
-                [sub.loc[k, "prob"] for k in sub.index]))
+    return list(zip([int(sub.loc[k, "cost"]) for k in sub.index],
+                [float(sub.loc[k, "prob"]) for k in sub.index]))
 
 
 def sev_costs(stream):
