@@ -483,7 +483,7 @@ def test_pitfall_the_care_state_is_absorbing_and_the_benefit_does_not_stop(
     """
     p1 = nursing_care.Projection[1]
     assert p1.rec_rate() == 0.0 and p1.rec_rate_mth() == 0.0
-    assert p1.care_surv(0, 12) == pytest.approx(
+    assert p1.care_surv(12, 1) == pytest.approx(
         (1.0 - p1.mort_rate_care_mth(0)) ** 12, rel=1e-12)
 
     noop = variant_model(tmp_path, "LTC_JP_S_stateoff", 5, rec_rate=0.0)
@@ -605,7 +605,7 @@ def test_pitfall_the_annuity_is_in_advance_and_starts_on_the_entry_date(jp_ltc_a
     p = jp_ltc_anchor
     assert p.ann_count(0) == pytest.approx(p.pols_entry_n(0), rel=1e-12)
     assert p.ann_count(1) == pytest.approx(p.pols_entry_n(1), rel=1e-12)
-    second = p.pols_entry_n(0) * p.care_surv(0, 12)
+    second = p.pols_entry_n(0) * p.care_surv(12, 1)
     assert second > 0.0
     assert p.ann_count(12) == pytest.approx(p.pols_entry_n(12) + second, rel=1e-12)
     assert p.claims(0, Kind.ANNUITY) > 0.0                # paid in the month of entry
@@ -620,9 +620,9 @@ def test_pitfall_care_state_survival_is_a_partial_product(jp_ltc_anchor):
     """
     p = jp_ltc_anchor
     s, mid, t = 300, 348, 408
-    assert p.care_surv(s, t) == pytest.approx(
-        p.care_surv(s, mid) * p.care_surv(mid, t), rel=1e-12)
-    assert p.care_surv(t, t) == 1.0
+    assert p.care_surv(t, (t - s) // 12) == pytest.approx(
+        p.care_surv(mid, (mid - s) // 12) * p.care_surv(t, (t - mid) // 12), rel=1e-12)
+    assert p.care_surv(t, 0) == 1.0
     last = p.proj_len() - 1
     assert p.mort_rate_care(last) == 1.0
     assert p.care_surv(last - 1, last + 1) == 0.0
@@ -847,7 +847,7 @@ def test_the_state_tested_annuity_is_off_on_the_anchor_and_on_at_point_5(nursing
     assert p5.rec_rate_mth() == pytest.approx(1 - 0.95 ** (1 / 12), rel=1e-12)
     assert sum(p5.claims(t, Kind.ANNUITY) for t in range(p5.proj_len())) == pytest.approx(
         360_416.0, rel=5e-4)
-    assert p5.care_surv(0, 12) == pytest.approx(
+    assert p5.care_surv(12, 1) == pytest.approx(
         (1.0 - p5.mort_rate_care_mth(0)) ** 12 * (1.0 - p5.rec_rate_mth()) ** 12,
         rel=1e-12)
 
