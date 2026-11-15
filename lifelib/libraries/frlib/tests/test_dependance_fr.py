@@ -234,8 +234,8 @@ def test_worked_example_assumption_values(fr_dep_anchor):
     assert p.capital_pp(12) == pytest.approx(3535.00, abs=CENT)
     assert p.premium_mth_pp(12) == pytest.approx(75.75, abs=CENT)
     assert p.premium_pp(12) == pytest.approx(12 * 75.75, abs=CENT)
-    assert p.rente_pay_pp(12, 12) == pytest.approx(1015.00, abs=CENT)
-    assert p.rente_pay_partial_pp(12, 12) == pytest.approx(507.50, abs=CENT)
+    assert p.rente_pay_pp(2, 1) == pytest.approx(1015.00, abs=CENT)
+    assert p.rente_pay_partial_pp(2, 1) == pytest.approx(507.50, abs=CENT)
 
 
 def test_worked_example_month_zero_end_to_end(fr_dep_anchor):
@@ -696,10 +696,10 @@ def test_the_rente_in_payment_moves_at_a_different_rate_from_the_guarantee(
         fr_dep_anchor):
     """reval_guarantee sets the amount at recognition; reval_rente moves it after."""
     p = fr_dep_anchor
-    assert p.rente_pay_pp(12, 12) == pytest.approx(1000.0 * 1.015, rel=1e-12)
-    assert p.rente_pay_pp(13, 1) == pytest.approx(1000.0 * 1.010, rel=1e-12)
-    old = p.rente_pay_pp(120, 120)                     # recognised in policy year 1
-    new = p.rente_pay_pp(120, 1)                       # recognised in policy year 10
+    assert p.rente_pay_pp(2, 1) == pytest.approx(1000.0 * 1.015, rel=1e-12)
+    assert p.rente_pay_pp(2, 2) == pytest.approx(1000.0 * 1.010, rel=1e-12)
+    old = p.rente_pay_pp(11, 1)                        # recognised in policy year 1
+    new = p.rente_pay_pp(11, 10)                       # recognised in policy year 10
     assert p.policy_year(120 - 120) == 1 and p.policy_year(120 - 1) == 10
     assert old == pytest.approx(1000.0 * 1.015 ** 10, rel=1e-12)
     assert new == pytest.approx(1000.0 * 1.010 ** 9 * 1.015, rel=1e-12)
