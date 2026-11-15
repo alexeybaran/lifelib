@@ -2084,10 +2084,10 @@ def test_the_neonatal_module_limbs_are_the_ones_the_notes_state(child):
     """
     table = child.Data.neonatal_table()
     assert len(table) == 9
-    assert set(table["timing"]) == {"birth", "block"}
-    assert set(table.index[table["timing"] == "birth"]) == {
+    assert set(table["timing"]) == {NeoTiming.birth, NeoTiming.block}
+    assert set(table.index[table["timing"] == NeoTiming.birth]) == {
         "birth_risk_low", "birth_risk_disab", "birth_risk_severe", "preterm"}
-    assert set(table.index[table["timing"] == "block"]) == {
+    assert set(table.index[table["timing"] == NeoTiming.block]) == {
         "incubator", "perinatal_cash", "congenital_diag", "congenital_surg",
         "neonatal_haem"}
     assert float(table.loc["incubator", "amount"]) == 50000.0

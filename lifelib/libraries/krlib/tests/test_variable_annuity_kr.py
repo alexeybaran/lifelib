@@ -1723,7 +1723,7 @@ def test_the_fund_and_return_assumptions_are_the_ones_the_notes_publish(kr_va_an
     assumption.  This is the largest single gap in the model and it is a CSV away.
     """
     a = kr_va_anchor
-    assert a.fund_ids() == (1, 2)
+    assert a.fund_ids() == [1, 2]
     assert a.fund_is_bond(1) is True and a.fund_is_bond(2) is False
     assert a.fund_alloc(1) == near(0.5) and a.fund_alloc(2) == near(0.5)
     assert a.fund_mgmt_fee(1) == near(0.0040)

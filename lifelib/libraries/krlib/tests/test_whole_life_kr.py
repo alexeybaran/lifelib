@@ -1983,7 +1983,7 @@ def test_the_lapse_table_holds_two_bases_and_three_parameters_each(whole_life):
     assumption look like an observation.
     """
     table = whole_life.Data.lapse_table()
-    assert set(table.index) == {"loglinear", "flat"}
+    assert set(table.index) == {LapseBasis.loglinear, LapseBasis.flat}
     assert list(table.columns) == [
         "first_year_rate", "completion_rate", "ultimate_rate", "provenance"]
     assert table.loc[LapseBasis.loglinear, "first_year_rate"] == 0.10
