@@ -625,7 +625,8 @@ def test_pitfall_care_state_survival_is_a_partial_product(jp_ltc_anchor):
     assert p.care_surv(t, 0) == 1.0
     last = p.proj_len() - 1
     assert p.mort_rate_care(last) == 1.0
-    assert p.care_surv(last - 1, last + 1) == 0.0
+    # care_surv is keyed on annual anniversaries (t, j): the year ending at last + 1 crosses the terminal month
+    assert p.care_surv(last + 1, 1) == 0.0
     assert p.check_ann_ledger() is True                # the tail still closes
 
 
