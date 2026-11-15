@@ -877,17 +877,18 @@ def epv_death_mth(u):
         q + (1.0 - q) * epv_death_mth(u + 1))
 
 
-def annuity_due_mth(u, n):
-    """a-due^m(u, n): the n-month annuity-due of 1 per month from month u, pricing rate.
+def annuity_due_mth(u):
+    """a-due^m(u): the annuity-due of 1 per month from month u to the end of the 납입기간, pricing rate.
 
-    ``1 + v_m p^m(u) a(u + 1, n - 1)``, zero for ``n <= 0``.  Measured in months of premium,
+    ``1 + v_m p^m(u) a(u + 1)``, zero from ``u = prem_period_mths()``: the n-month annuity with
+    ``n = prem_period_mths() - u``, the only term the model reads.  Measured in months of premium,
     so ``SA A^m(0) / a^m(0, 12m)`` is an amount **per month** — the 월납순보험료 by monthly
     equivalence, which is what the account recursion consumes.
     """
-    if n <= 0 or u >= proj_len():
+    if u >= prem_period_mths() or u >= proj_len():
         return 0.0
     return 1.0 + (1.0 / (1.0 + prem_int_rate_mth())) * (
-        1.0 - mort_rate_mth_at(u)) * annuity_due_mth(u + 1, n - 1)
+        1.0 - mort_rate_mth_at(u)) * annuity_due_mth(u + 1)
 
 
 def epv_death_acc_mth(u):
@@ -904,12 +905,12 @@ def epv_death_acc_mth(u):
         q + (1.0 - q) * epv_death_acc_mth(u + 1))
 
 
-def annuity_due_acc_mth(u, n):
-    """a-due^m(u, n) on the **accrual** rate; see :func:`epv_death_acc_mth`."""
-    if n <= 0 or u >= proj_len():
+def annuity_due_acc_mth(u):
+    """a-due^m(u) on the **accrual** rate; see :func:`epv_death_acc_mth`."""
+    if u >= prem_period_mths() or u >= proj_len():
         return 0.0
     return 1.0 + (1.0 / (1.0 + acc_int_rate_mth())) * (
-        1.0 - mort_rate_mth_at(u)) * annuity_due_acc_mth(u + 1, n - 1)
+        1.0 - mort_rate_mth_at(u)) * annuity_due_acc_mth(u + 1)
 
 
 def prem_net_level_pp():
@@ -941,8 +942,7 @@ def prem_net_level_mth_pp():
     quantity 별표 14 names and the one :func:`prem_gross_calc_pp` loads; that is a statutory
     and pricing figure rather than a cash flow, and it stays on its annual footing.
     """
-    return sum_assured() * epv_death_mth(0) / annuity_due_mth(
-        0, prem_period_mths())
+    return sum_assured() * epv_death_mth(0) / annuity_due_mth(0)
 
 
 def prem_net_20yr_pp():
@@ -1168,8 +1168,7 @@ def prosp_val_pp(d):
     rather than asserted, and this cells is a diagnostic.
     """
     return (sum_assured() * epv_death_acc_mth(d)
-            - prem_net_level_mth_pp() * annuity_due_acc_mth(
-                d, max(prem_period_mths() - d, 0)))
+            - prem_net_level_mth_pp() * annuity_due_acc_mth(d))
 
 
 def cv_std_pp(d):

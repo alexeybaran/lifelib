@@ -421,7 +421,7 @@ def test_worked_example_derived_scalars(kr_whole_life_anchor):
     # P^m; 별표 14 and the loading rule consume P.
     assert a.prem_net_level_mth_pp() == pytest.approx(P_NET_MTH, abs=TRACE)
     assert a.prem_net_level_mth_pp() == pytest.approx(
-        a.sum_assured() * a.epv_death_mth(0) / a.annuity_due_mth(0, 240), rel=1e-12)
+        a.sum_assured() * a.epv_death_mth(0) / a.annuity_due_mth(0), rel=1e-12)
     assert a.prem_net_level_mth_pp() > P_NET / 12.0
     assert 12 * a.prem_net_level_mth_pp() / P_NET == pytest.approx(1.024, abs=5e-4)
     assert a.premium_pp() == G_GROSS
