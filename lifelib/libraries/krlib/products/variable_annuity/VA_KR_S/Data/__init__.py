@@ -137,7 +137,8 @@ def fund_table():
     """
     frame = pd.read_csv(input_dir() / fund_file)                     # noqa: F821
     frame["fund_set"] = [FundSet[name] for name in frame["fund_set"]]
-    frame["asset_class"] = [AssetClass[name] for name in frame["asset_class"]]
+    frame["asset_class"] = pd.Series([AssetClass[name] for name in frame["asset_class"]], index=frame.index,
+                                     dtype=object)
     return frame.set_index(["fund_set", "fund_id"])
 
 

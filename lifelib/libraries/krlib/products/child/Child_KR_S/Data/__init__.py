@@ -192,7 +192,8 @@ def neonatal_table():
     question rather than an amount question.
     """
     frame = pd.read_csv(input_dir() / neonatal_file, index_col="item")  # noqa: F821
-    frame["timing"] = [NeoTiming[name] for name in frame["timing"]]
+    frame["timing"] = pd.Series([NeoTiming[name] for name in frame["timing"]], index=frame.index,
+                                dtype=object)
     return frame
 
 
