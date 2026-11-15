@@ -1320,17 +1320,25 @@ def pols_entry_dem(t):
 
 # --- the 간병연금 ledger ---
 
-def care_surv(s, t):
-    """S_C(s, t): survival in the care state from month s to month t.
+def care_surv(t, j):
+    """S_C(t - 12j, t): survival in the care state over the j years from month
+    s = t - 12j to month t.
+
+    Keyed by the later month ``t`` and the number ``j`` of annual anniversaries: every
+    caller reads it on the anniversary grid, so it is built a year at a time from
+    ``care_surv(t - 12, j - 1)``, with the monthly factors in the same order.
 
     The **partial product** of ``(1 - q_C(u))`` over ``u = s ... t-1``, computed as a partial
     product and never as a ratio of cumulative products: ``q_C`` reaches 1 at the terminal age
     of the table, so a cumulative product underflows to zero and the ratio form divides by
     zero exactly where the tail of this liability lives.
     """
-    if t <= s:
+    if j <= 0:
         return 1.0
-    return care_surv(s, t - 1) * (1.0 - mort_rate_care_mth(t - 1))
+    v = care_surv(t - 12, j - 1)
+    for u in range(t - 12, t):
+        v = v * (1.0 - mort_rate_care_mth(u))
+    return v
 
 
 def red_factor(t):
@@ -1401,7 +1409,7 @@ def ann_count(t):
         if u < annuity_guar_mths():
             w = 1.0
         else:
-            w = care_surv(s, s + 12 * (u // 12))
+            w = care_surv(s + 12 * (u // 12), u // 12)
         total += pols_entry_care(s) * w
     return total
 
@@ -1421,7 +1429,7 @@ def ann_pay(t):
         if u < annuity_guar_mths():
             w = 1.0
         else:
-            w = care_surv(s, s + 12 * (u // 12))
+            w = care_surv(s + 12 * (u // 12), u // 12)
         total += ann_amount_at(s) * pols_entry_care(s) * w
     return total
 
@@ -1441,7 +1449,7 @@ def ann_tests(t):
         s = t - 12 * k
         if s < 0:
             continue
-        total += pols_entry_care(s) * care_surv(s, t)
+        total += pols_entry_care(s) * care_surv(t, k)
     return total
 
 
@@ -1850,7 +1858,7 @@ def check_ann_ledger_resid(t):
         if u < annuity_guar_mths():
             built += pols_entry_care(s)
         else:
-            built += pols_entry_care(s) * care_surv(s, s + 12 * (u // 12))
+            built += pols_entry_care(s) * care_surv(s + 12 * (u // 12), u // 12)
     return ann_count(t) - built
 
 

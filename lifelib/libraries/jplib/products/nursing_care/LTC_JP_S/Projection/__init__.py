@@ -1061,7 +1061,7 @@ def care_surv(t, j):
     ``q_C`` reaches 1 at the terminal age, so a cumulative product underflows to zero
     and the ratio form divides by zero exactly where the tail of this liability lives.
     """
-    if j == 0:
+    if j <= 0:
         return 1.0
     v = care_surv(t - 12, j - 1)
     for u in range(t - 12, t):

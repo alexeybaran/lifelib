@@ -1164,7 +1164,7 @@ def test_the_annuity_ledger_is_a_cohort_sum_with_a_guarantee_and_a_cap(kr_ltc_an
         built_pay = 0.0
         for u in range(0, min(t, n_a - 1) + 1):
             s = t - u
-            weight = 1.0 if u < g_a else p.care_surv(s, s + 12 * (u // 12))
+            weight = 1.0 if u < g_a else p.care_surv(s + 12 * (u // 12), u // 12)
             built_count += p.pols_entry_care(s) * weight
             built_pay += p.ann_amount_at(s) * p.pols_entry_care(s) * weight
         assert p.ann_count(t) == pytest.approx(built_count, rel=FULL), t
@@ -1173,19 +1173,19 @@ def test_the_annuity_ledger_is_a_cohort_sum_with_a_guarantee_and_a_cap(kr_ltc_an
     # Inside the guarantee every weight is exactly 1; the first release is at u = 12.
     for u in range(0, g_a):
         assert (1.0 if u < g_a else 0.0) == 1.0
-    assert p.care_surv(3, 3 + 12) < 1.0
+    assert p.care_surv(3 + 12, 1) < 1.0
     # The cap and the maturity truncation bind jointly.
     assert p.ann_count(p.proj_len() - 1) == 0.0
     assert p.ann_pay(p.proj_len() - 1) == 0.0
     assert p.ann_count(500) == pytest.approx(
         sum(p.pols_entry_care(500 - u)
-            * (1.0 if u < g_a else p.care_surv(500 - u, 500 - u + 12 * (u // 12)))
+            * (1.0 if u < g_a else p.care_surv(500 - u + 12 * (u // 12), u // 12))
             for u in range(0, n_a)), rel=FULL)
     assert p.pols_entry_care(500 - n_a) > 0.0        # a cohort just outside the window
     # The annual proof-of-life test falls on the anniversary of the 진단확정일, not monthly.
     assert p.ann_tests(14) == 0.0
     assert p.ann_tests(15) == pytest.approx(
-        p.pols_entry_care(3) * p.care_surv(3, 15), rel=FULL)
+        p.pols_entry_care(3) * p.care_surv(15, 1), rel=FULL)
 
 
 def test_the_account_and_the_surrender_value_have_two_branches_that_meet(kr_ltc_anchor):
@@ -1460,7 +1460,7 @@ def test_pitfall_the_gamaek_is_frozen_and_must_not_be_re_tested(long_term_care):
             for u in range(0, min(t, p.annuity_max_mths() - 1) + 1):
                 s = t - u
                 weight = (1.0 if u < p.annuity_guar_mths()
-                          else p.care_surv(s, s + 12 * (u // 12)))
+                          else p.care_surv(s + 12 * (u // 12), u // 12))
                 amount = p.ann_amount_at(s) / p.red_factor(s) * p.red_factor(t)
                 re_tested += amount * p.pols_entry_care(s) * weight
         assert re_tested - correct == pytest.approx(excess, abs=5e-3), point_id
@@ -1498,7 +1498,7 @@ def test_pitfall_the_annuitys_first_instalment_falls_in_the_month_of_certificati
             if s < 0:
                 continue
             weight = (1.0 if u < g_a
-                      else p.care_surv(s + 12, s + 12 + 12 * (u // 12)))
+                      else p.care_surv(s + 12 + 12 * (u // 12), u // 12))
             deferred += p.ann_amount_at(s) * p.pols_entry_care(s) * weight
     correct = sum(p.claims(t, Kind.ANNUITY) for t in range(n))
     assert 1.0 - deferred / correct == pytest.approx(0.104, abs=0.002)
@@ -1539,13 +1539,13 @@ def test_pitfall_care_state_survival_is_a_partial_product(kr_ltc_anchor, long_te
     model point, which is precisely why it would be found late.
     """
     p = kr_ltc_anchor
-    for s, t in ((0, 0), (3, 15), (100, 220), (400, 500)):
+    for s, t in ((0, 0), (3, 15), (100, 220), (400, 496)):  # anniversary spans: care_surv is keyed (t, j)
         expected = 1.0
         for u in range(s, t):
             expected *= 1.0 - p.mort_rate_care_mth(u)
-        assert p.care_surv(s, t) == pytest.approx(expected, rel=FULL), (s, t)
-    assert p.care_surv(50, 50) == 1.0
-    assert p.care_surv(50, 40) == 1.0                # t <= s is unit, not an error
+        assert p.care_surv(t, (t - s) // 12) == pytest.approx(expected, rel=FULL), (s, t)
+    assert p.care_surv(50, 0) == 1.0
+    assert p.care_surv(40, -1) == 1.0                # t <= s is unit, not an error
     # Where the cap binds, and that a cumulative product from issue is already nil there.
     assert 3.0 * p.mort_rate_at_age(107) < 1.0
     assert 3.0 * p.mort_rate_at_age(108) >= 1.0
@@ -1856,7 +1856,7 @@ def test_pitfall_the_care_state_is_absorbing_because_the_contract_makes_it_so(
             (p.pols_care(t) + p.pols_entry_care(t))
             * (1.0 - p.mort_rate_care_mth(t)), rel=FULL)
     # the annuity is metered on survival, and the survival is the care state's own
-    assert p.care_surv(300, 312) == pytest.approx(
+    assert p.care_surv(312, 1) == pytest.approx(
         (1.0 - p.mort_rate_care_mth(300)) ** 12, rel=1e-9)
     # the lump sum is once only: it rides on first entries, never on the stock
     for t in (120, 300, 540):
@@ -2482,7 +2482,7 @@ def test_the_annuity_cap_of_point_7_is_sixty_months(long_term_care):
     t = 200
     assert p7.ann_count(t) == pytest.approx(
         sum(p7.pols_entry_care(t - u)
-            * (1.0 if u < 12 else p7.care_surv(t - u, t - u + 12 * (u // 12)))
+            * (1.0 if u < 12 else p7.care_surv(t - u + 12 * (u // 12), u // 12))
             for u in range(0, 60)), rel=FULL)
     assert p7.pols_entry_care(t - 60) > 0.0          # a cohort just outside the window
     assert p7.check_ann_ledger() is True

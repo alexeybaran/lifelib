@@ -80,6 +80,8 @@ rho G(y)                   rente_partial_pp(t)               Guaranteed rente pa
 G_pay(t, z)                rente_pay_pp(t, z)                Rente totale in payment for
                                                              the cohort at duration z
 rho G_pay(t, z)            rente_pay_partial_pp(t, z)        The same, partial ledger
+G_pay(y, y_e)              rente_pay_year_pp(y, y_e)         G_pay by policy year and
+                                                             recognition year
 CAP(y)                     capital_pp(t)                     Capital d'équipement
 P(y)                       premium_mth_pp(t)                 Monthly premium
 12 P(y)                    premium_pp(t)                     The same, annualised
@@ -734,6 +736,16 @@ def capital_pp(t):
     return capital_amount() * (1.0 + reval_guarantee) ** duration(t)  # noqa: F821
 
 
+def rente_pay_year_pp(y, y_e):
+    """G_pay(y, y_e): the *rente totale* in payment at policy year y for a cohort recognised in y_e.
+
+    ``G(y_e) (1 + reval_rente)^(y - y_e)``: the amount of :func:`rente_pay_pp`, keyed by the two
+    policy years it depends on.
+    """
+    return (rente_total_mth() * (1.0 + reval_guarantee) ** (y_e - 1)  # noqa: F821
+            * (1.0 + reval_rente) ** (y - y_e))                       # noqa: F821
+
+
 def rente_pay_pp(t, z):
     """G_pay(t, z): the *rente totale* in payment at month t for the cohort at duration z.
 
@@ -750,8 +762,7 @@ def rente_pay_pp(t, z):
     describes.
     """
     y_e = max(1, policy_year(t - z))
-    return (rente_total_mth() * (1.0 + reval_guarantee) ** (y_e - 1)  # noqa: F821
-            * (1.0 + reval_rente) ** (policy_year(t) - y_e))          # noqa: F821
+    return rente_pay_year_pp(policy_year(t), y_e)          # noqa: F821
 
 
 def rente_pay_partial_pp(t, z):
@@ -1748,7 +1759,7 @@ def claims(t, kind):
                 continue
             y_e = max(1, policy_year(t - z))
             if y_e != last_y:  # y_e is non-increasing in z: the last value is the memo
-                a = rente_pay_pp(t, z)
+                a = rente_pay_year_pp(policy_year(t), y_e)
                 last_y = y_e
             out += (rho * a * p * s_p + a * o * s_t + v * s_t)
         return out
