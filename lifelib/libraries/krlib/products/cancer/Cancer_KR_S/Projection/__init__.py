@@ -632,7 +632,7 @@ def reduction_factor(t):
 
 def mort_max_age():
     """The last age of the mortality table at the policy's sex."""
-    return int(data.mort_table().loc[sex()].index.max())             # noqa: F821
+    return data.mort_table().loc[sex()].index.max()             # noqa: F821
 
 
 def mort_rate(t):
@@ -698,17 +698,17 @@ def mort_rate_minor_mth(t, k):
 
 def lapse_at_completion():
     """The lapse rate the grade converges to at the end of the payment term."""
-    return float(data.lapse_table().loc[Segment.at_completion, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.at_completion, "lapse_rate"]  # noqa: F821
 
 
 def lapse_first_year():
     """The first-year lapse rate (the start of the log-linear grade)."""
-    return float(data.lapse_table().loc[Segment.first_year, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.first_year, "lapse_rate"]  # noqa: F821
 
 
 def lapse_post_payment():
     """The lapse rate after the payment term."""
-    return float(data.lapse_table().loc[Segment.post_payment, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.post_payment, "lapse_rate"]  # noqa: F821
 
 
 def lapse_rate(t):
@@ -825,15 +825,15 @@ def tier_share(col, t):
     lo = tbl.index.asof(a)
     hi = min(g for g in ages if g >= a)
     if col == ShareColumn.minor_share:
-        v_lo = float(tbl.loc[lo, "minor_share"])
+        v_lo = tbl.loc[lo, "minor_share"]
         if hi == lo:
             return v_lo
-        v_hi = float(tbl.loc[hi, "minor_share"])
+        v_hi = tbl.loc[hi, "minor_share"]
     elif col == ShareColumn.high_share:
-        v_lo = float(tbl.loc[lo, "high_share"])
+        v_lo = tbl.loc[lo, "high_share"]
         if hi == lo:
             return v_lo
-        v_hi = float(tbl.loc[hi, "high_share"])
+        v_hi = tbl.loc[hi, "high_share"]
     elif col == ShareColumn.similar_share:
         v_lo = float(tbl.loc[lo, "similar_share"])
         if hi == lo:

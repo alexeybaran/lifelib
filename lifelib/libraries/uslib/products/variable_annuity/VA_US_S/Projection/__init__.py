@@ -790,7 +790,7 @@ def scenario_rate(t, field):
     """
     sub = rate_scenario_path()
     if field == RateColumn.vix_sq:
-        return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), "vix_sq"])
+        return sub.loc[sub.index.asof(max(duration_mth(t), 0)), "vix_sq"]
     elif field == RateColumn.cmt10:
         return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), "cmt10"])
     else:

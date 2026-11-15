@@ -892,12 +892,12 @@ def mort_rate_mth(t):
 
 def lapse_in_payment():
     """The in-payment lapse rate of the policy's lapse basis."""
-    return float(data.lapse_table().loc[(lapse_basis(), Segment.in_payment, 0), "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[(lapse_basis(), Segment.in_payment, 0), "lapse_rate"]  # noqa: F821
 
 
 def lapse_paid_up():
     """The paid-up lapse rate of the policy's lapse basis."""
-    return float(data.lapse_table().loc[(lapse_basis(), Segment.paid_up, 0), "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[(lapse_basis(), Segment.paid_up, 0), "lapse_rate"]  # noqa: F821
 
 
 def lapse_paying_schedule():

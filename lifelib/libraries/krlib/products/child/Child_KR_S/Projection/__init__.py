@@ -426,25 +426,25 @@ def sum_assured(cover):
     ``neonatal`` ₩10,000,000 as the 태아 module's own 가입금액.
     """
     if cover == Cover.disability:
-        return float(model_point()["sa_disability"])
+        return model_point()["sa_disability"]
     elif cover == Cover.disease_disab:
-        return float(model_point()["sa_disease_disab"])
+        return model_point()["sa_disease_disab"]
     elif cover == Cover.cancer:
-        return float(model_point()["sa_cancer"])
+        return model_point()["sa_cancer"]
     elif cover == Cover.minor_cancer:
-        return float(model_point()["sa_minor_cancer"])
+        return model_point()["sa_minor_cancer"]
     elif cover == Cover.cerebral:
-        return float(model_point()["sa_cerebral"])
+        return model_point()["sa_cerebral"]
     elif cover == Cover.cardiac:
-        return float(model_point()["sa_cardiac"])
+        return model_point()["sa_cardiac"]
     elif cover == Cover.surgery:
-        return float(model_point()["sa_surgery"])
+        return model_point()["sa_surgery"]
     elif cover == Cover.fracture:
-        return float(model_point()["sa_fracture"])
+        return model_point()["sa_fracture"]
     elif cover == Cover.burn:
-        return float(model_point()["sa_burn"])
+        return model_point()["sa_burn"]
     elif cover == Cover.liability:
-        return float(model_point()["sa_liability"])
+        return model_point()["sa_liability"]
     elif cover == Cover.neonatal:
         return float(model_point()["sa_neonatal"])
     else:
@@ -719,9 +719,9 @@ def mort_rate_payer(t):
 def lapse_param(name):
     """One parameter of the selected lapse basis, from *lapse_table.csv*."""
     if name == LapseColumn.first_year_rate:
-        return float(data.lapse_table().loc[lapse_basis(), "first_year_rate"])  # noqa: F821
+        return data.lapse_table().loc[lapse_basis(), "first_year_rate"]  # noqa: F821
     elif name == LapseColumn.completion_rate:
-        return float(data.lapse_table().loc[lapse_basis(), "completion_rate"])  # noqa: F821
+        return data.lapse_table().loc[lapse_basis(), "completion_rate"]  # noqa: F821
     elif name == LapseColumn.ultimate_rate:
         return float(data.lapse_table().loc[lapse_basis(), "ultimate_rate"])  # noqa: F821
     else:
@@ -809,13 +809,13 @@ def inc_pivot_ages(cause):
     """The pivot ages of ``cause`` for this model point's sex, as integers in age order (the keys
     of :func:`inc_pivots`)."""
     s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
-    return [int(s.index[i]) for i in range(len(s.index))]
+    return [s.index[i] for i in range(len(s.index))]
 
 
 def inc_pivot_rates(cause):
     """The pivot rates of ``cause`` for this model point's sex, at :func:`inc_pivot_ages`."""
     s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
-    return [float(s.loc[s.index[i], "rate"]) for i in range(len(s.index))]
+    return [s.loc[s.index[i], "rate"] for i in range(len(s.index))]
 
 
 def inc_rate_at(x, cause):
@@ -1337,13 +1337,13 @@ def cum_prem_pp(t):
 def av_build_keys():
     """The ``build`` pivots of av_table: the durations in years, as floats, in key order."""
     tab = av_build_curve()
-    return [float(tab.index[i]) for i in range(len(tab.index))]
+    return [tab.index[i] for i in range(len(tab.index))]
 
 
 def av_build_values():
     """The ``build`` pivots of av_table: the values at :func:`av_build_keys`, as floats."""
     tab = av_build_curve()
-    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
+    return [tab.loc[tab.index[i], "value"] for i in range(len(tab.index))]
 
 
 def refund_build(d):
@@ -1379,13 +1379,13 @@ def refund_build(d):
 def av_taper_keys():
     """The ``taper`` pivots of av_table: the runoff fractions, as floats, in key order."""
     tab = av_taper_curve()
-    return [float(tab.index[i]) for i in range(len(tab.index))]
+    return [tab.index[i] for i in range(len(tab.index))]
 
 
 def av_taper_values():
     """The ``taper`` pivots of av_table: the values at :func:`av_taper_keys`, as floats."""
     tab = av_taper_curve()
-    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
+    return [tab.loc[tab.index[i], "value"] for i in range(len(tab.index))]
 
 
 def refund_taper(r):

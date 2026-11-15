@@ -863,7 +863,7 @@ def scenario_value(y, field):
     sub = rate_scenario_path()
     key = sub.index.asof(y) if y >= sub.index[0] else sub.index[0]
     if field == ScenarioField.index_level:
-        return float(sub.loc[key, "index_level"])
+        return sub.loc[key, "index_level"]
     elif field == ScenarioField.mva_ref_yield:
         return float(sub.loc[key, "mva_ref_yield"])
     else:

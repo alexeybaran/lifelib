@@ -559,12 +559,12 @@ def calendar_year(t):
 
 def mort_age_max():
     """The last age of the mortality table (every (basis, sex) group spans the same ages, checked at load)."""
-    return int(data.mort_table().index.max()[2])                     # noqa: F821
+    return data.mort_table().index.max()[2]                     # noqa: F821
 
 
 def mort_age_min():
     """The first age of the mortality table (every (basis, sex) group spans the same ages, checked at load)."""
-    return int(data.mort_table().index.min()[2])                     # noqa: F821
+    return data.mort_table().index.min()[2]                     # noqa: F821
 
 
 def mort_rate_at_age(x, table_sex, basis):
@@ -589,12 +589,12 @@ def mort_rate_at_age(x, table_sex, basis):
 
 def improve_age_max():
     """The last age of the improvement table (every basis spans the same ages, checked at load)."""
-    return int(data.improvement_table().index.max()[1])              # noqa: F821
+    return data.improvement_table().index.max()[1]              # noqa: F821
 
 
 def improve_age_min():
     """The first age of the improvement table (every basis spans the same ages, checked at load)."""
-    return int(data.improvement_table().index.min()[1])              # noqa: F821
+    return data.improvement_table().index.min()[1]              # noqa: F821
 
 
 def improve_rate_at_age(x, basis):

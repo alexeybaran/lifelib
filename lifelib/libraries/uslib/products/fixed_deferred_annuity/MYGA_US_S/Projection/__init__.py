@@ -551,7 +551,7 @@ def scenario_rate(t, field):
     """
     sub = scenario_table()
     if field == RateColumn.mva_ref_yield:
-        return float(sub.loc[sub.index.asof(t), "mva_ref_yield"])
+        return sub.loc[sub.index.asof(t), "mva_ref_yield"]
     elif field == RateColumn.market_rate:
         return float(sub.loc[sub.index.asof(t), "market_rate"])
     else:

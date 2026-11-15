@@ -629,7 +629,7 @@ def grade_ages(grade):
 def grade_shares(grade):
     """The ``share_ge`` of grade_share_table at ``grade``, at :func:`grade_ages`."""
     tbl = data.grade_share_table().loc[grade]                        # noqa: F821
-    return [float(tbl.loc[a, "share_ge"]) for a in grade_ages(grade)]
+    return [tbl.loc[a, "share_ge"] for a in grade_ages(grade)]
 
 
 def share_ge_at(grade, x):
@@ -853,7 +853,7 @@ def disclosed_inc_at(x):
     else:
         a, b = next((p, q) for p, q in zip(ages[:-1], ages[1:]) if p <= x <= q)
     r_a = float(tbl.loc[a, "rate_g1"]) + float(tbl.loc[a, "rate_g2"])
-    r_b = float(tbl.loc[b, "rate_g1"]) + float(tbl.loc[b, "rate_g2"])
+    r_b = tbl.loc[b, "rate_g1"] + float(tbl.loc[b, "rate_g2"])
     g = math.log(r_b / r_a) / (b - a)                                # noqa: F821
     return r_a * math.exp(g * (x - a))                               # noqa: F821
 
@@ -1491,7 +1491,7 @@ def av_fractions():
 def av_ratios():
     """The ``av_ratio`` of av_table at :func:`av_fractions`."""
     tbl = data.av_table()                                            # noqa: F821
-    return [float(tbl.loc[v, "av_ratio"]) for v in av_fractions()]
+    return [tbl.loc[v, "av_ratio"] for v in av_fractions()]
 
 
 def av_ratio_at(fraction):

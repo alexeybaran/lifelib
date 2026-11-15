@@ -731,7 +731,7 @@ def inc_rate_base(t):
     tbl = data.incidence_table()                                     # noqa: F821
     b = inc_band(t)
     if sex() == Sex.M:
-        f = float(tbl.loc[b, "inc_factor_m"])
+        f = tbl.loc[b, "inc_factor_m"]
     else:
         f = float(tbl.loc[b, "inc_factor_f"])
     return (float(tbl.loc[b, "juryoritsu_per_100k"]) / 100000.0

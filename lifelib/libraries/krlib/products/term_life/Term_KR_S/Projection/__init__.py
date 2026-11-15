@@ -862,17 +862,17 @@ def acc_mort_share(t):
 
 def lapse_in_payment_end():
     """The lapse rate the grade converges to at the end of the payment term."""
-    return float(data.lapse_table().loc[Segment.in_payment_end, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.in_payment_end, "lapse_rate"]  # noqa: F821
 
 
 def lapse_in_payment_start():
     """The lapse rate at the start of the payment term (the start of the log-linear grade)."""
-    return float(data.lapse_table().loc[Segment.in_payment_start, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.in_payment_start, "lapse_rate"]  # noqa: F821
 
 
 def lapse_post_payment():
     """The lapse rate after the payment term."""
-    return float(data.lapse_table().loc[Segment.post_payment, "lapse_rate"])  # noqa: F821
+    return data.lapse_table().loc[Segment.post_payment, "lapse_rate"]  # noqa: F821
 
 
 def lapse_rate(t):
