@@ -85,8 +85,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -102,7 +102,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def lapse_table():
@@ -123,8 +123,8 @@ def lapse_table():
     level does: a saver who surrenders a 2° engagement while its guarantee is in the money
     gives up the entire guarantee, which is the strongest exit deterrent in the product.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year").sort_index())
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year").sort_index()
 
 
 def scenario_table():
@@ -150,7 +150,7 @@ def scenario_table():
     frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
     if (frame.groupby("scenario")["year"].max() != frame["year"].max()).any():
         raise ValueError("scenario_table: every scenario must run to the same last year")
-    return pdn.table(frame.set_index(["scenario", "year"]).sort_index())
+    return frame.set_index(["scenario", "year"]).sort_index()
 
 
 def tec_curve():
@@ -180,7 +180,7 @@ def tec_curve():
     frame["scenario"] = [Scenario[name] for name in frame["scenario"]]
     if (frame.groupby("scenario")["year"].max() != frame["year"].max()).any():
         raise ValueError("tec_curve: every scenario must run to the same last year")
-    return pdn.table(frame.set_index(["scenario", "year", "maturity"]).sort_index())
+    return frame.set_index(["scenario", "year", "maturity"]).sort_index()
 
 
 # ---------------------------------------------------------------------------
@@ -197,8 +197,6 @@ scenario_table_file = "scenario_table.csv"
 tec_curve_file = "tec_curve.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

@@ -173,8 +173,8 @@ def model_point_table():
     해약환급금 미지급형 — which is both the 감독규정 기준연령 요건 [REG-R9] and the
     disclosure's 대표계약 [S5].
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -193,7 +193,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def rate_class_table():
@@ -216,7 +216,7 @@ def rate_class_table():
     frame = pd.read_csv(input_dir() / rate_class_file)               # noqa: F821
     frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["rate_class", "sex"]))
+    return frame.set_index(["rate_class", "sex"])
 
 
 def prem_rate_table():
@@ -232,7 +232,7 @@ def prem_rate_table():
     frame = pd.read_csv(input_dir() / prem_rate_file)                # noqa: F821
     frame["form"] = [MaturityForm[name] for name in frame["form"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["form", "sex", "issue_age", "term_y"]))
+    return frame.set_index(["form", "sex", "issue_age", "term_y"])
 
 
 def prem_anchor_table():
@@ -243,7 +243,7 @@ def prem_anchor_table():
     which for the 순수보장형 is the doubly prescribed cell [REG-R9] [S5].
     """
     tbl = prem_rate_table().reset_index()
-    return pdn.table(tbl[tbl["is_anchor"] == 1].set_index(["form", "sex"]))
+    return tbl[tbl["is_anchor"] == 1].set_index(["form", "sex"])
 
 
 def lapse_table():
@@ -256,7 +256,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
     frame["segment"] = [Segment[name] for name in frame["segment"]]
-    return pdn.table(frame.set_index("segment"))
+    return frame.set_index("segment")
 
 
 # ---------------------------------------------------------------------------
@@ -273,8 +273,6 @@ prem_rate_file = "prem_rate_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

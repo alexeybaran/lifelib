@@ -122,8 +122,8 @@ def model_point_table():
     anchor cell.  This is the library's one **provenance-exempt** input, because a model
     point is a configuration rather than an assumption.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -135,8 +135,8 @@ def mort_table():
     decrement, which is this table scaled by ``mort_be_factor``, and **not** of the
     *Rentenfaktor*, which rests on an annuity table.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / mort_file, index_col="age"))                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def lapse_table():
@@ -153,8 +153,8 @@ def lapse_table():
     up is applied in :mod:`~.FRV_DE_S.Projection` rather than stored here, because it
     depends on the attained age as well as the duration.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
 
 
 def charge_table():
@@ -167,8 +167,8 @@ def charge_table():
     between the first two is the acquisition load, the parameter this library most needs
     and cannot source.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / charge_file, index_col="charge_id"))            # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / charge_file, index_col="charge_id")            # noqa: F821
 
 
 def fund_scenario_table():
@@ -183,9 +183,9 @@ def fund_scenario_table():
     Nothing here is a PRIIPs performance scenario and nothing here may be compared with
     one — those are derived from an underlying's own return history, not chosen.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / fund_scenario_file,                            # noqa: F821
-        index_col=["scenario_id", "policy_year"]))
+        index_col=["scenario_id", "policy_year"])
 
 
 def rentenfaktor_table():
@@ -197,9 +197,9 @@ def rentenfaktor_table():
     a replacement.  The table is indexed by the **age at *Rentenbeginn***, not by the
     attained age in the last projected month, which is one lower.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["factor_id", "annuity_age"]))
+        index_col=["factor_id", "annuity_age"])
 
 
 # ---------------------------------------------------------------------------
@@ -218,5 +218,3 @@ fund_scenario_file = "fund_scenario_table.csv"
 rentenfaktor_file = "rentenfaktor_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")

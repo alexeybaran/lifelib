@@ -116,8 +116,8 @@ def model_point_table():
     notes' worked example; the other seven exercise the product's variants, its
     optional modules and its edge cases.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -134,7 +134,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
+    return frame.set_index(["sex", "age"]).sort_index()              # noqa: F821
 
 
 def lapse_table():
@@ -149,8 +149,8 @@ def lapse_table():
     at the largest year in the table, so a whole-of-life projection does not run off
     the end of it.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def prevalence_table():
@@ -163,7 +163,7 @@ def prevalence_table():
     """
     frame = pd.read_csv(input_dir() / prevalence_file)               # noqa: F821
     frame["param"] = [PrevParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index("param"))                       # noqa: F821
+    return frame.set_index("param")                                  # noqa: F821
 
 
 def grade_share_table():
@@ -176,7 +176,7 @@ def grade_share_table():
     """
     frame = pd.read_csv(input_dir() / grade_share_file)              # noqa: F821
     frame["grade"] = [Grade[name] for name in frame["grade"]]
-    return pdn.table(frame.set_index("grade"))                       # noqa: F821
+    return frame.set_index("grade")                                  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -193,8 +193,6 @@ prevalence_file = "prevalence_table.csv"
 grade_share_file = "grade_share_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

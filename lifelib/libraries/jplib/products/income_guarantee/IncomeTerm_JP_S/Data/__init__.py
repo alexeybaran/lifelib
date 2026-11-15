@@ -112,8 +112,8 @@ def model_point_table():
     ``technical-notes.md``; the rest exercise the product's variants, its optional
     modules and its edge cases.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -127,7 +127,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
+    return frame.set_index(["sex", "age"]).sort_index()              # noqa: F821
 
 
 def lapse_table():
@@ -138,8 +138,8 @@ def lapse_table():
     protection chassis because nothing product-specific exists — the national
     household survey does not break 収入保障保険 out at all.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def rate_class_table():
@@ -153,7 +153,7 @@ def rate_class_table():
     """
     frame = pd.read_csv(input_dir() / rate_class_file)               # noqa: F821
     frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
-    return pdn.table(frame.set_index("rate_class"))                  # noqa: F821
+    return frame.set_index("rate_class")                             # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +168,6 @@ lapse_table_file = "lapse_table.csv"
 rate_class_file = "rate_class_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

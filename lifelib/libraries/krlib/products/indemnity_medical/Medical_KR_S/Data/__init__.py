@@ -160,8 +160,8 @@ def model_point_table():
     for that exact life.  The others exercise the 보장종목 elections, the
     보험가입금액 menu, the optional modules and the edge ages.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -175,7 +175,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def lapse_table():
@@ -185,8 +185,8 @@ def lapse_table():
     policyholder's separate right to decline the annual renewal is a different decrement
     and carries its own rate, ``Projection.renewal_decline_rate``.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def utilisation_table():
@@ -202,7 +202,7 @@ def utilisation_table():
     """
     frame = pd.read_csv(input_dir() / utilisation_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age_start"]))
+    return frame.set_index(["sex", "age_start"])
 
 
 def severity_table():
@@ -217,7 +217,7 @@ def severity_table():
     """
     frame = pd.read_csv(input_dir() / severity_table_file)                     # noqa: F821
     frame["stream"] = [Stream[name] for name in frame["stream"]]
-    return pdn.table(frame.set_index(["stream", "point"]))
+    return frame.set_index(["stream", "point"])
 
 
 def claim_shape_table():
@@ -231,8 +231,8 @@ def claim_shape_table():
     Bucket 0 is the no-claim mass that becomes 1단계.  This is the table the
     비급여 할인·할증 loop runs on.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / claim_shape_file, index_col="bucket"))          # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / claim_shape_file, index_col="bucket")          # noqa: F821
 
 
 def oop_ceiling_table():
@@ -244,8 +244,8 @@ def oop_ceiling_table():
     refundable from cover outright, so this is the level at which the 급여 half of the
     insured loss stops accruing.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / oop_ceiling_file, index_col="decile"))          # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / oop_ceiling_file, index_col="decile")          # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +266,6 @@ claim_shape_file = "claim_shape_table.csv"
 oop_ceiling_file = "oop_ceiling_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

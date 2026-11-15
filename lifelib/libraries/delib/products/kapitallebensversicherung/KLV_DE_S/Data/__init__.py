@@ -139,8 +139,8 @@ def model_point_table():
     without a ``provenance`` column: a model point is a *configuration* — one policy's own
     terms — rather than an assumption, and that exemption is the only one in the library.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -153,7 +153,7 @@ def mort_table():
     frame = pd.read_csv(                                             # noqa: F821
         input_dir() / mort_table_file)                               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def lapse_table():
@@ -164,8 +164,8 @@ def lapse_table():
     The ``policy_year`` key is the **contractual, 1-based** label, read through
     ``Projection.policy_year(t) = t + 1`` rather than by the 0-based ``t`` directly.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
 
 
 def surplus_rate_table():
@@ -178,9 +178,9 @@ def surplus_rate_table():
     ``policy_year`` key is the **contractual, 1-based** label, read through
     ``Projection.policy_year(t) = t + 1``.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_rate_file,                             # noqa: F821
-        index_col=["scenario_id", "policy_year"]))
+        index_col=["scenario_id", "policy_year"])
 
 
 def cost_table():
@@ -192,8 +192,8 @@ def cost_table():
     what the insurer expects to spend — because the difference between them **is** the
     *Kostenüberschuss*.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / cost_file, index_col="cost_id"))                # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / cost_file, index_col="cost_id")                # noqa: F821
 
 
 def freq_loading_table():
@@ -207,7 +207,7 @@ def freq_loading_table():
     frame = pd.read_csv(                                             # noqa: F821
         input_dir() / freq_loading_file)                             # noqa: F821
     frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
-    return pdn.table(frame.set_index("prem_freq"))
+    return frame.set_index("prem_freq")
 
 
 def deckrv_table():
@@ -219,8 +219,8 @@ def deckrv_table():
     whole term**, which is why the German in-force book is a stack of cohorts and why they
     are keyed by ``issue_year`` rather than by projection year.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / deckrv_file, index_col="issue_year"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / deckrv_file, index_col="issue_year")           # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -241,8 +241,6 @@ freq_loading_file = "freq_loading_table.csv"
 deckrv_file = "deckrv_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

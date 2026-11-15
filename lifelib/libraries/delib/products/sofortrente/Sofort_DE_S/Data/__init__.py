@@ -128,8 +128,8 @@ def model_point_table():
     ``provenance`` column: a model point is a configuration rather than an assumption, and
     its columns are one contract's own terms.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -150,7 +150,7 @@ def mort_table():
     span = frame.groupby(["basis", "sex"])["age"].agg(["min", "max"])
     if (span["min"] != frame["age"].min()).any() or (span["max"] != frame["age"].max()).any():
         raise ValueError("mort_table: every (basis, sex) must span the same ages")
-    return pdn.table(frame.set_index(["basis", "sex", "age"]))
+    return frame.set_index(["basis", "sex", "age"])
 
 
 def improvement_table():
@@ -167,7 +167,7 @@ def improvement_table():
     span = frame.groupby("basis")["age"].agg(["min", "max"])
     if (span["min"] != frame["age"].min()).any() or (span["max"] != frame["age"].max()).any():
         raise ValueError("improvement_table: every basis must span the same ages")
-    return pdn.table(frame.set_index(["basis", "age"]))
+    return frame.set_index(["basis", "age"])
 
 
 def surplus_scale_table():
@@ -186,7 +186,7 @@ def surplus_scale_table():
     frame = pd.read_csv(                                             # noqa: F821
         input_dir() / surplus_scale_file)                            # noqa: F821
     frame["surplus_form"] = [SurplusForm[name] for name in frame["surplus_form"]]
-    return pdn.table(frame.set_index("surplus_form"))
+    return frame.set_index("surplus_form")
 
 
 def hoechstrechnungszins_table():
@@ -198,8 +198,8 @@ def hoechstrechnungszins_table():
     than against today's rate.  The cap is an upper bound and not the tariff rate: a
     carrier may price below it, and one in the corpus is observed doing so.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / hoechstrechnungszins_file, index_col="year_from"))   # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -216,8 +216,6 @@ surplus_scale_file = "surplus_scale_table.csv"
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

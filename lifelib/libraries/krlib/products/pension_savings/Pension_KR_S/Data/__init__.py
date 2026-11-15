@@ -117,8 +117,8 @@ def model_point_table():
     male, 보험나이 40 at issue, 기본보험료 ₩500,000 a month for twenty years to 60, annuity
     from 65 as a 종신연금형 with a ten-year guarantee.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -133,7 +133,7 @@ def mort_table():
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["table"] = [MortTable[name] for name in frame["table"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["table", "sex", "age"]).sort_index())
+    return frame.set_index(["table", "sex", "age"]).sort_index()
 
 
 def mort_anchor_table():
@@ -150,7 +150,7 @@ def mort_anchor_table():
     frame["table"] = [MortTable[name] for name in frame["table"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["item"] = [AnchorItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index(["table", "sex", "item"]).sort_index())
+    return frame.set_index(["table", "sex", "item"]).sort_index()
 
 
 def lapse_table():
@@ -167,7 +167,7 @@ def lapse_table():
     frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
     frame["basis"] = [LapseBasis[name] for name in frame["basis"]]
     frame["segment"] = [Segment[name] for name in frame["segment"]]
-    return pdn.table(frame.set_index(["basis", "segment", "from_year"]).sort_index())
+    return frame.set_index(["basis", "segment", "from_year"]).sort_index()
 
 
 def decl_rate_table():
@@ -182,7 +182,7 @@ def decl_rate_table():
     """
     frame = pd.read_csv(input_dir() / decl_rate_file)                     # noqa: F821
     frame["scenario"] = [RateScenario[name] for name in frame["scenario"]]
-    return pdn.table(frame.set_index(["scenario", "from_year"]).sort_index())
+    return frame.set_index(["scenario", "from_year"]).sort_index()
 
 
 def guar_rate_table():
@@ -196,8 +196,8 @@ def guar_rate_table():
     exactly where the fund is smallest.  A 금리연동형보험 must set one at all, under
     감독규정 제7-60조제10호.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / guar_rate_file, index_col="from_year"))         # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / guar_rate_file, index_col="from_year")         # noqa: F821
 
 
 def pricing_table():
@@ -211,7 +211,7 @@ def pricing_table():
     """
     frame = pd.read_csv(input_dir() / pricing_table_file)                     # noqa: F821
     frame["item"] = [PricingItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))
+    return frame.set_index("item")
 
 
 def expense_table():
@@ -225,7 +225,7 @@ def expense_table():
     """
     frame = pd.read_csv(input_dir() / expense_table_file)                     # noqa: F821
     frame["item"] = [ExpenseItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))
+    return frame.set_index("item")
 
 
 def tax_table():
@@ -240,7 +240,7 @@ def tax_table():
     """
     frame = pd.read_csv(input_dir() / tax_table_file)                     # noqa: F821
     frame["item"] = [TaxItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))
+    return frame.set_index("item")
 
 
 # ---------------------------------------------------------------------------
@@ -265,8 +265,6 @@ expense_table_file = "expense_table.csv"
 tax_table_file = "tax_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

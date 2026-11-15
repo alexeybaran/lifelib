@@ -116,8 +116,8 @@ def model_point_table():
     *configuration* — one policy's own terms — rather than an assumption, and that is the
     single exemption from the library's second ruling.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def benefit_scale_table():
@@ -130,9 +130,9 @@ def benefit_scale_table():
     fixed by German statute; it is carried for comparison, since a *Pflegerente* written
     by a *Lebensversicherer* cannot be a *geförderter Tarif*.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / benefit_scale_file,                            # noqa: F821
-        index_col=["staffel_id", "pflegegrad"]))
+        index_col=["staffel_id", "pflegegrad"])
 
 
 def mort_table():
@@ -145,7 +145,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def incidence_table():
@@ -157,7 +157,7 @@ def incidence_table():
     """
     frame = pd.read_csv(input_dir() / incidence_file)                # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def care_table():
@@ -173,8 +173,8 @@ def care_table():
     9 / 44 / 27 / 14 / 6 %: entrants skew lower than the stock because deterioration moves
     people up over a spell, and using the stock as the entry mix is a listed pitfall.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / care_file, index_col="pflegegrad"))             # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / care_file, index_col="pflegegrad")             # noqa: F821
 
 
 def lapse_table():
@@ -185,8 +185,8 @@ def lapse_table():
     profile is argued from the *Zillmerung* — the *Rückkaufswert* is near zero for the
     first years, so an early lapse is expensive to the policyholder.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
 
 
 def surrender_table():
@@ -202,8 +202,8 @@ def surrender_table():
     zero, and the § 169 Abs. 3 VVG five-year spread floor, which is why it turns positive
     in year three — and no cited level, because none was established.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / surrender_file, index_col="policy_year"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
 
 
 def expense_table():
@@ -217,7 +217,7 @@ def expense_table():
     """
     frame = pd.read_csv(input_dir() / expense_file)                  # noqa: F821
     frame["item"] = [ExpenseItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))
+    return frame.set_index("item")
 
 
 def basis_table():
@@ -232,7 +232,7 @@ def basis_table():
     """
     frame = pd.read_csv(input_dir() / basis_file)                    # noqa: F821
     frame["param"] = [BasisParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index("param"))
+    return frame.set_index("param")
 
 
 # ---------------------------------------------------------------------------
@@ -257,8 +257,6 @@ expense_file = "expense_table.csv"
 basis_file = "basis_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

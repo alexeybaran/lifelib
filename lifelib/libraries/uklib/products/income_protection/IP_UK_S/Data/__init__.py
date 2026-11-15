@@ -72,8 +72,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def inception_table():
@@ -87,7 +87,7 @@ def inception_table():
     """
     frame = pd.read_csv(input_dir() / inception_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "occ_class", "deferred_weeks", "age"]).sort_index())
+    return frame.set_index(["sex", "occ_class", "deferred_weeks", "age"]).sort_index()
 
 
 def termination_table():
@@ -97,9 +97,9 @@ def termination_table():
     terminations into recovery and death exactly this way, but is two-dimensional in
     age and duration; the age dimension is suppressed here **[std]**.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / termination_file,                              # noqa: F821
-        index_col="claim_duration_year"))
+        index_col="claim_duration_year")
 
 
 def mort_table():
@@ -113,13 +113,13 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def lapse_table():
     """The lapse rates by policy year, read from *lapse_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,5 @@ mort_table_file = "mort_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)

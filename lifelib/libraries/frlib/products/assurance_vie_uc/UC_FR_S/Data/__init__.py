@@ -77,8 +77,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -102,7 +102,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def lapse_table():
@@ -118,8 +118,8 @@ def lapse_table():
     holding period printed in both retrieved key-information documents.  A model with no
     duration-8 spike has ignored the single strongest driver of French surrender timing.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))      # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")      # noqa: F821
 
 
 def plancher_rate_table():
@@ -135,8 +135,8 @@ def plancher_rate_table():
     attained age inside the cover falls outside the table, rather than extrapolating:
     extending the cessation age past 75 needs a tariff the sources do not contain.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / plancher_rate_table_file, index_col="age"))      # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / plancher_rate_table_file, index_col="age")      # noqa: F821
 
 
 def uc_scenario_table():
@@ -165,7 +165,7 @@ def uc_scenario_table():
     prev_to = frame.groupby(level="scenario_id")["to_month"].shift()
     if (frame.index.get_level_values("from_month") <= prev_to).any():
         raise ValueError("uc_scenario_table: the month segments of a scenario must not overlap")
-    return pdn.table(frame)
+    return frame
 
 
 # ---------------------------------------------------------------------------
@@ -182,7 +182,5 @@ plancher_rate_table_file = "plancher_rate_table.csv"
 uc_scenario_table_file = "uc_scenario_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)

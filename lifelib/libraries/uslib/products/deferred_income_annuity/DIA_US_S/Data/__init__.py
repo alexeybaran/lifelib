@@ -90,7 +90,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
+    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
 
 
 def premium_schedule_table():
@@ -100,21 +100,21 @@ def premium_schedule_table():
     indexed, so that selecting a contract's rows returns a DataFrame whether it has one
     slice or many.
     """
-    return pdn.table(pd.read_csv(input_dir() / premium_schedule_file).set_index(["point_id", "premium_mth"]).sort_index())           # noqa: F821
+    return pd.read_csv(input_dir() / premium_schedule_file).set_index(["point_id", "premium_mth"]).sort_index()           # noqa: F821
 
 
 def mort_table():
     """The base annuitant mortality table by age and sex, read from *mort_table.csv*."""
     frame = pd.read_csv(input_dir() / mort_table_file)                    # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["age", "sex"]))
+    return frame.set_index(["age", "sex"])
 
 
 def improvement_scale():
     """The generational improvement scale by age and sex, from *improvement_scale.csv*."""
     frame = pd.read_csv(input_dir() / improvement_scale_file)                    # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["age", "sex"]))
+    return frame.set_index(["age", "sex"])
 
 
 def payout_factor_table():
@@ -127,7 +127,7 @@ def payout_factor_table():
     frame = pd.read_csv(input_dir() / payout_factor_file)                    # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["payout_form"] = [IncomeForm[name] for name in frame["payout_form"]]
-    return pdn.table(frame.set_index(["income_start_age", "sex", "payout_form"]))
+    return frame.set_index(["income_start_age", "sex", "payout_form"])
 
 
 def rop_factor_table():
@@ -139,7 +139,7 @@ def rop_factor_table():
     """
     frame = pd.read_csv(input_dir() / rop_factor_file)                    # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["issue_age", "sex", "deferral_years"]))
+    return frame.set_index(["issue_age", "sex", "deferral_years"])
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +158,6 @@ payout_factor_file = "payout_factor_table.csv"
 rop_factor_file = "rop_factor_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

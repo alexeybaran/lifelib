@@ -116,8 +116,8 @@ def model_point_table():
     the other nine exercise the product's variants, its optional modules and the edges of
     its issue-age and sum-assured envelopes.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -132,7 +132,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def lapse_table():
@@ -147,7 +147,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
     frame["lapse_basis"] = [LapseBasis[name] for name in frame["lapse_basis"]]
-    return pdn.table(frame.set_index("lapse_basis"))
+    return frame.set_index("lapse_basis")
 
 
 # ---------------------------------------------------------------------------
@@ -160,8 +160,6 @@ mort_table_file = "mort_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

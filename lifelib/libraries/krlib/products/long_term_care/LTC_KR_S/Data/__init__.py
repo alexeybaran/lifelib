@@ -110,8 +110,8 @@ def model_point_table():
     and the other eight exercise the thresholds, the terms, the surrender-value forms, the
     optional modules and the waiting-period variants.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -125,7 +125,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def prevalence_table():
@@ -139,7 +139,7 @@ def prevalence_table():
     frame = pd.read_csv(input_dir() / prevalence_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["param"] = [PrevParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index(["sex", "param"]))
+    return frame.set_index(["sex", "param"])
 
 
 def grade_share_table():
@@ -155,7 +155,7 @@ def grade_share_table():
     """
     frame = pd.read_csv(input_dir() / grade_share_file)                     # noqa: F821
     frame["grade"] = [Grade[name] for name in frame["grade"]]
-    return pdn.table(frame.set_index(["grade", "age"]))
+    return frame.set_index(["grade", "age"])
 
 
 def incidence_table():
@@ -170,7 +170,7 @@ def incidence_table():
     """
     frame = pd.read_csv(input_dir() / incidence_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def dementia_table():
@@ -183,7 +183,7 @@ def dementia_table():
     """
     frame = pd.read_csv(input_dir() / dementia_file)                     # noqa: F821
     frame["param"] = [DemParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index("param"))
+    return frame.set_index("param")
 
 
 def lapse_table():
@@ -197,7 +197,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
     frame["param"] = [LapseParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index("param"))
+    return frame.set_index("param")
 
 
 def av_table():
@@ -210,8 +210,8 @@ def av_table():
     office premiums paid, and ``runoff_fraction`` is the fraction of the way from 납입완료 to
     maturity, which is what lets one shipped progression serve every term and paying period.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / av_table_file, index_col="runoff_fraction"))    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / av_table_file, index_col="runoff_fraction")    # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +234,6 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

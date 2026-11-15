@@ -124,8 +124,8 @@ def model_point_table():
     계약자 male 만 33 — and the other nine exercise the sexes, the issue-age and term
     envelopes, the three surrender-value forms, the optional modules and the switches.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -140,7 +140,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def incidence_table():
@@ -161,7 +161,7 @@ def incidence_table():
     frame = pd.read_csv(input_dir() / incidence_file)                     # noqa: F821
     frame["cause"] = [Cover[name] for name in frame["cause"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["cause", "sex", "age"]).sort_index())
+    return frame.set_index(["cause", "sex", "age"]).sort_index()
 
 
 def basis_table():
@@ -177,7 +177,7 @@ def basis_table():
     """
     frame = pd.read_csv(input_dir() / basis_file)                     # noqa: F821
     frame["param"] = [BasisParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index("param"))
+    return frame.set_index("param")
 
 
 def neonatal_table():
@@ -193,7 +193,7 @@ def neonatal_table():
     """
     frame = pd.read_csv(input_dir() / neonatal_file, index_col="item")  # noqa: F821
     frame["timing"] = [NeoTiming[name] for name in frame["timing"]]
-    return pdn.table(frame)
+    return frame
 
 
 def lapse_table():
@@ -207,7 +207,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
     frame["lapse_basis"] = [LapseBasis[name] for name in frame["lapse_basis"]]
-    return pdn.table(frame.set_index("lapse_basis"))
+    return frame.set_index("lapse_basis")
 
 
 def av_table():
@@ -224,7 +224,7 @@ def av_table():
     """
     frame = pd.read_csv(input_dir() / av_table_file)                     # noqa: F821
     frame["curve"] = [AvCurve[name] for name in frame["curve"]]
-    return pdn.table(frame.set_index(["curve", "key"]).sort_index())
+    return frame.set_index(["curve", "key"]).sort_index()
 
 
 # ---------------------------------------------------------------------------
@@ -245,8 +245,6 @@ lapse_table_file = "lapse_table.csv"
 av_table_file = "av_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

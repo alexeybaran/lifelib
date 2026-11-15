@@ -68,8 +68,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def ci_rate_table():
@@ -88,13 +88,13 @@ def ci_rate_table():
     frame = pd.read_csv(input_dir() / ci_rate_file)                 # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
-    return pdn.table(frame.set_index(["sex", "smoker", "age"]).sort_index())
+    return frame.set_index(["sex", "smoker", "age"]).sort_index()
 
 
 def lapse_table():
     """The lapse rates by policy year, read from *lapse_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +107,6 @@ ci_rate_file = "ci_rate_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

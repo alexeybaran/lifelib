@@ -102,8 +102,8 @@ def model_point_table():
     Indexed by ``point_id``.  ``point_id = 1`` is the 養老保険 anchor cell of the
     technical notes' worked example and ``point_id = 2`` its 学資保険 cell.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -116,7 +116,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
+    return frame.set_index(["sex", "age"]).sort_index()              # noqa: F821
 
 
 def lapse_table():
@@ -134,8 +134,8 @@ def lapse_table():
     premium-default rate that feeds the automatic premium loan module, which is off in
     the base run because every shipped base model point carries ``apl_default_mult = 0``.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def benefit_schedule_table():
@@ -153,9 +153,9 @@ def benefit_schedule_table():
     benefit is not a row here — it is always present on both cells and is held
     separately, so that a schedule with no rows at all still matures.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / benefit_schedule_file,                         # noqa: F821
-        index_col=["schedule_id", "k"]))
+        index_col=["schedule_id", "k"])
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +170,5 @@ lapse_table_file = "lapse_table.csv"
 benefit_schedule_file = "benefit_schedule_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)

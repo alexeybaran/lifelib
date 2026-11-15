@@ -141,8 +141,8 @@ def model_point_table():
     cell; the other eight exercise the product's variants, its optional modules and the
     two ends of its issue-age and sum-assured envelopes.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -156,7 +156,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def ci_incidence_table():
@@ -177,7 +177,7 @@ def ci_incidence_table():
     frame = pd.read_csv(input_dir() / ci_incidence_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["cause"] = [Cause[name] for name in frame["cause"]]
-    return pdn.table(frame.set_index(["sex", "age", "cause"]))
+    return frame.set_index(["sex", "age", "cause"])
 
 
 def lapse_table():
@@ -191,8 +191,8 @@ def lapse_table():
     로그-선형 원칙모형 of [REG-R27] instead, which is a formula and lives in
     :mod:`~.CI_KR_S.Projection`.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -207,8 +207,6 @@ ci_incidence_file = "ci_incidence_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

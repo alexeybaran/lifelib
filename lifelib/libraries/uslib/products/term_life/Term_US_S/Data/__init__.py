@@ -67,7 +67,7 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / model_point_file, index_col="point_id"))  # noqa: F821
+    return pd.read_csv(input_dir() / model_point_file, index_col="point_id")  # noqa: F821
 
 
 def premium_rates():
@@ -81,24 +81,24 @@ def premium_rates():
     frame["plan"] = [Plan[name] for name in frame["plan"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
-    return pdn.table(frame.set_index(["plan", "sex", "rate_class", "band", "policy_year"]))
+    return frame.set_index(["plan", "sex", "rate_class", "band", "policy_year"])
 
 
 def mort_table():
     """The base mortality table by age, read from *mort_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / mort_table_file, index_col="age"))  # noqa: F821
+    return pd.read_csv(input_dir() / mort_table_file, index_col="age")  # noqa: F821
 
 
 def class_factor_table():
     """The underwriting-class factors, read from *class_factor_table.csv*."""
     frame = pd.read_csv(input_dir() / class_factor_file)             # noqa: F821
     frame["rate_class"] = [RateClass[name] for name in frame["rate_class"]]
-    return pdn.table(frame.set_index("rate_class"))
+    return frame.set_index("rate_class")
 
 
 def shock_lapse_table():
     """The shock-lapse buckets by jump ratio, read from *shock_lapse_table.csv*."""
-    return pdn.table(pd.read_csv(input_dir() / shock_lapse_file))  # noqa: F821
+    return pd.read_csv(input_dir() / shock_lapse_file)               # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -115,8 +115,6 @@ class_factor_file = "class_factor_table.csv"
 shock_lapse_file = "shock_lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Plan = ("Pickle", 1)
 

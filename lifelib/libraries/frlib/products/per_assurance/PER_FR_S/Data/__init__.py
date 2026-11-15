@@ -93,8 +93,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def allocation_grid():
@@ -113,7 +113,7 @@ def allocation_grid():
     """
     frame = pd.read_csv(input_dir() / allocation_grid_file)                     # noqa: F821
     frame["allocation_profile"] = [AllocationProfile[name] for name in frame["allocation_profile"]]
-    return pdn.table(frame.set_index(["allocation_profile", "years_to_horizon"]).sort_index())
+    return frame.set_index(["allocation_profile", "years_to_horizon"]).sort_index()
 
 
 def mort_table():
@@ -133,7 +133,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def exit_table():
@@ -164,7 +164,7 @@ def exit_table():
     """
     frame = pd.read_csv(input_dir() / exit_table_file)                     # noqa: F821
     frame["compartment"] = [Compartment[name] for name in frame["compartment"]]
-    return pdn.table(frame.set_index(["compartment", "duration"]).sort_index())
+    return frame.set_index(["compartment", "duration"]).sort_index()
 
 
 def annuity_factor_table():
@@ -184,7 +184,7 @@ def annuity_factor_table():
     """
     frame = pd.read_csv(input_dir() / annuity_factor_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 # ---------------------------------------------------------------------------
@@ -201,8 +201,6 @@ exit_table_file = "exit_table.csv"
 annuity_factor_file = "annuity_factor.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

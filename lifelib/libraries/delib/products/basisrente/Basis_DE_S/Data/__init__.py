@@ -140,8 +140,8 @@ def model_point_table():
     a model point is a configuration — one policy's own terms — rather than an
     assumption.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -152,8 +152,8 @@ def mort_table():
     basis generational.  A **[std]** proxy anchored at ``qx(67) = 0.014000``, not DAV
     2004 R; see the Space docstring for what a replacement must preserve.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / mort_table_file, index_col="age"))             # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_table_file, index_col="age")              # noqa: F821
 
 
 def surplus_table():
@@ -165,9 +165,9 @@ def surplus_table():
     rate including the *Rechnungszins*, not a spread over it — and ``ann_bonus_rate`` the
     *Überschussrente* uplift in the *Rentenphase*.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / surplus_file,                      # noqa: F821
-        index_col=["scenario_id", "t"]))
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / surplus_file,                                  # noqa: F821
+        index_col=["scenario_id", "t"])
 
 
 def rentenfaktor_table():
@@ -178,9 +178,9 @@ def rentenfaktor_table():
     Entirely **[std]** — no *Rentenfaktor* level, range or time series exists anywhere in
     the delib corpus.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / rentenfaktor_file,                 # noqa: F821
-        index_col=["rf_scenario_id", "age"]))
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / rentenfaktor_file,                             # noqa: F821
+        index_col=["rf_scenario_id", "age"])
 
 
 def charge_table():
@@ -192,8 +192,8 @@ def charge_table():
     modeling pitfall, and keeping the two groups in one file is what makes the split
     visible.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / charge_file, index_col="tariff_id"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / charge_file, index_col="tariff_id")            # noqa: F821
 
 
 def behaviour_table():
@@ -206,9 +206,9 @@ def behaviour_table():
     therefore behavioural rather than contractual.  Both are **[std]** with no calibration
     evidence of any kind.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / behaviour_file,                    # noqa: F821
-        index_col=["beh_table_id", "dur"]))
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / behaviour_file,                                # noqa: F821
+        index_col=["beh_table_id", "dur"])
 
 
 def option_table():
@@ -221,7 +221,7 @@ def option_table():
     """
     frame = pd.read_csv(input_dir() / option_file)                   # noqa: F821
     frame["option_id"] = [OptionId[name] for name in frame["option_id"]]
-    return pdn.table(frame.set_index(["option_id", "option_key"]))
+    return frame.set_index(["option_id", "option_key"])
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +242,5 @@ behaviour_file = "behaviour_table.csv"
 option_file = "option_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 OptionId = ("Pickle", 1)

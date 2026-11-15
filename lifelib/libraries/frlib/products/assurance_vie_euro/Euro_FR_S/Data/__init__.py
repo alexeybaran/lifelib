@@ -84,8 +84,8 @@ def model_point_table():
     scenarios, a small new-business cell with an entry charge, a drawdown cell and a
     grouped cell carrying 250 policies.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -104,7 +104,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def lapse_table():
@@ -119,9 +119,9 @@ def lapse_table():
     age or vintage - and the dynamic term layered on them in ``Projection.lapse_rate``
     matters more than the levels do.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_table_file,                              # noqa: F821
-        index_col="policy_duration").sort_index())
+        index_col="policy_duration").sort_index()
 
 
 def fin_rate_table():
@@ -141,7 +141,7 @@ def fin_rate_table():
     """
     frame = pd.read_csv(input_dir() / fin_rate_file)                       # noqa: F821
     frame["scenario_id"] = [Scenario[name] for name in frame["scenario_id"]]
-    return pdn.table(frame.set_index(["scenario_id", "y"]).sort_index())
+    return frame.set_index(["scenario_id", "y"]).sort_index()
 
 
 # ---------------------------------------------------------------------------
@@ -156,8 +156,6 @@ lapse_table_file = "lapse_table.csv"
 fin_rate_file = "fin_rate_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

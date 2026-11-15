@@ -160,8 +160,8 @@ def model_point_table():
     rule: a model point is a *configuration* — one policy's issue age, sum insured,
     *Zahlweise* and schedule ids — rather than an assumption about the world.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -179,7 +179,7 @@ def mort_table():
         input_dir() / mort_table_file)                               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
-    return pdn.table(frame.set_index(["table_id", "sex", "smoker", "age"]))
+    return frame.set_index(["table_id", "sex", "smoker", "age"])
 
 
 def benefit_schedule():
@@ -191,9 +191,9 @@ def benefit_schedule():
     agreed at issue for a stated term.  ``policy_year`` is the contractual label and runs
     from 1; ``Projection.benefit_factor`` reads it at ``t + 1``.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / benefit_schedule_file,                         # noqa: F821
-        index_col=["schedule_id", "policy_year"]))
+        index_col=["schedule_id", "policy_year"])
 
 
 def nvg_schedule():
@@ -205,9 +205,9 @@ def nvg_schedule():
     schedule rather than modelled as a decision.  ``policy_year`` is the contractual label
     and runs from 1; ``Projection.sum_uplift`` reads it at ``t + 1``.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / nvg_schedule_file,                             # noqa: F821
-        index_col=["nvg_id", "policy_year"]))
+        index_col=["nvg_id", "policy_year"])
 
 
 def lapse_table():
@@ -219,8 +219,8 @@ def lapse_table():
     is where the convention belongs — the zero is a property of the last policy year, not
     of the table.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year"))          # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
 
 
 def freq_loading_table():
@@ -232,7 +232,7 @@ def freq_loading_table():
     """
     frame = pd.read_csv(input_dir() / freq_loading_file)             # noqa: F821
     frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
-    return pdn.table(frame.set_index("prem_freq"))
+    return frame.set_index("prem_freq")
 
 
 # ---------------------------------------------------------------------------
@@ -251,8 +251,6 @@ lapse_file = "lapse_table.csv"
 freq_loading_file = "freq_loading_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

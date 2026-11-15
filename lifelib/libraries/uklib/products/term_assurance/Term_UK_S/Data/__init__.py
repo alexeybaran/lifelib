@@ -69,8 +69,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -82,13 +82,13 @@ def mort_table():
     frame = pd.read_csv(input_dir() / mort_table_file)              # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["smoker"] = [Smoker[name] for name in frame["smoker"]]
-    return pdn.table(frame.set_index(["sex", "smoker", "age"]))
+    return frame.set_index(["sex", "smoker", "age"])
 
 
 def select_factor_table():
     """The select-duration factors, read from *select_factor_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / select_factor_file, index_col="duration"))      # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / select_factor_file, index_col="duration")      # noqa: F821
 
 
 def lapse_table():
@@ -99,8 +99,8 @@ def lapse_table():
     ``policy_year(t) = t // 12 + 1``, and the rate it returns is the **annual** one the
     table is quoted in.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -115,8 +115,6 @@ select_factor_file = "select_factor_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

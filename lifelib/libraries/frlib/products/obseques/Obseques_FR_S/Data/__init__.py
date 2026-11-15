@@ -90,8 +90,8 @@ def model_point_table():
     an entry-70 cell, a 25-year temporary, a cessation age of 80, simple revalorisation
     and monthly instalments.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -108,7 +108,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def select_table():
@@ -124,9 +124,9 @@ def select_table():
     years beyond the table take its last row.  **[std]** throughout: the magnitude has no
     public calibration of any kind.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / select_table_file,                             # noqa: F821
-        index_col="policy_year").sort_index())
+        index_col="policy_year").sort_index()
 
 
 def lapse_table():
@@ -139,9 +139,9 @@ def lapse_table():
     lapse, surrender or paid-up rate for this product, and on a contract whose surrender
     value is a real cash flow this rate moves the liability in both directions at once.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_table_file,                              # noqa: F821
-        index_col="policy_year").sort_index())
+        index_col="policy_year").sort_index()
 
 
 def surr_scale_table():
@@ -168,7 +168,7 @@ def surr_scale_table():
     """
     frame = pd.read_csv(input_dir() / surr_scale_file)                     # noqa: F821
     frame["scale"] = [SurrScale[name] for name in frame["scale"]]
-    return pdn.table(frame.set_index(["scale", "month"]).sort_index())
+    return frame.set_index(["scale", "month"]).sort_index()
 
 
 def single_prem_table():
@@ -181,9 +181,9 @@ def single_prem_table():
     *prime unique* premium form, and it is what turns a mathematical provision into a
     *valeur de reduction* when a policy stops paying and is made paid-up.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / single_prem_file,                              # noqa: F821
-        index_col="age").sort_index())
+        index_col="age").sort_index()
 
 
 # ---------------------------------------------------------------------------
@@ -202,8 +202,6 @@ surr_scale_file = "surr_scale_table.csv"
 single_prem_file = "single_prem_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

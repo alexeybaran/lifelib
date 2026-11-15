@@ -84,8 +84,8 @@ def model_point_table():
     is carried per model point because no source gives a surrender rate for this product
     and its effect has to be isolable.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -104,7 +104,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def charge_table():
@@ -120,7 +120,7 @@ def charge_table():
     """
     frame = pd.read_csv(input_dir() / charge_table_file)             # noqa: F821
     frame["shape"] = [Shape[name] for name in frame["shape"]]
-    return pdn.table(frame.set_index("shape"))
+    return frame.set_index("shape")
 
 
 def crediting_table():
@@ -136,7 +136,7 @@ def crediting_table():
     """
     frame = pd.read_csv(input_dir() / crediting_table_file)          # noqa: F821
     frame["basis_id"] = [CreditingBasis[name] for name in frame["basis_id"]]
-    return pdn.table(frame.set_index(["basis_id", "dur_from"]))
+    return frame.set_index(["basis_id", "dur_from"])
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +151,6 @@ charge_table_file = "charge_table.csv"
 crediting_table_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

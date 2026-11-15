@@ -146,8 +146,8 @@ def model_point_table():
     This is the one input file exempt from the ``provenance`` column, because a model point
     is a *configuration* -- one policy's own terms -- rather than an assumption.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -161,7 +161,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def incidence_table():
@@ -175,7 +175,7 @@ def incidence_table():
     """
     frame = pd.read_csv(input_dir() / incidence_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def tier_share_table():
@@ -190,7 +190,7 @@ def tier_share_table():
     """
     frame = pd.read_csv(input_dir() / tier_share_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def tier_table():
@@ -205,7 +205,7 @@ def tier_table():
     """
     frame = pd.read_csv(input_dir() / tier_table_file)                     # noqa: F821
     frame["tier"] = [Tier[name] for name in frame["tier"]]
-    return pdn.table(frame.set_index("tier"))
+    return frame.set_index("tier")
 
 
 def survival_table():
@@ -221,7 +221,7 @@ def survival_table():
     frame = pd.read_csv(input_dir() / survival_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["tier"] = [Tier[name] for name in frame["tier"]]
-    return pdn.table(frame.set_index(["sex", "tier", "dur_year"]))
+    return frame.set_index(["sex", "tier", "dur_year"])
 
 
 def care_table():
@@ -234,8 +234,8 @@ def care_table():
     patient, and the one published utilisation grid on the 보험개발원 display is a
     질병입원율 for all disease rather than for cancer [R5].
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / care_table_file, index_col="dur_year"))         # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / care_table_file, index_col="dur_year")         # noqa: F821
 
 
 def lapse_table():
@@ -250,7 +250,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)                     # noqa: F821
     frame["segment"] = [Segment[name] for name in frame["segment"]]
-    return pdn.table(frame.set_index("segment"))
+    return frame.set_index("segment")
 
 
 # ---------------------------------------------------------------------------
@@ -273,8 +273,6 @@ care_table_file = "care_table.csv"
 lapse_table_file = "lapse_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

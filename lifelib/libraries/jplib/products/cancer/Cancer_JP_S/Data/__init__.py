@@ -103,8 +103,8 @@ def model_point_table():
     the 算出方法書 is not a published document, so every premium in the table is a **[std]**
     modelling value.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -117,7 +117,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
+    return frame.set_index(["sex", "age"]).sort_index()              # noqa: F821
 
 
 def incidence_table():
@@ -128,8 +128,8 @@ def incidence_table():
     values reproduced with their attribution, in deliberate contrast to
     :func:`mort_table`.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / incidence_table_file, index_col="band_start"))  # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / incidence_table_file, index_col="band_start")  # noqa: F821
 
 
 def sex_factor_table():
@@ -140,8 +140,8 @@ def sex_factor_table():
     them; replacing this two-row file and the interpolation with the by-sex age-band grid
     from the same workbook is the first thing a serious user should do.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / sex_factor_file, index_col="age"))              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / sex_factor_file, index_col="age")              # noqa: F821
 
 
 def survival_table():
@@ -153,7 +153,7 @@ def survival_table():
     """
     frame = pd.read_csv(input_dir() / survival_table_file)           # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index("sex"))                         # noqa: F821
+    return frame.set_index("sex")                                    # noqa: F821
 
 
 def lapse_table():
@@ -165,8 +165,8 @@ def lapse_table():
     sum assured cannot enter; the shipped curve averages 5.5% over its first ten years
     against that 5.6%.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def hosp_stay_table():
@@ -178,7 +178,7 @@ def hosp_stay_table():
     """
     frame = pd.read_csv(input_dir() / hosp_stay_file)                # noqa: F821
     frame["basis"] = [StayBasis[name] for name in frame["basis"]]
-    return pdn.table(frame.set_index(["basis", "age_from"]))         # noqa: F821
+    return frame.set_index(["basis", "age_from"])                    # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -199,8 +199,6 @@ lapse_table_file = "lapse_table.csv"
 hosp_stay_file = "hosp_stay_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

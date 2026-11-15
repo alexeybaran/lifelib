@@ -135,8 +135,8 @@ def model_point_table():
     so an in-force cell is the continuation of a projectable contract rather than a
     free-standing guess.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -149,7 +149,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def decl_rate_table():
@@ -160,9 +160,9 @@ def decl_rate_table():
     on top of the guarantee, which is what the ``max(0, .)`` in
     :func:`~.RV_DE_S.Projection.bonus_rate` implements.  Levels are **[std]**.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / decl_rate_file,                                # noqa: F821
-        index_col=["scenario_id", "calendar_year"]))
+        index_col=["scenario_id", "calendar_year"])
 
 
 def rentenfaktor_table():
@@ -173,9 +173,9 @@ def rentenfaktor_table():
     immediate-annuity tariff.  Three **[std]** scenario paths — ``base``, ``low``,
     ``high`` — anchored at age 67 on 32,00 €, 25,50 € and 35,00 €.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"]))
+        index_col=["rf_scenario_id", "age"])
 
 
 def charge_table():
@@ -196,7 +196,7 @@ def charge_table():
     """
     frame = pd.read_csv(input_dir() / charge_file)                   # noqa: F821
     frame["item"] = [ChargeItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index(["charge_id", "item"]))
+    return frame.set_index(["charge_id", "item"])
 
 
 def lapse_table():
@@ -211,8 +211,8 @@ def lapse_table():
     is zero from the *Rentenbeginn*, which is imposed in
     :func:`~.RV_DE_S.Projection.lapse_rate` rather than carried in the table.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="duration"))             # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="duration")              # noqa: F821
 
 
 def freq_load_table():
@@ -225,7 +225,7 @@ def freq_load_table():
     """
     frame = pd.read_csv(input_dir() / freq_load_file)                # noqa: F821
     frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
-    return pdn.table(frame.set_index("prem_freq"))
+    return frame.set_index("prem_freq")
 
 
 def param_table():
@@ -239,7 +239,7 @@ def param_table():
     """
     frame = pd.read_csv(input_dir() / param_file)                    # noqa: F821
     frame["item"] = [ParamItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))
+    return frame.set_index("item")
 
 
 # ---------------------------------------------------------------------------
@@ -262,8 +262,6 @@ freq_load_file = "freq_load_table.csv"
 param_file = "param_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

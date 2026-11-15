@@ -101,8 +101,8 @@ def model_point_table():
 
     Indexed by ``point_id``.  Point 1 is the technical notes' worked-example anchor cell.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -117,7 +117,7 @@ def mort_table():
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["table"] = [MortTable[name] for name in frame["table"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["table", "sex", "age"]).sort_index())  # noqa: F821
+    return frame.set_index(["table", "sex", "age"]).sort_index()             # noqa: F821
 
 
 def mort_anchor_table():
@@ -131,7 +131,7 @@ def mort_anchor_table():
     frame = pd.read_csv(input_dir() / mort_anchor_file)              # noqa: F821
     frame["table"] = [MortTable[name] for name in frame["table"]]
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["table", "sex", "age"]).sort_index())  # noqa: F821
+    return frame.set_index(["table", "sex", "age"]).sort_index()             # noqa: F821
 
 
 def lapse_table():
@@ -154,7 +154,7 @@ def lapse_table():
     """
     frame = pd.read_csv(input_dir() / lapse_table_file)              # noqa: F821
     frame["segment"] = [Segment[name] for name in frame["segment"]]
-    return pdn.table(frame.set_index(["segment", "from_year"]).sort_index())  # noqa: F821
+    return frame.set_index(["segment", "from_year"]).sort_index()             # noqa: F821
 
 
 def pricing_table():
@@ -173,7 +173,7 @@ def pricing_table():
     """
     frame = pd.read_csv(input_dir() / pricing_table_file)                    # noqa: F821
     frame["item"] = [PricingItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))                        # noqa: F821
+    return frame.set_index("item")                                   # noqa: F821
 
 
 def expense_table():
@@ -185,7 +185,7 @@ def expense_table():
     """
     frame = pd.read_csv(input_dir() / expense_table_file)                    # noqa: F821
     frame["item"] = [ExpenseItem[name] for name in frame["item"]]
-    return pdn.table(frame.set_index("item"))                        # noqa: F821
+    return frame.set_index("item")                                   # noqa: F821
 
 
 def commute_factor_table():
@@ -196,9 +196,9 @@ def commute_factor_table():
     payout 予定利率 of 0.65%; the mismatch is a property of the composite and the reason
     base-run commutation take-up is zero.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
         input_dir() / commute_factor_file,                           # noqa: F821
-        index_col="remaining_years"))
+        index_col="remaining_years")
 
 
 # ---------------------------------------------------------------------------
@@ -219,8 +219,6 @@ expense_table_file = "expense_table.csv"
 commute_factor_file = "commute_factor_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

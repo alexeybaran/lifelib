@@ -82,8 +82,8 @@ def input_dir():
 
 def model_point_table():
     """The model point table, read from *model_point_table.csv*."""
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -106,7 +106,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())
+    return frame.set_index(["sex", "age"]).sort_index()
 
 
 def prevalence_table():
@@ -128,7 +128,7 @@ def prevalence_table():
     frame = pd.read_csv(input_dir() / prevalence_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
     frame["param"] = [PrevParam[name] for name in frame["param"]]
-    return pdn.table(frame.set_index(["sex", "param"]).sort_index())
+    return frame.set_index(["sex", "param"]).sort_index()
 
 
 def severity_share_table():
@@ -144,7 +144,7 @@ def severity_share_table():
     """
     frame = pd.read_csv(input_dir() / severity_share_file)                     # noqa: F821
     frame["trigger_grid"] = [TriggerGrid[name] for name in frame["trigger_grid"]]
-    return pdn.table(frame.set_index("trigger_grid"))
+    return frame.set_index("trigger_grid")
 
 
 def lapse_table():
@@ -156,8 +156,8 @@ def lapse_table():
     rate — ``Projection.lapse_rate_base`` caps the policy year at the largest year in
     the table, so a lifetime projection does not run off the end of it.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def cause_mix_table():
@@ -172,7 +172,7 @@ def cause_mix_table():
     """
     frame = pd.read_csv(input_dir() / cause_mix_file)                     # noqa: F821
     frame["cause"] = [Cause[name] for name in frame["cause"]]
-    return pdn.table(frame.set_index("cause"))
+    return frame.set_index("cause")
 
 
 def reduction_table():
@@ -186,8 +186,8 @@ def reduction_table():
     the coefficient at first qualification and the rows at 5, 6 and 7 years are
     unreachable on the base cell.  The last row applies to 30 years and over.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / reduction_file, index_col="years_paid"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / reduction_file, index_col="years_paid")        # noqa: F821
 
 
 def revision_table():
@@ -200,8 +200,8 @@ def revision_table():
     is arbitrary inside the 0-10% band the only retrieved cap allows.  The last row is
     the terminal rate.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / revision_file, index_col="policy_year"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / revision_file, index_col="policy_year")        # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -224,8 +224,6 @@ reduction_file = "reduction_table.csv"
 revision_file = "revision_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 

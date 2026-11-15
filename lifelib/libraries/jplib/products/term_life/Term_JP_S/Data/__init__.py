@@ -117,8 +117,8 @@ def model_point_table():
     Indexed by ``point_id``; ``point_id = 1`` is the anchor cell of the technical notes'
     worked example.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -132,7 +132,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)               # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]).sort_index())   # noqa: F821
+    return frame.set_index(["sex", "age"]).sort_index()              # noqa: F821
 
 
 def lapse_table():
@@ -148,8 +148,8 @@ def lapse_table():
     row.  The table is **annual throughout** and is not restated per month: the rate is the
     observation, and the monthly decrement is derived from it in the projection.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_table_file, index_col="policy_year"))     # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_table_file, index_col="policy_year")     # noqa: F821
 
 
 def prem_rate_table():
@@ -162,7 +162,7 @@ def prem_rate_table():
     """
     frame = pd.read_csv(input_dir() / prem_rate_file)                # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "issue_age", "term_y"]))  # noqa: F821
+    return frame.set_index(["sex", "issue_age", "term_y"])             # noqa: F821
 
 
 def prem_anchor_table():
@@ -174,7 +174,7 @@ def prem_anchor_table():
     cell, the only published female cell in the source set [S2].
     """
     tbl = prem_rate_table().reset_index()
-    return pdn.table(tbl[tbl["is_anchor"] == 1].set_index("sex"))
+    return tbl[tbl["is_anchor"] == 1].set_index("sex")
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +189,5 @@ lapse_table_file = "lapse_table.csv"
 prem_rate_file = "prem_rate_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)

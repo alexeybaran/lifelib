@@ -116,8 +116,8 @@ def model_point_table():
     about any assumption.  Where a column is an assumption in disguise (``rechnungszins``,
     the opening balances) the technical notes carry the tag.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))       # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table_accum():
@@ -128,8 +128,8 @@ def mort_table_accum():
     110, no improvement dimension: a first-order death basis does not anticipate mortality
     improvement, because on a death cover improvement favours the insurer.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / mort_accum_file, index_col="age"))             # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_accum_file, index_col="age")              # noqa: F821
 
 
 def annuity_mort_table():
@@ -141,8 +141,8 @@ def annuity_mort_table():
     attained age and calendar year.  That two-dimensional structure is the property a
     replacement may not drop.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / annuity_mort_file, index_col="age"))           # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / annuity_mort_file, index_col="age")            # noqa: F821
 
 
 def lapse_table():
@@ -159,8 +159,8 @@ def lapse_table():
     consequences.  The second is set **above** the first at every duration for that
     reason, and a model of this book carrying only a lapse rate has mis-specified it.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / lapse_file, index_col="duration"))             # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="duration")              # noqa: F821
 
 
 def zulage_schedule():
@@ -176,8 +176,8 @@ def zulage_schedule():
     household fact the insurance contract does not observe, which is the most awkward
     feature of this product for a per-policy projection.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / zulage_file, index_col=["zulage_id", "t"]))    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / zulage_file, index_col=["zulage_id", "t"])     # noqa: F821
 
 
 def income_schedule():
@@ -191,8 +191,8 @@ def income_schedule():
     *mittelbar zulageberechtigt* spouse, who has no contribution-liable earnings of their
     own and whose *Mindesteigenbeitrag* is therefore the 60 € *Sockelbeitrag*.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / income_file, index_col=["income_id", "t"]))    # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
 
 
 def surplus_scenario():
@@ -206,8 +206,8 @@ def surplus_scenario():
     what accrues in the *Überschussguthaben*.  It is the largest single lever in the model
     and the least supported: no declared rate at any carrier was established.
     """
-    return pdn.table(pd.read_csv(                                    # noqa: F821
-        input_dir() / surplus_file, index_col=["scenario_id", "t"])) # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
 
 
 def freq_loading():
@@ -221,7 +221,7 @@ def freq_loading():
     frame = pd.read_csv(                                             # noqa: F821
         input_dir() / freq_loading_file)                             # noqa: F821
     frame["prem_freq"] = [PremFreq[name] for name in frame["prem_freq"]]
-    return pdn.table(frame.set_index("prem_freq"))
+    return frame.set_index("prem_freq")
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +244,5 @@ surplus_file = "surplus_scenario.csv"
 freq_loading_file = "freq_loading.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 PremFreq = ("Pickle", 1)

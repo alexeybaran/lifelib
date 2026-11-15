@@ -93,8 +93,8 @@ def model_point_table():
     채권형 50% / 주식형 50%.  This is the only file exempt from the provenance rule, a
     model point being a configuration rather than an assumption.
     """
-    return pdn.table(pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id"))        # noqa: F821
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
 def mort_table():
@@ -111,7 +111,7 @@ def mort_table():
     """
     frame = pd.read_csv(input_dir() / mort_table_file)                     # noqa: F821
     frame["sex"] = [Sex[name] for name in frame["sex"]]
-    return pdn.table(frame.set_index(["sex", "age"]))
+    return frame.set_index(["sex", "age"])
 
 
 def lapse_table():
@@ -123,7 +123,7 @@ def lapse_table():
     figure for this product — 「변액보험의 7년 평균 유지율은 30% 미만」, itself
     second-hand inside [R1].
     """
-    return pdn.table(pd.read_csv(input_dir() / lapse_table_file, index_col="dur_from"))  # noqa: F821
+    return pd.read_csv(input_dir() / lapse_table_file, index_col="dur_from")             # noqa: F821
 
 
 def fund_table():
@@ -138,7 +138,7 @@ def fund_table():
     frame = pd.read_csv(input_dir() / fund_file)                     # noqa: F821
     frame["fund_set"] = [FundSet[name] for name in frame["fund_set"]]
     frame["asset_class"] = [AssetClass[name] for name in frame["asset_class"]]
-    return pdn.table(frame.set_index(["fund_set", "fund_id"]))
+    return frame.set_index(["fund_set", "fund_id"])
 
 
 def charge_table():
@@ -152,7 +152,7 @@ def charge_table():
     """
     frame = pd.read_csv(input_dir() / charge_file)                     # noqa: F821
     frame["line"] = [ChargeLine[name] for name in frame["line"]]
-    return pdn.table(frame.set_index("line"))
+    return frame.set_index("line")
 
 
 def risk_prem_table():
@@ -163,7 +163,7 @@ def risk_prem_table():
     or below the attained age.  The published band is 0.004%–0.011% (₩12–₩32 a month on
     the anchor cell) [S2] [S4]; the grading across it by age is **[std]**.
     """
-    return pdn.table(pd.read_csv(input_dir() / risk_prem_file, index_col="age_from"))  # noqa: F821
+    return pd.read_csv(input_dir() / risk_prem_file, index_col="age_from")             # noqa: F821
 
 
 def return_scenario():
@@ -178,7 +178,7 @@ def return_scenario():
     """
     frame = pd.read_csv(input_dir() / return_scenario_file)                     # noqa: F821
     frame["scenario_id"] = [Scenario[name] for name in frame["scenario_id"]]
-    return pdn.table(frame.set_index(["scenario_id", "fund_id"]))
+    return frame.set_index(["scenario_id", "fund_id"])
 
 
 def crediting_table():
@@ -193,7 +193,7 @@ def crediting_table():
     """
     frame = pd.read_csv(input_dir() / crediting_file)                     # noqa: F821
     frame["basis"] = [CreditingBasis[name] for name in frame["basis"]]
-    return pdn.table(frame.set_index(["basis", "dur_from"]))
+    return frame.set_index(["basis", "dur_from"])
 
 
 # ---------------------------------------------------------------------------
@@ -216,8 +216,6 @@ return_scenario_file = "return_scenario.csv"
 crediting_file = "crediting_table.csv"
 
 pd = ("Module", "pandas")
-
-pdn = ("Module", "modelx_helpers.pdn")
 
 Sex = ("Pickle", 1)
 
