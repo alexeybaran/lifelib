@@ -110,7 +110,7 @@ n_W, n_L, n_N           pols_entry_w(t), and so on         Expected entrants of 
 (none)                  pols_death(t)                      Deaths of the month
 (none)                  pols_lapse(t)                      Lapses of the month
 term(t)                 pols_term(t)                       Lives extinguished by the cap
-S_C(s, t)               care_surv(s, t)                    Care-state survival, s to t
+S_C(t - 12j, t)         care_surv(t, j)                    Care-state survival, j years to t
 ann_count(t)            ann_count(t)                       Instalments due in month t
 (rider)                 pols_entry_dem(t)                  認知症一時金特約 first diagnoses
 P                       premium_mth_pp()                   Monthly office premium
@@ -1044,11 +1044,16 @@ def pols_term(t):
     s = t - 12 * (annuity_max() - 1)
     if s < 0:
         return 0.0
-    return pols_entry_n(s) * care_surv(s, t)
+    return pols_entry_n(s) * care_surv(t, annuity_max() - 1)
 
 
-def care_surv(s, t):
-    """S_C(s, t): survival in the care state from month s to month t.
+def care_surv(t, j):
+    """S_C(t - 12j, t): survival in the care state over the j years from month
+    s = t - 12j to month t.
+
+    Keyed by the payment month ``t`` and the number ``j`` of annual anniversaries since
+    entry: every caller reads it on the anniversary grid, so it is built a year at a time
+    from ``care_surv(t - 12, j - 1)``, with the monthly factors in the same order.
 
     The **partial product** of ``(1 - q_C(u))`` over ``u = s ... t-1``, times
     ``(1 - rec_rate_mth())`` per month under the ``state`` annuity test.  Computed as a
@@ -1056,11 +1061,12 @@ def care_surv(s, t):
     ``q_C`` reaches 1 at the terminal age, so a cumulative product underflows to zero
     and the ratio form divides by zero exactly where the tail of this liability lives.
     """
-    if t <= s:
+    if j == 0:
         return 1.0
-    return (care_surv(s, t - 1)
-            * (1.0 - mort_rate_care_mth(t - 1))
-            * (1.0 - rec_rate_mth()))
+    v = care_surv(t - 12, j - 1)
+    for u in range(t - 12, t):
+        v = v * (1.0 - mort_rate_care_mth(u)) * (1.0 - rec_rate_mth())
+    return v
 
 
 def ann_count(t):
@@ -1081,7 +1087,7 @@ def ann_count(t):
         s = t - 12 * j
         if s < 0:
             continue
-        total += pols_entry_n(s) * care_surv(s, t)
+        total += pols_entry_n(s) * care_surv(t, j)
     return total
 
 
@@ -1338,7 +1344,7 @@ def check_ann_ledger_resid(t):
     built = 0.0
     for s in range(max(0, t - 12 * annuity_max() + 1), t + 1):
         if (t - s) % 12 == 0:
-            built += pols_entry_n(s) * care_surv(s, t)
+            built += pols_entry_n(s) * care_surv(t, (t - s) // 12)
     return ann_count(t) - built
 
 
