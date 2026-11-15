@@ -450,12 +450,12 @@ def pivot_interp(x, sex_, smoker_, column):
     """
     sub = data.ci_rate_table().loc[(sex_, smoker_)]                  # noqa: F821
     if x <= sub.index[0]:
-        lo, hi = sub.index[0], sub.index[1]
+        lo, hi = int(sub.index[0]), int(sub.index[1])
     elif x >= sub.index[-1]:
-        lo, hi = sub.index[-2], sub.index[-1]
+        lo, hi = int(sub.index[-2]), int(sub.index[-1])
     else:
-        lo = sub.index.asof(x)
-        hi = sub.index[sub.index.searchsorted(x, side="right")]
+        lo = int(sub.index.asof(x))
+        hi = int(sub.index[sub.index.searchsorted(x, side="right")])
     if column == RateColumn.i_ci:
         r_lo = float(sub.loc[lo, "i_ci"])
         r_hi = float(sub.loc[hi, "i_ci"])

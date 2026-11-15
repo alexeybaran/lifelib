@@ -508,12 +508,12 @@ def inception_rate(t):
     sub = inception_schedule()
     x = age(t)
     if x <= sub.index[0]:
-        lo, hi = sub.index[0], sub.index[1]
+        lo, hi = int(sub.index[0]), int(sub.index[1])
     elif x >= sub.index[-1]:
-        lo, hi = sub.index[-2], sub.index[-1]
+        lo, hi = int(sub.index[-2]), int(sub.index[-1])
     else:
-        lo = sub.index.asof(x)
-        hi = sub.index[sub.index.searchsorted(x, side="right")]
+        lo = int(sub.index.asof(x))
+        hi = int(sub.index[sub.index.searchsorted(x, side="right")])
     r_lo = float(sub.loc[lo, "inception_rate"])
     r_hi = float(sub.loc[hi, "inception_rate"])
     r = r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)

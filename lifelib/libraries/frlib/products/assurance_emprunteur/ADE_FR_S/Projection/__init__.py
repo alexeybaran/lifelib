@@ -660,12 +660,12 @@ def mort_rate(t):
     """
     sub = mort_schedule()
     x = age(t)
-    if x <= sub.index[0]:
-        return float(sub.loc[sub.index[0], "mort_rate"])
-    if x >= sub.index[-1]:
-        return float(sub.loc[sub.index[-1], "mort_rate"])
-    lo = sub.index.asof(x)
-    hi = sub.index[sub.index.searchsorted(x, side="right")]
+    if x <= int(sub.index[0]):
+        return float(sub.loc[int(sub.index[0]), "mort_rate"])
+    if x >= int(sub.index[-1]):
+        return float(sub.loc[int(sub.index[-1]), "mort_rate"])
+    lo = int(sub.index.asof(x))
+    hi = int(sub.index[sub.index.searchsorted(x, side="right")])
     r_lo = float(sub.loc[lo, "mort_rate"])
     r_hi = float(sub.loc[hi, "mort_rate"])
     return r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)
@@ -716,13 +716,13 @@ def itt_inception_rate(t):
     """
     sub = itt_inception_schedule()
     x = age(t)
-    if x <= sub.index[0]:
-        r = float(sub.loc[sub.index[0], "itt_inception_rate"])
-    elif x >= sub.index[-1]:
-        r = float(sub.loc[sub.index[-1], "itt_inception_rate"])
+    if x <= int(sub.index[0]):
+        r = float(sub.loc[int(sub.index[0]), "itt_inception_rate"])
+    elif x >= int(sub.index[-1]):
+        r = float(sub.loc[int(sub.index[-1]), "itt_inception_rate"])
     else:
-        lo = sub.index.asof(x)
-        hi = sub.index[sub.index.searchsorted(x, side="right")]
+        lo = int(sub.index.asof(x))
+        hi = int(sub.index[sub.index.searchsorted(x, side="right")])
         r_lo = float(sub.loc[lo, "itt_inception_rate"])
         r_hi = float(sub.loc[hi, "itt_inception_rate"])
         r = r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)
@@ -943,12 +943,12 @@ def crd_rate(t):
     """
     tbl = data.crd_rate_table()                                      # noqa: F821
     x = age(t)
-    if x <= tbl.index[0]:
-        return float(tbl.loc[tbl.index[0], "crd_rate"])
-    if x >= tbl.index[-1]:
-        return float(tbl.loc[tbl.index[-1], "crd_rate"])
-    lo = tbl.index.asof(x)
-    hi = tbl.index[tbl.index.searchsorted(x, side="right")]
+    if x <= int(tbl.index[0]):
+        return float(tbl.loc[int(tbl.index[0]), "crd_rate"])
+    if x >= int(tbl.index[-1]):
+        return float(tbl.loc[int(tbl.index[-1]), "crd_rate"])
+    lo = int(tbl.index.asof(x))
+    hi = int(tbl.index[tbl.index.searchsorted(x, side="right")])
     r_lo = float(tbl.loc[lo, "crd_rate"])
     r_hi = float(tbl.loc[hi, "crd_rate"])
     return r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)
