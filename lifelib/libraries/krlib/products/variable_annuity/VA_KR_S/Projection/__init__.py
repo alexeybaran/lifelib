@@ -452,8 +452,8 @@ def yrs_completed(t):
 
 def fund_ids():
     """The 특별계정 fund identifiers of this contract's allocation set, in order."""
-    return tuple(int(i) for i in
-                 data.fund_table().loc[fund_set()].index)            # noqa: F821
+    return [int(i) for i in
+            data.fund_table().loc[fund_set()].index]                 # noqa: F821
 
 
 def fund_alloc(j):
