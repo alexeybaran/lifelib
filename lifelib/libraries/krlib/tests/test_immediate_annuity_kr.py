@@ -53,7 +53,6 @@ rather than moving a result.  That every check is *True* on every shipped model 
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.immediate_annuity.enums import CreditingBasis, Kind, RetentionBasis, Sex, Shape
@@ -2124,7 +2123,7 @@ def test_the_model_point_table_exercises_the_product(immediate_annuity):
     ₩10,000,000 carrier minimum through the ₩100,000,000 median and tax cap to the
     ₩5,000,000,000 maximum, and the issue ages span the 45–80 band.
     """
-    table = pdn.to_pandas(immediate_annuity.Data.model_point_table())
+    table = immediate_annuity.Data.model_point_table()
     assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["shape"]) == {"life", "inheritance", "certain"}

@@ -60,7 +60,6 @@ import modelx as mx
 import numpy as np
 import pandas as pd
 import pytest
-from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
@@ -1380,7 +1379,7 @@ def test_the_model_point_table_covers_the_products_variants(nursing_care):
     A model point table that stopped exercising a module would leave the module's second
     position untested while every test above still passed.
     """
-    table = pdn.to_pandas(nursing_care.Data.model_point_table())
+    table = nursing_care.Data.model_point_table()
     assert len(table) == 8
     assert list(table.index) == list(range(1, 9))
     assert set(table["sex"]) == {"M", "F"}

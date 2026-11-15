@@ -65,7 +65,6 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.pension_savings.enums import AnchorItem, AvTiming, ExpenseItem, Kind, LapseBasis, MortTable, MortVintage, PayoutForm, PolTiming, PricingItem, RateScenario, Segment, Sex, TaxItem
@@ -1495,7 +1494,7 @@ def test_the_model_point_table_exercises_the_product(pension_savings):
     free: the model rejects a point where it is not ``x + m + d``, because two spellings of
     one date is how a projection silently annuitises in the wrong year.
     """
-    table = pdn.to_pandas(pension_savings.Data.model_point_table())
+    table = pension_savings.Data.model_point_table()
     assert len(table) == 9
     assert list(table.index) == list(range(1, 10))
     assert set(table["sex"]) == {"M", "F"}

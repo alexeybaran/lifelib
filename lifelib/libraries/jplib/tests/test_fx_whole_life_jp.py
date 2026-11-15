@@ -39,7 +39,6 @@ refinement.
 import modelx as mx
 import pandas as pd
 import pytest
-from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import model_path
@@ -491,10 +490,9 @@ def test_the_policy_currency_is_the_model_currency(fx_whole_life):
     fund = [p.av_pp(t) for t in months]
     jpy = [p.net_cf_jpy(t) for t in months]
 
-    table = pdn.to_pandas(fx_whole_life.Data.model_point_table())
+    table = fx_whole_life.Data.model_point_table()
     saved = table.loc[1, "fx_ttm"]
     table.loc[1, "fx_ttm"] = 200.0
-    fx_whole_life.Data.model_point_table[()] = pdn.table(table)
     try:
         fx_whole_life.Projection[1].clear_all()
         moved = fx_whole_life.Projection[1]
@@ -625,10 +623,9 @@ def test_the_special_reserve_shares_reproduce_the_published_amounts(
     assert p.charge_param(ChargeItem.special_reserve_rate_10) == 0.24
     assert p.charge_param(ChargeItem.special_reserve_rate_20) == 0.16
 
-    table = pdn.to_pandas(fx_whole_life.Data.model_point_table())
+    table = fx_whole_life.Data.model_point_table()
     saved = table.loc[1, "credit_rate"]
     table.loc[1, "credit_rate"] = rate
-    fx_whole_life.Data.model_point_table[()] = pdn.table(table)
     try:
         fx_whole_life.Projection[1].clear_all()
         run = fx_whole_life.Projection[1]
@@ -1237,16 +1234,15 @@ def test_an_out_of_scope_model_point_is_rejected_by_name(
     contract gives it no release date.  Each is refused by name rather than given a
     silent default.
     """
-    table = pdn.to_pandas(fx_whole_life.Data.model_point_table())
+    table = fx_whole_life.Data.model_point_table()
     saved = table.loc[point_id, column]
     table.loc[point_id, column] = value
-    fx_whole_life.Data.model_point_table[()] = pdn.table(table)
     try:
         fx_whole_life.Projection[point_id].clear_all()
         with pytest.raises((FormulaError, ValueError)):
             getattr(fx_whole_life.Projection[point_id], cells)()
     finally:
-        fx_whole_life.Data.model_point_table.clear_all()
+        table.loc[point_id, column] = saved
         fx_whole_life.Projection[point_id].clear_all()
 
 
@@ -1392,16 +1388,15 @@ def test_an_issue_age_the_shipped_table_cannot_serve_is_not_priced_silently(
     table does not serve the whole of it.  Raising is the honest behaviour: the alternative
     is a projection that looks complete and rests on a rate that was never published.
     """
-    table = pdn.to_pandas(fx_whole_life.Data.model_point_table())
+    table = fx_whole_life.Data.model_point_table()
     saved = table.loc[1, "issue_age"]
     table.loc[1, "issue_age"] = 6
-    fx_whole_life.Data.model_point_table[()] = pdn.table(table)
     try:
         fx_whole_life.Projection[1].clear_all()
         with pytest.raises((FormulaError, KeyError)):
             fx_whole_life.Projection[1].mort_rate(0)
     finally:
-        fx_whole_life.Data.model_point_table.clear_all()
+        table.loc[1, "issue_age"] = saved
         fx_whole_life.Projection[1].clear_all()
 
 

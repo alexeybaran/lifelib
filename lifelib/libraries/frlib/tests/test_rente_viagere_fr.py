@@ -32,7 +32,6 @@ which never touches an instalment; the *taux technique* reaching no cash flow; a
 """
 import modelx as mx
 import pytest
-from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from fr_registry import MODELS, LIB
@@ -613,7 +612,7 @@ def test_the_taux_technique_reaches_no_cash_flow(rente_viagere):
 
 def test_a_palier_never_reaches_the_reversion_stream(rente_viagere):
     """The options are mutually exclusive, so no shipped point can combine them."""
-    table = pdn.to_pandas(rente_viagere.Data.model_point_table())
+    table = rente_viagere.Data.model_point_table()
     stepped = table["palier_scheme"] != "none"
     assert not (stepped & (table["reversion_pct"] > 0)).any()
     for point_id in table.index:

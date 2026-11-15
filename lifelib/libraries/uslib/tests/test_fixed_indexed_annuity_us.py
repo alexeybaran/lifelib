@@ -27,7 +27,6 @@ decimals of a percentage, the MVA factor to the eight decimals it is printed at.
 """
 import modelx as mx
 import pytest
-from modelx_helpers import pdn
 
 from us_registry import LIB
 from lifelib.libraries.uslib.products.fixed_indexed_annuity.enums import Claim, CreditMethod, GlwbBasis, MvaCollarBasis, Phase, PolTiming, Sex, Timing
@@ -1522,7 +1521,7 @@ def test_the_model_point_table_ships_the_nine_switch_combinations(
     model in the library. What is left here is the count, which is this product's own
     statement about what the shipped table covers.
     """
-    assert len(pdn.to_pandas(fixed_indexed_annuity.Data.model_point_table())) == 9
+    assert len(fixed_indexed_annuity.Data.model_point_table()) == 9
 
 
 def test_the_model_name_matches_the_product_folder(fixed_indexed_annuity):

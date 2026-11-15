@@ -25,7 +25,6 @@ import math
 
 import modelx as mx
 import pytest
-from modelx_helpers import pdn
 
 from us_registry import LIB
 from lifelib.libraries.uslib.products.indexed_ul.enums import Basis, Claim, CreditBase, DeathBenefitOption, PremiumMode, Timing
@@ -931,7 +930,7 @@ def test_the_model_docstring_describes_the_shipped_model_points(indexed_ul):
     first pitfall.
     """
     tbl = indexed_ul.Data.model_point_table()
-    assert len(pdn.to_pandas(tbl)) == 5
+    assert len(tbl) == 5
     doc = indexed_ul.doc
     assert "carries five points" in doc
     assert "four points" not in doc

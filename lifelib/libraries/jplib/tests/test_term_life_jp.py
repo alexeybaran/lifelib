@@ -44,7 +44,6 @@ than of the projection year, and there are no tail states of any kind.
 """
 import modelx as mx
 import pytest
-from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
@@ -1452,7 +1451,7 @@ def test_the_model_point_table_exercises_the_product(term_life):
     rather than left to a reader counting rows.
     """
     table = term_life.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 9
+    assert len(table) == 9
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["term_type"]) == {"nen", "sai"}
     assert set(table["contract_boundary"]) == {"ceiling", "current_term"}

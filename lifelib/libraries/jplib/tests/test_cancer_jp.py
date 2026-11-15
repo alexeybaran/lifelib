@@ -37,7 +37,6 @@ from contextlib import contextmanager
 
 import modelx as mx
 import pytest
-from modelx_helpers import pdn
 from modelx.core.errors import FormulaError
 
 from jp_registry import model_path
@@ -1349,7 +1348,7 @@ def test_the_model_point_table_carries_its_eight_variants(cancer):
     instance of the model rather than a second one built here.
     """
     table = cancer.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 8
+    assert len(table) == 8
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["chassis"]) == {"shushin", "teiki"}
     assert set(table["prem_period"]) == {"whole_life", "to_65"}
@@ -1445,7 +1444,7 @@ def test_the_incidence_basis_is_sourced_and_reproduced(cancer):
     assert cancer.Data.survival_table()["provenance"].str.contains(
         attribution, regex=False).all()
     sf = cancer.Data.sex_factor_table()
-    assert len(pdn.to_pandas(sf)) == 2
+    assert len(sf) == 2
     assert sf.loc[37.5, "f_male"] == pytest.approx(72.92 / 132.21, abs=5e-6)
     assert sf.loc[72.5, "f_male"] == pytest.approx(2684.60 / 1948.71, abs=5e-6)
     surv = cancer.Data.survival_table()

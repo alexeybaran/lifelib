@@ -67,7 +67,6 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.term_life.enums import ContractBoundary, Kind, MaturityForm, PolTiming, PremiumMode, RateClass, RenewalType, Segment, Sex
@@ -2163,7 +2162,7 @@ def test_the_model_point_table_exercises_the_product(term_life):
     rather than left to a reader counting rows.
     """
     table = term_life.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 10 and list(table.index) == list(range(1, 11))
+    assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["renewal_type"]) == {"gaengsin", "bi_gaengsin"}
     assert set(table["contract_boundary"]) == {"ceiling", "current_term"}

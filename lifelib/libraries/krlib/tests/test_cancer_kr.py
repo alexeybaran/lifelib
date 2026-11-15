@@ -56,7 +56,6 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.cancer.enums import Chassis, CvForm, Kind, PolTiming, Sex, Tier, WaiverTrigger
@@ -2453,7 +2452,7 @@ def test_the_model_point_table_exercises_the_product(cancer):
     three observed 유사암 ratios, the issue-age envelope from 15 to 65 and the sum-insured
     envelope from ₩10,000,000 to ₩100,000,000.
     """
-    table = pdn.to_pandas(cancer.Data.model_point_table())
+    table = cancer.Data.model_point_table()
     assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["chassis"]) == {"bi_gaengsin", "gaengsin"}

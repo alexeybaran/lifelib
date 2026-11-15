@@ -68,7 +68,6 @@ import modelx as mx
 import pandas as pd
 import pytest
 from modelx.core.errors import FormulaError
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.child.enums import BasisParam, Cover, CvForm, Kind, LapseBasis, NeoTiming, PolTiming, Sex
@@ -1814,7 +1813,7 @@ def test_the_shipped_model_points_exercise_every_switch(child):
     changed to duplicate another shows up as a gap rather than as nothing.
     """
     table = child.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 10
+    assert len(table) == 10
     assert set(table["sex"]) == {"M", "F"}
     assert set(table["foetal"]) == {0, 1}
     assert set(table["cv_form"]) == {"std", "susp", "graded"}
@@ -2083,12 +2082,12 @@ def test_the_neonatal_module_limbs_are_the_ones_the_notes_state(child):
     length-of-stay question, and the supervisor's own worked claim — ₩16,836,420 on a
     32-week, 1.84 kg birth [R3] — is two orders of magnitude above the expected cost.
     """
-    table = pdn.to_pandas(child.Data.neonatal_table())
+    table = child.Data.neonatal_table()
     assert len(table) == 9
-    assert set(table["timing"]) == {NeoTiming.birth, NeoTiming.block}
-    assert set(table.index[table["timing"] == NeoTiming.birth]) == {
+    assert set(table["timing"]) == {"birth", "block"}
+    assert set(table.index[table["timing"] == "birth"]) == {
         "birth_risk_low", "birth_risk_disab", "birth_risk_severe", "preterm"}
-    assert set(table.index[table["timing"] == NeoTiming.block]) == {
+    assert set(table.index[table["timing"] == "block"]) == {
         "incubator", "perinatal_cash", "congenital_diag", "congenital_surg",
         "neonatal_haem"}
     assert float(table.loc["incubator", "amount"]) == 50000.0
@@ -2435,7 +2434,7 @@ def test_the_projection_docstring_describes_the_shipped_model_points(child):
     assert "Ten, covering both sexes" in doc
     assert "birth at policy month 5" in doc
     table = child.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 10
+    assert len(table) == 10
     reader = flat(child.Data.cells["model_point_table"].doc)
     assert "point_id = 1" in reader and "anchor" in reader
 

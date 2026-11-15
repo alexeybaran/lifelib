@@ -65,7 +65,6 @@ import pathlib
 import modelx as mx
 import pandas as pd
 import pytest
-from modelx_helpers import pdn
 
 from kr_registry import LIB, MODELS
 from lifelib.libraries.krlib.products.indemnity_medical.enums import Kind, PolTiming, Sex, Stream
@@ -2016,7 +2015,7 @@ def test_the_model_point_table_exercises_the_product(indemnity_medical):
     cost-trend stress that makes the corridor clip.
     """
     table = indemnity_medical.Data.model_point_table()
-    assert len(pdn.to_pandas(table)) == 10 and list(table.index) == list(range(1, 11))
+    assert len(table) == 10 and list(table.index) == list(range(1, 11))
     assert set(table["sex"]) == {"M", "F"}
     assert table["issue_age"].min() == 0 and table["issue_age"].max() == 65
     for module in ("np_rider", "three_np", "nhi_covered", "reld_on", "noclaim_on"):
