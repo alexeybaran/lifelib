@@ -39,3 +39,8 @@ class Kind(IntEnum):
     LAPSE = 3
     LAPSE_CI = 4
     ALL = 5
+
+
+class ClaimBasis(IntEnum):
+    FULL = 0
+    REDUCED = 1

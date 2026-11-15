@@ -76,7 +76,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from kr_registry import LIB, MODELS
-from lifelib.libraries.krlib.products.ci_insurance.enums import Cause, FirstYearScope, Kind, LapseBasis, PolTiming, Sex
+from lifelib.libraries.krlib.products.ci_insurance.enums import (Cause, ClaimBasis, FirstYearScope, Kind, LapseBasis,
+                                                               PolTiming, Sex)
 
 MODEL_DIR = LIB / MODELS["CI_KR_S"][0]
 CSV_DIR = MODEL_DIR.parent
@@ -793,9 +794,9 @@ def test_the_first_year_reduced_cohorts_on_both_sexes(ci_insurance, kr_ci_anchor
         POLS_CI_YEAR_1_M, abs=RATE)
     assert sum(female.pols_ci(t) for t in range(12)) == pytest.approx(
         POLS_CI_YEAR_1_F, abs=RATE)
-    assert sum(male.pols_ci_in(t, -(t + 1)) for t in range(12)) == pytest.approx(
+    assert sum(male.pols_ci_in(t, ClaimBasis.REDUCED) for t in range(12)) == pytest.approx(
         POLS_CI_IN_REDUCED_M, abs=RATE)
-    assert sum(female.pols_ci_in(t, -(t + 1)) for t in range(12)) == pytest.approx(
+    assert sum(female.pols_ci_in(t, ClaimBasis.REDUCED) for t in range(12)) == pytest.approx(
         POLS_CI_IN_REDUCED_F, abs=RATE)
     for p in (male, female):
         for d in (3, 7, 12):
@@ -953,15 +954,15 @@ def test_worked_example_month_one_trace(kr_ci_anchor):
 
     assert a.ci_rate_mth(0) == pytest.approx(TRACE_1["ci_rate_mth"], abs=TRACE)
     assert a.ci_reduced_share(0) == pytest.approx(TRACE_1["phi"], abs=TRACE)
-    assert a.pols_ci_in(0, -1) == pytest.approx(
+    assert a.pols_ci_in(0, ClaimBasis.REDUCED) == pytest.approx(
         TRACE_1["pols_ci_in_reduced"], abs=TRACE)
-    assert a.pols_ci_in(0, 1) == pytest.approx(TRACE_1["pols_ci_in_full"], abs=TRACE)
-    assert a.pols_ci_in(0, -1) + a.pols_ci_in(0, 1) == pytest.approx(
+    assert a.pols_ci_in(0, ClaimBasis.FULL) == pytest.approx(TRACE_1["pols_ci_in_full"], abs=TRACE)
+    assert a.pols_ci_in(0, ClaimBasis.REDUCED) + a.pols_ci_in(0, ClaimBasis.FULL) == pytest.approx(
         a.pols_ci(0), rel=1e-14)
-    assert a.pols_ci_in(0, -1) == 0.0            # no 중대한 암 cover in month 0
+    assert a.pols_ci_in(0, ClaimBasis.REDUCED) == 0.0  # no 중대한 암 cover in month 0
     assert a.claims(0, Kind.CI) == pytest.approx(CLAIMS_CI_1, abs=WON)
     assert a.claims(0, Kind.CI) == pytest.approx(
-        a.pols_ci_in(0, 1) * ACCEL_COHORT_FULL, abs=WON)
+        a.pols_ci_in(0, ClaimBasis.FULL) * ACCEL_COHORT_FULL, abs=WON)
 
     assert a.pols_death(0) == pytest.approx(TRACE_1["pols_death"], abs=TRACE)
     assert a.pols_death(0) == pytest.approx(
@@ -1425,9 +1426,9 @@ def test_pitfall_collapsing_the_post_ci_cohorts_loses_the_first_year_reduced_one
     # A reduced cohort survives the whole projection and never merges with the others.
     assert female.pols_if_ci_at(468, -4) > 0.0
     assert female.pols_if_ci_at(4, -4) == pytest.approx(
-        female.pols_ci_in(3, -4), abs=1e-15)
+        female.pols_ci_in(3, ClaimBasis.REDUCED), abs=1e-15)
     # The claim it produces in its own month is a tenth of that month's outgo.
-    reduced = female.pols_ci_in(3, -4) * female.accel_benefit_pp(-4)
+    reduced = female.pols_ci_in(3, ClaimBasis.REDUCED) * female.accel_benefit_pp(-4)
     assert reduced / female.claims(3, Kind.CI) == pytest.approx(0.108, abs=5e-3)
     # The all-trigger design routes the whole first policy year into the reduced cohorts
     # and halves it, month by month.
@@ -1435,8 +1436,8 @@ def test_pitfall_collapsing_the_post_ci_cohorts_loses_the_first_year_reduced_one
     assert allpt.first_year_scope() == FirstYearScope.all
     assert allpt.ci_reduced_share(0) == allpt.ci_reduced_share(11) == 1.0
     assert allpt.ci_reduced_share(12) == 0.0
-    assert allpt.pols_ci_in(3, 4) == 0.0
-    assert allpt.pols_ci_in(3, -4) == pytest.approx(allpt.pols_ci(3), rel=1e-14)
+    assert allpt.pols_ci_in(3, ClaimBasis.FULL) == 0.0
+    assert allpt.pols_ci_in(3, ClaimBasis.REDUCED) == pytest.approx(allpt.pols_ci(3), rel=1e-14)
     assert allpt.claims(3, Kind.CI) == pytest.approx(
         0.8 * 0.5 * allpt.sum_assured() * allpt.pols_ci(3), rel=1e-14)
     assert allpt.check_accel_complement() is True
@@ -1656,7 +1657,7 @@ def test_pitfall_the_two_payments_are_one_step_apart(kr_ci_anchor):
             [-s for s in range(1, min(t, 12) + 1)] + list(range(1, t + 1)))
         assert a.pols_if_ci_at(t, t + 1) == 0.0
         assert a.pols_if_ci_at(t + 1, t + 1) == pytest.approx(
-            a.pols_ci_in(t, t + 1), rel=1e-14)
+            a.pols_ci_in(t, ClaimBasis.FULL), rel=1e-14)
     # The claim expense counts the acceleration once, in its own month.
     assert a.claim_expenses(0) == pytest.approx(
         300000.0 * (a.pols_ci(0) + a.pols_death(0)), rel=1e-14)
@@ -1722,8 +1723,9 @@ def test_pitfall_ci_rate_is_a_first_event_rate(ci_insurance, kr_ci_anchor):
     with pytest.raises(FormulaError):
         a.claims(4, "CI_SECOND")
     # A cohort accelerates once: entrants exist only in the month that formed the label.
-    assert a.pols_ci_in(40, 41) == pytest.approx(a.pols_ci(40), rel=1e-14)
-    assert a.pols_ci_in(41, 41) == 0.0 and a.pols_ci_in(40, 40) == 0.0
+    assert a.pols_ci_in(40, ClaimBasis.FULL) == pytest.approx(a.pols_ci(40), rel=1e-14)
+    assert a.ci_cohort_entrants(41) == a.pols_ci_in(40, ClaimBasis.FULL)    # cohort 41: month 40 only
+    assert a.pols_ci_in(40, ClaimBasis.REDUCED) == 0.0 and a.ci_cohort_entrants(-41) == 0.0
     doc = flat(ci_insurance.Projection.cells["ci_rate_base"].doc)
     assert "first-event" in doc
 
@@ -1834,7 +1836,7 @@ def test_pitfall_the_loan_is_floored_and_the_acceleration_is_not_netted(ci_insur
     # The acceleration is not netted: it is the cohort count times the gross benefit.
     for t in (144, 239):
         assert p.claims(t, Kind.CI) == pytest.approx(
-            p.pols_ci_in(t, t + 1) * p.accel_benefit_pp(t + 1), rel=1e-14)
+            p.pols_ci_in(t, ClaimBasis.FULL) * p.accel_benefit_pp(t + 1), rel=1e-14)
         assert p.loan_pp(t) > 0.0
     # A surrender in month 144 pays the suppressed value net of a loan drawn on it.
     assert p.cv_pp(145) > p.loan_pp(144) > 0.0
@@ -1922,7 +1924,7 @@ def test_the_cohort_counts_reconstruct_the_post_ci_total(kr_ci_anchor):
             sum(a.pols_if_ci_at(t, s) for s in a.ci_cohort_ids(t)), rel=1e-12)
         for s in a.ci_cohort_ids(t)[:4] + a.ci_cohort_ids(t)[-4:]:
             assert a.pols_if_ci_at(t, s) == pytest.approx(
-                a.pols_ci_in(t - 1, s)
+                (a.ci_cohort_entrants(s) if abs(s) == t else 0.0)
                 + a.pols_if_ci_at(t - 1, s) * (1 - a.mort_rate_ci_mth(t - 1))
                 * (1 - a.lapse_rate_ci_mth(t - 1)), rel=1e-12)
     # And the aggregate total of the nominal residuals, likewise.

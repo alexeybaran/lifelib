@@ -171,7 +171,7 @@ l1(t, s)                   pols_if_ci_at(t, s)                 Post-CI, by cohor
 lp(t)                      pols_if_pay(t)                      In force and paying
 (waived)                   pols_waived(t)                      Waived on 장해 50%+
 C(t)                       pols_ci(t)                          CI accelerations in month t
-C(t, s)                    pols_ci_in(t, s)                    Entrants into cohort s
+C(t, b)                    pols_ci_in(t, basis)                Claims of month t on basis b
 (entrants)                 ci_cohort_entrants(s)               Cohort s at its entry month
 D(t)                       pols_death(t)                       Pre-CI deaths in month t
 D'(t)                      pols_death_ci(t)                    Post-CI deaths in month t
@@ -1655,7 +1655,7 @@ def resid_nom_total_pp(t):
         1.0 - lapse_rate_ci_mth(t - 1))
     entrants = 0.0
     for s in (t, -t):
-        entrants = entrants + pols_ci_in(t - 1, s) * resid_nominal_pp(s)
+        entrants = entrants + ci_cohort_entrants(s) * resid_nominal_pp(s)
     return prev + entrants
 
 
@@ -1829,20 +1829,23 @@ def pols_ci(t):
     return pols_if_pre(t) * ci_rate_mth(t)
 
 
-def pols_ci_in(t, s):
-    """C(t, s): accelerations in month t entering post-CI cohort s.
+def pols_ci_in(t, basis):
+    """C(t, b): accelerations in month t paid on claim basis b.
 
-    Cohort ``t + 1`` — the month-end at which the month's claims are paid — takes the
-    full-benefit claims of month ``t``; cohort ``-(t + 1)`` takes the reduced ones, and is
-    empty outside the twelve months of the first policy year.
+    The full-benefit claims of month ``t`` (``ClaimBasis.FULL``) enter cohort ``t + 1`` — the
+    month-end at which the month's claims are paid; the reduced ones (``ClaimBasis.REDUCED``)
+    enter cohort ``-(t + 1)``, and are empty outside the twelve months of the first policy year.
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    if s < 0:
-        if t >= 12 or s != -(t + 1):
+    if basis == ClaimBasis.REDUCED:
+        if t >= 12:
             return 0.0
         return pols_ci(t) * ci_reduced_share(t)
-    return pols_ci(t) * (1.0 - ci_reduced_share(t)) if s == t + 1 else 0.0
+    elif basis == ClaimBasis.FULL:
+        return pols_ci(t) * (1.0 - ci_reduced_share(t))
+    else:
+        raise ValueError("invalid basis")
 
 
 def ci_cohort_entrants(s):
@@ -1854,7 +1857,7 @@ def ci_cohort_entrants(s):
     """
     if s == 0:
         return 0.0
-    return pols_ci_in(abs(s) - 1, s)
+    return pols_ci_in(abs(s) - 1, ClaimBasis.REDUCED if s < 0 else ClaimBasis.FULL)
 
 
 def ci_surv(t):
@@ -2048,7 +2051,7 @@ def claims(t, kind):
         return (claims(t, Kind.CI) + claims(t, Kind.DEATH) + claims(t, Kind.DEATH_CI)
                 + claims(t, Kind.LAPSE) + claims(t, Kind.LAPSE_CI))
     if kind == Kind.CI:
-        return sum(pols_ci_in(t, s) * accel_benefit_pp(s)
+        return sum(ci_cohort_entrants(s) * accel_benefit_pp(s)
                    for s in (t + 1, -(t + 1)))
     if kind == Kind.DEATH:
         return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
@@ -2262,7 +2265,7 @@ def check_accel_complement_resid(t):
     """
     resid = 0.0
     for s in (t + 1, -(t + 1)):
-        if pols_ci_in(t, s) == 0.0:
+        if ci_cohort_entrants(s) == 0.0:
             continue
         base = base_benefit_pp(abs(s))
         resid = resid + (accel_benefit_pp(s) + resid_nominal_pp(s) - base)
@@ -2543,4 +2546,6 @@ PolTiming = ("Pickle", 5)
 
 Kind = ("Pickle", 6)
 
-enum_definitions = ("Pickle", 7)
+ClaimBasis = ("Pickle", 7)
+
+enum_definitions = ("Pickle", 8)
