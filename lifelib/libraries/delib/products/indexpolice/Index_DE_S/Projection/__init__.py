@@ -838,29 +838,29 @@ def index_return(k, m):
     """
     sub = index_return_schedule()
     if m == 1:
-        return sub.loc[k, "m01"]
+        return float(sub.loc[k, "m01"])
     elif m == 2:
-        return sub.loc[k, "m02"]
+        return float(sub.loc[k, "m02"])
     elif m == 3:
-        return sub.loc[k, "m03"]
+        return float(sub.loc[k, "m03"])
     elif m == 4:
-        return sub.loc[k, "m04"]
+        return float(sub.loc[k, "m04"])
     elif m == 5:
-        return sub.loc[k, "m05"]
+        return float(sub.loc[k, "m05"])
     elif m == 6:
-        return sub.loc[k, "m06"]
+        return float(sub.loc[k, "m06"])
     elif m == 7:
-        return sub.loc[k, "m07"]
+        return float(sub.loc[k, "m07"])
     elif m == 8:
-        return sub.loc[k, "m08"]
+        return float(sub.loc[k, "m08"])
     elif m == 9:
-        return sub.loc[k, "m09"]
+        return float(sub.loc[k, "m09"])
     elif m == 10:
-        return sub.loc[k, "m10"]
+        return float(sub.loc[k, "m10"])
     elif m == 11:
-        return sub.loc[k, "m11"]
+        return float(sub.loc[k, "m11"])
     elif m == 12:
-        return sub.loc[k, "m12"]
+        return float(sub.loc[k, "m12"])
     else:
         raise ValueError("invalid month")
 

@@ -719,9 +719,9 @@ def mort_rate_payer(t):
 def lapse_param(name):
     """One parameter of the selected lapse basis, from *lapse_table.csv*."""
     if name == LapseColumn.first_year_rate:
-        return data.lapse_table().loc[lapse_basis(), "first_year_rate"]  # noqa: F821
+        return float(data.lapse_table().loc[lapse_basis(), "first_year_rate"])  # noqa: F821
     elif name == LapseColumn.completion_rate:
-        return data.lapse_table().loc[lapse_basis(), "completion_rate"]  # noqa: F821
+        return float(data.lapse_table().loc[lapse_basis(), "completion_rate"])  # noqa: F821
     elif name == LapseColumn.ultimate_rate:
         return float(data.lapse_table().loc[lapse_basis(), "ultimate_rate"])  # noqa: F821
     else:
@@ -809,7 +809,7 @@ def inc_pivot_ages(cause):
     """The pivot ages of ``cause`` for this model point's sex, as integers in age order (the keys
     of :func:`inc_pivots`)."""
     s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
-    return [s.index[i] for i in range(len(s.index))]
+    return [int(s.index[i]) for i in range(len(s.index))]
 
 
 def inc_pivot_rates(cause):
@@ -1337,13 +1337,13 @@ def cum_prem_pp(t):
 def av_build_keys():
     """The ``build`` pivots of av_table: the durations in years, as floats, in key order."""
     tab = av_build_curve()
-    return [tab.index[i] for i in range(len(tab.index))]
+    return [float(tab.index[i]) for i in range(len(tab.index))]
 
 
 def av_build_values():
     """The ``build`` pivots of av_table: the values at :func:`av_build_keys`, as floats."""
     tab = av_build_curve()
-    return [tab.loc[tab.index[i], "value"] for i in range(len(tab.index))]
+    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
 
 
 def refund_build(d):
@@ -1379,13 +1379,13 @@ def refund_build(d):
 def av_taper_keys():
     """The ``taper`` pivots of av_table: the runoff fractions, as floats, in key order."""
     tab = av_taper_curve()
-    return [tab.index[i] for i in range(len(tab.index))]
+    return [float(tab.index[i]) for i in range(len(tab.index))]
 
 
 def av_taper_values():
     """The ``taper`` pivots of av_table: the values at :func:`av_taper_keys`, as floats."""
     tab = av_taper_curve()
-    return [tab.loc[tab.index[i], "value"] for i in range(len(tab.index))]
+    return [float(tab.loc[tab.index[i], "value"]) for i in range(len(tab.index))]
 
 
 def refund_taper(r):

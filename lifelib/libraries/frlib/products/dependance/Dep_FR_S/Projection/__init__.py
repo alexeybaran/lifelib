@@ -1118,8 +1118,8 @@ def severity_share(kind):
     prevalence at old ages and overstates it at young ones.
     """
     if kind == Severity.partial:
-        return data.severity_share_table().loc[                    # noqa: F821
-            trigger_grid(), "share_partial"]
+        return float(data.severity_share_table().loc[                    # noqa: F821
+            trigger_grid(), "share_partial"])
     elif kind == Severity.total:
         return float(data.severity_share_table().loc[                    # noqa: F821
             trigger_grid(), "share_total"])

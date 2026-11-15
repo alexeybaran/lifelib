@@ -633,7 +633,7 @@ def pols_if_init():
 
 def mort_max_age():
     """The last age of the mortality table at the policy's sex."""
-    return data.mort_table().loc[sex()].index.max()             # noqa: F821
+    return int(data.mort_table().loc[sex()].index.max())             # noqa: F821
 
 
 def mort_rate(t):
@@ -828,7 +828,7 @@ def pols_maturity(t):
 
 def util_top_age():
     """The last age band start of the utilisation table at the policy's sex."""
-    return data.utilisation_table().loc[sex()].index.max()      # noqa: F821
+    return int(data.utilisation_table().loc[sex()].index.max())      # noqa: F821
 
 
 def util_band(y):
@@ -1026,7 +1026,7 @@ def sev_costs(stream):
 def sev_probs(stream):
     """The probabilities of :func:`sev_points`: the vector form of sev_points (rule V, D90)."""
     sub = data.severity_table().loc[stream]                          # noqa: F821
-    return [sub.loc[k, "prob"] for k in sub.index]
+    return [float(sub.loc[k, "prob"]) for k in sub.index]
 
 
 def sev_mean(stream):

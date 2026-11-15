@@ -652,13 +652,13 @@ def market_state(k, field):
     """
     sub = market_table()
     if field == MarketField.index_level:
-        return sub.loc[sub.index.asof(k), "index_level"]
+        return float(sub.loc[sub.index.asof(k), "index_level"])
     elif field == MarketField.mvr:
-        return sub.loc[sub.index.asof(k), "mvr"]
+        return float(sub.loc[sub.index.asof(k), "mvr"])
     elif field == MarketField.risk_free:
-        return sub.loc[sub.index.asof(k), "risk_free"]
+        return float(sub.loc[sub.index.asof(k), "risk_free"])
     elif field == MarketField.div_yield:
-        return sub.loc[sub.index.asof(k), "div_yield"]
+        return float(sub.loc[sub.index.asof(k), "div_yield"])
     elif field == MarketField.impl_vol:
         return float(sub.loc[sub.index.asof(k), "impl_vol"])
     else:

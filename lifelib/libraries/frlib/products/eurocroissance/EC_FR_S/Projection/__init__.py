@@ -933,7 +933,7 @@ def scenario_returns():
 
 def scenario_last_year():
     """The last year of the scenario table: later years read it."""
-    return scenario_returns().index.max()
+    return int(scenario_returns().index.max())
 
 
 def asset_return(t):
@@ -977,7 +977,7 @@ def tec_schedule():
 
 def tec_last_year():
     """The last year of the TEC curve table: later years read it."""
-    return tec_schedule().index.max()[0]
+    return int(tec_schedule().index.max()[0])
 
 
 def tec_rate(m):
