@@ -503,7 +503,7 @@ def test_the_policy_currency_is_the_model_currency(fx_whole_life):
                    for a, b in zip([moved.net_cf_jpy(t) for t in months], jpy))
         assert moved.check_fx_ledger() is True
     finally:
-        fx_whole_life.Data.model_point_table.clear_all()
+        table.loc[1, "fx_ttm"] = saved
         fx_whole_life.Projection[1].clear_all()
 
 
@@ -643,7 +643,7 @@ def test_the_special_reserve_shares_reproduce_the_published_amounts(
             0.16 * (run.av_pp_bef_sr(240) - run.av0_pp(240)), abs=5e-3)
         assert run.av_pp(120) > run.av_pp_bef_sr(120)
     finally:
-        fx_whole_life.Data.model_point_table.clear_all()
+        table.loc[1, "credit_rate"] = saved
         fx_whole_life.Projection[1].clear_all()
     assert fx_whole_life.Projection[1].special_reserve_pp(120) == 0.0
 
