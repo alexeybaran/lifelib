@@ -426,25 +426,25 @@ def sum_assured(cover):
     ``neonatal`` ₩10,000,000 as the 태아 module's own 가입금액.
     """
     if cover == Cover.disability:
-        return model_point()["sa_disability"]
+        return float(model_point()["sa_disability"])
     elif cover == Cover.disease_disab:
-        return model_point()["sa_disease_disab"]
+        return float(model_point()["sa_disease_disab"])
     elif cover == Cover.cancer:
-        return model_point()["sa_cancer"]
+        return float(model_point()["sa_cancer"])
     elif cover == Cover.minor_cancer:
-        return model_point()["sa_minor_cancer"]
+        return float(model_point()["sa_minor_cancer"])
     elif cover == Cover.cerebral:
-        return model_point()["sa_cerebral"]
+        return float(model_point()["sa_cerebral"])
     elif cover == Cover.cardiac:
-        return model_point()["sa_cardiac"]
+        return float(model_point()["sa_cardiac"])
     elif cover == Cover.surgery:
-        return model_point()["sa_surgery"]
+        return float(model_point()["sa_surgery"])
     elif cover == Cover.fracture:
-        return model_point()["sa_fracture"]
+        return float(model_point()["sa_fracture"])
     elif cover == Cover.burn:
-        return model_point()["sa_burn"]
+        return float(model_point()["sa_burn"])
     elif cover == Cover.liability:
-        return model_point()["sa_liability"]
+        return float(model_point()["sa_liability"])
     elif cover == Cover.neonatal:
         return float(model_point()["sa_neonatal"])
     else:
@@ -815,7 +815,7 @@ def inc_pivot_ages(cause):
 def inc_pivot_rates(cause):
     """The pivot rates of ``cause`` for this model point's sex, at :func:`inc_pivot_ages`."""
     s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821
-    return [s.loc[s.index[i], "rate"] for i in range(len(s.index))]
+    return [float(s.loc[s.index[i], "rate"]) for i in range(len(s.index))]
 
 
 def inc_rate_at(x, cause):
