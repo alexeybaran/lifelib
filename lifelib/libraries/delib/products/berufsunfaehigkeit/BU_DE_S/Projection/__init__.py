@@ -1050,6 +1050,9 @@ def rente_pay_pp(t, z):
     return bu_rente_pp(t - z) * leistungsdyn_factor(z)
 
 
+_is_cached = False
+
+
 def beitragssumme_unit():
     """BS_unit: the *Beitragssumme* per 1 EUR p.a. of *Bruttobeitrag*.
 
