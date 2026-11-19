@@ -9,6 +9,7 @@ import math
 import numpy as np
 import pandas as pd
 from . import policy, assumptions, scenario, curve_helpers, curves as curve_formulas
+from .fields import PolicyField, NUMERIC, LABEL, field_cell
 
 OUTER_MONTHS = 36
 HORIZON = 480
@@ -26,13 +27,13 @@ def valuation_formula(valuation_month, policy_id, shock=-1):
 
 
 def initial_state():
-    premium = Data.numeric_field(policy_id, 'premium')
-    rate = max(Data.numeric_field(policy_id, 'gmir'),
+    premium = Data.numeric_field(policy_id, PolicyField.premium)
+    rate = max(Data.numeric_field(policy_id, PolicyField.gmir),
                Scenarios(0, False, -1).rate(0, 5.0) - Scenarios(0, False, -1).spread(0))
-    free = (Data.numeric_field(policy_id, 'free_wd_rate') * premium
-            if Data.label_field(policy_id, 'free_wd_rule') == 'pct_av' else 0.0)
+    free = (Data.numeric_field(policy_id, PolicyField.free_wd_rate) * premium
+            if Data.label_field(policy_id, PolicyField.free_wd_rule) == 'pct_av' else 0.0)
     return np.array([premium, 0.875 * premium,
-                     Data.numeric_field(policy_id, 'pols_if_init'),
+                     Data.numeric_field(policy_id, PolicyField.pols_if_init),
                      0.0, 0.0, premium, free, rate,
                      Scenarios(0, False, -1).rate(0, 5.0)], dtype=float)
 
@@ -41,8 +42,8 @@ def initial_state():
 # reads them (``.loc`` by key; a missing withdrawal or surrender key is zero; the MVA factor is
 # interpolated between whole years and held beyond the last row). No lookup helper module.
 _DATA_CELLS = {
-    'numeric_field': "lambda policy_id, column: float(model_point_table().loc[policy_id, column])",
-    'label_field': "lambda policy_id, column: str(model_point_table().loc[policy_id, column])",
+    'numeric_field': field_cell('numeric_field', 'model_point_table()', 'float', NUMERIC),
+    'label_field': field_cell('label_field', 'model_point_table()', 'str', LABEL),
     'mortality_rate': "lambda age, sex: float(mort_table().loc[(age, Sex[sex]), 'mort_rate'])",
     'withdrawal_amount': '''def withdrawal_amount(schedule, month):
     table = withdrawal_table()
@@ -70,8 +71,8 @@ _DATA_CELLS = {
 }
 # Unlinked builds hold the policy table as a reference and read it directly (live invalidation by reference).
 _POLICY_REF_CELLS = {
-    'numeric_field': "lambda policy_id, column: float(policy_table.loc[policy_id, column])",
-    'label_field': "lambda policy_id, column: str(policy_table.loc[policy_id, column])",
+    'numeric_field': field_cell('numeric_field', 'policy_table', 'float', NUMERIC),
+    'label_field': field_cell('label_field', 'policy_table', 'str', LABEL),
 }
 _TABLES = ('model_point_table', 'mort_table', 'withdrawal_table', 'surr_charge_table', 'mva_factor_table')
 
@@ -87,6 +88,7 @@ def _myga_data(model, source_path, folder, policy_table=None, linked=False):
         source.close()
     model.path = folder / Path(source_path).name
     data.math = math
+    data.PolicyField = PolicyField
     cells = dict(_DATA_CELLS)
     if not linked:
         # The policy table is a reference read once (or supplied); replacing it changes the policies.
@@ -142,10 +144,10 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     for name, formula in inspect.getmembers(scenario, inspect.isfunction):
         market.new_cells(name, formula)
     initial = model.new_space('Initial', formula=lambda policy_id: None,
-        refs={'Data': data, 'Scenarios': market, 'np': np})
+        refs={'Data': data, 'Scenarios': market, 'np': np, 'PolicyField': PolicyField})
     initial.new_cells('state', initial_state)
     states = model.new_space('StateSource')
-    common = {'policy_ids': ids, 'np': np, 'Data': data,
+    common = {'policy_ids': ids, 'np': np, 'Data': data, 'PolicyField': PolicyField,
               'Scenarios': market, 'Initial': initial, 'mva_admin_spread': 0.0025}
     options = {'collect_over': {'policy_id': ids}, 'collect_outputs': lambda: {
         'individual': {'state': {t: policy_state(t) for t in snapshot_months}},
@@ -174,17 +176,17 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
                   'mgsv_charge': 'mgsv_annual_charge', 'free_rate': 'free_wd_rate',
                   'premium_tax': 'premium_tax_rate', 'age_at_entry': 'age_at_entry'}
         for name, column in fields.items():
-            space.new_cells(name, f"def {name}():\n    return Data.numeric_field(policy_id, {column!r})")
+            space.new_cells(name, f"def {name}():\n    return Data.numeric_field(policy_id, PolicyField.{column})")
         for name in ('sex', 'wd_schedule_id', 'renewal_architecture'):
-            space.new_cells(name, f"def {name}():\n    return Data.label_field(policy_id, {name!r})")
-        space.new_cells('free_exempt', "lambda: Data.numeric_field(policy_id, 'free_wd_mva_exempt')")
-        space.new_cells('mgsv_net_wd', "lambda: 1.0 if Data.label_field(policy_id, 'mgsv_wd_convention') == 'net_of_charges' else 0.0")
-        space.new_cells('free_rule', "lambda: 0.0 if Data.label_field(policy_id, 'free_wd_rule') == 'pct_av' else 1.0")
+            space.new_cells(name, f"def {name}():\n    return Data.label_field(policy_id, PolicyField.{name})")
+        space.new_cells('free_exempt', "lambda: Data.numeric_field(policy_id, PolicyField.free_wd_mva_exempt)")
+        space.new_cells('mgsv_net_wd', "lambda: 1.0 if Data.label_field(policy_id, PolicyField.mgsv_wd_convention) == 'net_of_charges' else 0.0")
+        space.new_cells('free_rule', "lambda: 0.0 if Data.label_field(policy_id, PolicyField.free_wd_rule) == 'pct_av' else 1.0")
         space.new_cells('mva_family', """def mva_family():
-    name = Data.label_field(policy_id, 'mva_family')
+    name = Data.label_field(policy_id, PolicyField.mva_family)
     return {'linear_duration': 0.0, 'geometric': 1.0, 'declared_differential': 2.0}[name]""")
         space.new_cells('mva_cap', """def mva_cap():
-    name = Data.label_field(policy_id, 'mva_cap_rule')
+    name = Data.label_field(policy_id, PolicyField.mva_cap_rule)
     return {'sym_sc': 0.0, 'min_sc_interest': 1.0, 'asym_sc_snfl': 2.0, 'gmir_floor': 3.0, 'none': 4.0}[name]""")
     states.Actual = actual
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,
