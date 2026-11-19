@@ -21,6 +21,12 @@ forward interpolation, end extrapolation and triangular key-rate shocks.
 CS01 uses the shared discount factors with the base cash flows. Curve
 customizations can be made through the `Curves` Cell formulas.
 
+Data is the converted MYGA_US_S Data Space (its table Cells read the CSV files) with
+the DV01 lookup Cells written as plain table reads, as the MYGA Projection reads the
+same tables: `.loc` by key, a missing withdrawal or surrender key is zero, the MVA
+factor is interpolated between whole years and held beyond the last row. There is
+no lookup helper module. Every input table is read once when the model is built.
+
 The default inputs are the CSV files in the parent product directory.
 `reference_dir` selects another input directory, and `policy_table` supplies
 an alternative policy DataFrame indexed by `point_id`. The source reference

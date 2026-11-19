@@ -8,7 +8,6 @@ import inspect
 import math
 import numpy as np
 import pandas as pd
-from . import lookup
 from . import policy, assumptions, scenario, curve_helpers, curves as curve_formulas
 
 OUTER_MONTHS = 36
@@ -38,11 +37,48 @@ def initial_state():
                      Scenarios(0, False, -1).rate(0, 5.0)], dtype=float)
 
 
-def _myga_data(model, source_path, folder):
-    """Compose the saved MYGA Data Space and add the DV01 lookup Cells."""
+# The DV01 lookup Cells read the converted MYGA_US_S Data tables directly, as the MYGA Projection
+# reads them (``.loc`` by key; a missing withdrawal or surrender key is zero; the MVA factor is
+# interpolated between whole years and held beyond the last row). No lookup helper module.
+_DATA_CELLS = {
+    'numeric_field': "lambda policy_id, column: float(model_point_table().loc[policy_id, column])",
+    'label_field': "lambda policy_id, column: str(model_point_table().loc[policy_id, column])",
+    'mortality_rate': "lambda age, sex: float(mort_table().loc[(age, Sex[sex]), 'mort_rate'])",
+    'withdrawal_amount': '''def withdrawal_amount(schedule, month):
+    table = withdrawal_table()
+    key = (schedule, month)
+    return float(table.loc[key, 'wd_amount']) if key in table.index else 0.0
+''',
+    'surrender_rate': '''def surrender_rate(schedule, year):
+    table = surr_charge_table()
+    key = (Schedule[schedule], year)
+    return float(table.loc[key, 'surr_charge_rate']) if key in table.index else 0.0
+''',
+    'mva_factor': '''def mva_factor(term, column):
+    table = mva_factor_table()
+    name = 'factor_hi' if column else 'factor_lo'
+    last = int(table.index.max())
+    lower = int(math.floor(term))
+    if lower >= last:
+        return float(table.loc[last, name])
+    f0 = float(table.loc[lower, name])
+    f1 = float(table.loc[lower + 1, name])
+    return f0 + (f1 - f0) * (term - lower)
+''',
+    'mva_factor_lo': 'lambda term: mva_factor(term, 0)',
+    'mva_factor_hi': 'lambda term: mva_factor(term, 1)',
+}
+# Unlinked builds hold the policy table as a reference and read it directly (live invalidation by reference).
+_POLICY_REF_CELLS = {
+    'numeric_field': "lambda policy_id, column: float(policy_table.loc[policy_id, column])",
+    'label_field': "lambda policy_id, column: str(policy_table.loc[policy_id, column])",
+}
+_TABLES = ('model_point_table', 'mort_table', 'withdrawal_table', 'surr_charge_table', 'mva_factor_table')
+
+
+def _myga_data(model, source_path, folder, policy_table=None, linked=False):
+    """The converted MYGA_US_S Data Space with the DV01 lookup Cells; optionally another policy table."""
     import modelx as mx
-    from modelx_helpers import typed_inputs
-    from modelx_helpers.immutable_inputs import Table
 
     source = mx.read_model(source_path, name=model.name + 'InputSource')
     try:
@@ -50,59 +86,15 @@ def _myga_data(model, source_path, folder):
     finally:
         source.close()
     model.path = folder / Path(source_path).name
-    data.Table = Table
-    data.Sex = getattr(data, 'Sex', None)
-    data.Schedule = getattr(data, 'Schedule', None)
-    data.typed_lookup = typed_inputs.lookup
-    data.typed_float = typed_inputs.lookup_float
-    data.typed_object = typed_inputs.lookup_object
-    data.subtable = typed_inputs.subtable
-    data.has_group = typed_inputs.has_group
-    data.last_key = typed_inputs.last_key
-    data.prepared_interpolation = typed_inputs.prepared_interpolation
     data.math = math
-    data.new_cells('numeric_field', 'lambda policy_id, column: typed_float(model_point_table(), policy_id, column)')
-    data.new_cells('label_field', 'lambda policy_id, column: typed_object(model_point_table(), policy_id, column)')
-    data.new_cells('mortality_rate', '''def mortality_rate(age, sex):
-    table = mort_table()
-    if isinstance(table, Table):
-        return typed_float(table, (age, sex), 'mort_rate')
-    return typed_float(subtable(table, sex if Sex is None else Sex[sex]), age, 'mort_rate')
-''')
-    data.new_cells('withdrawal_amount', '''def withdrawal_amount(schedule, month):
-    table = withdrawal_table()
-    if isinstance(table, Table):
-        return typed_float(table, (schedule, month), 'wd_amount', 0.0)
-    if not has_group(table, schedule):
-        return 0.0
-    return typed_float(subtable(table, schedule), month, 'wd_amount', 0.0)
-''')
-    data.new_cells('surrender_rate', '''def surrender_rate(schedule, year):
-    table = surr_charge_table()
-    if isinstance(table, Table):
-        return typed_float(table, (schedule, year), 'surr_charge_rate', 0.0)
-    group = schedule if Schedule is None else Schedule[schedule]
-    if not has_group(table, group):
-        return 0.0
-    return typed_float(subtable(table, group), year, 'surr_charge_rate', 0.0)
-''')
-    data.new_cells('mva_factor', '''def mva_factor(term, column):
-    table = mva_factor_table()
-    prepared = prepared_interpolation(table, column, term, typed_lookup, last_key, math)
-    if prepared is not None:
-        return prepared
-    lower = max((key for key in table['keys'] if key <= term), default=None)
-    if lower is None:
-        raise KeyError(term)
-    if lower == last_key(table):
-        return typed_lookup(table, lower, column)
-    upper = min(key for key in table['keys'] if key > term)
-    left = typed_lookup(table, lower, column)
-    right = typed_lookup(table, upper, column)
-    return left + (right - left) * (term - lower) / (upper - lower)
-''')
-    data.new_cells('mva_factor_lo', 'lambda term: mva_factor(term, 0)')
-    data.new_cells('mva_factor_hi', 'lambda term: mva_factor(term, 1)')
+    cells = dict(_DATA_CELLS)
+    if not linked:
+        # The policy table is a reference read once (or supplied); replacing it changes the policies.
+        data.policy_table = (data.model_point_table() if policy_table is None else policy_table)
+        data.model_point_table.formula = lambda: policy_table
+        cells.update(_POLICY_REF_CELLS)
+    for name, formula in cells.items():
+        data.new_cells(name, formula)
     return data
 
 
@@ -113,41 +105,24 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         raise ValueError('route must be collect or direct')
     if myga_model is not None and policy_table is not None:
         raise ValueError('use the saved MYGA Data Cell or supply policy_table')
+    linked = myga_model is not None
     folder = Path(reference_dir or (Path(myga_model).parent if myga_model is not None
                                    else Path(__file__).resolve().parent.parent))
+    myga_model = myga_model or folder / 'MYGA_US_S'
+    if policy_table is not None:
+        policy_table = policy_table.sort_index()
+        if not policy_table.index.is_unique or len(policy_table) == 0:
+            raise ValueError('policy IDs must be nonempty and unique')
     curves, spreads = curve_helpers.outer_scenario()
     model = mx.new_model(model_name)
     try:
-        if myga_model is not None:
-            data = _myga_data(model, myga_model, folder)
-            data.annual_curves = curves
-            data.annual_spreads = spreads
-            data.curves = curve_helpers
-            data.lookup = lookup
-            ids = tuple(sorted(int(i) for i in data.model_point_table()['keys']))
-            if not ids or len(set(ids)) != len(ids):
-                raise ValueError('policy IDs must be nonempty and unique')
-        else:
-            table = (pd.read_csv(folder / 'model_point_table.csv', index_col='point_id')
-                     if policy_table is None else policy_table.copy())
-            if not table.index.is_unique or len(table) == 0:
-                raise ValueError('policy IDs must be nonempty and unique')
-            table = table.sort_index()
-            ids = tuple(int(i) for i in table.index)
-            data = model.new_space('Data', refs={
-                'policy_table': table,
-                'mortality': pd.read_csv(folder / 'mort_table.csv', index_col=['age', 'sex']),
-                'withdrawals': pd.read_csv(folder / 'withdrawal_table.csv', index_col=['wd_schedule_id', 't']),
-                'surrender': pd.read_csv(folder / 'surr_charge_table.csv', index_col=['schedule', 'contract_year']),
-                'mva_factors': pd.read_csv(folder / 'mva_factor_table.csv', index_col='years_remaining'),
-                'annual_curves': curves, 'annual_spreads': spreads, 'curves': curve_helpers, 'lookup': lookup})
-            data.new_cells('numeric_field', "lambda policy_id, column: lookup.at(policy_table, policy_id, column)")
-            data.new_cells('label_field', "lambda policy_id, column: lookup.field(policy_table, policy_id, column)")
-            data.new_cells('mortality_rate', "lambda age, sex: lookup.at(mortality, (age, sex), 'mort_rate')")
-            data.new_cells('withdrawal_amount', "lambda schedule, month: lookup.get(withdrawals, (schedule, month), 'wd_amount')")
-            data.new_cells('surrender_rate', "lambda schedule, year: lookup.get(surrender, (schedule, year), 'surr_charge_rate')")
-            data.new_cells('mva_factor_lo', "lambda term: lookup.linear(mva_factors, term, 'factor_lo')")
-            data.new_cells('mva_factor_hi', "lambda term: lookup.linear(mva_factors, term, 'factor_hi')")
+        data = _myga_data(model, myga_model, folder, policy_table, linked)
+        data.annual_curves = curves
+        data.annual_spreads = spreads
+        data.curves = curve_helpers
+        ids = tuple(sorted(int(i) for i in data.model_point_table().index))
+        if not ids or len(set(ids)) != len(ids):
+            raise ValueError('policy IDs must be nonempty and unique')
     except BaseException:
         model.close()
         raise
@@ -167,10 +142,10 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     for name, formula in inspect.getmembers(scenario, inspect.isfunction):
         market.new_cells(name, formula)
     initial = model.new_space('Initial', formula=lambda policy_id: None,
-        refs={'Data': data, 'Scenarios': market, 'lookup': lookup, 'np': np})
+        refs={'Data': data, 'Scenarios': market, 'np': np})
     initial.new_cells('state', initial_state)
     states = model.new_space('StateSource')
-    common = {'policy_ids': ids, 'np': np, 'lookup': lookup, 'Data': data,
+    common = {'policy_ids': ids, 'np': np, 'Data': data,
               'Scenarios': market, 'Initial': initial, 'mva_admin_spread': 0.0025}
     options = {'collect_over': {'policy_id': ids}, 'collect_outputs': lambda: {
         'individual': {'state': {t: policy_state(t) for t in snapshot_months}},
@@ -249,6 +224,10 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     return result""")
     outer.new_cells('policy_state', 'lambda valuation_month, policy_id: Actual[policy_id].policy_state(valuation_month)' if route == 'direct' else 'lambda valuation_month, policy_id: Actual.collect().individual[policy_id].state[valuation_month]')
     outer.new_cells('dv01', 'lambda y, key: base_liability_pv(y) - shocked_liability_pv(y, key)')
+    # The run's input snapshot: every input table is read once here, after the last reference
+    # assignment; no file is read during the calculation.
+    for table in _TABLES:
+        getattr(data, table)()
     outer.new_cells('cs01', """def cs01(y, key):
     cashflows = np.asarray(tuple(base_cashflows(y).values()), dtype=np.float64)
     liability = float(-np.dot(cashflows, Curves.discount_factors(y, key)))
