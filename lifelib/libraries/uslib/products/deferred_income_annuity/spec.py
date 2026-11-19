@@ -1,6 +1,7 @@
-# DIA_US_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a
-# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):
+# DIA_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a
+# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):
 #   t < 1206: need_max 1200 + 5 (lives_if(a + j) with j < accel_months = 6, accel_cost line 1403 /
-#     annuity_pp_sched(a+j) line 1574; a = accel_mth < proj_len) + 1 margin = 1206. lives_if(t+1) (line 811) and
-#     annuity_factor loop s <= horizon_mths (line 929) are within this.
-{'cells_param_size': {'t': 1206}}
+#   from_mth < 1206: month index (premium month tk, adjust_mth, income_start), < proj_len; same as t
+#   start_mth < 362: month index (income_start_mth_at / adjust_start_mth), < proj_len; same as t
+#   y < 101: policy year 1..proj_len()//12 (result_annual line 1944); 1200//12 = 100, +1 = 101
+{'cells_param_size': {'t': 1206, 'from_mth': 1206, 'start_mth': 362, 'y': 101}}
