@@ -16,7 +16,9 @@ modelx, an exported Python model, and a compiled model.
 Treat category inputs as strings and convert them in the model with
 `Category[label]`. Keep accepted aliases explicit, and let unknown labels fail
 at the conversion Cell. Use named enum members in calculations that receive
-already-converted categories.
+already-converted categories. Bind enum classes before compilation. An
+eligible enum-class Reference is fixed in the generated model when the
+compiler embeds its members as native constants.
 
 Use `float(frame.loc[key, "rate"])` for a read that must produce a float. When
 the scalar type matters, keep the original pandas selection result.
