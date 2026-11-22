@@ -73,3 +73,26 @@ finally:
 5. On the collect route Outer.base_liability_pv(month, scen_id) calls Valuation.collect(month, scen_id, -1).sum.liability_pv across policies. Outer.shocked_liability_pv(month, scen_id, key) repeats this on the same economic path with the selected bump. Outer.dv01(month, scen_id, key) subtracts the latter result from the former. Outer.cs01 holds the base cash flows fixed and applies the changed discounts.
 
 CashValue_ME_G2PP extends each policy over every ESG scenario in a vectorized projection, including its certainty-equivalent reference in row 0. This DV01 example makes the stochastic path an explicit argument: results(m, scen_id=1) reports path 1. Outer.scenario_ids() lists the generated paths. A stochastic mean requires aggregating the pathwise results over the selected IDs.
+
+## From the observed fixing to one policy's DV01
+
+This live direct calculation uses shipped policy 1 alone, generated path 1, cut month 60, a +1 bp shock at key 3 (five years), and 480 monthly cash-flow offsets. Actual has already fixed the current rollover rate. The next rollover is at policy month 120.
+
+| Cell or result | Base | Five-year key bumped |
+| --- | ---: | ---: |
+| Market(60,1,shock).rate(60,60), the current spot | 2.762051% | 2.772051% |
+| Valuation(60,1,1,shock).credit_rate(60), booked by Actual | 2.762051% | 2.762051% |
+| Market(60,1,shock).price(120), price for start of next term | 0.872642126 | 0.872217656 |
+| Market(60,1,shock).price(180), price for end of next term | 0.760771737 | 0.760771737 |
+| Valuation.credit_rate(120), next projected declaration | 2.781834% | 2.771833% |
+| Valuation.inv_income_pp(121), interest per in-force contract | $314.35 | $313.23 |
+| Valuation.av_pp(121), closing balance per in-force contract | $137,636.49 | $137,634.26 |
+| Valuation.net_cf(121), projected monthly net cash flow | −$1,524.9833 | −$1,524.9587 |
+| Valuation.discount_factor(61), month-60 price to end of month 121 | 0.868507702 | 0.868085729 |
+| Outer portfolio liability on this one-policy book | $104,844.93667 | $104,807.01246 |
+
+The month-120 forward falls when the five-year key rises because only the forward-start bond sits at the bumped node. The end bond is ten years away and has zero weight on the five-year key. If Actual subsequently runs to month 120, its own spot fixing on the realized path is 3.523481%; that later observation is unavailable to a month-60 valuation.
+
+Outer.dv01(60,1,3) returns **$37.92421**. Outer.cs01(60,1,3) returns **$4.20828** for frozen base cash flows. The difference includes every cash-flow response to the shock, including behavior and MVA effects.
+
+Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
