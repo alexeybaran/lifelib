@@ -6,7 +6,7 @@ import lifelib
 import numpy as np
 from . import actual, market, outer, outer_direct, valuation
 
-KEY_MONTHS = (12, 24, 36, 60, 120, 180, 240)
+
 OUTER_MONTHS = 36
 HORIZON = 480
 VALUATION_MONTHS = (0, 12, 24)
@@ -40,6 +40,18 @@ _TABLES = ('model_point_table', 'mort_table', 'withdrawal_table', 'surr_charge_t
            'surr_charge_age_cap_table', 'mva_factor_table')
 
 
+def _shock_key_months():
+    """Ordered key tenors in whole months, read once from the book's input directory."""
+    table = pd.read_csv(input_dir() / 'shock_steps.csv')
+    if list(table.columns) != ['tenor_months'] or table.empty:
+        raise ValueError('shock_steps.csv requires one tenor_months column and at least one row')
+    values = table['tenor_months']
+    if (not pd.api.types.is_integer_dtype(values.dtype) or values.min() <= 0
+            or not values.is_monotonic_increasing or not values.is_unique):
+        raise ValueError('shock tenors must be positive whole months in strictly increasing order')
+    return values.tolist()
+
+
 def _myga_data(model, source_path, folder, policy_table=None, linked=False):
     """The converted MYGA_US_S Data Space with the DV01 lookup Cells; optionally another policy table."""
     import modelx as mx
@@ -57,6 +69,7 @@ def _myga_data(model, source_path, folder, policy_table=None, linked=False):
         source.close()
     model.path = folder / Path(source_path).name
     data.math = math
+    data.new_cells('shock_key_months', _shock_key_months)
     cells = dict(_DATA_CELLS)
     if not linked:
         # The policy table is a reference read once (or supplied); replacing it changes the policies.
@@ -75,7 +88,7 @@ def _market_key(as_of_month, scen_id, shock=-1):
             or not 1 <= scen_id <= ESG.scen_size()):
         raise ValueError('scen_id must identify a generated ESG path')
     if (isinstance(shock, bool) or not isinstance(shock, (int, np.integer))
-            or not -1 <= shock < len(key_months)):
+            or not -1 <= shock < len(data.shock_key_months())):
         raise ValueError('shock must be -1 or a key-rate index')
     return None
 
@@ -175,7 +188,7 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
         model.close()
         raise
     market_space = model.new_space_from_module(market, name='Market', formula=_market_key,
-        refs={'ESG': esg, 'key_months': KEY_MONTHS, 'shock_bp': 1.e-4, 'np': np})
+        refs={'ESG': esg, 'data': data, 'shock_bp': 1.e-4, 'np': np})
     common = {**actual_refs, 'data': data, 'ESG': esg, 'Market': market_space, 'np': np, 'point_id': 0}
     actual_space = model.new_space_from_module(actual, name='Actual', formula=_actual_point,
         refs={**common, 'projection_months': tuple(range(outer_months)),
@@ -209,7 +222,7 @@ def results(model, scen_id):
     """Calculate the six portfolio reports for one generated ESG path."""
     outer = model.Outer
     months = model.Actual.snapshot_months
-    keys = range(len(KEY_MONTHS))
+    keys = range(len(model.Data.shock_key_months()))
     return {'base': np.array([outer.base_liability_pv(month, scen_id) for month in months]),
             'dv01': np.array([[outer.dv01(month, scen_id, k) for k in keys] for month in months]),
             'cs01': np.array([[outer.cs01(month, scen_id, k) for k in keys] for month in months]),

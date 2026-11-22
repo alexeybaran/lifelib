@@ -15,7 +15,7 @@ def model():
         m.close()
 
 
-def test_data_files_only_read_at_construction(monkeypatch):
+def test_policy_tables_preloaded_and_shock_grid_read_once(monkeypatch):
     count = []
     original = pd.read_csv
     def read(*a, **kw):
@@ -25,10 +25,12 @@ def test_data_files_only_read_at_construction(monkeypatch):
     m = build_model(route='direct',model_name='ReadsTest')
     try:
         assert len(count) == 6
+        assert m.Data.shock_key_months() == [*range(12, 121, 12), 180, 240]
         for i in range(1,8):
             m.Actual[i, 1].net_cf(1)
             m.Actual[i, 1].mort_rate_mth(60)
-        assert len(count) == 6
+        assert [Path(name).name for name in count].count('shock_steps.csv') == 1
+        assert len(count) == 7
     finally:
         m.close()
 

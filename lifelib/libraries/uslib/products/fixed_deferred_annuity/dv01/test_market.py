@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from modelx.core.errors import FormulaError
 
 from .model import build_model
 
@@ -14,7 +15,7 @@ def expected_price(engine, as_of, maturity, scenario, shock=-1):
     if shock == -1 or maturity == as_of:
         return price
     maturity_years = (maturity - as_of) / 12
-    weight = np.interp(maturity_years, [1, 2, 3, 5, 10, 15, 20], np.arange(7) == shock)
+    weight = np.interp(maturity_years, [*range(1, 11), 15, 20], np.arange(12) == shock)
     zero = price ** (-1 / maturity_years) - 1
     return (1 + zero + 1e-4 * weight) ** -maturity_years
 
@@ -43,7 +44,7 @@ def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(mo
     for scenario in (1, 2):
         base = model.Market(as_of, scenario, -1)
         assert base.base_price(as_of + 60) == raw[scenario - 1]
-        for shock in (-1, 0, 3, 6):
+        for shock in range(-1, 12):
             market = model.Market(as_of, scenario, shock)
             for offset in (0, 5, 12, 24, 31, 60, 98, 120, 240, 267):
                 maturity = as_of + offset
@@ -53,7 +54,7 @@ def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(mo
                 expected_rate(model.ESG, as_of, as_of, 60, scenario, shock), abs=1e-13)
             assert market.rate(60, as_of + 60) == pytest.approx(
                 expected_rate(model.ESG, as_of, as_of + 60, 60, scenario, shock), abs=1e-13)
-        bumped = model.Market(as_of, scenario, 3)
+        bumped = model.Market(as_of, scenario, 4)
         assert bumped.rate(60, as_of) - base.rate(60, as_of) == pytest.approx(1e-4)
         assert bumped.rate(60, as_of + 60) != base.rate(60, as_of + 60)
 
@@ -148,3 +149,13 @@ def test_annual_renewal_uses_one_year_for_credit_and_five_years_for_mva(model):
     next_credit = expected_rate(model.ESG, cut, 72, 12, 2, 3)
     assert v.credit_rate(72) == pytest.approx(max(v.gmir(), next_credit))
     assert v.mva_ref_yield_locked(72) == actual.mva_ref_yield_locked(cut)
+
+@pytest.mark.parametrize("raw", ["tenor_months\n", "years\n12\n", "tenor_months\n0\n",
+                                 "tenor_months\n12\n12\n", "tenor_months\n24\n12\n",
+                                 "tenor_months\n12.5\n"])
+def test_invalid_shock_file_is_rejected(model, tmp_path, raw):
+    (tmp_path / "shock_steps.csv").write_text(raw, encoding="utf-8")
+    model.Data.input_dir.formula = lambda: directory
+    model.Data.directory = tmp_path
+    with pytest.raises(FormulaError, match="ValueError: shock"):
+        model.Data.shock_key_months()

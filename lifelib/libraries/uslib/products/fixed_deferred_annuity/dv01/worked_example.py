@@ -31,6 +31,10 @@ def project(item, cut, reset, month):
     cashflow = item.cashflow_at_offset(offset)
     discount = item.discount_factor(offset)
     return {
+        'declaration_month': item.redeclare_month(month),
+        'credit_before_reset': item.credit_rate(reset - 1),
+        'start_bond_shock_weight': market.shock_weight(reset - cut),
+        'end_bond_shock_weight': market.shock_weight(reset + 60 - cut),
         'price_to_reset': market.price(reset),
         'price_to_reset_plus_60': market.price(reset + 60),
         'cut_5y_spot': market.rate(60, cut),
@@ -40,29 +44,30 @@ def project(item, cut, reset, month):
         'reset_spread': item.renewal_crediting_spread(reset),
         'gmir': item.gmir(),
         'reset_credit': item.credit_rate(reset),
-        'next_month_locked_mva_yield': item.mva_ref_yield_locked(month),
-        'next_month_credit': item.credit_rate_mth(month),
-        'next_month_opening_av': item.av_pp_at(month, item.AvTiming.BEF_WD),
-        'next_month_interest': item.inv_income_pp(month),
-        'next_month_closing_av': item.av_pp(month),
-        'next_month_competitor_tenor_months': item.competitor_tenor(month),
-        'next_month_competitor_rate': item.market_rate(month),
-        'next_month_mva_tenor_months': round(12 * item.mva_term(month)),
-        'next_month_current_mva_rate': item.mva_ref_yield(month),
-        'next_month_net_cashflow': cashflow,
-        'next_month_discount': discount,
-        'next_month_liability_pv': -cashflow * discount,
+        'projection_month_locked_mva_yield': item.mva_ref_yield_locked(month),
+        'projection_month_credit': item.credit_rate_mth(month),
+        'projection_month_opening_av': item.av_pp_at(month, item.AvTiming.BEF_WD),
+        'projection_month_interest': item.inv_income_pp(month),
+        'projection_month_closing_av': item.av_pp(month),
+        'projection_month_competitor_tenor_months': item.competitor_tenor(month),
+        'projection_month_competitor_rate': item.market_rate(month),
+        'projection_month_mva_tenor_months': round(12 * item.mva_term(month)),
+        'projection_month_current_mva_rate': item.mva_ref_yield(month),
+        'projection_month_net_cashflow': cashflow,
+        'projection_month_discount': discount,
+        'projection_month_liability_pv': -cashflow * discount,
     }
 
 
 def run():
-    policy, scenario, shock = 1, 1, 3
-    cut, reset, report_month = 60, 120, 121
+    policy, scenario = 1, 1
+    cut, reset, report_month = 72, 120, 120
     folder = Path(__file__).resolve().parents[1]
     policies = pd.read_csv(folder / 'model_point_table.csv', index_col='point_id').loc[[policy]]
     model = build_model(route='direct', policy_table=policies, outer_months=122,
                         valuation_months=(12, cut, reset))
     try:
+        shock = model.Data.shock_key_months().index(60)
         engine = model.ESG
         actual = model.Actual(policy, scenario)
         base = model.Valuation(cut, policy, scenario, -1)
@@ -82,10 +87,11 @@ def run():
             'shock_index': shock,
             'shock_bp': 1,
             'actual_month_12': observe(actual, engine, scenario, 12),
-            'actual_month_60': observe(actual, engine, scenario, cut),
+            'actual_month_60': observe(actual, engine, scenario, 60),
+            'actual_month_72': observe(actual, engine, scenario, cut),
             'actual_month_120': observe(actual, engine, scenario, reset),
             'month_60_credit_projected_from_month_36': model.Valuation(
-                36, policy, scenario, -1).credit_rate(cut),
+                36, policy, scenario, -1).credit_rate(60),
             'base': project(base, cut, reset, report_month),
             'bumped': project(bumped, cut, reset, report_month),
             'one_policy_outer': {

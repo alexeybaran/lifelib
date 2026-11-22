@@ -31,7 +31,7 @@ def expected_reports(model, ids, scenario):
     base_liabilities, base_cashflows, dv01, cs01 = [], [], [], []
     for month in months:
         cashflows_by_shock, base_discounts_by_shock = [], []
-        for shock in [-1, *range(7)]:
+        for shock in [-1, *range(len(model.Data.shock_key_months()))]:
             items = [model.Valuation(month, policy, scenario, shock) for policy in ids]
             cashflows = [sum(item.net_cf(t) for item in items) for t in range(month, end)]
             discounts = [expected_price(engine, month, t + 1, scenario, shock)

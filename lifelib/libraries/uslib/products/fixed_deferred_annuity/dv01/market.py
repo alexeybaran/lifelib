@@ -12,6 +12,7 @@ def shock_weight(tenor_month):
     """Weight of the selected key-rate bump on the maturity after the cut."""
     if shock == -1:
         return 0.0
+    key_months = data.shock_key_months()
     node = key_months[shock]
     if tenor_month <= node:
         if shock == 0:

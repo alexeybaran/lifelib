@@ -11,6 +11,10 @@ A crediting rate is a policy promise. The market curve supplies a quote when tha
 | Valuation | One policy restarted from Actual at a specified date. Carries booked rates and projects future resets from that date's curve. |
 | Outer | Collects policy cash flows on the same path and compares base and shocked liabilities. |
 
+## Configure key-rate shocks
+
+Edit [shock_steps.csv](../shock_steps.csv) in the input book before starting a fresh run. The tenor_months column accepts positive whole months in strictly increasing order, one maturity per row. The shipped grid is annual through year 10, then years 15 and 20. Index 0 selects the first row; -1 selects the base. The bump is +1 bp at the selected tenor, with linear interpolation to adjacent keys. Data.shock_key_months() caches the CSV once per model. Supply the revised book to the same compiled model in a fresh process. Resolve key indices by tenor when changing grids. When compiling Outer, set its cells_param_size for key to 2147483647 so the sampled key count does not become a runtime limit. The compiler uses a hash cache for this domain.
+
 ## Read the market call
 
 In Market(as_of_month=36, scen_id=1, shock=-1), rate(tenor_month=60, forward_month=60) means “at month 36, price a five-year investment that starts at month 60 and ends at month 120 on path 1.” The two 60s describe different things. A fixing observed at month 60 instead uses Market(as_of_month=60, scen_id=1, shock=-1), with the same rate arguments.
@@ -43,7 +47,7 @@ The upstream example workbook selects EUR_BASE, seed 1234 and 1,000 antithetic s
 | 60 | 60 | 120 | 1.000000000 | 0.872642126 | 2.762051% |
 | 60 | 120 | 180 | 0.872642126 | 0.760771737 | 2.781834% |
 
-At month 36, the five-year key has weight zero on the start bond (24 months to maturity) and 0.6 on the end bond (84 months to maturity, between the 60- and 120-month keys). A one-basis-point bump changes the end price to 0.822793165. The month-60 renewal projected at month 36 rises to 3.046622%. When the valuation starts at month 60 instead, the booked rate of 2.762051% applies to both shock arms. The issued 4.45% and booked 2.762051% correspond to monthly interest rates of 0.363478% and 0.227308% respectively.
+Key-rate indices 0 through 11 correspond to maturities of 1 through 10, 15 and 20 years. At month 36 the two bonds for the month-60 renewal mature in two and seven years, each on its own key. Both have zero weight on the five-year key. When the valuation starts at month 60 instead, the booked rate of 2.762051% applies to both shock arms. The issued 4.45% and booked 2.762051% correspond to monthly interest rates of 0.363478% and 0.227308% respectively.
 
 ## Follow the Cells in the assembled model
 
@@ -56,7 +60,7 @@ m = build_model(route="direct")
 try:
     a = m.Actual(1, 1)                      # policy_id, scen_id
     v = m.Valuation(36, 1, 1, -1)           # valuation_month, policy_id, scen_id, shock
-    bumped = m.Valuation(36, 1, 1, 3)       # five-year key
+    bumped = m.Valuation(36, 1, 1, 4)       # five-year key
     assert a.credit_rate(0) == a.declared_rate_initial()
     print(v.redeclare_month(61))            # 60
     print(v.renewal_quote(60))              # Market(36, 1, -1).rate(60, 60)
@@ -74,25 +78,30 @@ finally:
 
 CashValue_ME_G2PP extends each policy over every ESG scenario in a vectorized projection, including its certainty-equivalent reference in row 0. This DV01 example makes the stochastic path an explicit argument: results(m, scen_id=1) reports path 1. Outer.scenario_ids() lists the generated paths. A stochastic mean requires aggregating the pathwise results over the selected IDs.
 
-## From the observed fixing to one policy's DV01
+## Month-120 crediting rate with the shock applied at month 72
 
-This live direct calculation uses shipped policy 1 alone, generated path 1, cut month 60, a +1 bp shock at key 3 (five years), and 480 monthly cash-flow offsets. Actual has already fixed the current rollover rate. The next rollover is at policy month 120.
+Policy 1 on stochastic path 1 rolls over every 60 months. Actual books 2.762051% at month 60. At the month-72 cut both arms inherit this rate through month 119. At month 120, redeclare_month(120) returns 120, which is later than the cut. The future declaration is priced from month 72.
 
-| Cell or result | Base | Five-year key bumped |
+```python
+base = m.Valuation(72, 1, 1, -1)  # valuation_month, policy_id, scen_id, shock
+bump = m.Valuation(72, 1, 1, 4)   # +1 bp at the five-year key
+bump.credit_rate(120)
+# redeclare_month(120) -> 120
+# renewal_quote(120) -> Market(72, 1, 4).rate(tenor_month=60, forward_month=120)
+# credit_rate(120) -> max(gmir(), renewal_quote(120) - renewal_crediting_spread(120))
+```
+
+Market takes the path-1 entries from ESG.P_t_T(72,120) and ESG.P_t_T(72,180). Relative to the cut, the two maturities are 48 and 108 months. These are the four- and nine-year keys. Both have zero weight under the five-year shock. The annual-effective forward is the fifth root of the start price divided by the end price, minus one.
+
+| Month-72 valuation of policy 1 | Base | Five-year bump |
 | --- | ---: | ---: |
-| Market(60,1,shock).rate(60,60), the current spot | 2.762051% | 2.772051% |
-| Valuation(60,1,1,shock).credit_rate(60), booked by Actual | 2.762051% | 2.762051% |
-| Market(60,1,shock).price(120), price for start of next term | 0.872642126 | 0.872217656 |
-| Market(60,1,shock).price(180), price for end of next term | 0.760771737 | 0.760771737 |
-| Valuation.credit_rate(120), next projected declaration | 2.781834% | 2.771833% |
-| Valuation.inv_income_pp(121), interest per in-force contract | $314.35 | $313.23 |
-| Valuation.av_pp(121), closing balance per in-force contract | $137,636.49 | $137,634.26 |
-| Valuation.net_cf(121), projected monthly net cash flow | −$1,524.9833 | −$1,524.9587 |
-| Valuation.discount_factor(61), month-60 price to end of month 121 | 0.868507702 | 0.868085729 |
-| Outer portfolio liability on this one-policy book | $104,844.93667 | $104,807.01246 |
+| Market.price(120) | 0.863653734 | 0.863653734 |
+| Market.price(180) | 0.730595997 | 0.730595997 |
+| Valuation.credit_rate(119), declaration booked in Actual | 2.762051% | 2.762051% |
+| Valuation.credit_rate(120), new annual declaration | 3.402842% | 3.402842% |
+| Valuation.credit_rate_mth(120) | 0.279241% | 0.279241% |
+| Valuation.inv_income_pp(120) | $382.58433 | $382.58433 |
 
-The month-120 forward falls when the five-year key rises because only the forward-start bond sits at the bumped node. The end bond is ten years away and has zero weight on the five-year key. If Actual subsequently runs to month 120, its own spot fixing on the realized path is 3.523481%; that later observation is unavailable to a month-60 valuation.
-
-Outer.dv01(60,1,3) returns **$37.92421**. Outer.cs01(60,1,3) returns **$4.20828** for frozen base cash flows. The difference includes every cash-flow response to the shock, including behavior and MVA effects.
+The shipped spread is zero and the 0.25% guaranteed minimum is below both forward quotes. For the 480-month one-policy valuation, Outer.dv01(72,1,4) is $0.34568 (base liability $10,229.80574 less shocked $10,229.46005). This includes all projected cash-flow and discounting changes.
 
 Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
