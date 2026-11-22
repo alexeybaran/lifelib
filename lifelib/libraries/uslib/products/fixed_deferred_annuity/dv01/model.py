@@ -1,28 +1,20 @@
-"""DV01 with shared raw data and scenario Cells, for live/export/Cython.
+"""Canonical MYGA calculations with shared DV01 data and scenario Cells.
 
-The retained example's Actual/Valuation economic conventions remain unchanged.
-No policy-month arrays are prepared before the formula graph executes.
+Actual and Valuation use saved MYGA calculations behind the DV01 market,
+history and reporting interfaces. Policy-month calculations run on demand.
 """
 from pathlib import Path
 import inspect
 import math
 import numpy as np
 import pandas as pd
+from . import actual as actual_projection, valuation as valuation_projection
 from . import policy, assumptions, scenario, curve_helpers, curves as curve_formulas
 from lifelib.libraries.uslib.products.fixed_deferred_annuity import enums   # the MYGA_US_S enums
 
 OUTER_MONTHS = 36
 HORIZON = 480
 VALUATION_MONTHS = (0, 12, 24)
-
-
-def actual_initial_state():
-    """The state at issue: account value, MGSV, policies in force, interest to date, interest this
-    year, premium accumulated at the GMIR, free withdrawal available, credited rate, locked MVA rate."""
-    premium = premium_pp()
-    rate = max(gmir(), market().rate(0, 5.0) - market().spread(0))
-    free = free_rate() * premium if free_rule() == 0.0 else 0.0
-    return (premium, 0.875 * premium, pols_if_init(), 0.0, 0.0, premium, free, rate, market().rate(0, 5.0))
 
 
 # The DV01 lookup Cells read the converted MYGA_US_S Data tables directly, as the MYGA Projection
@@ -49,7 +41,8 @@ _DATA_CELLS = {
     'mva_factor_lo': 'lambda term: mva_factor(term, 0)',
     'mva_factor_hi': 'lambda term: mva_factor(term, 1)',
 }
-_TABLES = ('model_point_table', 'mort_table', 'withdrawal_table', 'surr_charge_table', 'mva_factor_table')
+_TABLES = ('model_point_table', 'mort_table', 'withdrawal_table', 'surr_charge_table',
+           'surr_charge_age_cap_table', 'mva_factor_table')
 
 
 def _myga_data(model, source_path, folder, policy_table=None, linked=False):
@@ -59,6 +52,9 @@ def _myga_data(model, source_path, folder, policy_table=None, linked=False):
     source = mx.read_model(source_path, name=model.name + 'InputSource')
     try:
         data = source.Data.copy(model, 'Data')
+        projection = source.Projection
+        actual_formulas = {name: cell.formula.source for name, cell in projection.cells.items() if name != 'policy_id'}
+        actual_refs = {name: getattr(projection, name) for name in projection.refs if not name.startswith('__') and name not in ('data', 'point_id')}
     finally:
         source.close()
     model.path = folder / Path(source_path).name
@@ -70,7 +66,7 @@ def _myga_data(model, source_path, folder, policy_table=None, linked=False):
         data.model_point_table.formula = lambda: policy_table
     for name, formula in cells.items():
         data.new_cells(name, formula)
-    return data
+    return data, actual_formulas, actual_refs
 
 
 def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
@@ -92,7 +88,7 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     curves, spreads = curve_helpers.outer_scenario()
     model = mx.new_model(model_name)
     try:
-        data = _myga_data(model, myga_model, folder, policy_table, linked)
+        data, actual_formulas, actual_refs = _myga_data(model, myga_model, folder, policy_table, linked)
         data.annual_curves = curves
         data.annual_spreads = spreads
         data.curves = curve_helpers
@@ -124,16 +120,16 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     # Closed-set labels are the MYGA_US_S enums (IntEnum), as its Projection uses them.
     common = {'Data': data, 'Scenarios': market, 'mva_admin_spread': 0.0025,
               'Sex': enums.Sex, 'Renewal': enums.Renewal, 'Schedule': enums.Schedule}
-    actual = model.new_space('Actual', formula=lambda policy_id: None,
-        refs={**common, 'valuation_month': 0, 'HORIZON': outer_months,
+    actual = model.new_space('Actual', formula=actual_projection.actual_point,
+        refs={**common, 'point_id': 0, 'valuation_month': 0, 'HORIZON': outer_months,
               'projection_months': tuple(range(outer_months)), 'snapshot_months': tuple(valuation_months)})
-    valuation = model.new_space('Valuation', formula=lambda valuation_month, policy_id, shock=-1: None,
-        refs={**common, 'Actual': actual, 'HORIZON': HORIZON,
+    valuation = model.new_space('Valuation', formula=valuation_projection.contract_point,
+        refs={**common, 'point_id': 0, 'Actual': actual, 'HORIZON': HORIZON,
               'projection_months': tuple(range(HORIZON))})
     for space in (actual, valuation):
         space.new_cells('policy_ids', 'lambda: tuple(sorted(int(p) for p in Data.model_point_table().index))')
     actual.new_cells('market', 'lambda: Scenarios(0, False, -1)')
-    actual.new_cells('initial_state', actual_initial_state)
+    actual.new_cells('initial_state', 'lambda: policy_state(0)')
     valuation.new_cells('market', 'lambda: Scenarios(valuation_month, True, shock)')
     valuation.new_cells('initial_state', (
         'lambda: Actual.collect().individual[policy_id].state[valuation_month]' if route == 'collect' else
@@ -175,6 +171,8 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         space.new_cells('mva_cap', """def mva_cap():
     name = model_point()['mva_cap_rule']
     return {'sym_sc': 0.0, 'min_sc_interest': 1.0, 'asym_sc_snfl': 2.0, 'gmir_floor': 3.0, 'none': 4.0}[name]""")
+    actual_projection.install(actual, data, actual_formulas, actual_refs)
+    valuation_projection.install(valuation, actual, data, market, actual_formulas, actual_refs)
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,
         'Data': data, 'Scenarios': market, 'curves': curve_helpers,
         'Curves': curve_space, 'np': np})

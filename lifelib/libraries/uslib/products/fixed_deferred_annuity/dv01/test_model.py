@@ -24,11 +24,11 @@ def test_data_files_only_read_at_construction(monkeypatch):
     monkeypatch.setattr(pd, 'read_csv', read)
     m = build_model(route='direct',model_name='ReadsTest')
     try:
-        assert len(count) == 5
+        assert len(count) == 6
         for i in range(1,8):
             m.Actual[i].net_cf(1)
             m.Actual[i].mort(60)
-        assert len(count) == 5
+        assert len(count) == 6
     finally:
         m.close()
 
@@ -50,7 +50,7 @@ def test_saved_myga_data_cells_are_used_by_dv01(model):
     linked = build_model(route='direct', model_name='SharedDataLinked', myga_model=source)
     try:
         for name in ('model_point_table', 'mort_table', 'withdrawal_table',
-                     'surr_charge_table', 'mva_factor_table'):
+                     'surr_charge_table', 'surr_charge_age_cap_table', 'mva_factor_table'):
             assert linked.Data.cells[name].formula.source == myga.Data.cells[name].formula.source
         assert linked.Actual.policy_ids() == model.Actual.policy_ids()
         assert linked.Actual[1].net_cf(12) == model.Actual[1].net_cf(12)
@@ -59,6 +59,37 @@ def test_saved_myga_data_cells_are_used_by_dv01(model):
     finally:
         linked.close()
         myga.close()
+
+
+def test_issue_state_uses_booked_rates_with_dv01_market(model):
+    for policy_id, policy in model.Data.model_point_table().iterrows():
+        actual = model.Actual(policy_id=int(policy_id))
+        assert actual.policy_state(0)[7:] == (
+            policy['declared_rate_initial'], policy['mva_ref_yield_at_issue'])
+        assert actual.market() is model.Scenarios(0, False, -1)
+        assert actual.mva_ref_yield_locked(0) != actual.mva_fixing_yield(0)
+
+
+def test_one_valuation_uses_its_own_market(model):
+    selected = model.Valuation(12, 1, -1)
+    sibling = model.Valuation(12, 2, -1)
+    selected_before = selected.market_rate(0), selected.net_cf(0), selected.discount_factor(0)
+    sibling_before = sibling.market_rate(0), sibling.net_cf(0), sibling.discount_factor(0)
+
+    market = model.new_space('MarketOverride')
+    market.new_cells('rate', 'lambda t, tenor: 0.09')
+    market.new_cells('spread', 'lambda t: 0.005')
+    market.new_cells('discount_factor', 'lambda t: 0.99 ** (t + 1)')
+    selected.market[()] = market
+
+    assert selected.ValuationContract.market() is market
+    assert selected.market_rate(0) == 0.09 != selected_before[0]
+    assert selected.net_cf(0) != selected_before[1]
+    assert selected.discount_factor(0) == 0.99 != selected_before[2]
+    assert (sibling.market_rate(0), sibling.net_cf(0), sibling.discount_factor(0)) == sibling_before
+    del model.Valuation[12, 2, -1]
+    sibling = model.Valuation(12, 2, -1)
+    assert (sibling.market_rate(0), sibling.net_cf(0), sibling.discount_factor(0)) == sibling_before
 
 
 def test_different_policy_rules_still_apply(model):
