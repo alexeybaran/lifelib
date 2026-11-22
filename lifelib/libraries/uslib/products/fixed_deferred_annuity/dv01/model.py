@@ -1,6 +1,8 @@
 """Assemble canonical MYGA policy projections on stochastic G2++ market paths."""
 from pathlib import Path
 import math
+import pathlib
+import lifelib
 import numpy as np
 from . import actual, market, outer, outer_direct, valuation
 
@@ -95,6 +97,10 @@ def _valuation_point(valuation_month, policy_id, scen_id, shock=-1):
     return {'refs': {'point_id': policy_id}}
 
 
+def _packaged_input_path():
+    return pathlib.Path(lifelib.__file__).parent / 'libraries' / 'economic' / input_file
+
+
 def _copy_esg(model, esg_model, esg_input):
     import modelx as mx
 
@@ -105,7 +111,14 @@ def _copy_esg(model, esg_model, esg_input):
         esg = source.ESG.copy(model, 'ESG')
     finally:
         source.close()
-    esg.input_file = str(Path(esg_input or source_path.parent / esg.input_file).resolve())
+    if esg_model is None:
+        esg.lifelib = lifelib
+        esg.pathlib = pathlib
+        esg.input_path.formula = _packaged_input_path
+    if esg_input is not None:
+        esg.input_file = str(Path(esg_input).resolve())
+    elif esg_model is not None:
+        esg.input_file = str((source_path.parent / esg.input_file).resolve())
     esg.param_table()
     esg.curve_knots()
     return esg
