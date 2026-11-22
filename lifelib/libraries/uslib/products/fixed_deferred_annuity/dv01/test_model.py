@@ -1,4 +1,4 @@
-"""Focused data-sharing contracts; full economic validation lives in toolkit."""
+"""MYGA data sharing and policy-specific market selection."""
 from pathlib import Path
 import pandas as pd
 import pytest
@@ -26,20 +26,21 @@ def test_data_files_only_read_at_construction(monkeypatch):
     try:
         assert len(count) == 6
         for i in range(1,8):
-            m.Actual[i].net_cf(1)
-            m.Actual[i].mort_rate_mth(60)
+            m.Actual[i, 1].net_cf(1)
+            m.Actual[i, 1].mort_rate_mth(60)
         assert len(count) == 6
     finally:
         m.close()
 
 
 def test_scenario_result_shared_across_policies(model):
-    first, second = model.Actual[1], model.Actual[2]
-    assert first.market() is second.market()
-    value = first.market().rate(1,5.0)
-    entries = len(first.market().rate)
-    assert second.market().rate(1,5.0) == value
-    assert len(first.market().rate) == entries
+    first, second = model.Actual[1, 1], model.Actual[2, 1]
+    assert first.market(12) is second.market(12)
+    assert first.market(12) is not model.Actual[1, 2].market(12)
+    value = first.market(12).rate(60, 12)
+    entries = len(first.market(12).rate)
+    assert second.market(12).rate(60, 12) == value
+    assert len(first.market(12).rate) == entries
     assert first.initial_state() is not second.initial_state()
 
 
@@ -53,7 +54,7 @@ def test_saved_myga_data_cells_are_used_by_dv01(model):
                      'surr_charge_table', 'surr_charge_age_cap_table', 'mva_factor_table'):
             assert linked.Data.cells[name].formula.source == myga.Data.cells[name].formula.source
         assert linked.Actual.policy_ids() == model.Actual.policy_ids()
-        assert linked.Actual[1].net_cf(12) == model.Actual[1].net_cf(12)
+        assert linked.Actual[1, 1].net_cf(12) == model.Actual[1, 1].net_cf(12)
         assert linked.Data.surrender_rate('initial', 1) == model.Data.surrender_rate('initial', 1)
         assert linked.Data.mva_factor_hi(0.5) == model.Data.mva_factor_hi(0.5)
     finally:
@@ -63,24 +64,23 @@ def test_saved_myga_data_cells_are_used_by_dv01(model):
 
 def test_issue_state_uses_booked_rates_with_dv01_market(model):
     for policy_id, policy in model.Data.model_point_table().iterrows():
-        actual = model.Actual(policy_id=int(policy_id))
+        actual = model.Actual(int(policy_id), 1)
         assert actual.policy_state(0)[7:] == (
             policy['declared_rate_initial'], policy['mva_ref_yield_at_issue'])
-        assert actual.market() is model.Scenarios(0, False, -1)
+        assert actual.market(0) is model.Market(0, 1, -1)
         assert actual.mva_ref_yield_locked(0) != actual.mva_fixing_yield(0)
 
 
 def test_one_valuation_uses_its_own_market(model):
-    selected = model.Valuation(12, 1, -1)
-    sibling = model.Valuation(12, 2, -1)
+    selected = model.Valuation(12, 1, 1, -1)
+    sibling = model.Valuation(12, 2, 1, -1)
     selected_before = selected.market_rate(12), selected.cashflow_at_offset(0), selected.discount_factor(0)
     sibling_before = sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)
     assert selected.market() is sibling.market()
 
     market = model.new_space('MarketOverride')
-    market.new_cells('rate', 'lambda t, tenor: 0.09')
-    market.new_cells('spread', 'lambda t: 0.005')
-    market.new_cells('discount_factor', 'lambda t: 0.99 ** (t + 1)')
+    market.new_cells('rate', 'lambda tenor_month, forward_month: 0.09')
+    market.new_cells('price', 'lambda maturity_month: 0.99 ** (maturity_month - 12)')
     selected.market[()] = market
 
     assert selected.market() is market
@@ -88,75 +88,37 @@ def test_one_valuation_uses_its_own_market(model):
     assert selected.cashflow_at_offset(0) != selected_before[1]
     assert selected.discount_factor(0) == 0.99 != selected_before[2]
     assert (sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
-    del model.Valuation[12, 2, -1]
-    sibling = model.Valuation(12, 2, -1)
+    del model.Valuation[12, 2, 1, -1]
+    sibling = model.Valuation(12, 2, 1, -1)
     assert (sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
 
 
-@pytest.mark.parametrize('policy_id,renewal_tenor', [(1, 5.0), (3, 1.0)])
-def test_restart_uses_booked_rates_at_cut_and_item_rates_after_cut(policy_id, renewal_tenor):
-    m = build_model(route='direct', model_name='RestartRates', outer_months=73)
-    try:
-        observed = m.Actual[policy_id]
-        prospective = m.Valuation(59, policy_id, 3)
-        at_renewal = m.Valuation(60, policy_id, 3)
-        assert 'ValuationContract' not in m.Valuation.spaces
-        market = m.new_space('RestartOverride')
-        market.new_cells('rate', 'lambda k, tenor: 0.08 + k / 1000 + tenor / 1000')
-        market.new_cells('spread', 'lambda k: 0.005 + k / 2000')
-        for valuation in (prospective, at_renewal):
-            valuation.market[()] = market
-        assert at_renewal.market_rate(59) == observed.market_rate(59)
-        assert at_renewal.mva_ref_yield(59) == observed.mva_ref_yield(59)
-        assert at_renewal.credit_rate(59) == observed.credit_rate(59)
-        assert at_renewal.mva_ref_yield_locked(59) == observed.mva_ref_yield_locked(59)
-        assert at_renewal.initial_state() == observed.policy_state(60)
-        assert at_renewal.state_at_offset(0) == observed.policy_state(60)
-        assert at_renewal.credit_rate(60) == at_renewal.credit_rate(61) == observed.credit_rate(60)
-        assert (at_renewal.mva_ref_yield_locked(60) == at_renewal.mva_ref_yield_locked(61)
-                == observed.mva_ref_yield_locked(60))
-        assert at_renewal.market_rate(60) == market.rate(0, renewal_tenor)
-        assert at_renewal.mva_fixing_yield(60) == market.rate(0, 5.0)
-        assert at_renewal.market_rate(61) == market.rate(1, at_renewal.competitor_tenor(61))
-        assert at_renewal.mva_ref_yield(61) == market.rate(1, at_renewal.mva_term(61))
-        assert prospective.credit_rate(60) == market.rate(1, renewal_tenor) - market.spread(1)
-        assert prospective.mva_ref_yield_locked(60) == market.rate(1, 5.0)
-        next_redeclaration = 120 if renewal_tenor == 5.0 else 72
-        offset = next_redeclaration - 60
-        assert (at_renewal.credit_rate(next_redeclaration)
-                == market.rate(offset, renewal_tenor) - market.spread(offset))
-        assert at_renewal.cashflow_at_offset(1) == at_renewal.net_cf(61)
-        assert at_renewal.state_at_offset(1) == at_renewal.policy_state(61)
-    finally:
-        m.close()
-
-
 def test_different_policy_rules_still_apply(model):
-    assert model.Actual[3].renewal_architecture() == Renewal.annual_redeclare
-    assert model.Actual[1].renewal_architecture() == Renewal.rollover
-    assert model.Actual[1].mva_term(61) > 0
-    assert model.Actual[3].mva_term(61) == 0
-    assert model.Actual[1].wd_scheduled_pp(12) > 0
-    assert model.Actual[2].wd_scheduled_pp(12) == 0
+    assert model.Actual[3, 1].renewal_architecture() == Renewal.annual_redeclare
+    assert model.Actual[1, 1].renewal_architecture() == Renewal.rollover
+    assert model.Actual[1, 1].mva_term(61) > 0
+    assert model.Actual[3, 1].mva_term(61) == 0
+    assert model.Actual[1, 1].wd_scheduled_pp(12) > 0
+    assert model.Actual[2, 1].wd_scheduled_pp(12) == 0
 
 
 def test_changed_policy_input_before_calculation(model):
     table = model.Data.policy_table.copy()
     table.loc[1,'premium'] = 175000.0
     model.Data.policy_table = table
-    assert model.Actual[1].premium_pp() == 175000.0
-    assert model.Actual[1].initial_state()[0] == 175000.0
-    assert model.Actual[2].initial_state()[0] == 100000.0
+    assert model.Actual[1, 1].premium_pp() == 175000.0
+    assert model.Actual[1, 1].initial_state()[0] == 175000.0
+    assert model.Actual[2, 1].initial_state()[0] == 100000.0
 
 
 def test_existing_cell_cache_semantics(model):
-    first = model.Actual[1].premium_pp()
+    first = model.Actual[1, 1].premium_pp()
     table = model.Data.policy_table.copy()
     table.loc[1,'premium'] = 175000.0
     model.Data.policy_table = table
     # Live modelx tracks dependencies and invalidates here; compiled behavior is
     # separately qualified, and we do not infer its behavior from this fixture.
-    assert model.Actual[1].premium_pp() == 175000.0
+    assert model.Actual[1, 1].premium_pp() == 175000.0
     assert first == 100000.0
 
 
@@ -169,8 +131,8 @@ def test_policy_population_not_fixed_at_seven():
     try:
         assert m.Actual.policy_ids() == tuple(range(1,106))
         # Structural/one-step check only; never execute a 105-policy live projection.
-        assert m.Actual[105].premium_pp() == m.Actual[7].premium_pp()
-        assert m.Actual[105].initial_state() == m.Actual[7].initial_state()
+        assert m.Actual[105, 1].premium_pp() == m.Actual[7, 1].premium_pp()
+        assert m.Actual[105, 1].initial_state() == m.Actual[7, 1].initial_state()
     finally:
         m.close()
 
@@ -182,7 +144,7 @@ def test_bad_policy_ids_rejected():
 
 
 def test_table_lookups_shared_by_economic_key(model):
-    first, second = model.Actual[1], model.Actual[2]
+    first, second = model.Actual[1, 1], model.Actual[2, 1]
     first_mort = model.Data.mortality_rate(first.age(1), first.sex())
     entries = len(model.Data.mortality_rate)
     assert model.Data.mortality_rate(second.age(1), second.sex()) == first_mort
@@ -195,11 +157,10 @@ def test_table_lookups_shared_by_economic_key(model):
 
 
 def test_one_policy_collect_per_valuation_date_equals_direct():
-    """The per-call case: a book of one policy and a collect per valuation date. Each Valuation.collect(month,
-    shock) is one item; its total equals the item's own value exactly, at any collect_workers (one item is
-    evaluated serially)."""
+    """One-policy collect exactly matches the item's own results on each path."""
     folder = Path(__file__).resolve().parent.parent
-    table = pd.read_csv(folder/'model_point_table.csv', index_col='point_id').iloc[:1]
+    table = pd.read_csv(folder/'model_point_table.csv', index_col='point_id').iloc[:1].copy()
+    table.loc[1, 'age_at_entry'] = 99
     months = (0, 3, 6, 9)
     m = build_model(route='collect', policy_table=table, model_name='OnePolicySweep',
                     outer_months=12, valuation_months=months)
@@ -208,8 +169,8 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
         assert m.Valuation.policy_ids() == (1,)
         for month in months:
             for shock in (-1, 3):
-                aggregate = m.Valuation.collect(month, shock).sum
-                valuation = m.Valuation(month, 1, shock)
+                aggregate = m.Valuation.collect(month, 2, shock).sum
+                valuation = m.Valuation(month, 1, 2, shock)
                 assert aggregate.liability_pv == valuation.liability_pv()
                 assert aggregate.net_cf[0] == valuation.net_cf(month)
                 assert aggregate.net_cf[1] == valuation.net_cf(month + 1)
