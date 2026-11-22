@@ -5,13 +5,15 @@ def actual_point(policy_id):
     return {'refs': {'point_id': policy_id}}
 
 
-def competitor_rate(t):
+def competitor_tenor(t):
     term = 12 * guar_period()
     if renewal_architecture() == Renewal.annual_redeclare and t >= term:
-        tenor = 1.0
-    else:
-        tenor = (term * gp_index(t) - t) / 12.0
-    return market().rate(t, tenor)
+        return 1.0
+    return (term * gp_index(t) - t) / 12.0
+
+
+def market_rate(t):
+    return market().rate(t, competitor_tenor(t))
 
 
 def renewal_quote(t):
@@ -23,7 +25,7 @@ def renewal_crediting_spread(t):
     return market().spread(t)
 
 
-def mva_current_yield(t):
+def mva_ref_yield(t):
     return market().rate(t, mva_term(t))
 
 
@@ -59,43 +61,15 @@ def net_cf(t):
     return contract_net_cf(t) if 0 <= t < proj_len() else 0.0
 
 
-def contract_history(t, name):
-    """Read canonical historical stocks and the rates booked at opening."""
-    if name == 'av':
-        return av_pp(t)
-    if name == 'mgsv':
-        return mgsv_pp(t)
-    if name == 'interest':
-        return interest_credited_pp(t)
-    if name == 'gmir_premium':
-        return prem_accum_gmir_pp(t)
-    if name == 'in_force':
-        return pols_if(t)
-    if name == 'remaining_allowance':
-        return free_wd_remain(t)
-    if name == 'tax_basis':
-        return tax_basis_pp(t)
-    if name == 'booked_credit':
-        return credit_rate(t)
-    if name == 'booked_mva':
-        return mva_ref_yield_locked(t)
-    raise ValueError('unknown contract history')
-
-
-def install(space, data, sources, refs):
-    """Use the saved policy calculations with Actual-specific market boundaries."""
-    space.data = data
-    for name, value in refs.items():
-        setattr(space, name, value)
-    adapters = {'market_rate': competitor_rate, 'renewal_quote': renewal_quote,
+def install(space, sources, overrides=None):
+    """Install the canonical formulas with the DV01 market and optional restart boundaries."""
+    adapters = {'market_rate': market_rate, 'competitor_tenor': competitor_tenor,
+                'renewal_quote': renewal_quote,
                 'renewal_crediting_spread': renewal_crediting_spread,
-                'mva_ref_yield': mva_current_yield, 'mva_fixing_yield': mva_fixing_yield,
+                'mva_ref_yield': mva_ref_yield, 'mva_fixing_yield': mva_fixing_yield,
                 'credit_rate': credit_rate, 'mva_ref_yield_locked': mva_ref_yield_locked,
-                'policy_state': policy_state, 'net_cf': net_cf, 'contract_history': contract_history}
-    space.new_cells('contract_net_cf', sources['net_cf'])
-    for formulas in (sources, adapters):
-        for name, formula in formulas.items():
-            if name in space.cells:
-                space.cells[name].formula = formula
-            else:
-                space.new_cells(name, formula)
+                'policy_state': policy_state, 'net_cf': net_cf}
+    formulas = {**sources, 'contract_net_cf': sources['net_cf'], **adapters}
+    formulas.update(overrides or {})
+    for name, formula in formulas.items():
+        space.new_cells(name, formula)

@@ -7,10 +7,8 @@ from pathlib import Path
 import inspect
 import math
 import numpy as np
-import pandas as pd
 from . import actual as actual_projection, valuation as valuation_projection
-from . import policy, assumptions, scenario, curves as curve_formulas
-from lifelib.libraries.uslib.products.fixed_deferred_annuity import enums   # the MYGA_US_S enums
+from . import scenario, curves as curve_formulas
 
 TENORS = (1., 2., 3., 5., 10., 15., 20.)
 OUTER_MONTHS = 36
@@ -114,66 +112,28 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         refs={'Data': data, 'Curves': curve_space})
     for name, formula in inspect.getmembers(scenario, inspect.isfunction):
         market.new_cells(name, formula)
-    # The policy is the item of Actual and Valuation (their parameter policy_id); no Cell takes a
-    # policy as an argument, so nothing is sized by the book.
-    # The book is read by a Cell, policy_ids(), of each collected Space: another model point table
-    # is another book, with nothing else to change.
-    # Closed-set labels are the MYGA_US_S enums (IntEnum), as its Projection uses them.
-    common = {'Data': data, 'Scenarios': market, 'mva_admin_spread': 0.0025,
-              'Sex': enums.Sex, 'Renewal': enums.Renewal, 'Schedule': enums.Schedule}
+    common = {**actual_refs, 'data': data, 'Scenarios': market, 'point_id': 0}
     actual = model.new_space('Actual', formula=actual_projection.actual_point,
-        refs={**common, 'point_id': 0, 'valuation_month': 0, 'HORIZON': outer_months,
-              'projection_months': tuple(range(outer_months)), 'snapshot_months': tuple(valuation_months)})
+        refs={**common, 'projection_months': tuple(range(outer_months)),
+              'snapshot_months': tuple(valuation_months)})
     valuation = model.new_space('Valuation', formula=valuation_projection.contract_point,
-        refs={**common, 'point_id': 0, 'Actual': actual, 'HORIZON': HORIZON,
+        refs={**common, 'Actual': actual, 'HORIZON': HORIZON,
               'projection_months': tuple(range(HORIZON))})
     for space in (actual, valuation):
-        space.new_cells('policy_ids', 'lambda: tuple(sorted(int(p) for p in Data.model_point_table().index))')
+        space.new_cells('policy_ids', 'lambda: tuple(sorted(int(p) for p in data.model_point_table().index))')
     actual.new_cells('market', 'lambda: Scenarios(0, False, -1)')
     actual.new_cells('initial_state', 'lambda: policy_state(0)')
     valuation.new_cells('market', 'lambda: Scenarios(valuation_month, True, shock)')
-    valuation.new_cells('initial_state', (
-        'lambda: Actual.collect().individual[policy_id].state[valuation_month]' if route == 'collect' else
-        'lambda: Actual[policy_id].policy_state(valuation_month)'))
+    valuation.new_cells('initial_state', 'lambda: Actual[policy_id].policy_state(valuation_month)')
+    actual_projection.install(actual, actual_formulas)
+    valuation_projection.install(valuation, actual_formulas)
     if route == 'collect':
         actual.set_collect(over={'policy_id': actual.policy_ids}, outputs=lambda: {
             'individual': {'state': {t: policy_state(t) for t in snapshot_months}},
             'sum': {'net_cf': {t: net_cf(t) for t in projection_months}}})
         valuation.set_collect(over={'policy_id': valuation.policy_ids}, outputs=lambda: {
             'sum': {'liability_pv': liability_pv(),
-                    'net_cf': {t: net_cf(t) for t in projection_months}}})
-    for space in (actual, valuation):
-        for module in (policy, assumptions):
-            for name, formula in inspect.getmembers(module, inspect.isfunction):
-                if name in space.cells:
-                    space.cells[name].formula = formula
-                else:
-                    space.new_cells(name, formula)
-        # the policy's model point, one row of the policy table, and its fields
-        space.new_cells('model_point', 'lambda: Data.model_point_table().loc[policy_id]')
-        fields = {'premium_pp': 'premium', 'gmir': 'gmir', 'mgsv_rate': 'mgsv_rate',
-                  'mgsv_charge': 'mgsv_annual_charge', 'free_rate': 'free_wd_rate',
-                  'premium_tax': 'premium_tax_rate',
-                  'pols_if_init': 'pols_if_init', 'free_exempt': 'free_wd_mva_exempt'}
-        for name, column in fields.items():
-            space.new_cells(name, f"lambda: float(model_point()[{column!r}])")
-        space.new_cells('age_at_entry', "lambda: int(model_point()['age_at_entry'])")   # an integer, as in MYGA_US_S
-        space.new_cells('sex', "lambda: Sex[model_point()['sex']]")
-        space.new_cells('renewal_architecture', "lambda: Renewal[model_point()['renewal_architecture']]")
-        space.new_cells('wd_schedule_id', "lambda: str(model_point()['wd_schedule_id'])")
-        # the policy's withdrawal programme, read by month (as the MYGA_US_S Projection reads it)
-        space.new_cells('has_withdrawals', "lambda: wd_schedule_id() in Data.withdrawal_table().index")
-        space.new_cells('withdrawal_rows', "lambda: Data.withdrawal_table().loc[wd_schedule_id()]")
-        space.new_cells('mgsv_net_wd', "lambda: 1.0 if model_point()['mgsv_wd_convention'] == 'net_of_charges' else 0.0")
-        space.new_cells('free_rule', "lambda: 0.0 if model_point()['free_wd_rule'] == 'pct_av' else 1.0")
-        space.new_cells('mva_family', """def mva_family():
-    name = model_point()['mva_family']
-    return {'linear_duration': 0.0, 'geometric': 1.0, 'declared_differential': 2.0}[name]""")
-        space.new_cells('mva_cap', """def mva_cap():
-    name = model_point()['mva_cap_rule']
-    return {'sym_sc': 0.0, 'min_sc_interest': 1.0, 'asym_sc_snfl': 2.0, 'gmir_floor': 3.0, 'none': 4.0}[name]""")
-    actual_projection.install(actual, data, actual_formulas, actual_refs)
-    valuation_projection.install(valuation, actual, data, market, actual_formulas, actual_refs)
+                    'net_cf': {k: cashflow_at_offset(k) for k in projection_months}}})
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,
         'Data': data, 'Scenarios': market,
         'Curves': curve_space, 'np': np})
@@ -201,11 +161,11 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         total += Valuation(y * 12, p, key).liability_pv()
     return total""")
         outer.new_cells('base_cashflows', """def base_cashflows(y):
-    result = {t: 0.0 for t in range(480)}
+    result = {k: 0.0 for k in Valuation.projection_months}
     for p in Valuation.policy_ids():
         projection = Valuation(y * 12, p, -1)
-        for t in range(480):
-            result[t] += projection.net_cf(t)
+        for k in Valuation.projection_months:
+            result[k] += projection.cashflow_at_offset(k)
     return result""")
     outer.new_cells('dv01', 'lambda y, key: base_liability_pv(y) - shocked_liability_pv(y, key)')
     # by valuation month (any month of the Actual projection): the liability PV, base (key -1) or shocked
