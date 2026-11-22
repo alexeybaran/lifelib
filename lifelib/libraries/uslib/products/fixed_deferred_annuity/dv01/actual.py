@@ -1,36 +1,44 @@
 """Connect the saved MYGA projection to DV01's Actual market and snapshots."""
 
 
-def actual_point(policy_id):
-    return {'refs': {'point_id': policy_id}}
+def policy_ids():
+    return tuple(sorted(int(p) for p in data.model_point_table().index))
+
+
+def market(t):
+    return Market(t, scen_id, -1)
+
+
+def initial_state():
+    return policy_state(0)
 
 
 def competitor_tenor(t):
     term = 12 * guar_period()
     if renewal_architecture() == Renewal.annual_redeclare and t >= term:
-        return 1.0
-    return (term * gp_index(t) - t) / 12.0
+        return 12
+    return term * gp_index(t) - t
 
 
 def market_rate(t):
-    return market().rate(t, competitor_tenor(t))
+    return market(t).rate(competitor_tenor(t), t)
 
 
 def renewal_quote(t):
-    tenor = 1.0 if renewal_architecture() == Renewal.annual_redeclare else 5.0
-    return market().rate(t, tenor)
+    tenor = 12 if renewal_architecture() == Renewal.annual_redeclare else 60
+    return market(t).rate(tenor, t)
 
 
 def renewal_crediting_spread(t):
-    return market().spread(t)
+    return renewal_spread
 
 
 def mva_ref_yield(t):
-    return market().rate(t, mva_term(t))
+    return market(t).rate(int(round(12 * mva_term(t))), t)
 
 
 def mva_fixing_yield(t):
-    return market().rate(t, 5.0)
+    return market(t).rate(60, t)
 
 
 def credit_rate(t):
@@ -59,17 +67,3 @@ def policy_state(t):
 
 def net_cf(t):
     return contract_net_cf(t) if 0 <= t < proj_len() else 0.0
-
-
-def install(space, sources, overrides=None):
-    """Install the canonical formulas with the DV01 market and optional restart boundaries."""
-    adapters = {'market_rate': market_rate, 'competitor_tenor': competitor_tenor,
-                'renewal_quote': renewal_quote,
-                'renewal_crediting_spread': renewal_crediting_spread,
-                'mva_ref_yield': mva_ref_yield, 'mva_fixing_yield': mva_fixing_yield,
-                'credit_rate': credit_rate, 'mva_ref_yield_locked': mva_ref_yield_locked,
-                'policy_state': policy_state, 'net_cf': net_cf}
-    formulas = {**sources, 'contract_net_cf': sources['net_cf'], **adapters}
-    formulas.update(overrides or {})
-    for name, formula in formulas.items():
-        space.new_cells(name, formula)

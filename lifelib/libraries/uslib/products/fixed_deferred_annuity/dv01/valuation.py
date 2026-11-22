@@ -1,41 +1,42 @@
 """Canonical policy-month valuation with observed history and a local market."""
 
-from . import actual
+def market():
+    return Market(valuation_month, scen_id, shock)
 
 
-def contract_point(valuation_month, policy_id, shock=-1):
-    return {'refs': {'point_id': policy_id}}
+def initial_state():
+    return Actual[policy_id, scen_id].policy_state(valuation_month)
 
 
 def market_rate(t):
     if t < valuation_month:
-        return Actual[policy_id].market_rate(t)
-    return market().rate(t - valuation_month, competitor_tenor(t))
+        return Actual[policy_id, scen_id].market_rate(t)
+    return market().rate(competitor_tenor(t), t)
 
 
 def renewal_quote(t):
     if t < valuation_month:
-        return Actual[policy_id].renewal_quote(t)
-    tenor = 1.0 if renewal_architecture() == Renewal.annual_redeclare else 5.0
-    return market().rate(t - valuation_month, tenor)
+        return Actual[policy_id, scen_id].renewal_quote(t)
+    tenor = 12 if renewal_architecture() == Renewal.annual_redeclare else 60
+    return market().rate(tenor, t)
 
 
 def renewal_crediting_spread(t):
     if t < valuation_month:
-        return Actual[policy_id].renewal_crediting_spread(t)
-    return market().spread(t - valuation_month)
+        return Actual[policy_id, scen_id].renewal_crediting_spread(t)
+    return renewal_spread
 
 
 def mva_ref_yield(t):
     if t < valuation_month:
-        return Actual[policy_id].mva_ref_yield(t)
-    return market().rate(t - valuation_month, mva_term(t))
+        return Actual[policy_id, scen_id].mva_ref_yield(t)
+    return market().rate(int(round(12 * mva_term(t))), t)
 
 
 def mva_fixing_yield(t):
     if t < valuation_month:
-        return Actual[policy_id].mva_fixing_yield(t)
-    return market().rate(t - valuation_month, 5.0)
+        return Actual[policy_id, scen_id].mva_fixing_yield(t)
+    return market().rate(60, t)
 
 
 def credit_rate(t):
@@ -43,7 +44,7 @@ def credit_rate(t):
         return declared_rate_initial()
     start = redeclare_month(t)
     if start <= valuation_month:
-        return Actual[policy_id].credit_rate(min(t, valuation_month))
+        return Actual[policy_id, scen_id].credit_rate(min(t, valuation_month))
     return max(gmir(), renewal_quote(start) - renewal_crediting_spread(start))
 
 
@@ -52,14 +53,14 @@ def mva_ref_yield_locked(t):
         return mva_ref_yield_at_issue()
     start = gp_start_month(t)
     if start <= valuation_month:
-        return Actual[policy_id].mva_ref_yield_locked(min(t, valuation_month))
+        return Actual[policy_id, scen_id].mva_ref_yield_locked(min(t, valuation_month))
     return mva_fixing_yield(start)
 
 
 def net_cf(t):
     """Net cash flow in absolute policy month t."""
     if t < valuation_month:
-        return Actual[policy_id].net_cf(t)
+        return Actual[policy_id, scen_id].net_cf(t)
     return contract_net_cf(t) if t < proj_len() else 0.0
 
 
@@ -74,7 +75,7 @@ def state_at_offset(k):
 
 
 def discount_factor(k):
-    return market().discount_factor(k)
+    return market().price(valuation_month + k + 1)
 
 
 def pv(k):
@@ -87,30 +88,35 @@ def liability_pv():
     return -pv(0)
 
 
-def install(space, sources):
-    overrides = {
-        'market_rate': market_rate,
-        'renewal_quote': renewal_quote,
-        'renewal_crediting_spread': renewal_crediting_spread,
-        'mva_ref_yield': mva_ref_yield,
-        'mva_fixing_yield': mva_fixing_yield,
-        'credit_rate': credit_rate,
-        'mva_ref_yield_locked': mva_ref_yield_locked,
-        'net_cf': net_cf,
-        'cashflow_at_offset': cashflow_at_offset,
-        'state_at_offset': state_at_offset,
-        'discount_factor': discount_factor,
-        'pv': pv,
-        'liability_pv': liability_pv,
-    }
-    # Closing stocks belong to Actual before the cut. The cut's opening count
-    # also belongs to Actual. Saved formulas advance the stocks from there.
-    boundaries = ('av_pp', 'mgsv_pp', 'interest_credited_pp', 'prem_accum_gmir_pp',
-                  'free_wd_remain', 'tax_basis_pp', 'pols_if')
-    for name in boundaries:
-        rollforward = f'{name}_rollforward'
-        overrides[rollforward] = sources[name]
-        comparison = '<=' if name == 'pols_if' else '<'
-        overrides[name] = (f'lambda t: Actual[policy_id].{name}(t) '
-                           f'if t {comparison} valuation_month else {rollforward}(t)')
-    actual.install(space, sources, overrides)
+# Closing stocks come from Actual before the cut. The cut's opening in-force
+# count also comes from Actual. Canonical MYGA rollforwards advance them.
+def av_pp(t):
+    return Actual[policy_id, scen_id].av_pp(t) if t < valuation_month else av_pp_rollforward(t)
+
+
+def mgsv_pp(t):
+    return Actual[policy_id, scen_id].mgsv_pp(t) if t < valuation_month else mgsv_pp_rollforward(t)
+
+
+def interest_credited_pp(t):
+    if t < valuation_month:
+        return Actual[policy_id, scen_id].interest_credited_pp(t)
+    return interest_credited_pp_rollforward(t)
+
+
+def prem_accum_gmir_pp(t):
+    if t < valuation_month:
+        return Actual[policy_id, scen_id].prem_accum_gmir_pp(t)
+    return prem_accum_gmir_pp_rollforward(t)
+
+
+def free_wd_remain(t):
+    return Actual[policy_id, scen_id].free_wd_remain(t) if t < valuation_month else free_wd_remain_rollforward(t)
+
+
+def tax_basis_pp(t):
+    return Actual[policy_id, scen_id].tax_basis_pp(t) if t < valuation_month else tax_basis_pp_rollforward(t)
+
+
+def pols_if(t):
+    return Actual[policy_id, scen_id].pols_if(t) if t <= valuation_month else pols_if_rollforward(t)

@@ -2,5 +2,8 @@
   "lifelib_reference_commit": "7ea490c2b64795aa25efb9e97740f857d6a0794e",
   "benchmark_toolkit_reference_commit": "15482c29a4e03c48d8fa57e8b7b76cceb64da51b",
   "source": "DV01 shared-data model used by the pinned 105-policy oracle",
-  "baseline_adaptation": "The model-local lookup module contains the table functions used by DV01."
+  "esg_lifelib_commit": "4133996a651bbb14fc942612f9ef02e69334160e",
+  "esg_source": "lifelib/libraries/economic/CashValue_ME_G2PP/ESG",
+  "esg_input": "lifelib/libraries/economic/g2pp_input.xlsx",
+  "baseline_adaptation": "DV01 uses canonical MYGA inputs and actuarial formulas with the upstream G2++ market and generated path IDs."
 }

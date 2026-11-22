@@ -1,163 +1,75 @@
-# Shared MYGA DV01 and CS01 model
+# MYGA key-rate DV01 on generated interest-rate paths
 
-Create a live model with `build_model(route="collect")` or
-`build_model(route="direct")`. `results(model)` returns base liability values,
-DV01, CS01, base valuation cash flows, Actual cash flows and annual state
-snapshots. Close the model after use.
+A crediting rate is a policy promise. The market curve supplies a quote when that promise resets. Between resets the policy keeps the declared rate even as market rates move.
 
-`Data` owns the policy and assumption tables and the annual market inputs.
-`Curves` owns monthly interpolation, prepared node discount factors, base
-zero yields and discount factors. Its keys describe the curve observation,
-annual or monthly input selection, maturity and shock. Base curve preparation
-and base yields are shared across shocks.
-
-`Scenarios(valuation_month, forward_project, shock)` delegates market
-calculations to `Curves`. All policies at the same valuation date and shock
-use the same Scenario ItemSpace by default. Actual runs the saved MYGA
-calculations at policy months counted from issue. Valuation uses that same
-clock for the saved MYGA Cells. At a restart it reads the policy's observed
-history and booked rates from Actual. The reporting Cells convert a month
-offset into a policy month once.
-
-Curve calculations use the original annual-effective rates, piecewise-flat
-forward interpolation, end extrapolation and triangular key-rate shocks.
-CS01 uses the shared discount factors with the base cash flows. Curve
-customizations can be made through the `Curves` Cell formulas. An item-level
-Valuation market override applies to that item's prospective rates and
-discounting. The initial declared credit rate and the MVA reference fixing
-come from the issued policy record.
-
-Data is the converted MYGA_US_S Data Space (its table Cells read the CSV files) with
-the DV01 lookup Cells written as plain table reads, as the MYGA Projection reads the
-same tables: `.loc` by key, a missing withdrawal or surrender key is zero, the MVA
-factor is interpolated between whole years and held beyond the last row. The
-shared readers cache each assumption table as it is used.
-
-The default inputs are the CSV files in the parent product directory.
-`reference_dir` selects another input directory, and `policy_table` supplies
-an alternative policy DataFrame indexed by `point_id`. The source reference
-pins are recorded in `provenance.json`.
-
-Pass `myga_model=path_to_saved_MYGA_US_S` to use the saved MYGA model's Data
-Cells. DV01 uses those Cells for policy rows and assumption tables and uses the
-saved Projection Cells for the underlying actuarial calculations. DV01 supplies
-its market roles, observed Actual history, and valuation and shock orchestration.
-`reference_dir` can select the CSV directory for those Cells. With this option,
-the policy book comes from the MYGA model point Cell.
-
-Export with `model.export(path, locked_spaces=['Scenarios'])` and use the
-ordinary modelx-cython sample tracing workflow. The compiler discovers types
-through the sample run. The lock protects shared Scenario calculations while
-policy items in Actual and Valuation remain independently eligible for collect.
-
-## Model structure
-
-```mermaid
-flowchart LR
-    D[Data] --> C[Curves] --> S[Scenarios: date, mode, shock]
-    D --> A[Actual: policy]
-    D --> V[Valuation: date, policy, shock]
-    S --> A
-    S --> V
-    A -->|history and booked fixings| V
-    A --> O[Outer: portfolio results]
-    V --> O
-    C -->|shocked discount factors for CS01| O
-```
-
-| Space | Cells and inputs it owns |
+| Space | What it owns |
 | --- | --- |
-| Data | Saved MYGA policy, mortality, surrender, withdrawal and MVA assumptions. The example sets ten annual observations of a seven-tenor zero curve and the crediting spread. |
-| Curves | Monthly observations, node discounts, zero yields, key-rate weights, shocked discount factors, forward yields and the portfolio discount-factor vector. |
-| Scenarios | A shared market identified by valuation month, observed/forward mode and shock. Exposes the curve, spread, quoted rate and end-of-month discount factor. |
-| Actual | Saved MYGA policy Cells, observed market, issue and renewal fixings, cash flows and history at restart dates. |
-| Valuation | Saved MYGA policy Cells, restart boundary, one selected market, prospective quotes, cash flows by reporting offset, and liability PV. |
-| Outer | Book-level Actual cash flows and policy state snapshots, base cash flows and liability PV, DV01 and CS01. |
+| Data | MYGA policy rows and actuarial assumptions, including the issued guarantee, floor and withdrawal assumptions. |
+| ESG | The input curve, G2++ parameters and random draws. Its bond-price Cell returns one value per generated path. |
+| Market | One valuation date, one generated path and one key-rate shock. Turns conditional bond prices into spot or forward annual-effective rates. |
+| Actual | One policy on one generated path. Advances month by month, applying observed rates when the contract resets. |
+| Valuation | One policy restarted from Actual at a specified date. Carries booked rates and projects future resets from that date's curve. |
+| Outer | Collects policy cash flows on the same path and compares base and shocked liabilities. |
 
-### One policy, two clocks
+## Read the market call
 
-```python
-v = model.Valuation(12, 7, 3)
-assert v.market() is model.Scenarios(12, True, 3)
-assert v.market() is model.Valuation(12, 8, 3).market()
-v.net_cf(18)              # MYGA cash flow at month 18 from issue
-v.cashflow_at_offset(6)   # same cash flow, six months from valuation
-```
+In Market(as_of_month=36, scen_id=1, shock=-1), rate(tenor_month=60, forward_month=60) means “at month 36, price a five-year investment that starts at month 60 and ends at month 120 on path 1.” The two 60s describe different things. A fixing observed at month 60 instead uses Market(as_of_month=60, scen_id=1, shock=-1), with the same rate arguments.
 
-The earlier nested example used `v.net_cf(6)` for that reporting call. Use
-`cashflow_at_offset(6)` when migrating a relative cash-flow query.
-The portfolio cash-flow series still starts at offset zero. Its 480 entries
-include zeros after expiry. Query the MYGA Cells directly on Valuation.
+Write P(i,j) for the selected path's price at month i of one dollar payable at month j. The annual-effective quote for a term of n months starting at f is
 
-### Follow the market into a cash flow
+    (P(i,f) / P(i,f+n)) ** (12 / n) - 1
 
-1. **Observe the market.** The ten annual curves are flat across tenors at
-   1%, 2%, through 10%. The annual crediting spread rises from 0.50% to
-   1.50%. Actual uses monthly linear interpolation in calendar time. At
-   month six the observed curve is 1.50% at each tenor. Observations beyond
-   the final annual point use the final curve and spread.
-2. **Build the term structure.** At each tenor `T`, a zero yield `z`
-   gives `DF(T) = (1 + z) ** -T`. Interpolate log discount factors between
-   nodes. Before the first node use its yield. Beyond 20 years extend the
-   last forward rate. The seven tenors are 1, 2, 3, 5, 10, 15 and 20 years.
-3. **Select a scenario.** Actual reads the observed path. Valuation selects
-   the annual observation for its date, holds that observation's spread and
-   uses implied forwards for future quotes. For a positive tenor `T`, the
-   forward rate starting at year `s` is `(DF(s) / DF(s + T)) ** (1/T) - 1`.
-   A key-rate shock adds one basis point times a triangular weight to the
-   zero yield before computing those discount factors. The first and last
-   shocks hold full weight beyond the corresponding end node.
-4. **Apply the policy terms.** The competitor tenor follows remaining
-   guarantee duration, or one year after the initial annual-redeclaration
-   term. The renewal quote uses one year for annual redeclaration and five
-   years otherwise. Future credited rates use the greater of the contractual
-   floor and the renewal quote less the crediting spread. A current MVA
-   reference quote uses the contract's MVA term and a new MVA fixing uses
-   five years. Issue rates come from the policy record. Fixings already
-   booked at the restart date come from Actual history.
-5. **Calculate policy behavior and payments.** Credited and competitor rates
-   feed the saved MYGA dynamic lapse formula. The saved MVA formula applies
-   the policy's linear-duration, geometric or declared-differential rule
-   and its contractual caps. These feed withdrawals, surrender and other
-   benefits. MYGA net cash flow equals premiums less withdrawals, claims,
-   commissions, expenses and premium taxes.
-6. **Discount and collect.** A payment at reporting offset `k` uses the
-   selected market's discount factor to `(k + 1)/12` years. The liability
-   is the negative sum of discounted net cash flows. DV01 reprojects cash
-   flows under each shock. CS01 rediscounts aggregate base cash flows.
+For an observation at the start of the term, f equals i and the numerator is one. For a future fixing, both prices come from the same curve observed at i. This keeps the valuation independent of future simulated observations. For a key-rate shock the same calculation uses the two bumped bond prices, with the bump weights assigned by time to maturity from i.
 
-For example, at month 12 the default five-year zero rate is 2.00%. Shock
-index 3 moves it to 2.01%. The five-year discount factor moves from
-0.905731 to 0.905287. An issued rate already booked for the policy carries
-forward. The shock affects a future fixing when the contract requests it.
+## Follow one five-year rollover
+
+| Policy month | Rate decision |
+| --- | --- |
+| 0 through 59 | Read the issued annual rate from the MYGA policy row. New market observations during this period do not trigger a reset. |
+| 60, seen from month 36 | Project the first renewal. Use the month-36 curve for months 60 and 120. Apply the MYGA renewal spread and guaranteed minimum. |
+| 60, seen from month 60 | Actual observes the five-year spot on its generated path and books the new rate. The restart is after this fixing. Base and shocked Valuations both inherit it. |
+| 61 through 119 | The declaration month is still 60. A Valuation restarted after the fixing uses the rate that Actual booked. |
+| 120 | The rollover policy resets again. For annual redeclaration, the corresponding next reset after 60 is 72, and the renewal market tenor is 12 months. |
+
+The annual declared rate flows into MYGA's monthly interest and account-value formulas. A higher prospective renewal can change cash flows through credited interest and policyholder behavior. Key-rate DV01 also includes the effect of applying the shocked discount factors to the resulting cash flows. For each path, the signed result is the base liability less the revalued shocked liability.
+
+## Reproduce the fixing by hand
+
+The upstream example workbook selects EUR_BASE, seed 1234 and 1,000 antithetic scenarios. Policy 1 is the five-year rollover row of model_point_table.csv. These inputs illustrate rate-setting mechanics on a generated path. A US-dollar risk result requires the relevant US-dollar curve and calibration.
+
+| Observation date | Start | End | Path 1 start price | Path 1 end price | Five-year annual quote |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 36 | 60 | 120 | 0.956003501 | 0.823129320 | 3.038204% |
+| 60 | 60 | 120 | 1.000000000 | 0.872642126 | 2.762051% |
+| 60 | 120 | 180 | 0.872642126 | 0.760771737 | 2.781834% |
+
+At month 36, the five-year key has weight zero on the start bond (24 months to maturity) and 0.6 on the end bond (84 months to maturity, between the 60- and 120-month keys). A one-basis-point bump changes the end price to 0.822793165. The month-60 renewal projected at month 36 rises to 3.046622%. When the valuation starts at month 60 instead, the booked rate of 2.762051% applies to both shock arms. The issued 4.45% and booked 2.762051% correspond to monthly interest rates of 0.363478% and 0.227308% respectively.
+
+## Follow the Cells in the assembled model
+
+From the repository root, import the builder and read a generated path:
 
 ```python
-base = model.Valuation.collect(12, -1).sum.liability_pv
-shocked = model.Valuation.collect(12, 3).sum.liability_pv
-dv01 = base - shocked
+from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import build_model
+
+m = build_model(route="direct")
+try:
+    a = m.Actual(1, 1)                      # policy_id, scen_id
+    v = m.Valuation(36, 1, 1, -1)           # valuation_month, policy_id, scen_id, shock
+    bumped = m.Valuation(36, 1, 1, 3)       # five-year key
+    assert a.credit_rate(0) == a.declared_rate_initial()
+    print(v.redeclare_month(61))            # 60
+    print(v.renewal_quote(60))              # Market(36, 1, -1).rate(60, 60)
+    print(v.credit_rate(61), bumped.credit_rate(61))
+    print(a.credit_rate(60))                # Market(60, 1, -1).rate(60, 60)
+finally:
+    m.close()
 ```
 
-On the corrected seven-policy reference book, the month-12 base liability
-is 758,741.69. Reprojecting with the five-year shock gives 758,586.22,
-so DV01 is 155.47. Rediscounting the base cash flows instead gives
-758,551.05, so CS01 is 190.64. These reference amounts are rounded after
-the calculation.
+1. The Data model point supplies the initial declared rate and the guaranteed minimum. MYGA's redeclare_month(t) determines which declaration applies at policy month t. Annual redeclaration switches to twelve-month resets after the first guarantee.
+2. Actual.market(t) selects Market(t, scen_id, -1). At a renewal Actual.renewal_quote(t) asks for rate(tenor_month, t). Market.base_price(j) selects the scenario's entry from ESG.P_t_T(t, j). Public path 1 selects array element 0. The ESG synthesizes each bond price from the input curve and the two simulated factors at t.
+3. Valuation.market() selects Market(valuation_month, scen_id, shock). Valuation.credit_rate(t) checks the declaration month first. A declaration on or before the cut belongs to Actual. A future declaration uses Valuation.renewal_quote(start) and takes the larger of the guaranteed minimum and the quote less the renewal spread. For the shipped policies the spread is zero.
+4. MYGA's credit_rate_mth(t) converts the annual rate. inv_income_pp(t) multiplies the monthly rate by av_pp_at(t, AvTiming.BEF_INV), the balance after withdrawal. This feeds the closing account value and subsequent benefits. Valuation.cashflow_at_offset(k) evaluates net_cf(valuation_month + k). Valuation.discount_factor(k) discounts this month-end amount using Market.price(valuation_month + k + 1).
+5. On the collect route Outer.base_liability_pv(month, scen_id) calls Valuation.collect(month, scen_id, -1).sum.liability_pv across policies. Outer.shocked_liability_pv(month, scen_id, key) repeats this on the same economic path with the selected bump. Outer.dv01(month, scen_id, key) subtracts the latter result from the former. Outer.cs01 holds the base cash flows fixed and applies the changed discounts.
 
-The shipped run uses one Actual projection and eight Valuations (base and
-seven shocks) at each of months 0, 12 and 24, for 25 projections per policy.
-See [market selection](scenario.py), [curve formulas](curves.py),
-[observed calculations](actual.py), [restart and valuation](valuation.py),
-[model construction and reporting](model.py) and
-[the saved MYGA policy formulas](../MYGA_US_S/Projection/__init__.py).
-
-## Checking results
-
-A book made of k copies of the seven reference policies must give k times the
-seven-policy results. Each element may differ by
-
-    1e-10 x (the sum of the magnitudes that went into the value) + 1e-7
-
-For a plain sum, that sum of magnitudes is |value|. DV01 and CS01 are a base
-present value minus a shocked present value, both totals over the book. Their
-sum of magnitudes is |base PV| + |shocked PV|, because the difference is much
-smaller than either term and inherits the rounding of both.
+CashValue_ME_G2PP extends each policy over every ESG scenario in a vectorized projection, including its certainty-equivalent reference in row 0. This DV01 example makes the stochastic path an explicit argument: results(m, scen_id=1) reports path 1. Outer.scenario_ids() lists the generated paths. A stochastic mean requires aggregating the pathwise results over the selected IDs.
