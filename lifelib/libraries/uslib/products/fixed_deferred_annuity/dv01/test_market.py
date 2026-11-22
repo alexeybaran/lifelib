@@ -35,6 +35,21 @@ def model():
         m.close()
 
 
+def test_rate_ranges_and_month_end_mva_quote(model):
+    from .native_spec import native_spec
+    market_spec = native_spec(model)["spaces"]["Market"]["cells_param_size"]
+    assert market_spec["tenor_month", "forward_month"] == (61, 1202)
+    assert market_spec["tenor_month"] == 1801  # one-argument shock weight
+    actual = model.Actual[1, 1]
+    valuation = model.Valuation[0, 1, 1, -1]
+    for month in (0, 1, 59):
+        tenor = 59 - month
+        assert actual.competitor_tenor(month) == tenor + 1
+        assert round(12 * actual.mva_term(month)) == tenor
+        for policy, market in ((actual, actual.market(month)), (valuation, valuation.market())):
+            assert policy.mva_ref_yield(month) == market.rate(tenor, month)
+
+
 def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(model):
     as_of = 60
     raw = model.ESG.P_t_T(as_of, as_of + 60)

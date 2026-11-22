@@ -34,7 +34,7 @@ def renewal_crediting_spread(t):
 
 
 def mva_ref_yield(t):
-    return market(t).rate(int(round(12 * mva_term(t))), t)
+    return market(t).rate(round(12 * mva_term(t)), t)
 
 
 def mva_fixing_yield(t):

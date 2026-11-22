@@ -105,3 +105,7 @@ Market takes the path-1 entries from ESG.P_t_T(72,120) and ESG.P_t_T(72,180). Re
 The shipped spread is zero and the 0.25% guaranteed minimum is below both forward quotes. For the 480-month one-policy valuation, Outer.dv01(72,1,4) is $0.34568 (base liability $10,229.80574 less shocked $10,229.46005). This includes all projected cash-flow and discounting changes.
 
 Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
+
+The [native compilation spec](native_spec.py) sizes the two arguments of `Market.rate(tenor_month, forward_month)` separately. On the shipped five-year policies the tenor runs from 0 through 60 months, and the forward month uses the same 0 through 1,201 range as the policy calculation. The 73,322-slot dense budget applies only to this Cell. Discount prices and shock weights keep their separate curve-length ranges. Regenerate the spec if a new policy book introduces longer guarantee periods. Changing the shock-step CSV within the curve domain does not widen the policy quote tenor.
+
+Tenors are integer months. At policy month 1 of a five-year rollover contract the competitor quote has 59 months remaining. The end-of-month MVA quote has 58. Both are taken from the curve at forward month 1.

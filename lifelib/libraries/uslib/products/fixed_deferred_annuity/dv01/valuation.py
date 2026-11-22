@@ -30,7 +30,7 @@ def renewal_crediting_spread(t):
 def mva_ref_yield(t):
     if t < valuation_month:
         return Actual[policy_id, scen_id].mva_ref_yield(t)
-    return market().rate(int(round(12 * mva_term(t))), t)
+    return market().rate(round(12 * mva_term(t)), t)
 
 
 def mva_fixing_yield(t):
