@@ -2,7 +2,26 @@
 
 
 def monthly_inputs():
-    return helpers.monthly_outer_scenario(Data.annual_curves, Data.annual_spreads, months=outer_months)
+    annual_curves = np.asarray(Data.annual_curves, dtype=np.float64)
+    annual_spreads = np.asarray(Data.annual_spreads, dtype=np.float64)
+    if annual_curves.shape != (10, len(tenors)):
+        raise ValueError('annual_curves must have shape (10, 7)')
+    if annual_spreads.shape != (10,):
+        raise ValueError('annual_spreads must have shape (10,)')
+    curves = np.empty((outer_months, len(tenors)), dtype=np.float64)
+    spreads = np.empty(outer_months, dtype=np.float64)
+    for m in range(outer_months):
+        y = m / 12.0
+        if y >= 9:
+            curves[m] = annual_curves[-1]
+            spreads[m] = annual_spreads[-1]
+            continue
+        lo = int(np.floor(y))
+        hi = lo + 1
+        w = y - lo
+        curves[m] = annual_curves[lo] * (1.0 - w) + annual_curves[hi] * w
+        spreads[m] = annual_spreads[lo] * (1.0 - w) + annual_spreads[hi] * w
+    return (np.ascontiguousarray(curves), np.ascontiguousarray(spreads))
 
 
 def monthly_curves():

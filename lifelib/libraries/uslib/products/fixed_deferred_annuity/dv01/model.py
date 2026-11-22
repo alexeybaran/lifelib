@@ -9,9 +9,10 @@ import math
 import numpy as np
 import pandas as pd
 from . import actual as actual_projection, valuation as valuation_projection
-from . import policy, assumptions, scenario, curve_helpers, curves as curve_formulas
+from . import policy, assumptions, scenario, curves as curve_formulas
 from lifelib.libraries.uslib.products.fixed_deferred_annuity import enums   # the MYGA_US_S enums
 
+TENORS = (1., 2., 3., 5., 10., 15., 20.)
 OUTER_MONTHS = 36
 HORIZON = 480
 VALUATION_MONTHS = (0, 12, 24)
@@ -85,13 +86,13 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         policy_table = policy_table.sort_index()
         if not policy_table.index.is_unique or len(policy_table) == 0:
             raise ValueError('policy IDs must be nonempty and unique')
-    curves, spreads = curve_helpers.outer_scenario()
     model = mx.new_model(model_name)
     try:
         data, actual_formulas, actual_refs = _myga_data(model, myga_model, folder, policy_table, linked)
-        data.annual_curves = curves
-        data.annual_spreads = spreads
-        data.curves = curve_helpers
+        # Ten annual observations. Each observed curve is flat across its seven tenors.
+        levels = np.arange(1.0, 11.0, dtype=np.float64) / 100.0
+        data.annual_curves = np.repeat(levels[:, None], len(TENORS), axis=1)
+        data.annual_spreads = np.linspace(0.005, 0.015, len(levels), dtype=np.float64)
         ids = tuple(sorted(int(i) for i in data.model_point_table().index))
         if not ids or len(set(ids)) != len(ids):
             raise ValueError('policy IDs must be nonempty and unique')
@@ -99,8 +100,8 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
         model.close()
         raise
     curve_space = model.new_space('Curves', refs={
-        'Data': data, 'helpers': curve_helpers, 'np': np,
-        'tenors': curve_helpers.KRD_TENORS, 'shock_bp': curve_helpers.KRD_BP,
+        'Data': data, 'np': np,
+        'tenors': TENORS, 'shock_bp': 1.e-4,
         'outer_months': outer_months, 'valuation_horizon': HORIZON})
     for name, formula in inspect.getmembers(curve_formulas, inspect.isfunction):
         curve_space.new_cells(name, formula)
@@ -110,7 +111,7 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     data.new_cells('monthly_spreads', 'lambda: Curves.monthly_spreads()')
     market = model.new_space('Scenarios',
         formula=lambda valuation_month=0, forward_project=False, shock=-1: None,
-        refs={'Data': data, 'curves': curve_helpers, 'Curves': curve_space})
+        refs={'Data': data, 'Curves': curve_space})
     for name, formula in inspect.getmembers(scenario, inspect.isfunction):
         market.new_cells(name, formula)
     # The policy is the item of Actual and Valuation (their parameter policy_id); no Cell takes a
@@ -174,7 +175,7 @@ def build_model(*, model_name='MYGASharedDataDV01', reference_dir=None,
     actual_projection.install(actual, data, actual_formulas, actual_refs)
     valuation_projection.install(valuation, actual, data, market, actual_formulas, actual_refs)
     outer = model.new_space('Outer', refs={'Actual': actual, 'Valuation': valuation,
-        'Data': data, 'Scenarios': market, 'curves': curve_helpers,
+        'Data': data, 'Scenarios': market,
         'Curves': curve_space, 'np': np})
     if route == 'collect':
         outer.new_cells('actual_cashflows', 'lambda: Actual.collect().sum.net_cf')

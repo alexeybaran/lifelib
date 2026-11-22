@@ -51,6 +51,50 @@ ordinary modelx-cython sample tracing workflow. The compiler discovers types
 through the sample run. The lock protects shared Scenario calculations while
 policy items in Actual and Valuation remain independently eligible for collect.
 
+## Follow one valuation
+
+```text
+Model
+├── Data                         MYGA tables and DV01 annual curve and spread inputs
+├── Curves                       monthly interpolation and key-rate mathematics
+├── Scenarios(month, forward_project, shock)
+├── Actual(policy_id)            observed history and booked rates
+├── Valuation(month, policy_id, shock)
+│   └── ValuationContract        MYGA calculations on the policy clock
+└── Outer                        policy totals, DV01 and CS01
+```
+
+The builder sets the example's ten annual observations on Data. At year zero
+all seven tenors are at 1%, and at year one they are at 2%. The crediting
+spread rises from 0.50% to 1.50% across the ten observations.
+`Curves.monthly_inputs()` interpolates between observations for Actual.
+For example, the observed curve at month six is 1.50% at every tenor.
+
+```python
+v = model.Valuation(12, 7, 3)
+market = v.market()
+assert market is model.Scenarios(12, True, 3)
+assert v.ValuationContract.market() is market
+assert model.Valuation(12, 8, 3).market() is market
+```
+
+At this valuation date the base curve is 2%. Shock index 3 bumps the
+five-year node to 2.01%. At local month zero, `market.rate(0, 5.0)`
+therefore returns 2.01%. At local month six, the contract is at policy
+month 18. New quotes use the forward curve starting six months after the
+valuation. A rate already booked by month 12 comes from Actual history.
+
+```python
+base = model.Valuation.collect(12, -1).sum.liability_pv
+shocked = model.Valuation.collect(12, 3).sum.liability_pv
+dv01 = base - shocked
+```
+
+Each liability discounts its own projected cash flows. CS01 holds the
+base cash flows fixed and applies the shocked discount factors. The
+standard book runs one Actual projection per policy and eight Valuations
+at each of months 0, 12 and 24.
+
 ## Checking results
 
 A book made of k copies of the seven reference policies must give k times the
