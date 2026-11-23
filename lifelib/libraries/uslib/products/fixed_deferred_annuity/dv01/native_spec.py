@@ -24,8 +24,15 @@ def native_spec(model):
             "cells": {"rate": {"max_dense_entries": 61 * policy_months}},
         },
         "Actual": {"cells_param_size": {"t": policy_months, "y": 101}},
-        "Valuation": {"cells_param_size": {"t": policy_months, "y": 101, "k": (-1, policy_months),
-                                           "month": (-1, close_months)}},
+        "Valuation": {
+            "cells_param_size": {"t": policy_months, "y": 101, "k": (-1, policy_months),
+                                 "month": (-1, close_months)},
+            # Actual, market and policy inputs are fixed during the Collect call.
+            "factory_collect_reuse": True,
+            "factory_collect_private_refs": True,
+            "factory_collect_subtotals": True,
+            "cells": {"pv": {"iterative_suffix_sum": True}},
+        },
         "Outer": {"cells_param_size": {"month": (-1, close_months), "valuation_month": (-1, close_months),
                                        "scen_id": (1, int(model.ESG.scen_size()) + 1),
                                        "num_scenarios": (1, int(model.ESG.scen_size()) + 1),
