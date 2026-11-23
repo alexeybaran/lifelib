@@ -16,7 +16,9 @@ A crediting rate is a policy promise. The market curve supplies a quote when tha
 The individual results of `Actual.collect(scen_id)` carry the nine columns of
 the annual policy report. For example, at a configured snapshot month `c`,
 `actuals.individual[policy_id].credit_rate[c]` gives the booked annual rate.
-Valuation reads the same detached policy record for its observed months. A cut
+Valuation calls the same financial Cell name on both routes. For example,
+`act.mgsv_pp(72)` calls Actual's Cell in direct mode. In collect mode it
+reads the detached `mgsv_pp` series at key 72, the same value as `mgsv_pp[72]`. A cut
 at policy month 72 includes that month's closing cash flow and balances.
 The first prospective cash flow is month 73, paid on grid date 74 and
 discounted to grid date 73. The annual report still describes the opening
@@ -24,10 +26,10 @@ of each labelled policy month.
 
 | Valuation historical Cell at month t | Field of the collected policy |
 | --- | --- |
-| `av_pp(t)` | `opening_account_value[t + 1]` |
-| `mgsv_pp(t)` | `opening_guaranteed_surrender_value[t + 1]` |
-| `interest_credited_pp(t)` | `interest_credited_to_date[t + 1]` |
-| `prem_accum_gmir_pp(t)` | `opening_accumulated_guaranteed_premiums[t + 1]` |
+| `av_pp(t)` | `av_pp[t]` |
+| `mgsv_pp(t)` | `mgsv_pp[t]` |
+| `interest_credited_pp(t)` | `interest_credited_pp[t]` |
+| `prem_accum_gmir_pp(t)` | `prem_accum_gmir_pp[t]` |
 | `pols_if(t)` | `pols_if[t]`, including the first projected month's opening |
 | `free_wd_remain(t)` | `free_wd_remain[t]` |
 | `tax_basis_pp(t)` | `tax_basis_pp[t]` |

@@ -4,7 +4,7 @@ import math
 import pathlib
 import lifelib
 import numpy as np
-from . import actual, market, observed_collect, observed_direct, outer, outer_direct, valuation
+from . import actual, market, outer, outer_direct, valuation
 
 
 OUTER_MONTHS = 36
@@ -123,7 +123,14 @@ def _valuation_point(valuation_month, policy_id, scen_id, shock=-1):
     if (isinstance(scen_id, bool) or not isinstance(scen_id, (int, np.integer))
             or not 1 <= scen_id <= ESG.scen_size()):
         raise ValueError('scen_id must identify a generated ESG path')
-    return {'refs': {'point_id': policy_id}}
+    if collect_history:
+        if valuation_month <= last_snapshot_month:
+            history = Actual.collect(scen_id).individual[policy_id]
+        else:
+            history = Actual.collect(scen_id, valuation_month).individual[policy_id]
+    else:
+        history = Actual[policy_id, scen_id]
+    return {'refs': {'point_id': policy_id, 'act': history}}
 
 
 def _packaged_input_path():
@@ -213,20 +220,24 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
               'snapshot_months': valuation_months, 'last_snapshot_month': max(valuation_months, default=-1)})
     valuation_space = model.new_space_from_module(valuation, name='Valuation', formula=_valuation_point,
         refs={**common, 'Actual': actual_space, 'HORIZON': HORIZON,
+              'act': None, 'collect_history': route == 'collect',
               'last_snapshot_month': max(valuation_months, default=-1),
               'projection_months': tuple(range(HORIZON))})
-    valuation_space.new_cells_from_module(observed_collect if route == 'collect' else observed_direct)
     _install_myga_formulas(actual_space, valuation_space, actual_formulas)
 
     if route == 'collect':
         actual_space.set_collect(over={'policy_id': actual_space.policy_ids}, outputs=lambda: {
             'individual': {
-                'opening_account_value': {t: opening_account_value(t) for t in opening_months()},
-                'opening_guaranteed_surrender_value': {t: opening_guaranteed_surrender_value(t) for t in opening_months()},
+                'av_pp': {t: av_pp(t) for t in history_months()},
+                'mgsv_pp': {t: mgsv_pp(t) for t in history_months()},
+                'interest_credited_pp': {t: interest_credited_pp(t) for t in history_months()},
+                'prem_accum_gmir_pp': {t: prem_accum_gmir_pp(t) for t in history_months()},
+                'opening_account_value': {t: opening_account_value(t) for t in snapshot_months},
+                'opening_guaranteed_surrender_value': {t: opening_guaranteed_surrender_value(t) for t in snapshot_months},
                 'pols_if': {t: pols_if(t) for t in opening_months()},
-                'interest_credited_to_date': {t: interest_credited_to_date(t) for t in opening_months()},
+                'interest_credited_to_date': {t: interest_credited_to_date(t) for t in snapshot_months},
                 'interest_credited_policy_year_to_date': {t: interest_credited_policy_year_to_date(t) for t in snapshot_months},
-                'opening_accumulated_guaranteed_premiums': {t: opening_accumulated_guaranteed_premiums(t) for t in opening_months()},
+                'opening_accumulated_guaranteed_premiums': {t: opening_accumulated_guaranteed_premiums(t) for t in snapshot_months},
                 'free_wd_avail': {t: free_wd_avail(t) for t in snapshot_months},
                 'credit_rate': {t: credit_rate(t) for t in history_months()},
                 'mva_ref_yield_locked': {t: mva_ref_yield_locked(t) for t in history_months()},

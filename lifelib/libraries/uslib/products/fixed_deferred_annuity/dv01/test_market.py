@@ -85,6 +85,14 @@ def test_default_esg_workbook_resolves_after_relocation(model, tmp_path):
     assert model.ESG.P_t_T(12, 72).shape == (model.ESG.scen_size(),)
 
 
+def test_last_cut_has_a_closing_grid_date(model):
+    last_date = model.ESG.step_size()
+    item = model.Valuation(last_date - 1, 1, 1, -1)
+    assert item.market() is model.Market(last_date, 1, -1)
+    with pytest.raises(FormulaError, match='ValueError: valuation_month'):
+        model.Valuation(last_date, 1, 1, -1)
+
+
 @pytest.mark.parametrize('scenario', [1, 2])
 def test_actual_and_valuation_follow_same_path_across_a_renewal_cut(model, scenario):
     policy, cut, next_renewal = 1, 60, 120

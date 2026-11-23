@@ -188,6 +188,12 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
                 assert aggregate.net_cf[1] == valuation.net_cf(month + 2)
                 assert collected.net_cf(month) == actual.net_cf(month)
                 assert collected.av_pp(month) == actual.av_pp(month)
+                for name in ('av_pp', 'mgsv_pp', 'interest_credited_pp', 'prem_accum_gmir_pp',
+                             'pols_if', 'free_wd_remain', 'tax_basis_pp', 'net_cf',
+                             'credit_rate', 'mva_ref_yield_locked'):
+                    assert getattr(collected.act, name)(month) == getattr(actual, name)(month)
+                    if month in months:
+                        assert getattr(history, name)[month] == getattr(actual, name)(month)
                 assert collected.pols_if(month + 1) == actual.pols_if(month + 1)
         assert not m.Actual.itemspaces
     finally:

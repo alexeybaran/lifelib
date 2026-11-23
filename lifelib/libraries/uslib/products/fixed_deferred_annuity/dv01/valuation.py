@@ -36,7 +36,7 @@ def credit_rate(t):
         return declared_rate_initial()
     start = redeclare_month(t)
     if start <= valuation_month:
-        return observed_credit_rate(min(t, valuation_month))
+        return act.credit_rate(min(t, valuation_month))
     return max(gmir(), renewal_quote(start) - renewal_crediting_spread(start))
 
 
@@ -45,7 +45,7 @@ def mva_ref_yield_locked(t):
         return mva_ref_yield_at_issue()
     start = gp_start_month(t)
     if start <= valuation_month:
-        return observed_mva_ref_yield_locked(min(t, valuation_month))
+        return act.mva_ref_yield_locked(min(t, valuation_month))
     return mva_fixing_yield(start)
 
 
@@ -54,7 +54,7 @@ def net_cf(t):
     if t < 0:
         return 0.0
     if t <= valuation_month:
-        return observed_net_cf(t)
+        return act.net_cf(t)
     return contract_net_cf(t) if t < proj_len() else 0.0
 
 
@@ -79,34 +79,34 @@ def liability_pv():
 
 # Actual owns every observed month through the cut, including its close.
 def av_pp(t):
-    return observed_av_pp(t) if t <= valuation_month else av_pp_rollforward(t)
+    return act.av_pp(t) if t <= valuation_month else av_pp_rollforward(t)
 
 
 def mgsv_pp(t):
-    return observed_mgsv_pp(t) if t <= valuation_month else mgsv_pp_rollforward(t)
+    return act.mgsv_pp(t) if t <= valuation_month else mgsv_pp_rollforward(t)
 
 
 def interest_credited_pp(t):
     if t <= valuation_month:
-        return observed_interest_credited_pp(t)
+        return act.interest_credited_pp(t)
     return interest_credited_pp_rollforward(t)
 
 
 def prem_accum_gmir_pp(t):
     if t <= valuation_month:
-        return observed_prem_accum_gmir_pp(t)
+        return act.prem_accum_gmir_pp(t)
     return prem_accum_gmir_pp_rollforward(t)
 
 
 def free_wd_remain(t):
-    return observed_free_wd_remain(t) if t <= valuation_month else free_wd_remain_rollforward(t)
+    return act.free_wd_remain(t) if t <= valuation_month else free_wd_remain_rollforward(t)
 
 
 def tax_basis_pp(t):
-    return observed_tax_basis_pp(t) if t <= valuation_month else tax_basis_pp_rollforward(t)
+    return act.tax_basis_pp(t) if t <= valuation_month else tax_basis_pp_rollforward(t)
 
 
 def pols_if(t):
     if t <= valuation_month + 1:
-        return observed_pols_if(t)
+        return act.pols_if(t)
     return pols_if_rollforward(t)
