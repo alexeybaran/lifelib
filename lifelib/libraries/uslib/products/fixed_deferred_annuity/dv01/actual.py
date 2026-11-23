@@ -5,12 +5,16 @@ def policy_ids():
     return tuple(sorted(int(p) for p in data.model_point_table().index))
 
 
+def history_months():
+    return range(max(last_snapshot_month, through_month) + 1)
+
+
+def opening_months():
+    return range(max(last_snapshot_month, through_month) + 2)
+
+
 def market(t):
     return Market(t, scen_id, -1)
-
-
-def initial_state():
-    return policy_state(0)
 
 
 def competitor_tenor(t):
@@ -54,15 +58,24 @@ def mva_ref_yield_locked(t):
     return mva_fixing_yield(gp_start_month(t))
 
 
-def policy_state(t):
-    previous = t - 1
-    year_start = t // 12 * 12
-    interest = interest_credited_pp(previous) if t else 0.0
-    previous_year_interest = interest_credited_pp(year_start - 1) if year_start else 0.0
-    return (av_pp_at(t, AvTiming.BEF_WD), mgsv_pp(previous) if t else mgsv_pp_init(),
-            pols_if(t), interest, interest - previous_year_interest,
-            prem_accum_gmir_pp(previous) if t else premium_pp(),
-            free_wd_avail(t), credit_rate(t), mva_ref_yield_locked(t))
+def opening_account_value(t):
+    return av_pp_at(t, AvTiming.BEF_WD)
+
+
+def opening_guaranteed_surrender_value(t):
+    return mgsv_pp(t - 1) if t else mgsv_pp_init()
+
+
+def interest_credited_to_date(t):
+    return interest_credited_pp(t - 1) if t else 0.0
+
+
+def interest_credited_policy_year_to_date(t):
+    return interest_credited_to_date(t) - interest_credited_to_date(t // 12 * 12)
+
+
+def opening_accumulated_guaranteed_premiums(t):
+    return prem_accum_gmir_pp(t - 1) if t else premium_pp()
 
 
 def net_cf(t):

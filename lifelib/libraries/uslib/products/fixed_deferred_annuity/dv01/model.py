@@ -4,12 +4,25 @@ import math
 import pathlib
 import lifelib
 import numpy as np
-from . import actual, market, outer, outer_direct, valuation
+from . import actual, market, observed_collect, observed_direct, outer, outer_direct, valuation
 
 
 OUTER_MONTHS = 36
 HORIZON = 480
 VALUATION_MONTHS = (0, 12, 24)
+
+# Column order of the annual financial report.
+OPENING_COLUMNS = (
+    'opening_account_value',
+    'opening_guaranteed_surrender_value',
+    'pols_if',
+    'interest_credited_to_date',
+    'interest_credited_policy_year_to_date',
+    'opening_accumulated_guaranteed_premiums',
+    'free_wd_avail',
+    'credit_rate',
+    'mva_ref_yield_locked',
+)
 
 
 # The DV01 lookup Cells read the converted MYGA_US_S Data tables directly, as the MYGA Projection
@@ -93,16 +106,19 @@ def _market_key(as_of_month, scen_id, shock=-1):
     return None
 
 
-def _actual_point(policy_id, scen_id):
+def _actual_point(policy_id, scen_id, through_month=-1):
     if (isinstance(scen_id, bool) or not isinstance(scen_id, (int, np.integer))
             or not 1 <= scen_id <= ESG.scen_size()):
         raise ValueError('scen_id must identify a generated ESG path')
+    if (isinstance(through_month, bool) or not isinstance(through_month, (int, np.integer))
+            or not -1 <= through_month < ESG.step_size()):
+        raise ValueError('through_month is outside the generated ESG time grid')
     return {'refs': {'point_id': policy_id}}
 
 
 def _valuation_point(valuation_month, policy_id, scen_id, shock=-1):
     if (isinstance(valuation_month, bool) or not isinstance(valuation_month, (int, np.integer))
-            or not 0 <= valuation_month <= ESG.step_size()):
+            or not 0 <= valuation_month < ESG.step_size()):
         raise ValueError('valuation_month is outside the generated ESG time grid')
     if (isinstance(scen_id, bool) or not isinstance(scen_id, (int, np.integer))
             or not 1 <= scen_id <= ESG.scen_size()):
@@ -138,7 +154,9 @@ def _copy_esg(model, esg_model, esg_input):
 
 
 def _install_myga_formulas(actual_space, valuation_space, sources):
-    for name in ('policy_ids', 'competitor_tenor', 'policy_state'):
+    for name in ('policy_ids', 'competitor_tenor', *OPENING_COLUMNS):
+        if name in valuation_space.cells or name not in actual_space.cells:
+            continue
         valuation_space.new_cells(name, actual_space.cells[name].formula.source)
 
     rollforwards = ('av_pp', 'mgsv_pp', 'interest_credited_pp', 'prem_accum_gmir_pp',
@@ -182,7 +200,7 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
                 or not 0 <= outer_months <= esg.step_size() + 1):
             raise ValueError('outer_months is outside the generated ESG time grid')
         if any(isinstance(month, bool) or not isinstance(month, (int, np.integer))
-               or not 0 <= month <= esg.step_size() for month in valuation_months):
+               or not 0 <= month < esg.step_size() for month in valuation_months):
             raise ValueError('valuation months are outside the generated ESG time grid')
     except BaseException:
         model.close()
@@ -192,15 +210,30 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
     common = {**actual_refs, 'data': data, 'ESG': esg, 'Market': market_space, 'np': np, 'point_id': 0}
     actual_space = model.new_space_from_module(actual, name='Actual', formula=_actual_point,
         refs={**common, 'projection_months': tuple(range(outer_months)),
-              'snapshot_months': valuation_months})
+              'snapshot_months': valuation_months, 'last_snapshot_month': max(valuation_months, default=-1)})
     valuation_space = model.new_space_from_module(valuation, name='Valuation', formula=_valuation_point,
         refs={**common, 'Actual': actual_space, 'HORIZON': HORIZON,
+              'last_snapshot_month': max(valuation_months, default=-1),
               'projection_months': tuple(range(HORIZON))})
+    valuation_space.new_cells_from_module(observed_collect if route == 'collect' else observed_direct)
     _install_myga_formulas(actual_space, valuation_space, actual_formulas)
 
     if route == 'collect':
         actual_space.set_collect(over={'policy_id': actual_space.policy_ids}, outputs=lambda: {
-            'individual': {'state': {t: policy_state(t) for t in snapshot_months}},
+            'individual': {
+                'opening_account_value': {t: opening_account_value(t) for t in opening_months()},
+                'opening_guaranteed_surrender_value': {t: opening_guaranteed_surrender_value(t) for t in opening_months()},
+                'pols_if': {t: pols_if(t) for t in opening_months()},
+                'interest_credited_to_date': {t: interest_credited_to_date(t) for t in opening_months()},
+                'interest_credited_policy_year_to_date': {t: interest_credited_policy_year_to_date(t) for t in snapshot_months},
+                'opening_accumulated_guaranteed_premiums': {t: opening_accumulated_guaranteed_premiums(t) for t in opening_months()},
+                'free_wd_avail': {t: free_wd_avail(t) for t in snapshot_months},
+                'credit_rate': {t: credit_rate(t) for t in history_months()},
+                'mva_ref_yield_locked': {t: mva_ref_yield_locked(t) for t in history_months()},
+                'free_wd_remain': {t: free_wd_remain(t) for t in history_months()},
+                'tax_basis_pp': {t: tax_basis_pp(t) for t in history_months()},
+                'net_cf': {t: net_cf(t) for t in history_months()},
+            },
             'sum': {'net_cf': {t: net_cf(t) for t in projection_months}}})
         valuation_space.set_collect(over={'policy_id': valuation_space.policy_ids}, outputs=lambda: {
             'sum': {'liability_pv': liability_pv(),
@@ -228,13 +261,14 @@ def results(model, scen_id):
             'cs01': np.array([[outer.cs01(month, scen_id, k) for k in keys] for month in months]),
             'valuation_cf': np.array([list(outer.base_cashflows(month, scen_id).values()) for month in months]),
             'actual_cf': np.array(list(outer.actual_cashflows(scen_id).values())),
-            'annual_states': np.array([[_policy_state(model, month, p, scen_id) for p in model.Actual.policy_ids()]
-                                       for month in months])}
+            'annual_states': _annual_openings(model.Actual, scen_id, months)}
 
 
-def _policy_state(model, valuation_month, policy_id, scen_id):
-    """A policy's state at a valuation date: from the collected individual outputs (collect route) or
-    from the policy's item (direct route)."""
-    if 'collect_outputs' in model.Actual.cells:
-        return model.Actual.collect(scen_id).individual[policy_id].state[valuation_month]
-    return model.Actual[policy_id, scen_id].policy_state(valuation_month)
+def _annual_openings(actual, scen_id, months):
+    policies = actual.policy_ids()
+    if hasattr(actual, 'collect_outputs'):
+        records = actual.collect(scen_id).individual
+        return np.array([[[getattr(records[p], name)[t] for name in OPENING_COLUMNS]
+                          for p in policies] for t in months])
+    return np.array([[[getattr(actual[p, scen_id], name)(t) for name in OPENING_COLUMNS]
+                      for p in policies] for t in months])

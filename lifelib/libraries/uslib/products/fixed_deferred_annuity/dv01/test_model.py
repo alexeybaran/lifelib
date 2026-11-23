@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from lifelib.libraries.uslib.products.fixed_deferred_annuity.enums import Renewal
-from .model import build_model
+from .model import OPENING_COLUMNS, build_model
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def test_scenario_result_shared_across_policies(model):
     entries = len(first.market(12).rate)
     assert second.market(12).rate(60, 12) == value
     assert len(first.market(12).rate) == entries
-    assert first.initial_state() is not second.initial_state()
+    assert first.opening_account_value(13) != second.opening_account_value(13)
 
 
 def test_saved_myga_data_cells_are_used_by_dv01(model):
@@ -67,8 +67,8 @@ def test_saved_myga_data_cells_are_used_by_dv01(model):
 def test_issue_state_uses_booked_rates_with_dv01_market(model):
     for policy_id, policy in model.Data.model_point_table().iterrows():
         actual = model.Actual(int(policy_id), 1)
-        assert actual.policy_state(0)[7:] == (
-            policy['declared_rate_initial'], policy['mva_ref_yield_at_issue'])
+        assert actual.credit_rate(0) == policy['declared_rate_initial']
+        assert actual.mva_ref_yield_locked(0) == policy['mva_ref_yield_at_issue']
         assert actual.market(0) is model.Market(0, 1, -1)
         assert actual.mva_ref_yield_locked(0) != actual.mva_fixing_yield(0)
 
@@ -76,23 +76,23 @@ def test_issue_state_uses_booked_rates_with_dv01_market(model):
 def test_one_valuation_uses_its_own_market(model):
     selected = model.Valuation(12, 1, 1, -1)
     sibling = model.Valuation(12, 2, 1, -1)
-    selected_before = selected.market_rate(12), selected.cashflow_at_offset(0), selected.discount_factor(0)
-    sibling_before = sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)
+    selected_before = selected.market_rate(13), selected.cashflow_at_offset(0), selected.discount_factor(0)
+    sibling_before = sibling.market_rate(13), sibling.cashflow_at_offset(0), sibling.discount_factor(0)
     assert selected.market() is sibling.market()
 
     market = model.new_space('MarketOverride')
     market.new_cells('rate', 'lambda tenor_month, forward_month: 0.09')
-    market.new_cells('price', 'lambda maturity_month: 0.99 ** (maturity_month - 12)')
+    market.new_cells('price', 'lambda maturity_month: 0.99 ** (maturity_month - 13)')
     selected.market[()] = market
 
     assert selected.market() is market
-    assert selected.market_rate(12) == 0.09 != selected_before[0]
+    assert selected.market_rate(13) == 0.09 != selected_before[0]
     assert selected.cashflow_at_offset(0) != selected_before[1]
     assert selected.discount_factor(0) == 0.99 != selected_before[2]
-    assert (sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
+    assert (sibling.market_rate(13), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
     del model.Valuation[12, 2, 1, -1]
     sibling = model.Valuation(12, 2, 1, -1)
-    assert (sibling.market_rate(12), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
+    assert (sibling.market_rate(13), sibling.cashflow_at_offset(0), sibling.discount_factor(0)) == sibling_before
 
 
 def test_different_policy_rules_still_apply(model):
@@ -109,8 +109,8 @@ def test_changed_policy_input_before_calculation(model):
     table.loc[1,'premium'] = 175000.0
     model.Data.policy_table = table
     assert model.Actual[1, 1].premium_pp() == 175000.0
-    assert model.Actual[1, 1].initial_state()[0] == 175000.0
-    assert model.Actual[2, 1].initial_state()[0] == 100000.0
+    assert model.Actual[1, 1].opening_account_value(0) == 175000.0
+    assert model.Actual[2, 1].opening_account_value(0) == 100000.0
 
 
 def test_existing_cell_cache_semantics(model):
@@ -134,7 +134,8 @@ def test_policy_population_not_fixed_at_seven():
         assert m.Actual.policy_ids() == tuple(range(1,106))
         # Structural/one-step check only; never execute a 105-policy live projection.
         assert m.Actual[105, 1].premium_pp() == m.Actual[7, 1].premium_pp()
-        assert m.Actual[105, 1].initial_state() == m.Actual[7, 1].initial_state()
+        for name in OPENING_COLUMNS:
+            assert getattr(m.Actual[105, 1], name)(0) == getattr(m.Actual[7, 1], name)(0), name
     finally:
         m.close()
 
@@ -166,15 +167,29 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
     months = (0, 3, 6, 9)
     m = build_model(route='collect', policy_table=table, model_name='OnePolicySweep',
                     outer_months=12, valuation_months=months)
+    direct = build_model(route='direct', policy_table=table, model_name='OnePolicyDirect',
+                         outer_months=12, valuation_months=months)
     try:
         m.collect_workers = 4
         assert m.Valuation.policy_ids() == (1,)
+        history = m.Actual.collect(2).individual[1]
+        actual = direct.Actual(1, 2)
         for month in months:
+            for name in OPENING_COLUMNS:
+                assert getattr(history, name)[month] == getattr(actual, name)(month), name
+        # Month 10 is beyond the last configured snapshot and needs longer history.
+        for month in (*months, 10):
             for shock in (-1, 3):
                 aggregate = m.Valuation.collect(month, 2, shock).sum
-                valuation = m.Valuation(month, 1, 2, shock)
+                collected = m.Valuation(month, 1, 2, shock)
+                valuation = direct.Valuation(month, 1, 2, shock)
                 assert aggregate.liability_pv == valuation.liability_pv()
-                assert aggregate.net_cf[0] == valuation.net_cf(month)
-                assert aggregate.net_cf[1] == valuation.net_cf(month + 1)
+                assert aggregate.net_cf[0] == valuation.net_cf(month + 1)
+                assert aggregate.net_cf[1] == valuation.net_cf(month + 2)
+                assert collected.net_cf(month) == actual.net_cf(month)
+                assert collected.av_pp(month) == actual.av_pp(month)
+                assert collected.pols_if(month + 1) == actual.pols_if(month + 1)
+        assert not m.Actual.itemspaces
     finally:
+        direct.close()
         m.close()

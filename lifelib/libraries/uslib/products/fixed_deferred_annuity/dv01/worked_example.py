@@ -16,7 +16,7 @@ from .model import build_model
 
 def observe(actual, engine, scenario, month):
     return {
-        'opening_av': actual.policy_state(month)[0],
+        'opening_av': actual.opening_account_value(month),
         'in_force': actual.pols_if(month),
         'booked_credit': actual.credit_rate(month),
         'booked_mva_yield': actual.mva_ref_yield_locked(month),
@@ -27,17 +27,18 @@ def observe(actual, engine, scenario, month):
 
 def project(item, cut, reset, month):
     market = item.market()
-    offset = month - cut
+    first_projected = cut + 1
+    offset = month - first_projected
     cashflow = item.cashflow_at_offset(offset)
     discount = item.discount_factor(offset)
     return {
         'declaration_month': item.redeclare_month(month),
         'credit_before_reset': item.credit_rate(reset - 1),
-        'start_bond_shock_weight': market.shock_weight(reset - cut),
-        'end_bond_shock_weight': market.shock_weight(reset + 60 - cut),
+        'start_bond_shock_weight': market.shock_weight(reset - first_projected),
+        'end_bond_shock_weight': market.shock_weight(reset + 60 - first_projected),
         'price_to_reset': market.price(reset),
         'price_to_reset_plus_60': market.price(reset + 60),
-        'cut_5y_spot': market.rate(60, cut),
+        'projection_opening_5y_spot': market.rate(60, first_projected),
         'cut_booked_credit': item.credit_rate(cut),
         'cut_booked_mva_yield': item.mva_ref_yield_locked(cut),
         'reset_5y_forward': item.renewal_quote(reset),
@@ -82,7 +83,8 @@ def run():
             'cut_month': cut,
             'reset_month': reset,
             'projection_month': report_month,
-            'reporting_offset': report_month - cut,
+            'first_projected_month': cut + 1,
+            'reporting_offset': report_month - (cut + 1),
             'payment_maturity_month': report_month + 1,
             'shock_index': shock,
             'shock_bp': 1,

@@ -27,15 +27,36 @@ def expected_reports(model, ids, scenario):
     end = max(projection.proj_len() for projection in projections)
     actual_cf = [sum(projection.net_cf(t) for projection in projections)
                  for t in model.Actual.projection_months]
-    states = [[projection.policy_state(month) for projection in projections] for month in months]
+    states = []
+    for month in months:
+        previous = month - 1
+        year_start = month // 12 * 12
+        rows = []
+        for projection in projections:
+            interest = projection.interest_credited_pp(previous) if month else 0.0
+            prior_year_interest = projection.interest_credited_pp(year_start - 1) if year_start else 0.0
+            rows.append([
+                projection.av_pp_at(month, projection.AvTiming.BEF_WD),
+                projection.mgsv_pp(previous) if month else projection.mgsv_pp_init(),
+                projection.pols_if(month),
+                interest,
+                interest - prior_year_interest,
+                projection.prem_accum_gmir_pp(previous) if month else projection.premium_pp(),
+                projection.free_wd_avail(month),
+                projection.credit_rate(month),
+                projection.mva_ref_yield_locked(month),
+            ])
+        states.append(rows)
     base_liabilities, base_cashflows, dv01, cs01 = [], [], [], []
     for month in months:
+        first_projected = month + 1
+        projected_months = range(first_projected, min(end, first_projected + horizon))
         cashflows_by_shock, base_discounts_by_shock = [], []
         for shock in [-1, *range(len(model.Data.shock_key_months()))]:
             items = [model.Valuation(month, policy, scenario, shock) for policy in ids]
-            cashflows = [sum(item.net_cf(t) for item in items) for t in range(month, end)]
-            discounts = [expected_price(engine, month, t + 1, scenario, shock)
-                         for t in range(month, end)]
+            cashflows = [sum(item.net_cf(t) for item in items) for t in projected_months]
+            discounts = [expected_price(engine, first_projected, t + 1, scenario, shock)
+                         for t in projected_months]
             if shock == -1:
                 base_flows = cashflows
                 base_pv = -np.dot(base_flows, discounts)
@@ -53,7 +74,7 @@ def expected_reports(model, ids, scenario):
 @pytest.mark.parametrize('route', ['direct', 'collect'])
 def test_all_reports_reconcile_independently_for_each_esg_path(route, policy_table):
     model = build_model(route=route, policy_table=policy_table, outer_months=24,
-                        valuation_months=(0, 12))
+                        valuation_months=(0, 3, 12))
     try:
         flow_paths = []
         for scenario in (1, 2):
@@ -62,24 +83,36 @@ def test_all_reports_reconcile_independently_for_each_esg_path(route, policy_tab
             assert set(observed) == set(expected)
             for name, values in observed.items():
                 assert values.shape == np.shape(expected[name]), name
-                np.testing.assert_allclose(values, expected[name], rtol=1e-10, atol=1e-7, err_msg=name)
+                if name == 'annual_states':
+                    np.testing.assert_array_equal(values, expected[name], err_msg=name)
+                else:
+                    np.testing.assert_allclose(values, expected[name], rtol=1e-10, atol=1e-7, err_msg=name)
             flow_paths.append(observed['actual_cf'])
         assert not np.array_equal(*flow_paths)
     finally:
         model.close()
 
 
-def test_expired_policy_cashflows(policy_table):
-    model = build_model(route='direct', policy_table=policy_table)
+@pytest.mark.parametrize('route', ['direct', 'collect'])
+def test_maturity_at_cut_stays_in_actual_cashflows(route, policy_table):
+    table = policy_table.loc[[3]]
+    cut = 11
+    model = build_model(route=route, policy_table=table, outer_months=13,
+                        valuation_months=(cut,))
     try:
-        ended = model.Valuation(12, 3, 2, -1)
+        actual = model.Actual(3, 2)
+        ended = model.Valuation(cut, 3, 2, -1)
         assert ended.proj_len() == 12
-        assert ended.net_cf(11) == model.Actual(3, 2).net_cf(11) < 0.0
+        assert ended.net_cf(cut) == actual.net_cf(cut) < 0.0
+        assert model.Outer.actual_cashflows(2)[cut] == actual.net_cf(cut)
         assert ended.net_cf(12) == 0.0
+        assert tuple(model.Outer.base_cashflows(cut, 2)) == tuple(range(480))
+        assert all(value == 0.0 for value in model.Outer.base_cashflows(cut, 2).values())
         for offset in (-1, 0, 479, 480):
             assert ended.cashflow_at_offset(offset) == 0.0
-        assert ended.state_at_offset(0)[2] == 0.0
+        assert ended.pols_if(12) == 0.0
         assert ended.liability_pv() == 0.0
+        assert model.Outer.base_liability_pv(cut, 2) == 0.0
         assert model.Valuation(24, 3, 2, -1).liability_pv() == 0.0
     finally:
         model.close()

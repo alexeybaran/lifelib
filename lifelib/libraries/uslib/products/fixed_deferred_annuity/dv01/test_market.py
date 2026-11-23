@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from modelx.core.errors import FormulaError
 
-from .model import build_model
+from .model import OPENING_COLUMNS, build_model
 
 
 def expected_price(engine, as_of, maturity, scenario, shock=-1):
@@ -46,8 +46,9 @@ def test_rate_ranges_and_month_end_mva_quote(model):
         tenor = 59 - month
         assert actual.competitor_tenor(month) == tenor + 1
         assert round(12 * actual.mva_term(month)) == tenor
-        for policy, market in ((actual, actual.market(month)), (valuation, valuation.market())):
-            assert policy.mva_ref_yield(month) == market.rate(tenor, month)
+        assert actual.mva_ref_yield(month) == actual.market(month).rate(tenor, month)
+        market = actual.market(0) if month == 0 else valuation.market()
+        assert valuation.mva_ref_yield(month) == market.rate(tenor, month)
 
 
 def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(model):
@@ -87,6 +88,7 @@ def test_default_esg_workbook_resolves_after_relocation(model, tmp_path):
 @pytest.mark.parametrize('scenario', [1, 2])
 def test_actual_and_valuation_follow_same_path_across_a_renewal_cut(model, scenario):
     policy, cut, next_renewal = 1, 60, 120
+    first_projected = cut + 1
     actual = model.Actual(policy, scenario)
     issue = actual.model_point()
     assert actual.credit_rate(12) == issue['declared_rate_initial']
@@ -101,39 +103,43 @@ def test_actual_and_valuation_follow_same_path_across_a_renewal_cut(model, scena
 
     for shock in (-1, 3):
         v = model.Valuation(cut, policy, scenario, shock)
-        assert v.market() is model.Market(cut, scenario, shock)
-        assert v.initial_state() == actual.policy_state(cut)
-        assert v.state_at_offset(0) == actual.policy_state(cut)
-        assert v.pols_if(cut) == actual.pols_if(cut)
+        assert v.market() is model.Market(first_projected, scenario, shock)
+        for name in OPENING_COLUMNS:
+            assert getattr(v, name)(first_projected) == getattr(actual, name)(first_projected), name
         for field in ('av_pp', 'mgsv_pp', 'interest_credited_pp', 'prem_accum_gmir_pp',
-                      'free_wd_remain', 'tax_basis_pp'):
-            assert getattr(v, field)(cut - 1) == getattr(actual, field)(cut - 1)
-        assert v.net_cf(cut - 1) == actual.net_cf(cut - 1)
+                      'free_wd_remain', 'tax_basis_pp', 'net_cf', 'market_rate', 'renewal_quote',
+                      'mva_ref_yield', 'mva_fixing_yield'):
+            for t in (cut - 1, cut):
+                assert getattr(v, field)(t) == getattr(actual, field)(t), (field, t)
+        assert v.cashflow_at_offset(0) == v.net_cf(first_projected) == v.contract_net_cf(first_projected)
+        assert v.discount_factor(0) == pytest.approx(
+            expected_price(model.ESG, first_projected, first_projected + 1, scenario, shock))
         for t in (cut - 1, cut, cut + 1):
             assert v.credit_rate(t) == actual.credit_rate(t)
             assert v.mva_ref_yield_locked(t) == actual.mva_ref_yield_locked(t)
-        quote = expected_rate(model.ESG, cut, next_renewal, 60, scenario, shock)
+        quote = expected_rate(model.ESG, first_projected, next_renewal, 60, scenario, shock)
         assert v.renewal_quote(next_renewal) == pytest.approx(quote)
         expected_credit = max(v.gmir(), quote - v.renewal_crediting_spread(next_renewal))
         assert v.credit_rate(next_renewal) == pytest.approx(expected_credit)
         assert v.credit_rate(next_renewal + 1) == pytest.approx(expected_credit)
         assert v.mva_ref_yield_locked(next_renewal + 1) == pytest.approx(quote)
         absolute = next_renewal + 1
-        offset = absolute - cut
+        offset = absolute - first_projected
         assert v.market_rate(absolute) == pytest.approx(
-            expected_rate(model.ESG, cut, absolute, 59, scenario, shock))
+            expected_rate(model.ESG, first_projected, absolute, 59, scenario, shock))
         assert v.mva_ref_yield(absolute) == pytest.approx(
-            expected_rate(model.ESG, cut, absolute, 58, scenario, shock))
+            expected_rate(model.ESG, first_projected, absolute, 58, scenario, shock))
         assert v.av_pp(absolute) == pytest.approx(
             v.av_pp_at(absolute, v.AvTiming.BEF_INV) * (1 + expected_credit) ** (1 / 12))
         assert v.cashflow_at_offset(offset) == v.net_cf(absolute)
         assert v.discount_factor(offset) == pytest.approx(
-            expected_price(model.ESG, cut, absolute + 1, scenario, shock))
+            expected_price(model.ESG, first_projected, absolute + 1, scenario, shock))
 
     after_cut = model.Valuation(cut + 1, policy, scenario, 3)
     assert after_cut.credit_rate(cut + 1) == actual.credit_rate(cut)
     assert after_cut.mva_ref_yield_locked(cut + 1) == actual.mva_ref_yield_locked(cut)
-    assert after_cut.state_at_offset(0) == actual.policy_state(cut + 1)
+    for name in OPENING_COLUMNS:
+        assert getattr(after_cut, name)(cut + 2) == getattr(actual, name)(cut + 2), name
 
 
 def test_guarantee_floor_is_applied_after_subtracting_renewal_spread(model):
@@ -161,7 +167,7 @@ def test_annual_renewal_uses_one_year_for_credit_and_five_years_for_mva(model):
     assert v.credit_rate(cut + 1) == actual.credit_rate(cut)
     assert v.mva_ref_yield_locked(cut + 1) == actual.mva_ref_yield_locked(cut)
     assert v.competitor_tenor(cut + 1) == 12
-    next_credit = expected_rate(model.ESG, cut, 72, 12, 2, 3)
+    next_credit = expected_rate(model.ESG, cut + 1, 72, 12, 2, 3)
     assert v.credit_rate(72) == pytest.approx(max(v.gmir(), next_credit))
     assert v.mva_ref_yield_locked(72) == actual.mva_ref_yield_locked(cut)
 

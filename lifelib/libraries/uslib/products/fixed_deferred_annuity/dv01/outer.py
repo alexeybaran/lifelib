@@ -31,7 +31,7 @@ def dv01(month, scen_id, key):
 
 def cs01(month, scen_id, key):
     base_cashflow = base_cashflows(month, scen_id)
-    market = Market(month, scen_id, key)
-    discounts = [market.price(month + k + 1) for k in base_cashflow]
+    market = Market(month + 1, scen_id, key)
+    discounts = [market.price(month + k + 2) for k in base_cashflow]
     liability = float(-np.dot(tuple(base_cashflow.values()), discounts))
     return base_liability_pv(month, scen_id) - liability
