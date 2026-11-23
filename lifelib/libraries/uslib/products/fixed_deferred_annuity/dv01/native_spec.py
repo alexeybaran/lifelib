@@ -28,5 +28,7 @@ def native_spec(model):
                                            "month": close_months}},
         "Outer": {"cells_param_size": {"month": close_months, "valuation_month": close_months,
                                        "scen_id": (1, int(model.ESG.scen_size()) + 1),
+                                       "num_scenarios": (1, int(model.ESG.scen_size()) + 1),
+                                       "annual_steps": (close_months - 2) // 12 + 1,
                                        "key": 2147483647}},
     }}

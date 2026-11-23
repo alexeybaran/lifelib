@@ -14,11 +14,11 @@ A crediting rate is a policy promise. The market curve supplies a quote when tha
 ## Annual DV01 and CS01 DataFrames
 
 ```python
-from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import annual_risk_report, build_model
+from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import build_model
 
 model = build_model(valuation_months=range(0, 121, 12))
 try:
-    dv01, cs01 = annual_risk_report(model, num_scenarios=2, annual_steps=10)
+    dv01, cs01 = model.Outer.annual_risk_report(num_scenarios=2, annual_steps=10)
 finally:
     model.close()
 ```
@@ -28,8 +28,8 @@ in months from `shock_steps.csv`. Ten annual steps give eleven closes,
 from year 0 through year 10. Zero steps gives just the issue-date close.
 Scenarios are individual generated ESG paths numbered from 1. Each value is
 the portfolio liability change for a +1 bp shock, using the corresponding
-Outer Cell and its sign convention. The same reporting function accepts an
-exported model.
+Outer Cell and its sign convention. The compiler sample calls this Outer Cell at year zero. The exported
+model exposes the same Cell.
 
 ## Read the nine Actual outputs at a valuation date
 

@@ -3,6 +3,7 @@ from pathlib import Path
 import math
 import pathlib
 import lifelib
+import pandas as pd
 import numpy as np
 from . import actual, market, outer, outer_direct, valuation
 
@@ -261,7 +262,7 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
 
     outer_space = model.new_space_from_module(outer, name='Outer', refs={
         'Actual': actual_space, 'Valuation': valuation_space, 'ESG': esg,
-        'Market': market_space, 'np': np})
+        'Market': market_space, 'data': data, 'pd': pd, 'np': np})
     if route == 'direct':
         outer_space.new_cells_from_module(outer_direct)
 
