@@ -11,6 +11,26 @@ A crediting rate is a policy promise. The market curve supplies a quote when tha
 | Valuation | One policy restarted from Actual at a specified date. Carries booked rates and projects future resets from that date's curve. |
 | Outer | Collects policy cash flows on the same path and compares base and shocked liabilities. |
 
+## Annual DV01 and CS01 DataFrames
+
+```python
+from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import annual_risk_report, build_model
+
+model = build_model(valuation_months=range(0, 121, 12))
+try:
+    dv01, cs01 = annual_risk_report(model, num_scenarios=2, annual_steps=10)
+finally:
+    model.close()
+```
+
+Each frame has one row per `(scenario, year)` and one column per key-rate tenor
+in months from `shock_steps.csv`. Ten annual steps give eleven closes,
+from year 0 through year 10. Zero steps gives just the issue-date close.
+Scenarios are individual generated ESG paths numbered from 1. Each value is
+the portfolio liability change for a +1 bp shock, using the corresponding
+Outer Cell and its sign convention. The same reporting function accepts an
+exported model.
+
 ## Read the nine Actual outputs at a valuation date
 
 The individual results of `Actual.collect(scen_id)` carry the nine columns of
