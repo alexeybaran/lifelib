@@ -15,6 +15,7 @@ def native_spec(model):
         "ESG": {"cells_param_size": {**dict.fromkeys(("i", "j", "m", "k"), curve_months),
                                      "scen_id": (1, int(model.ESG.scen_size()) + 1)}},
         "Market": {
+            "native_locked_result_calls": True,
             "cells_param_size": {
                 "maturity_month": curve_months, "tenor_month": curve_months,
                 ("tenor_month", "forward_month"): (tenor_count, policy_months),
