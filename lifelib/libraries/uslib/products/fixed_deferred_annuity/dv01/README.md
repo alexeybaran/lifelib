@@ -24,6 +24,14 @@ The first prospective cash flow is month 73, paid on grid date 74 and
 discounted to grid date 73. The annual report still describes the opening
 of each labelled policy month.
 
+Valuation uses one Market for every rate request. For a month-72 close,
+`v.market().rate(60, 72)` reads the observed five-year spot rate on the
+selected ESG path at month 72, even on a shocked Valuation.
+`v.market().rate(60, 73)` reads the five-year spot rate from the selected
+month-73 curve, including its bump. `v.market().rate(60, 120)` reads the
+five-year forward starting in month 120 from that same curve. A crediting
+rate fixed before the close comes directly from Actual until its next reset.
+
 | Valuation historical Cell at month t | Field of the collected policy |
 | --- | --- |
 | `av_pp(t)` | `av_pp[t]` |

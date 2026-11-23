@@ -39,13 +39,18 @@ def price(maturity_month):
 
 
 def rate(tenor_month, forward_month):
-    """Annual-effective forward yield starting at an absolute policy month."""
+    """Use the observed spot fixing before the cut and the selected curve thereafter."""
     if (isinstance(forward_month, bool) or not isinstance(forward_month, (int, np.integer))
-            or forward_month < as_of_month):
-        raise ValueError('forward_month must be a whole month on or after as_of_month')
+            or forward_month < 0):
+        raise ValueError('forward_month must be a nonnegative whole month')
     if (isinstance(tenor_month, bool) or not isinstance(tenor_month, (int, np.integer))
             or tenor_month < 0):
         raise ValueError('tenor_month must be a nonnegative whole month')
     if tenor_month == 0:
         return 0.0
+    if forward_month < as_of_month:
+        maturity = forward_month + tenor_month
+        start = float(ESG.P_t_T(forward_month, forward_month)[scen_id - 1])
+        end = float(ESG.P_t_T(forward_month, maturity)[scen_id - 1])
+        return (start / end) ** (12.0 / tenor_month) - 1.0
     return (price(forward_month) / price(forward_month + tenor_month)) ** (12.0 / tenor_month) - 1.0

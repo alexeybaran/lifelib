@@ -4,19 +4,13 @@ def market():
     return Market(valuation_month + 1, scen_id, shock)
 
 
-def quote_market(t):
-    if t <= valuation_month:
-        return Market(t, scen_id, -1)
-    return market()
-
-
 def market_rate(t):
-    return quote_market(t).rate(competitor_tenor(t), t)
+    return market().rate(competitor_tenor(t), t)
 
 
 def renewal_quote(t):
     tenor = 12 if renewal_architecture() == Renewal.annual_redeclare else 60
-    return quote_market(t).rate(tenor, t)
+    return market().rate(tenor, t)
 
 
 def renewal_crediting_spread(t):
@@ -24,11 +18,11 @@ def renewal_crediting_spread(t):
 
 
 def mva_ref_yield(t):
-    return quote_market(t).rate(round(12 * mva_term(t)), t)
+    return market().rate(round(12 * mva_term(t)), t)
 
 
 def mva_fixing_yield(t):
-    return quote_market(t).rate(60, t)
+    return market().rate(60, t)
 
 
 def credit_rate(t):

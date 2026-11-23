@@ -51,6 +51,19 @@ def test_rate_ranges_and_month_end_mva_quote(model):
         assert valuation.mva_ref_yield(month) == market.rate(tenor, month)
 
 
+def test_valuation_market_preserves_past_fixings_across_shocks(model):
+    cut, tenor = 72, 60
+    for scenario in (1, 2):
+        base = model.Valuation(cut, 1, scenario, -1).market()
+        bumped = model.Valuation(cut, 1, scenario, 4).market()
+        for month in (60, 71, 72):
+            expected = expected_rate(model.ESG, month, month, tenor, scenario)
+            assert bumped.rate(tenor, month) == base.rate(tenor, month)
+            assert base.rate(tenor, month) == pytest.approx(expected)
+        first = cut + 1
+        assert bumped.rate(tenor, first) - base.rate(tenor, first) == pytest.approx(1e-4)
+
+
 def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(model):
     as_of = 60
     raw = model.ESG.P_t_T(as_of, as_of + 60)
