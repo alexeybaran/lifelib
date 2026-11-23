@@ -71,16 +71,16 @@ def discount_factor(k):
     return market().price(valuation_month + k + 2)
 
 
-def pv(k):
-    """Present value of the remaining discounted cash flows from offset k."""
+def pv():
+    """Present value of all remaining discounted cash flows."""
     total = 0.0
-    for j in range(k, remaining_months()):
-        total += cashflow_at_offset(j) * discount_factor(j)
+    for k in range(remaining_months()):
+        total += cashflow_at_offset(k) * discount_factor(k)
     return total
 
 
 def liability_pv():
-    return -pv(0)
+    return -pv()
 
 
 # Actual owns every observed month through the cut, including its close.

@@ -184,6 +184,8 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
                 aggregate = m.Valuation.collect(month, 2, shock).sum
                 collected = m.Valuation(month, 1, 2, shock)
                 valuation = direct.Valuation(month, 1, 2, shock)
+                assert valuation.pv.parameters == ()
+                assert valuation.liability_pv() == -valuation.pv()
                 assert aggregate.liability_pv == valuation.liability_pv()
                 assert aggregate.net_cf[0] == valuation.net_cf(month + 1)
                 assert tuple(aggregate.net_cf) == tuple(range(valuation.remaining_months()))

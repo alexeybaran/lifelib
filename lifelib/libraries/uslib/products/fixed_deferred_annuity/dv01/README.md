@@ -169,7 +169,7 @@ The shipped spread is zero and the 0.25% guaranteed minimum is below both forwar
 
 Each policy projects through its own final contract month. Direct and Collect return portfolio cash flows for the remaining term of the longest policy at each close. The rectangular report produced by `results()` pads shorter rows with zeros.
 
-`Valuation.pv(k)` sums the discounted cash flows from offset `k` through the last projected month. `liability_pv()` returns `-pv(0)`.
+`Valuation.pv()` sums all discounted cash flows from the first month after the close through the last projected month. `liability_pv()` returns `-pv()`.
 
 Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
 
