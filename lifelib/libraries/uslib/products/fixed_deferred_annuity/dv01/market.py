@@ -5,7 +5,20 @@ def base_price(maturity_month):
     if (isinstance(maturity_month, bool) or not isinstance(maturity_month, (int, np.integer))
             or maturity_month < as_of_month):
         raise ValueError('maturity_month must be a whole month on or after as_of_month')
-    return float(ESG.P_t_T(as_of_month, maturity_month)[scen_id - 1])
+    if shock >= 0:
+        return unshocked().base_price(maturity_month)
+    return ESG.P_t_T_path(as_of_month, maturity_month, scen_id)
+
+
+def unshocked():
+    """The same close and ESG path with the original curve."""
+    return Market(as_of_month, scen_id, -1)
+
+
+def affected(maturity_month):
+    """Whether the price changes under this key-rate shock."""
+    return (shock >= 0 and shock_bp != 0.0 and maturity_month > as_of_month
+            and shock_weight(maturity_month - as_of_month) != 0.0)
 
 
 def shock_weight(tenor_month):
@@ -50,7 +63,10 @@ def rate(tenor_month, forward_month):
         return 0.0
     if forward_month < as_of_month:
         maturity = forward_month + tenor_month
-        start = float(ESG.P_t_T(forward_month, forward_month)[scen_id - 1])
-        end = float(ESG.P_t_T(forward_month, maturity)[scen_id - 1])
+        start = ESG.P_t_T_path(forward_month, forward_month, scen_id)
+        end = ESG.P_t_T_path(forward_month, maturity, scen_id)
         return (start / end) ** (12.0 / tenor_month) - 1.0
-    return (price(forward_month) / price(forward_month + tenor_month)) ** (12.0 / tenor_month) - 1.0
+    maturity = forward_month + tenor_month
+    if shock >= 0 and not affected(forward_month) and not affected(maturity):
+        return unshocked().rate(tenor_month, forward_month)
+    return (price(forward_month) / price(maturity)) ** (12.0 / tenor_month) - 1.0

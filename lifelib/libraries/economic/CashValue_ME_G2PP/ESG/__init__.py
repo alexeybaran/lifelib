@@ -653,6 +653,16 @@ def P_t_T(i, j):
                      - Ba_t_T(i, j) * x(i) - Bb_t_T(i, j) * y(i)))
 
 
+def P_t_T_path(i, j, scen_id):
+    """Zero-coupon bond price on one stochastic path, numbered from one."""
+    if not 1 <= scen_id <= scen_size():
+        raise ValueError("scen_id must identify a generated ESG path")
+    return (mkt_zcb(j) / mkt_zcb(i)
+            * math.exp(0.5 * (V_t_T(i, j) - V_t_T(0, j) + V_t_T(0, i))
+                       - Ba_t_T(i, j) * float(x(i)[scen_id - 1])
+                       - Bb_t_T(i, j) * float(y(i)[scen_id - 1])))
+
+
 def spot_rate(i, m):
     r"""Annually compounded m-month yield at :math:`t_i`, :math:`P(t_i, t_{i+m})^{-12/m} - 1`, by scenario
 
@@ -874,3 +884,5 @@ dt = 0.08333333333333333
 np = ("Module", "numpy")
 
 pd = ("Module", "pandas")
+
+math = ("Module", "math")

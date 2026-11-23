@@ -16,7 +16,7 @@
     "fund_id": "BOND_MIX"
   },
   "actual_horizon_months": 122,
-  "valuation_horizon_months": 480,
+  "valuation_horizon_months": 407,
   "cut_month": 72,
   "reset_month": 120,
   "projection_month": 120,

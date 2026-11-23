@@ -79,7 +79,7 @@ def run():
             'scenario': scenario,
             'engine_parameters': engine.param_table().to_dict(),
             'actual_horizon_months': len(model.Actual.projection_months),
-            'valuation_horizon_months': len(model.Valuation.projection_months),
+            'valuation_horizon_months': len(model.Valuation.projection_months(cut)),
             'cut_month': cut,
             'reset_month': reset,
             'projection_month': report_month,

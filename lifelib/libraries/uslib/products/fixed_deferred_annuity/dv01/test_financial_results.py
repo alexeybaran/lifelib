@@ -21,10 +21,10 @@ def policy_table():
 
 def expected_reports(model, ids, scenario):
     months = model.Actual.snapshot_months
-    horizon = len(model.Valuation.projection_months)
     engine = model.ESG
     projections = [model.Actual(policy, scenario) for policy in ids]
     end = max(projection.proj_len() for projection in projections)
+    horizon = max((max(0, end - month - 1) for month in months), default=0)
     actual_cf = [sum(projection.net_cf(t) for projection in projections)
                  for t in model.Actual.projection_months]
     states = []
@@ -50,7 +50,7 @@ def expected_reports(model, ids, scenario):
     base_liabilities, base_cashflows, dv01, cs01 = [], [], [], []
     for month in months:
         first_projected = month + 1
-        projected_months = range(first_projected, min(end, first_projected + horizon))
+        projected_months = range(first_projected, end)
         cashflows_by_shock, base_discounts_by_shock = [], []
         for shock in [-1, *range(len(model.Data.shock_key_months()))]:
             items = [model.Valuation(month, policy, scenario, shock) for policy in ids]
@@ -106,13 +106,25 @@ def test_maturity_at_cut_stays_in_actual_cashflows(route, policy_table):
         assert ended.net_cf(cut) == actual.net_cf(cut) < 0.0
         assert model.Outer.actual_cashflows(2)[cut] == actual.net_cf(cut)
         assert ended.net_cf(12) == 0.0
-        assert tuple(model.Outer.base_cashflows(cut, 2)) == tuple(range(480))
-        assert all(value == 0.0 for value in model.Outer.base_cashflows(cut, 2).values())
+        assert model.Outer.base_cashflows(cut, 2) == {}
         for offset in (-1, 0, 479, 480):
             assert ended.cashflow_at_offset(offset) == 0.0
         assert ended.pols_if(12) == 0.0
         assert ended.liability_pv() == 0.0
         assert model.Outer.base_liability_pv(cut, 2) == 0.0
         assert model.Valuation(24, 3, 2, -1).liability_pv() == 0.0
+    finally:
+        model.close()
+
+
+def test_book_horizon_can_extend_beyond_the_old_limit(policy_table):
+    table = policy_table.copy()
+    table.at[1, 'age_at_entry'] = 55
+    model = build_model(route='direct', policy_table=table)
+    try:
+        assert model.Data.book_projection_end() == 540
+        assert model.Valuation(12, 1, 1, -1).remaining_months() == 527
+        assert model.Valuation(12, 3, 1, -1).remaining_months() == 0
+        assert tuple(model.Valuation.projection_months(12)) == tuple(range(527))
     finally:
         model.close()

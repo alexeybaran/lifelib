@@ -8,7 +8,6 @@ from . import actual, market, outer, outer_direct, valuation
 
 
 OUTER_MONTHS = 36
-HORIZON = 480
 VALUATION_MONTHS = (0, 12, 24)
 
 # Column order of the annual financial report.
@@ -65,6 +64,12 @@ def _shock_key_months():
     return values.tolist()
 
 
+def _book_projection_end():
+    """Exclusive policy-month end for the longest MYGA contract in the book."""
+    age = min(int(value) for value in model_point_table()['age_at_entry'])
+    return max(0, 12 * (maturity_age - age))
+
+
 def _myga_data(model, source_path, folder, policy_table=None, linked=False):
     """The converted MYGA_US_S Data Space with the DV01 lookup Cells; optionally another policy table."""
     import modelx as mx
@@ -82,7 +87,9 @@ def _myga_data(model, source_path, folder, policy_table=None, linked=False):
         source.close()
     model.path = folder / Path(source_path).name
     data.math = math
+    data.maturity_age = actual_refs['maturity_age']
     data.new_cells('shock_key_months', _shock_key_months)
+    data.new_cells('book_projection_end', _book_projection_end)
     cells = dict(_DATA_CELLS)
     if not linked:
         # The policy table is a reference read once (or supplied); replacing it changes the policies.
@@ -147,6 +154,8 @@ def _copy_esg(model, esg_model, esg_input):
         esg = source.ESG.copy(model, 'ESG')
     finally:
         source.close()
+    if 'P_t_T_path' not in esg.cells:
+        esg.new_cells('P_t_T_path', 'lambda i, j, scen_id: float(P_t_T(i, j)[scen_id - 1])')
     if esg_model is None:
         esg.lifelib = lifelib
         esg.pathlib = pathlib
@@ -214,15 +223,15 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
         raise
     market_space = model.new_space_from_module(market, name='Market', formula=_market_key,
         refs={'ESG': esg, 'data': data, 'shock_bp': 1.e-4, 'np': np})
+    market_space.absref(Market=market_space)
     common = {**actual_refs, 'data': data, 'ESG': esg, 'Market': market_space, 'np': np, 'point_id': 0}
     actual_space = model.new_space_from_module(actual, name='Actual', formula=_actual_point,
         refs={**common, 'projection_months': tuple(range(outer_months)),
               'snapshot_months': valuation_months, 'last_snapshot_month': max(valuation_months, default=-1)})
     valuation_space = model.new_space_from_module(valuation, name='Valuation', formula=_valuation_point,
-        refs={**common, 'Actual': actual_space, 'HORIZON': HORIZON,
+        refs={**common, 'Actual': actual_space,
               'act': None, 'collect_history': route == 'collect',
-              'last_snapshot_month': max(valuation_months, default=-1),
-              'projection_months': tuple(range(HORIZON))})
+              'last_snapshot_month': max(valuation_months, default=-1)})
     _install_myga_formulas(actual_space, valuation_space, actual_formulas)
 
     if route == 'collect':
@@ -248,7 +257,7 @@ def build_model(*, model_name='MYGAESGDV01', reference_dir=None,
             'sum': {'net_cf': {t: net_cf(t) for t in projection_months}}})
         valuation_space.set_collect(over={'policy_id': valuation_space.policy_ids}, outputs=lambda: {
             'sum': {'liability_pv': liability_pv(),
-                    'net_cf': {k: cashflow_at_offset(k) for k in projection_months}}})
+                    'net_cf': {k: cashflow_at_offset(k) for k in projection_months(valuation_month)}}})
 
     outer_space = model.new_space_from_module(outer, name='Outer', refs={
         'Actual': actual_space, 'Valuation': valuation_space, 'ESG': esg,
@@ -267,10 +276,16 @@ def results(model, scen_id):
     outer = model.Outer
     months = model.Actual.snapshot_months
     keys = range(len(model.Data.shock_key_months()))
-    return {'base': np.array([outer.base_liability_pv(month, scen_id) for month in months]),
+    base = np.array([outer.base_liability_pv(month, scen_id) for month in months])
+    cashflows = [outer.base_cashflows(month, scen_id) for month in months]
+    width = max(map(len, cashflows), default=0)
+    aligned = np.zeros((len(months), width))
+    for row, values in zip(aligned, cashflows):
+        row[:len(values)] = [values[k] for k in range(len(values))]
+    return {'base': base,
             'dv01': np.array([[outer.dv01(month, scen_id, k) for k in keys] for month in months]),
             'cs01': np.array([[outer.cs01(month, scen_id, k) for k in keys] for month in months]),
-            'valuation_cf': np.array([list(outer.base_cashflows(month, scen_id).values()) for month in months]),
+            'valuation_cf': aligned,
             'actual_cf': np.array(list(outer.actual_cashflows(scen_id).values())),
             'annual_states': _annual_openings(model.Actual, scen_id, months)}
 

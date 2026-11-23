@@ -22,10 +22,11 @@ def base_liability_pv(month, scen_id):
 
 
 def base_cashflows(month, scen_id):
-    result = {k: 0.0 for k in Valuation.projection_months}
+    offsets = Valuation.projection_months(month)
+    result = {k: 0.0 for k in offsets}
     for p in Valuation.policy_ids():
         projection = Valuation(month, p, scen_id, -1)
-        for k in Valuation.projection_months:
+        for k in offsets:
             result[k] += projection.cashflow_at_offset(k)
     return result
 

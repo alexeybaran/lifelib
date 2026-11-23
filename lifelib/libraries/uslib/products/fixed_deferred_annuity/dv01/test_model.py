@@ -185,7 +185,9 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
                 valuation = direct.Valuation(month, 1, 2, shock)
                 assert aggregate.liability_pv == valuation.liability_pv()
                 assert aggregate.net_cf[0] == valuation.net_cf(month + 1)
-                assert aggregate.net_cf[1] == valuation.net_cf(month + 2)
+                assert tuple(aggregate.net_cf) == tuple(range(valuation.remaining_months()))
+                assert all(flow == valuation.cashflow_at_offset(k)
+                           for k, flow in aggregate.net_cf.items())
                 assert collected.net_cf(month) == actual.net_cf(month)
                 assert collected.av_pp(month) == actual.av_pp(month)
                 for name in ('av_pp', 'mgsv_pp', 'interest_credited_pp', 'prem_accum_gmir_pp',

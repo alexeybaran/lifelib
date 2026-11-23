@@ -70,6 +70,7 @@ def test_market_prices_select_real_esg_paths_and_shock_both_forward_endpoints(mo
     assert raw.shape == (model.ESG.scen_size(),)
     assert model.Outer.scenario_ids() == tuple(range(1, len(raw) + 1))
     assert raw[0] != raw[1]
+    assert model.ESG.P_t_T_path(as_of, as_of + 60, len(raw)) == pytest.approx(raw[-1], rel=1e-14)
     for scenario in (1, 2):
         base = model.Market(as_of, scenario, -1)
         assert base.base_price(as_of + 60) == raw[scenario - 1]

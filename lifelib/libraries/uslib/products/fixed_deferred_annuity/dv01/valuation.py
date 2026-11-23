@@ -54,7 +54,17 @@ def net_cf(t):
 
 def cashflow_at_offset(k):
     """Future cash flow, counting from the first month after the close."""
-    return net_cf(valuation_month + 1 + k) if 0 <= k < HORIZON else 0.0
+    return net_cf(valuation_month + 1 + k) if 0 <= k < remaining_months() else 0.0
+
+
+def remaining_months():
+    """Number of future months for this policy."""
+    return max(0, proj_len() - valuation_month - 1)
+
+
+def projection_months(month):
+    """Common offsets for the portfolio at this close."""
+    return range(max(0, data.book_projection_end() - month - 1))
 
 
 def discount_factor(k):
@@ -62,7 +72,7 @@ def discount_factor(k):
 
 
 def pv(k):
-    if k >= HORIZON:
+    if k >= remaining_months():
         return 0.0
     return cashflow_at_offset(k) * discount_factor(k) + pv(k + 1)
 

@@ -143,7 +143,9 @@ Market takes the path-1 entries from ESG.P_t_T(73,120) and ESG.P_t_T(73,180). Re
 | Valuation.credit_rate_mth(120) | 0.287984% | 0.287984% |
 | Valuation.inv_income_pp(120) | $394.56294 | $394.56294 |
 
-The shipped spread is zero and the 0.25% guaranteed minimum is below both forward quotes. For the 480-month one-policy valuation, Outer.dv01(72,1,4) is $0.27130 (base liability $10,220.32497 less shocked $10,220.05367). This includes all projected cash-flow and discounting changes.
+The shipped spread is zero and the 0.25% guaranteed minimum is below both forward quotes. For the one-policy valuation through contract maturity, Outer.dv01(72,1,4) is $0.27130 (base liability $10,220.32497 less shocked $10,220.05367). This includes all projected cash-flow and discounting changes.
+
+Each policy projects through its own final contract month. Direct and Collect return portfolio cash flows for the remaining term of the longest policy at each close. The rectangular report produced by `results()` pads shorter rows with zeros.
 
 Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
 
