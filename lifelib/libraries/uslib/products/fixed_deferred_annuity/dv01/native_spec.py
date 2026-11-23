@@ -35,6 +35,7 @@ def native_spec(model):
             "factory_collect_reuse": True,
             "factory_collect_private_refs": True,
             "factory_collect_subtotals": True,
+            "factory_collect_hold_individuals": True,
             "cells": {"pv": {"iterative_suffix_sum": True}},
         },
         "Outer": {"cells_param_size": {"month": (-1, close_months), "valuation_month": (-1, close_months),
