@@ -22,7 +22,10 @@ def native_spec(model):
             },
             # Budget one 0..60 quote axis for the shipped five-year book.
             # A wider book can fall back to the existing sparse storage.
-            "cells": {"rate": {"max_dense_entries": 61 * policy_months}},
+            "cells": {
+                "rate": {"max_dense_entries": 61 * policy_months},
+                "shock_weight": {"native_vector_ref_reads": True},
+            },
         },
         "Actual": {"cells_param_size": {"t": policy_months, "y": 101}},
         "Valuation": {
