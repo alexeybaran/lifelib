@@ -126,7 +126,7 @@ def _actual_point(policy_id, scen_id, through_month=-1):
 
 def _valuation_point(valuation_month, policy_id, scen_id, shock=-1):
     if (isinstance(valuation_month, bool) or not isinstance(valuation_month, (int, np.integer))
-            or not 0 <= valuation_month < ESG.step_size()):
+            or not -1 <= valuation_month < ESG.step_size()):
         raise ValueError('valuation_month is outside the generated ESG time grid')
     if (isinstance(scen_id, bool) or not isinstance(scen_id, (int, np.integer))
             or not 1 <= scen_id <= ESG.scen_size()):

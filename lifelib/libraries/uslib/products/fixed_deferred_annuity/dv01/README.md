@@ -25,7 +25,9 @@ finally:
 
 Each frame has one row per `(scenario, year)` and one column per key-rate tenor
 in months from `shock_steps.csv`. Ten annual steps give eleven closes,
-from year 0 through year 10. Zero steps gives just the issue-date close.
+from year 0 through year 10. At issue no policy month has closed. Year 0 uses the opening policy state and
+ESG month 0, and year 1 uses the close of policy month 11 and ESG month 12.
+Zero steps returns only the instant of issue.
 Scenarios are individual generated ESG paths numbered from 1. Each value is
 the portfolio liability change for a +1 bp shock, using the corresponding
 Outer Cell and its sign convention. The compiler sample calls this Outer Cell at year zero. The exported

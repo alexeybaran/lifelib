@@ -55,7 +55,8 @@ def annual_risk_report(num_scenarios, annual_steps):
     tenors = pd.Index(data.shock_key_months(), name='tenor_months')
     dv01_rows, cs01_rows = [], []
     for scenario, year in index:
-        month = 12 * year
+        # The cut is the last completed policy month. At issue none has closed.
+        month = 12 * year - 1
         dv01_rows.append([dv01(month, scenario, key) for key in range(len(tenors))])
         cs01_rows.append([cs01(month, scenario, key) for key in range(len(tenors))])
     return (pd.DataFrame(dv01_rows, index=index, columns=tenors),

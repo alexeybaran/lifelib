@@ -2,6 +2,7 @@
 from pathlib import Path
 import pandas as pd
 import pytest
+from modelx.core.errors import FormulaError
 from lifelib.libraries.uslib.products.fixed_deferred_annuity.enums import Renewal
 from .model import OPENING_COLUMNS, build_model
 
@@ -201,3 +202,15 @@ def test_one_policy_collect_per_valuation_date_equals_direct():
     finally:
         direct.close()
         m.close()
+
+def test_issue_market_and_first_prospective_cashflow(model):
+    for scenario in (1, 2):
+        item = model.Valuation(-1, 1, scenario, -1)
+        assert item.market() is model.Market(0, scenario, -1)
+        assert item.remaining_months() == item.proj_len()
+        assert item.cashflow_at_offset(0) == item.contract_net_cf(0)
+        assert item.discount_factor(0) == item.market().price(1)
+        anniversary = model.Valuation(11, 1, scenario, -1)
+        assert anniversary.market() is model.Market(12, scenario, -1)
+    with pytest.raises(FormulaError, match="valuation_month is outside"):
+        model.Valuation(-2, 1, 1, -1)

@@ -128,3 +128,17 @@ def test_book_horizon_can_extend_beyond_the_old_limit(policy_table):
         assert tuple(model.Valuation.projection_months(12)) == tuple(range(527))
     finally:
         model.close()
+
+@pytest.mark.parametrize("route", ["collect", "direct"])
+def test_report_starts_at_issue(policy_table, route):
+    model = build_model(policy_table=policy_table, route=route, valuation_months=(11,))
+    try:
+        dv, cs = model.Outer.annual_risk_report(2, 1)
+        for frame, cell in ((dv, model.Outer.dv01), (cs, model.Outer.cs01)):
+            np.testing.assert_allclose(frame.loc[(1, 0)], frame.loc[(2, 0)], rtol=0, atol=1e-8)
+            for scenario in (1, 2):
+                for year, cut in ((0, -1), (1, 11)):
+                    for key, tenor in enumerate(model.Data.shock_key_months()):
+                        assert frame.loc[(scenario, year), tenor] == cell(cut, scenario, key)
+    finally:
+        model.close()
