@@ -37,7 +37,6 @@ def native_spec(model):
             "factory_collect_subtotals": True,
             "factory_collect_hold_individuals": True,
             "factory_collect_bind_fixed_refs": True,
-            "cells": {"pv": {"iterative_suffix_sum": True, "collect_terminal_suffix_sum": True}},
         },
         "Outer": {"cells_param_size": {"month": (-1, close_months), "valuation_month": (-1, close_months),
                                        "scen_id": (1, int(model.ESG.scen_size()) + 1),

@@ -72,9 +72,11 @@ def discount_factor(k):
 
 
 def pv(k):
-    if k >= remaining_months():
-        return 0.0
-    return cashflow_at_offset(k) * discount_factor(k) + pv(k + 1)
+    """Present value of the remaining discounted cash flows from offset k."""
+    total = 0.0
+    for j in range(k, remaining_months()):
+        total += cashflow_at_offset(j) * discount_factor(j)
+    return total
 
 
 def liability_pv():

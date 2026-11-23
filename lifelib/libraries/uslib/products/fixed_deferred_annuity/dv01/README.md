@@ -169,6 +169,8 @@ The shipped spread is zero and the 0.25% guaranteed minimum is below both forwar
 
 Each policy projects through its own final contract month. Direct and Collect return portfolio cash flows for the remaining term of the longest policy at each close. The rectangular report produced by `results()` pads shorter rows with zeros.
 
+`Valuation.pv(k)` sums the discounted cash flows from offset `k` through the last projected month. `liability_pv()` returns `-pv(0)`.
+
 Run the [worked example](worked_example.py) to reproduce the [recorded values](worked_example.json). The default workbook resolves from the installed lifelib distribution containing the G2++ example. Supply an alternative workbook explicitly when using a different calibration. Native qualification uses locked_spaces=["ESG", "Market"] for shared market calculations.
 
 The [native compilation spec](native_spec.py) sizes the two arguments of `Market.rate(tenor_month, forward_month)` separately. On the shipped five-year policies the tenor runs from 0 through 60 months, and the forward month uses the same 0 through 1,201 range as the policy calculation. The 73,322-slot dense budget applies only to this Cell. Discount prices and shock weights keep their separate curve-length ranges. Regenerate the spec if a new policy book introduces longer guarantee periods. Changing the shock-step CSV within the curve domain does not widen the policy quote tenor.
