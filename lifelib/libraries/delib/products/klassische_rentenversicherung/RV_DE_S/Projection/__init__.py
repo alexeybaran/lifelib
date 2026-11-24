@@ -1349,7 +1349,6 @@ def db_base_pp(k):
     a claim actually pays and reads end-of-year balances: the two are different quantities
     with deliberately similar names.
     """
-    mp = model_point()
     form = death_benefit_form()
     paid = prem_cum_pp(k) + prem_pp(k)
     if form == DeathBenefitForm.prem_refund:
