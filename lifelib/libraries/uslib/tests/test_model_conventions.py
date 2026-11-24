@@ -298,12 +298,14 @@ def test_every_csv_beside_the_model_is_actually_read(name, model, read_log):
         finally:
             other.close()
     if (parent / "dv01" / "model.py").is_file():
-        from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import build_model
+        from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01.model import _shock_key_months
 
         start = len(read_log)
         try:
-            with closing(build_model(reference_dir=parent)) as dv01:
-                dv01.Data.shock_key_months()
+            with closing(mx.new_model(name + "_dv01_inputs")) as inputs:
+                data = inputs.new_space("Data", refs={"input_dir": model.Data.input_dir, "pd": pd})
+                data.new_cells("shock_key_months", _shock_key_months)
+                data.shock_key_months()
             referenced.update(path.name for filename in read_log[start:]
                               if (path := Path(filename).resolve()).parent == parent.resolve())
         finally:
