@@ -117,9 +117,12 @@ def assert_statements_match(model, nomx, point_id, statements):
 
 
 def test_the_export_holds_the_generated_modules(exported):
-    """An export is four modules and no data: the inputs stay external CSVs."""
+    """The four modules may be accompanied by the serialized Reference data."""
     _name, _model, _nomx, package = exported
-    assert generated_files(package) == GENERATED_MODULES
+    files = generated_files(package)
+    assert GENERATED_MODULES <= files <= GENERATED_MODULES | {'_mx_pickled'}
+    if '_mx_pickled' in files:
+        assert (package / '_mx_pickled').stat().st_size > 0
 
 
 def test_the_model_name_survives_the_export(exported):

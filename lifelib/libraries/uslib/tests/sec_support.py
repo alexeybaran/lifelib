@@ -133,6 +133,16 @@ def point_index_scalars(*point_ids):
     return list(np.asarray(point_ids, dtype=np.int64))
 
 
+_NUMPY_POINT_ID = re.compile(r"np\.int64\((-?\d+)\)")
+_POINT_IDS = re.compile(r"(?<=\bpoint_id )\[(?:-?\d+|np\.int64\(-?\d+\))"
+                        r"(?:, (?:-?\d+|np\.int64\(-?\d+\)))*\]")
+
+
+def normalize_point_id_message(text):
+    """Ignore NumPy's integer display in policy ID lists while preserving their contents."""
+    return _POINT_IDS.sub(lambda match: _NUMPY_POINT_ID.sub(r"\1", match.group()), text)
+
+
 # ---------------------------------------------------------------------------
 # T1 -- the twin identity
 

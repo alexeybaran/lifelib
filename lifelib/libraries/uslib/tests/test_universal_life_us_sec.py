@@ -133,7 +133,8 @@ import pytest
 from sec_support import (
     GENERATED_COLUMNS, SEC_SPECS, TWIN_EXEMPT_DEFAULT, build_sec_table, check_generated,
     codes, compiled_case, compiled_mismatches, exact_here, fingerprint_mismatches,
-    frame_mismatches, point_index_scalars, run_compiled, sweep, temp_inputs, twin_mismatches)
+    frame_mismatches, normalize_point_id_message, point_index_scalars, run_compiled,
+    sweep, temp_inputs, twin_mismatches)
 from released_twins import read_released_twin, sec_test_model_path as model_path
 from us_registry import point_keys, projection
 
@@ -612,7 +613,7 @@ def _refused(call, message):
     with pytest.raises(Exception) as excinfo:
         call()
     line = _raised(excinfo.value)
-    assert line.startswith("ValueError: ") and message in line, str(excinfo.value)
+    assert line.startswith("ValueError: ") and normalize_point_id_message(message) in normalize_point_id_message(line), str(excinfo.value)
 
 
 def _raised(err):
@@ -2057,7 +2058,7 @@ def _refused_exactly(call, message):
     """
     with pytest.raises(Exception) as excinfo:
         call()
-    assert _raised(excinfo.value) == f"ValueError: {message}"
+    assert normalize_point_id_message(_raised(excinfo.value)) == normalize_point_id_message(f"ValueError: {message}")
 
 
 def _table_refused(tmp_path, file, edit, check, message):

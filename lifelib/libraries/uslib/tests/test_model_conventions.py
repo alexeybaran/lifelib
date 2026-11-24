@@ -46,6 +46,7 @@ import re
 from collections import Counter
 from contextlib import closing
 from enum import Enum, EnumMeta
+from pathlib import Path
 import pickle
 
 import modelx as mx
@@ -275,7 +276,7 @@ def _siblings(name):
     return [n for n in ALL if n != name and model_path(n).parent == parent]
 
 
-def test_every_csv_beside_the_model_is_actually_read(name, model):
+def test_every_csv_beside_the_model_is_actually_read(name, model, read_log):
     """No orphan input files: each CSV in the directory backs a filename Reference.
 
     A CSV nobody reads is either dead weight or a wiring bug, and both look identical
@@ -296,6 +297,17 @@ def test_every_csv_beside_the_model_is_actually_read(name, model):
             referenced |= _filenames(other)
         finally:
             other.close()
+    if (parent / "dv01" / "model.py").is_file():
+        from lifelib.libraries.uslib.products.fixed_deferred_annuity.dv01 import build_model
+
+        start = len(read_log)
+        try:
+            with closing(build_model(reference_dir=parent)) as dv01:
+                dv01.Data.shock_key_months()
+            referenced.update(path.name for filename in read_log[start:]
+                              if (path := Path(filename).resolve()).parent == parent.resolve())
+        finally:
+            del read_log[start:]
     assert on_disk <= referenced, (
         f"{name}: CSVs no model in {parent.name}/ references "
         f"{sorted(on_disk - referenced)}")
