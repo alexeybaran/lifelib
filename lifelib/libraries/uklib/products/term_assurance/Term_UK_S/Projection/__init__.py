@@ -712,7 +712,7 @@ def pols_if(t):
         return 0.0
     if t == proj_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -732,14 +732,14 @@ def pols_if_at(t, timing):
         and lapses are taken, and zero from the final month ``t = proj_len() - 1``
         on because the cover expires at its end.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < proj_start() or t >= proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -758,7 +758,7 @@ def pols_lapse(t):
     Pays nothing - there is no surrender value [S6][R8] - so this moves
     :func:`pols_if` and nothing else.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -771,7 +771,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
 
 
 def wop_waived_frac(t):
@@ -977,7 +977,7 @@ def fib_cum(t):
     return fib_cum(t - 1) + pols_death(t - 1)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -997,18 +997,18 @@ def claims(t, kind=None):
         [S1][S6][S8][R8]; the kind exists so that the zero is stated rather
         than left to inference.  See the Space docstring.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "FIB", "LAPSE"))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.FIB, Kind.LAPSE))
+    if kind == Kind.DEATH:
         if shape() == "fib":
             return fib_commute_rate() * benefit_pp(t) * pols_death(t)
         return benefit_pp(t) * pols_death(t)
-    if kind == "FIB":
+    if kind == Kind.FIB:
         if shape() != "fib":
             return 0.0
         return ((1.0 - fib_commute_rate()) * fib_income()
                 * (pols_death(t) + fib_cum(t)))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1106,7 +1106,7 @@ def net_cf(t):
     mortality cost, so early lapses forfeit margin to the insurer and late ones
     relieve it.
     """
-    return (premiums(t) - claims(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 
@@ -1147,7 +1147,7 @@ def check_fib_ledger_resid(t):
     if shape() != "fib":
         return 0.0
     built = sum(pols_death(s) for s in range(proj_start(), t + 1))
-    return claims(t, "FIB") - (1.0 - fib_commute_rate()) * fib_income() * built
+    return claims(t, Kind.FIB) - (1.0 - fib_commute_rate()) * fib_income() * built
 
 
 def check_fib_ledger():
@@ -1175,9 +1175,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_fib": [claims(t, "FIB") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_fib": [claims(t, Kind.FIB) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1264,3 +1264,7 @@ wop_defer_mths = 6
 wop_prem_loading = 0.05
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

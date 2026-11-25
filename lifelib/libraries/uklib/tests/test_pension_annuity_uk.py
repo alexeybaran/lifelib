@@ -35,6 +35,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
+from uk_registry import model_enums
+AnnuityKind, Kind = model_enums("PA_UK_S", "AnnuityKind", "Kind")
 
 
 def model_files(folder):
@@ -85,8 +87,8 @@ def test_worked_example_row(uk_pa_scenario, t):
     assert p.annuity_pp(t) * p.payment_factor(t) == pytest.approx(annuitant, abs=PENNY)
     assert p.annuity_pp(t) * p.dependant_factor(t) == pytest.approx(
         dependant, abs=PENNY)
-    assert p.claims(t, "VP") == pytest.approx(vp, abs=PENNY)
-    assert p.cum_annuity_pp(t + 1, "ALL") == pytest.approx(cum, abs=PENNY)
+    assert p.claims(t, Kind.VP) == pytest.approx(vp, abs=PENNY)
+    assert p.cum_annuity_pp(t + 1, AnnuityKind.ALL) == pytest.approx(cum, abs=PENNY)
     assert p.annuity_payments(t) == pytest.approx(annuitant + dependant, abs=PENNY)
 
 
@@ -122,12 +124,12 @@ def test_the_value_protection_lump_sum(uk_pa_scenario):
     """
     p = uk_pa_scenario
     assert p.vp_pct() == 0.50 and p.vp_basis() == "first_death"
-    assert p.cum_annuity_pp(16, "ANNUITANT") == pytest.approx(6790.50, abs=PENNY)
+    assert p.cum_annuity_pp(16, AnnuityKind.ANNUITANT) == pytest.approx(6790.50, abs=PENNY)
     assert p.vp_balance(16) == pytest.approx(43209.50, abs=PENNY)
     assert p.lives_death(16, 1) == 1.0            # the scenario death, in month 16
-    assert p.claims(16, "VP") == pytest.approx(43209.50, abs=PENNY)
+    assert p.claims(16, Kind.VP) == pytest.approx(43209.50, abs=PENNY)
     # And it is paid once.
-    assert sum(p.claims(t, "VP") for t in range(p.proj_len())) == pytest.approx(
+    assert sum(p.claims(t, Kind.VP) for t in range(p.proj_len())) == pytest.approx(
         43209.50, abs=PENNY)
 
 
@@ -146,7 +148,7 @@ def test_the_dependant_stream_starts_at_the_next_payment_date(uk_pa_scenario):
 def test_no_annuitant_payment_in_the_death_month_or_after(uk_pa_scenario):
     """Arrears without proportion: nothing is paid for the final partial period."""
     p = uk_pa_scenario
-    assert p.claims(16, "PROP") == 0.0
+    assert p.claims(16, Kind.PROP) == 0.0
     assert p.annuity_pp(17) * p.payment_factor(17) == 0.0
     assert all(p.payment_factor(t) == 0.0 for t in (17, 20, 23, 99))
 
@@ -161,11 +163,11 @@ def test_the_cumulative_schedule_takes_two_forms(uk_pa_scenario):
     """
     p = uk_pa_scenario
     for k in (3, 12, 16):
-        assert p.cum_annuity_pp(k, "ANNUITANT") == pytest.approx(
-            p.cum_annuity_pp(k, "ALL"), abs=PENNY)
-    assert p.cum_annuity_pp(18, "ALL") == pytest.approx(7485.75, abs=PENNY)
+        assert p.cum_annuity_pp(k, AnnuityKind.ANNUITANT) == pytest.approx(
+            p.cum_annuity_pp(k, AnnuityKind.ALL), abs=PENNY)
+    assert p.cum_annuity_pp(18, AnnuityKind.ALL) == pytest.approx(7485.75, abs=PENNY)
     # The as-if-alive schedule keeps accruing the annuitant's instalment regardless.
-    assert p.cum_annuity_pp(18, "ANNUITANT") == pytest.approx(
+    assert p.cum_annuity_pp(18, AnnuityKind.ANNUITANT) == pytest.approx(
         6790.50 + 1390.50, abs=PENNY)
     with pytest.raises(FormulaError):
         p.cum_annuity_pp(5, "DEPENDANT")
@@ -401,9 +403,9 @@ def test_the_advance_value_protection_netting_rule(pension_annuity):
         # Reading it at t would overstate the lump sum by one instalment.
         density = proj.pols_if_init() * proj.lives_death(29, 1)
         assert density > 0.0
-        assert proj.claims(29, "VP") == pytest.approx(
+        assert proj.claims(29, Kind.VP) == pytest.approx(
             density * proj.vp_balance(30), rel=1e-14)
-        assert proj.claims(29, "VP") != pytest.approx(
+        assert proj.claims(29, Kind.VP) != pytest.approx(
             density * proj.vp_balance(29), rel=1e-14)
     finally:
         model.close()
@@ -415,7 +417,7 @@ def test_the_proportionate_final_payment(pension_annuity):
     assert p.proportion() is True
     assert p.mths_since_payment(16) == 1           # one complete month since t = 14
     assert p.next_payment_mth(16) == 17
-    assert p.claims(16, "PROP") == pytest.approx(695.25, abs=PENNY)
+    assert p.claims(16, Kind.PROP) == pytest.approx(695.25, abs=PENNY)
     # And it is the only difference from the worked-example point.
     p1 = pension_annuity.Projection[1]
     total = (p.result_cf()["liability_cf"].sum()
@@ -432,7 +434,7 @@ def test_proportion_is_an_arrears_only_option(pension_annuity):
 def test_without_proportion_nothing_is_paid_for_the_final_period(uk_pa_scenario):
     p = uk_pa_scenario
     assert p.proportion() is False
-    assert all(p.claims(t, "PROP") == 0.0 for t in (16, 17, 49))
+    assert all(p.claims(t, Kind.PROP) == 0.0 for t in (16, 17, 49))
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +457,7 @@ def test_the_last_survivor_basis_nets_both_streams(pension_annuity):
     """
     p, p1 = pension_annuity.Projection[10], pension_annuity.Projection[1]
     assert p.vp_basis() == "last_survivor"
-    assert p.claims(16, "VP") == 0.0              # the dependant is still alive
+    assert p.claims(16, Kind.VP) == 0.0              # the dependant is still alive
     assert p.lives_death_last(16) == 0.0
     # Up to the annuitant's death the two bases net the same instalments.
     assert p.vp_balance(16) == pytest.approx(p1.vp_balance(16), abs=PENNY)
@@ -466,7 +468,7 @@ def test_the_last_survivor_basis_nets_both_streams(pension_annuity):
     assert p.vp_balance(24) > p1.vp_balance(24)
     # In this scenario the dependant outlives the projection, so nothing is ever paid,
     # and the whole difference in liability is the lump sum the first-death basis pays.
-    assert sum(p.claims(t, "VP") for t in range(p.proj_len())) == 0.0
+    assert sum(p.claims(t, Kind.VP) for t in range(p.proj_len())) == 0.0
     gap = (p1.result_cf()["liability_cf"].sum()
            - p.result_cf()["liability_cf"].sum())
     assert gap == pytest.approx(43209.50, abs=PENNY)
@@ -476,7 +478,7 @@ def test_value_protection_is_zero_when_not_elected(pension_annuity):
     p = pension_annuity.Projection[3]
     assert p.vp_pct() == 0.0
     assert all(p.vp_balance(k) == 0.0 for k in (1, 50, 200))
-    assert all(p.claims(t, "VP") == 0.0 for t in (0, 49, 199))
+    assert all(p.claims(t, Kind.VP) == 0.0 for t in (0, 49, 199))
 
 
 # ---------------------------------------------------------------------------
@@ -743,7 +745,7 @@ def test_round_trip_is_stable(tmp_path):
         p = reread.Projection[1]
         for t, row in WORKED_EXAMPLE.items():
             assert p.annuity_payments(t) == pytest.approx(row[0] + row[1], abs=PENNY)
-            assert p.claims(t, "VP") == pytest.approx(row[2], abs=PENNY)
+            assert p.claims(t, Kind.VP) == pytest.approx(row[2], abs=PENNY)
         assert "Notes symbol" in reread.Projection.doc
     finally:
         reread.close()

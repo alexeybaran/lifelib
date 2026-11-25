@@ -859,9 +859,9 @@ def cum_annuity_pp(k, kind):
     """
     if k <= 0:
         return 0.0
-    if kind == "ANNUITANT":
+    if kind == AnnuityKind.ANNUITANT:
         return cum_annuity_pp(k - 1, kind) + annuity_pp(k - 1)
-    if kind == "ALL":
+    if kind == AnnuityKind.ALL:
         paid = annuity_pp(k - 1) * (payment_factor(k - 1) + dependant_factor(k - 1))
         return cum_annuity_pp(k - 1, kind) + paid
     raise ValueError("invalid kind")
@@ -876,7 +876,7 @@ def vp_balance(k):
     """
     if vp_pct() <= 0.0:
         return 0.0
-    kind = "ANNUITANT" if vp_basis() == "first_death" else "ALL"
+    kind = AnnuityKind.ANNUITANT if vp_basis() == "first_death" else AnnuityKind.ALL
     return max(0.0, vp_pct() * purchase_price() - cum_annuity_pp(k, kind))
 
 
@@ -890,7 +890,7 @@ def annuity_payments(t):
     return pols_if_init() * annuity_pp(t) * (payment_factor(t) + dependant_factor(t))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Expected lump-sum outgo in month t, by kind; the total when kind is omitted.
 
     ``"VP"``
@@ -910,9 +910,9 @@ def claims(t, kind=None):
         Zero on the representative default, where nothing is paid for the final
         partial period.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("VP", "PROP"))
-    if kind == "VP":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.VP, Kind.PROP))
+    if kind == Kind.VP:
         if vp_pct() <= 0.0:
             return 0.0
         density = (lives_death(t, 1) if vp_basis() == "first_death"
@@ -920,7 +920,7 @@ def claims(t, kind=None):
         measured_at = (t + 1 if (payment_timing() == "advance" and is_payment_mth(t))
                        else t)
         return pols_if_init() * density * vp_balance(measured_at)
-    if kind == "PROP":
+    if kind == Kind.PROP:
         if not proportion():
             return 0.0
         nxt = next_payment_mth(t)
@@ -973,7 +973,7 @@ def liability_cf(t):
     paid at outset, before the first projected month - and no surrender outgo, because
     the contract has no surrender value at any time.
     """
-    return annuity_payments(t) + claims(t) + expenses(t)
+    return annuity_payments(t) + claims(t, Kind.ALL) + expenses(t)
 
 
 def net_cf(t):
@@ -1080,8 +1080,8 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_vp": [claims(t, "VP") for t in ts],
-            "claims_prop": [claims(t, "PROP") for t in ts],
+            "claims_vp": [claims(t, Kind.VP) for t in ts],
+            "claims_prop": [claims(t, Kind.PROP) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1106,7 +1106,7 @@ def result_pols():
             "payment_factor": [payment_factor(t) for t in ts],
             "dependant_factor": [dependant_factor(t) for t in ts],
             "annuity_pp": [annuity_pp(t) for t in ts],
-            "cum_annuity_all": [cum_annuity_pp(t + 1, "ALL") for t in ts],
+            "cum_annuity_all": [cum_annuity_pp(t + 1, AnnuityKind.ALL) for t in ts],
             "vp_balance": [vp_balance(t + 1) for t in ts],
             "pols_if": [pols_if(t) for t in ts],
         },
@@ -1144,3 +1144,7 @@ expense_maint = 30.0
 inflation_rate = 0.03
 
 pd = ("Module", "pandas")
+
+AnnuityKind = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

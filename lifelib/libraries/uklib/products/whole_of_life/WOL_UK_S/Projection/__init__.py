@@ -671,7 +671,7 @@ def pu_benefit(t):
     if t == 0:
         return 0.0
     return (pu_benefit(t - 1) * (1.0 - mort_rate_mth(t - 1))
-            + pols_convert(t - 1) * benefit_pp(t - 1, "PAID_UP"))
+            + pols_convert(t - 1) * benefit_pp(t - 1, BenefitKind.PAID_UP))
 
 
 def pols_all(t):
@@ -696,11 +696,11 @@ def pols_if_at(t, timing):
         the end-of-month count, the notes' ``l(t+1)``; zero in the last projected
         month, where the survivors are :func:`pols_maturity`.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
         return pols_if(t + 1)
@@ -723,7 +723,7 @@ def pols_exit(t):
     What happens to them depends on :func:`pu_eligible`: they either terminate for
     nothing or convert to paid-up.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_convert(t):
@@ -785,25 +785,25 @@ def benefit_pp(t, kind):
         the pro-rata paid-up payout for a policy converting in month t,
         ``SA x N_paid / N_expected``.  Zero without the variant.
     """
-    if kind == "NON_ACC":
+    if kind == BenefitKind.NON_ACC:
         if cell() == "O50" and in_moratorium(t):
             return prem_cum_pp(t)
         return cover_pp(t)
-    if kind == "ACC":
+    if kind == BenefitKind.ACC:
         if cell() != "O50":
             return cover_pp(t)
         if in_moratorium(t):
             return cover_pp(t)
         return adb_multiplier() * cover_pp(t)
-    if kind == "DEATH":
+    if kind == BenefitKind.DEATH:
         if cell() == "O50":
-            return ((1.0 - acc_share) * benefit_pp(t, "NON_ACC")     # noqa: F821
-                    + acc_share * benefit_pp(t, "ACC"))              # noqa: F821
+            return ((1.0 - acc_share) * benefit_pp(t, BenefitKind.NON_ACC)     # noqa: F821
+                    + acc_share * benefit_pp(t, BenefitKind.ACC))              # noqa: F821
         if t < suicide_mths:                                         # noqa: F821
             return ((1.0 - suicide_share) * cover_pp(t)              # noqa: F821
                     + suicide_share * prem_cum_pp(t))                # noqa: F821
         return cover_pp(t)
-    if kind == "PAID_UP":
+    if kind == BenefitKind.PAID_UP:
         if not pu_variant():
             return 0.0
         return cover_pp(t) * payments_made(t) / payments_expected()
@@ -819,7 +819,7 @@ def premiums(t):
     return premium_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Death outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -834,13 +834,13 @@ def claims(t, kind=None):
         zero, always.  There is no surrender value at any time on either
         cell; the kind exists so the zero is stated rather than inferred.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "DEATH_PU", "LAPSE"))
-    if kind == "DEATH":
-        return pols_death(t) * benefit_pp(t, "DEATH")
-    if kind == "DEATH_PU":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.DEATH_PU, Kind.LAPSE))
+    if kind == Kind.DEATH:
+        return pols_death(t) * benefit_pp(t, BenefitKind.DEATH)
+    if kind == Kind.DEATH_PU:
         return pu_benefit(t) * mort_rate_mth(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -903,7 +903,7 @@ def net_cf(t):
     equal any column of that table.  Lapse contributes nothing at all: it moves
     :func:`pols_if` and pays no cash.
     """
-    return premiums(t) - claims(t) - expenses(t) - commissions(t)
+    return premiums(t) - claims(t, Kind.ALL) - expenses(t) - commissions(t)
 
 
 def check_pols_roll_fwd_resid(t):
@@ -959,9 +959,9 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "pols_pu": [pols_pu(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_death_pu": [claims(t, "DEATH_PU") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_death_pu": [claims(t, Kind.DEATH_PU) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -985,7 +985,7 @@ def result_pols():
             "pols_convert": [pols_convert(t) for t in ts],
             "prem_cum_pp": [prem_cum_pp(t) for t in ts],
             "cover_pp": [cover_pp(t) for t in ts],
-            "benefit_death_pp": [benefit_pp(t, "DEATH") for t in ts],
+            "benefit_death_pp": [benefit_pp(t, BenefitKind.DEATH) for t in ts],
             "mort_rate": [mort_rate(t) for t in ts],
             "lapse_rate": [lapse_rate(t) for t in ts],
         },
@@ -1043,3 +1043,9 @@ inflation_rate = 0.03
 comm_init_rate = 0.25
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+BenefitKind = ("Pickle", 3)
+
+Kind = ("Pickle", 4)

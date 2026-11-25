@@ -324,18 +324,18 @@ def age_at_entry(life=1):
 def sex(life=1):
     """The sex (M / F) of the first or second life."""
     if life == 1:
-        return model_point()["sex"]
+        return Sex[model_point()["sex"]]
     if life == 2 and is_joint():
-        return model_point()["joint_sex"]
+        return Sex[model_point()["joint_sex"]]
     raise ValueError("invalid life")
 
 
 def smoker(life=1):
     """The smoker status (NS / S) of the first or second life."""
     if life == 1:
-        return model_point()["smoker"]
+        return Smoker[model_point()["smoker"]]
     if life == 2 and is_joint():
-        return model_point()["joint_smoker"]
+        return Smoker[model_point()["joint_smoker"]]
     raise ValueError("invalid life")
 
 
@@ -459,7 +459,7 @@ def pivot_interp(x, sex_, smoker_, column):
     **extrapolation** and should be read as one: the shipped pivots run 40 to 65, so a
     policy issued young or running long leaves the tabulated region.
     """
-    sub = data.ci_rate_table().loc[(sex_, smoker_)]                  # noqa: F821
+    sub = data.ci_rate_table().loc[(sex_.name, smoker_.name)]                  # noqa: F821
     ages = sorted(int(a) for a in sub.index)
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
@@ -468,8 +468,8 @@ def pivot_interp(x, sex_, smoker_, column):
     else:
         lo = max(a for a in ages if a <= x)
         hi = min(a for a in ages if a > x)
-    r_lo = float(sub.loc[lo, column])
-    r_hi = float(sub.loc[hi, column])
+    r_lo = float(sub.loc[lo, column.name])
+    r_hi = float(sub.loc[hi, column.name])
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
 
 
@@ -481,7 +481,7 @@ def ci_rate_base(t, life=1):
     the AC04 and "16" Series values are subscriber-restricted - and not to be presented
     as a CMI rate.
     """
-    return pivot_interp(age(t, life), sex(life), smoker(life), "i_ci")
+    return pivot_interp(age(t, life), sex(life), smoker(life), RateColumn.i_ci)
 
 
 def mort_rate(t, life=1):
@@ -491,7 +491,7 @@ def mort_rate(t, life=1):
     :func:`claim_rate`, net of the overlap factor.  A **[std]** proxy shaped like a
     scaled population table, not an ONS value.
     """
-    return pivot_interp(age(t, life), sex(life), smoker(life), "q_d")
+    return pivot_interp(age(t, life), sex(life), smoker(life), RateColumn.q_d)
 
 
 def ci_trend_factor(t):
@@ -761,7 +761,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -783,14 +783,14 @@ def pols_if_at(t, timing):
     The additional-payment and children's-cover claims appear at none of these points.
     They are non-terminating: only the main benefit ends the policy.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - claim_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -811,7 +811,7 @@ def pols_lapse(t):
     grace period is not modelled separately - the lapse rates are assumed already to
     reflect grace-period cures **[std]**.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -823,7 +823,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
 
 
 def benefit_pp(t, kind):
@@ -847,18 +847,18 @@ def benefit_pp(t, kind):
     would let the ancillary benefits shrink in real terms while the main one did not.
     In practice the cash cap binds at the anchor cell either way.
     """
-    if kind == "MAIN":
+    if kind == BenefitKind.MAIN:
         return sum_assured() * idx_factor(t)
-    if kind == "AP":
-        return min(ap_share * benefit_pp(t, "MAIN"), ap_cap)         # noqa: F821
-    if kind == "CHILD":
+    if kind == BenefitKind.AP:
+        return min(ap_share * benefit_pp(t, BenefitKind.MAIN), ap_cap)         # noqa: F821
+    if kind == BenefitKind.CHILD:
         if not children_cover():
             return 0.0
-        return min(child_share * benefit_pp(t, "MAIN"), child_cap)   # noqa: F821
+        return min(child_share * benefit_pp(t, BenefitKind.MAIN), child_cap)   # noqa: F821
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"MAIN"``
@@ -876,15 +876,15 @@ def claims(t, kind=None):
         zero, always.  There is no surrender or paid-up value [S1][S4][S5];
         the kind exists so that the zero is stated rather than inferred.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("MAIN", "AP", "CHILD", "LAPSE"))
-    if kind == "MAIN":
-        return benefit_pp(t, "MAIN") * claim_rate_paid_mth(t) * pols_if(t)
-    if kind == "AP":
-        return benefit_pp(t, "AP") * ap_rate_mth(t) * pols_if(t)
-    if kind == "CHILD":
-        return benefit_pp(t, "CHILD") * child_rate_mth() * pols_if(t)
-    if kind == "LAPSE":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.MAIN, Kind.AP, Kind.CHILD, Kind.LAPSE))
+    if kind == Kind.MAIN:
+        return benefit_pp(t, BenefitKind.MAIN) * claim_rate_paid_mth(t) * pols_if(t)
+    if kind == Kind.AP:
+        return benefit_pp(t, BenefitKind.AP) * ap_rate_mth(t) * pols_if(t)
+    if kind == Kind.CHILD:
+        return benefit_pp(t, BenefitKind.CHILD) * child_rate_mth() * pols_if(t)
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -934,7 +934,7 @@ def net_cf(t):
     £200 separately as taking the month to -168.12.  This cells is the total, so
     ``net_cf(0)`` is -168.12 and the notes' column is ``net_cf(0) + 200``.
     """
-    return premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
+    return premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1006,10 +1006,10 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_main": [claims(t, "MAIN") for t in ts],
-            "claims_ap": [claims(t, "AP") for t in ts],
-            "claims_child": [claims(t, "CHILD") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_main": [claims(t, Kind.MAIN) for t in ts],
+            "claims_ap": [claims(t, Kind.AP) for t in ts],
+            "claims_child": [claims(t, Kind.CHILD) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1027,7 +1027,7 @@ def result_pols():
             "pols_claim": [pols_claim(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
             "ci_rate": [ci_rate(t) for t in ts],
             "mort_rate": [mort_rate(t) for t in ts],
             "claim_rate": [claim_rate(t) for t in ts],
@@ -1094,3 +1094,15 @@ sel_lapse_ci_loading = 0.1
 claim_split_tol = 0.0001
 
 pd = ("Module", "pandas")
+
+Sex = ("Pickle", 2)
+
+Smoker = ("Pickle", 3)
+
+RateColumn = ("Pickle", 4)
+
+PolTiming = ("Pickle", 5)
+
+BenefitKind = ("Pickle", 6)
+
+Kind = ("Pickle", 7)

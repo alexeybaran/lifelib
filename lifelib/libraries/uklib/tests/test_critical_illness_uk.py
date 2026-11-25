@@ -29,6 +29,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
+from uk_registry import model_enums
+Sex, Smoker, RateColumn, PolTiming, BenefitKind, Kind = model_enums("CI_UK_S", "Sex", "Smoker", "RateColumn", "PolTiming", "BenefitKind", "Kind")
 
 
 def model_files(folder):
@@ -79,15 +81,15 @@ def test_worked_example_row(uk_ci_anchor, t):
     a = uk_ci_anchor
     assert a.pols_if(t) == pytest.approx(pols, abs=INFORCE)
     assert a.premiums(t) == pytest.approx(prem, abs=PENNY)
-    assert a.claims(t, "MAIN") == pytest.approx(main, abs=PENNY)
+    assert a.claims(t, Kind.MAIN) == pytest.approx(main, abs=PENNY)
     assert a.claim_expenses(t) == pytest.approx(clm_exp, abs=PENNY)
-    assert a.claims(t, "AP") == pytest.approx(ap, abs=PENNY)
-    assert a.claims(t, "CHILD") == pytest.approx(child, abs=PENNY)
+    assert a.claims(t, Kind.AP) == pytest.approx(ap, abs=PENNY)
+    assert a.claims(t, Kind.CHILD) == pytest.approx(child, abs=PENNY)
     # The notes' maintenance column is the monthly expense excluding the initial one.
     initial = 200.0 if t == 0 else 0.0
     assert a.expenses(t) - initial == pytest.approx(maint, abs=PENNY)
     assert a.net_cf(t) + initial == pytest.approx(net, abs=PENNY)
-    assert a.pols_if_at(t, "AFT_DECR") == pytest.approx(pols_end, abs=INFORCE)
+    assert a.pols_if_at(t, PolTiming.AFT_DECR) == pytest.approx(pols_end, abs=INFORCE)
 
 
 def test_first_month_total_includes_the_initial_expense(uk_ci_anchor):
@@ -114,8 +116,8 @@ def test_worked_example_rate_trace(uk_ci_anchor):
     assert a.lapse_rate_mth(0) == pytest.approx(W_M, abs=5e-8)
     assert a.ap_rate_mth(0) == pytest.approx(A_M, rel=1e-12)
     assert a.child_rate_mth() == pytest.approx(LAMBDA_M, rel=1e-12)
-    assert a.benefit_pp(0, "AP") == 25000.0
-    assert a.benefit_pp(0, "CHILD") == 25000.0
+    assert a.benefit_pp(0, BenefitKind.AP) == 25000.0
+    assert a.benefit_pp(0, BenefitKind.CHILD) == 25000.0
 
 
 def test_worked_example_survivor_factor(uk_ci_anchor):
@@ -130,7 +132,7 @@ def test_worked_example_survivor_factor(uk_ci_anchor):
     assert a.pols_if(0) == a.pols_if_init() == 1.0
     for t in (0, 1, 2):
         assert a.pols_if(t) == pytest.approx(s ** t, rel=1e-12)
-        assert a.pols_if_at(t, "AFT_DECR") == pytest.approx(s ** (t + 1), rel=1e-12)
+        assert a.pols_if_at(t, PolTiming.AFT_DECR) == pytest.approx(s ** (t + 1), rel=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +216,7 @@ def test_the_standalone_runoff_matches_the_accelerated_one(critical_illness):
     for t in (0, 59, 179, 299):
         assert p2.claim_rate(t) == pytest.approx(p1.claim_rate(t), rel=1e-12)
         assert p2.pols_if(t) == pytest.approx(p1.pols_if(t), rel=1e-12)
-        assert p2.claims(t, "MAIN") < p1.claims(t, "MAIN")
+        assert p2.claims(t, Kind.MAIN) < p1.claims(t, Kind.MAIN)
 
 
 def test_the_monthly_split_artefact_is_bounded_not_hidden(critical_illness):
@@ -247,9 +249,9 @@ def test_the_ancillary_benefits_do_not_deplete_the_sum_assured(uk_ci_anchor):
     """
     a = uk_ci_anchor
     for t in (0, 99, 299):
-        assert a.benefit_pp(t, "MAIN") == 100000.0
-        assert a.benefit_pp(t, "AP") == 25000.0
-        assert a.benefit_pp(t, "CHILD") == 25000.0
+        assert a.benefit_pp(t, BenefitKind.MAIN) == 100000.0
+        assert a.benefit_pp(t, BenefitKind.AP) == 25000.0
+        assert a.benefit_pp(t, BenefitKind.CHILD) == 25000.0
 
 
 def test_the_ancillary_benefits_do_not_decrement_the_inforce(uk_ci_anchor):
@@ -288,13 +290,13 @@ def test_children_cover_can_be_switched_off(critical_illness):
     p5 = critical_illness.Projection[5]
     assert p5.children_cover() is False
     assert p5.child_rate_mth() == 0.0
-    assert p5.benefit_pp(0, "CHILD") == 0.0
-    assert all(p5.claims(t, "CHILD") == 0.0 for t in range(p5.proj_len()))
+    assert p5.benefit_pp(0, BenefitKind.CHILD) == 0.0
+    assert all(p5.claims(t, Kind.CHILD) == 0.0 for t in range(p5.proj_len()))
     # Everything else is unchanged, so the difference is exactly the children's outgo.
     p1 = critical_illness.Projection[1]
     for t in (0, 149):
         assert p5.net_cf(t) - p1.net_cf(t) == pytest.approx(
-            p1.claims(t, "CHILD"), abs=1e-9)
+            p1.claims(t, Kind.CHILD), abs=1e-9)
 
 
 def test_the_ancillary_caps_track_the_indexed_sum_assured(critical_illness):
@@ -308,19 +310,19 @@ def test_the_ancillary_caps_track_the_indexed_sum_assured(critical_illness):
         proj = model.Projection[4]                # the indexed point
         assert proj.indexation() is True
         t_year3 = 24                             # policy year 3 opens at t = 24
-        main = proj.benefit_pp(t_year3, "MAIN")
+        main = proj.benefit_pp(t_year3, BenefitKind.MAIN)
         assert main == pytest.approx(100000.0 * 1.03 ** 2, rel=1e-12)
         # The cash caps bind at this size, so both are 25,000 regardless.
-        assert proj.benefit_pp(t_year3, "AP") == 25000.0
-        assert proj.benefit_pp(t_year3, "CHILD") == 25000.0
+        assert proj.benefit_pp(t_year3, BenefitKind.AP) == 25000.0
+        assert proj.benefit_pp(t_year3, BenefitKind.CHILD) == 25000.0
         # Raise the caps out of the way and the percentages track the indexed SA.
         model.Projection.ap_cap = 1e9
         model.Projection.child_cap = 1e9
         model.Projection.clear_all()
         proj = model.Projection[4]
-        assert proj.benefit_pp(t_year3, "AP") == pytest.approx(
+        assert proj.benefit_pp(t_year3, BenefitKind.AP) == pytest.approx(
             0.25 * 100000.0 * 1.03 ** 2, rel=1e-12)
-        assert proj.benefit_pp(t_year3, "CHILD") == pytest.approx(
+        assert proj.benefit_pp(t_year3, BenefitKind.CHILD) == pytest.approx(
             0.50 * 100000.0 * 1.03 ** 2, rel=1e-12)
     finally:
         model.close()
@@ -334,25 +336,25 @@ def test_pivot_interpolation_is_log_linear(uk_ci_anchor):
     """r(x) = r0 (r1/r0)^((x-x0)/(x1-x0)), geometric in the rate and linear in age."""
     a = uk_ci_anchor
     # The pivots themselves come back exactly.
-    assert a.pivot_interp(40, "M", "NS", "i_ci") == pytest.approx(0.0015, rel=1e-12)
-    assert a.pivot_interp(45, "M", "NS", "i_ci") == pytest.approx(0.0025, rel=1e-12)
-    assert a.pivot_interp(65, "M", "NS", "q_d") == pytest.approx(0.0100, rel=1e-12)
+    assert a.pivot_interp(40, Sex.M, Smoker.NS, RateColumn.i_ci) == pytest.approx(0.0015, rel=1e-12)
+    assert a.pivot_interp(45, Sex.M, Smoker.NS, RateColumn.i_ci) == pytest.approx(0.0025, rel=1e-12)
+    assert a.pivot_interp(65, Sex.M, Smoker.NS, RateColumn.q_d) == pytest.approx(0.0100, rel=1e-12)
     # The midpoint of a segment is the geometric mean of its ends, not the arithmetic.
-    mid = a.pivot_interp(42.5, "M", "NS", "i_ci")
+    mid = a.pivot_interp(42.5, Sex.M, Smoker.NS, RateColumn.i_ci)
     assert mid == pytest.approx((0.0015 * 0.0025) ** 0.5, rel=1e-12)
     assert mid < (0.0015 + 0.0025) / 2
     # And a whole-year age inside the segment.
-    assert a.pivot_interp(42, "M", "NS", "i_ci") == pytest.approx(
+    assert a.pivot_interp(42, Sex.M, Smoker.NS, RateColumn.i_ci) == pytest.approx(
         0.0015 * (0.0025 / 0.0015) ** (2 / 5), rel=1e-12)
 
 
 def test_pivot_extrapolation_continues_the_end_segments(uk_ci_anchor):
     """Outside 40-65 the nearest segment's gradient continues, and it is an extrapolation."""
     a = uk_ci_anchor
-    below = a.pivot_interp(35, "M", "NS", "i_ci")
+    below = a.pivot_interp(35, Sex.M, Smoker.NS, RateColumn.i_ci)
     assert below == pytest.approx(0.0015 * (0.0025 / 0.0015) ** (-1.0), rel=1e-12)
     assert below < 0.0015
-    above = a.pivot_interp(70, "M", "NS", "i_ci")
+    above = a.pivot_interp(70, Sex.M, Smoker.NS, RateColumn.i_ci)
     assert above == pytest.approx(0.0110 * (0.0170 / 0.0110) ** 2, rel=1e-12)
     assert above > 0.0170
 
@@ -392,13 +394,13 @@ def test_the_smoker_and_female_cells_are_flat_factors(uk_ci_anchor):
     """Crude by design, and stated as such: i_ci x1.75 / x0.95, q_d x2.00 / x0.70."""
     a = uk_ci_anchor
     for age in (40, 55, 65):
-        base_ci = a.pivot_interp(age, "M", "NS", "i_ci")
-        base_qd = a.pivot_interp(age, "M", "NS", "q_d")
-        assert a.pivot_interp(age, "M", "S", "i_ci") == pytest.approx(
+        base_ci = a.pivot_interp(age, Sex.M, Smoker.NS, RateColumn.i_ci)
+        base_qd = a.pivot_interp(age, Sex.M, Smoker.NS, RateColumn.q_d)
+        assert a.pivot_interp(age, Sex.M, Smoker.S, RateColumn.i_ci) == pytest.approx(
             base_ci * 1.75, rel=1e-6)
-        assert a.pivot_interp(age, "F", "NS", "q_d") == pytest.approx(
+        assert a.pivot_interp(age, Sex.F, Smoker.NS, RateColumn.q_d) == pytest.approx(
             base_qd * 0.70, rel=1e-6)
-        assert a.pivot_interp(age, "F", "S", "i_ci") == pytest.approx(
+        assert a.pivot_interp(age, Sex.F, Smoker.S, RateColumn.i_ci) == pytest.approx(
             base_ci * 1.75 * 0.95, rel=1e-6)
 
 
@@ -512,7 +514,7 @@ def test_joint_first_event_is_one_policy_with_one_decrement(critical_illness):
     """q = 1 - (1-q1)(1-q2): the policy pays once and ends."""
     p = critical_illness.Projection[7]
     assert p.is_joint() is True
-    assert p.age_at_entry(2) == 38 and p.sex(2) == "F"
+    assert p.age_at_entry(2) == 38 and p.sex(2) == Sex.F
     for t in (0, 149, 299):
         q1, q2 = p.claim_rate_life(t, 1), p.claim_rate_life(t, 2)
         assert p.claim_rate(t) == pytest.approx(1 - (1 - q1) * (1 - q2), rel=1e-12)
@@ -606,8 +608,8 @@ def test_expiry_at_the_end_of_the_term(uk_ci_anchor):
     assert a.pols_if(299) > 0.0
     assert a.pols_if(300) == 0.0
     assert a.pols_if(-1) == 0.0
-    assert a.pols_if_at(299, "AFT_DECR") == 0.0
-    assert a.pols_if_at(298, "AFT_DECR") > 0.0
+    assert a.pols_if_at(299, PolTiming.AFT_DECR) == 0.0
+    assert a.pols_if_at(298, PolTiming.AFT_DECR) > 0.0
     for t in range(299):
         assert a.pols_maturity(t) == 0.0
     assert a.pols_maturity(299) > 0.0

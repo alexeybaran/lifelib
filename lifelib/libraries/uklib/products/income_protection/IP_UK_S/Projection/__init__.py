@@ -610,9 +610,9 @@ def claim_rate_vectors():
     definition of each rate.
     """
     zs = range(1, max_dur() + 1)
-    rec = tuple(rec_rate_mth(z) for z in zs)
-    dth = tuple(mort_rate_sick_mth(z) for z in zs)
-    return rec, dth, tuple((1.0 - r) * (1.0 - d) for r, d in zip(rec, dth))
+    rec = [rec_rate_mth(z) for z in zs]
+    dth = [mort_rate_sick_mth(z) for z in zs]
+    return rec, dth, [(1.0 - r) * (1.0 - d) for r, d in zip(rec, dth)]
 
 
 def esc_rate():
@@ -749,15 +749,15 @@ def sick_cohorts(t):
     """
     n = max_dur()
     if t < 0 or t >= proj_len():
-        return (0.0,) * n
+        return [0.0] * n
     if t == 0:
         seed = pols_if_init() if status() == "in_claim" else 0.0
         z0 = claim_duration_months() + 1
-        return tuple(seed if z == z0 else 0.0 for z in range(1, n + 1))
+        return [seed if z == z0 else 0.0 for z in range(1, n + 1)]
     prev = sick_cohorts(t - 1)
     surv = claim_rate_vectors()[2]
-    return (pols_inception(t - 1),) + tuple(
-        prev[z - 1] * surv[z - 1] for z in range(1, n))
+    return [pols_inception(t - 1)] + [
+        prev[z - 1] * surv[z - 1] for z in range(1, n)]
 
 
 def pols_sick_dur(t, z):
@@ -894,9 +894,9 @@ def pols_if_at(t, timing):
     because two states are moving at once; :func:`pols_active` and :func:`pols_sick`
     expose them instead.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
         return pols_if(t + 1)
@@ -964,7 +964,7 @@ def premiums(t):
     return premium_pp(t) * pols_active(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"BENEFIT"``
@@ -984,11 +984,11 @@ def claims(t, kind=None):
     The two zero kinds are published rather than omitted so that the product facts are
     stated instead of inferred from a missing column.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("BENEFIT", "DEATH", "LAPSE"))
-    if kind == "BENEFIT":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.BENEFIT, Kind.DEATH, Kind.LAPSE))
+    if kind == Kind.BENEFIT:
         return claim_severity * amount_payable_pp(t) * pols_sick_surv(t)  # noqa: F821
-    if kind in ("DEATH", "LAPSE"):
+    if kind in (Kind.DEATH, Kind.LAPSE):
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1013,7 +1013,7 @@ def net_cf(t):
     ``liability_cf`` companion.  Death and lapse generate no payment at all on this
     product.
     """
-    return premiums(t) - claims(t) - expenses(t)
+    return premiums(t) - claims(t, Kind.ALL) - expenses(t)
 
 
 def disc_factor(t):
@@ -1040,7 +1040,7 @@ def pv_benefits():
     claims-in-payment liability the notes value.  See :func:`disc_factor` for why
     discounting appears in this model and nowhere else in the library.
     """
-    return sum(claims(t, "BENEFIT") * disc_factor(t)
+    return sum(claims(t, Kind.BENEFIT) * disc_factor(t)
                for t in range(proj_len()))
 
 
@@ -1134,9 +1134,9 @@ def result_cf():
             "pols_active": [pols_active(t) for t in ts],
             "pols_sick": [pols_sick(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_benefit": [claims(t, "BENEFIT") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_benefit": [claims(t, Kind.BENEFIT) for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
         },
@@ -1210,3 +1210,7 @@ inflation_rate = 0.03
 disc_rate = 0.03
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

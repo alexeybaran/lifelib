@@ -121,3 +121,7 @@ _spaces = [
     "Projection"
 ]
 
+# ---------------------------------------------------------------------------
+# References
+
+enums = ("IOSpec", 1)  # ModuleData path='enums.py'
