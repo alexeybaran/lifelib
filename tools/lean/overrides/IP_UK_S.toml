@@ -1,0 +1,31 @@
+# IP_UK_S: overrides of the lean conversion.
+#
+# K2 on upstream main.  Upstream changed sick_cohorts and claim_rate_vectors from lists to
+# tuples after v0.17.3 (20d4dae, "Stop an IP_UK_S test corrupting the shared cache under
+# xdist").  The owner's rule K2 is that vector cells return lists, so on main these two
+# cells are listed here; on v0.17.3 their upstream text already builds lists and the
+# listing is a no-op.  The cells' docstrings, which upstream main rewrote to say "tuple",
+# are left as upstream (the generator edits code only).
+[list_cells]
+Projection = ["sick_cohorts", "claim_rate_vectors"]
+
+# The test upstream main added for the tuples asserts that assigning into a returned
+# vector raises TypeError.  With K2 lists it does not, so the assertions become the K2
+# shape (lists, and the cached object itself).  The model is a fresh instance, so the
+# shared cache is not touched.  Absent on v0.17.3 (optional).
+[[tests.replace]]
+file = "test_income_protection_uk.py"
+optional = true
+why = "K2: the vector cells return lists, not tuples"
+old = """        before = v[0]
+        with pytest.raises(TypeError):
+            v[0] = 999.0
+        for vec in p.claim_rate_vectors():
+            with pytest.raises(TypeError):
+                vec[0] = 999.0
+        assert p.sick_cohorts(2)[0] == before
+"""
+new = """        # lean conversion, K2: the vector cells return lists, so no assignment is tried
+        assert isinstance(v, list)
+        assert all(isinstance(vec, list) for vec in p.claim_rate_vectors())
+"""

@@ -1,0 +1,9 @@
+# Sofort_DE_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "Projection.improve_rate_at_age: basis is a typed label used as a value (table key, column label or text), spelled basis.name, the upstream string",
+    "Projection.mort_rate_at_age: basis is a typed label used as a value (table key, column label or text), spelled basis.name, the upstream string",
+    "Projection.mort_rate_at_age: table_sex is a typed label used as a value (table key, column label or text), spelled table_sex.name, the upstream string",
+]

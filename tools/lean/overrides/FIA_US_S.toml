@@ -1,0 +1,8 @@
+# FIA_US_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "Projection.scenario_value: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.scenario_value: the reference renamed parameter name to field; the lean text keeps upstream's name and types it by position",
+]

@@ -1,0 +1,79 @@
+# Test edits shared by every library: the convention test that the model folder holds
+# formulas only.  A lean model with label families also holds the module stored with it
+# (enums.py) and its two IOSpec files (_data/iospecs.py, _data/data.pickle), which the
+# test now allows; a model without families (Term_US_S) is checked as before.
+[[replace]]
+files = ["delib/tests/test_model_conventions_de.py", "frlib/tests/test_model_conventions_fr.py",
+         "jplib/tests/test_model_conventions_jp.py", "krlib/tests/test_model_conventions_kr.py",
+         "uklib/tests/test_model_conventions_uk.py", "uslib/tests/test_model_conventions.py"]
+why = "the lean models store their enums module with the model (S4 recipe)"
+old = """    folder = model_path(name)
+    assert not (folder / "_data").exists()
+    for pattern in ("*.pickle", "*.csv", "*.xlsx", "*.xls"):
+        assert not list(folder.rglob(pattern)), f"{name}: data inside the model folder"
+    assert {p.name for p in folder.iterdir() if p.is_file()} == {
+        "__init__.py", "_system.json"}
+"""
+new = """    folder = model_path(name)
+    # lean conversion: the label families are a module stored with the model
+    stored = {"enums.py"} if (folder / "enums.py").exists() else set()
+    if stored:
+        assert sorted(p.name for p in (folder / "_data").iterdir()) == [
+            "data.pickle", "iospecs.py"]
+    else:
+        assert not (folder / "_data").exists()
+    assert [p.relative_to(folder).as_posix() for p in folder.rglob("*.pickle")] == (
+        ["_data/data.pickle"] if stored else [])
+    for pattern in ("*.csv", "*.xlsx", "*.xls"):
+        assert not list(folder.rglob(pattern)), f"{name}: data inside the model folder"
+    assert {p.name for p in folder.iterdir() if p.is_file()} == {
+        "__init__.py", "_system.json"} | stored
+"""
+
+# The S-vs-SEC twin identity (uslib/tests/sec_support.py, T1) calls the SEC model with the
+# arguments the S model cached and compares the values.  The lean S models spell their
+# label arguments and results as IntEnum members; the SEC twins, upstream text, take and
+# return the labels.  So the members are passed and compared as their labels, and the
+# member that stands for upstream's None default (Claim.ALL, Kind.ALL in uslib) as None.
+[[replace]]
+files = ["uslib/tests/sec_support.py"]
+why = "S arguments and results are members; the SEC twins take labels"
+old = """import csv
+import dataclasses
+"""
+new = """import csv
+import dataclasses
+import enum
+"""
+
+[[replace]]
+files = ["uslib/tests/sec_support.py"]
+why = "S arguments and results are members; the SEC twins take labels"
+old = """            expected = s_cells(*args)           # a cached key: the cache, not a new value
+"""
+new = """            expected = s_cells(*args)           # a cached key: the cache, not a new value
+            args, expected = _labels(args), _labels(expected)   # lean S: members as labels
+"""
+
+[[replace]]
+files = ["uslib/tests/sec_support.py"]
+why = "S arguments and results are members; the SEC twins take labels"
+old = """def _twin_lines(s_proj, sec_proj, exempt, arg_map, t_offset, rtol, atol, codes=None):
+"""
+new = """#: The members of the lean S models that stand for upstream's ``kind=None`` default.
+LEAN_NONE_MEMBERS = frozenset({("Claim", "ALL"), ("Kind", "ALL")})
+
+
+def _labels(x):
+    \"\"\"A lean S model's members as the labels its SEC twin takes (``None`` for ALL).\"\"\"
+    if isinstance(x, enum.Enum):
+        return None if (type(x).__name__, x.name) in LEAN_NONE_MEMBERS else x.name
+    if isinstance(x, tuple):
+        return tuple(_labels(e) for e in x)
+    if isinstance(x, list):
+        return [_labels(e) for e in x]
+    return x
+
+
+def _twin_lines(s_proj, sec_proj, exempt, arg_map, t_offset, rtol, atol, codes=None):
+"""

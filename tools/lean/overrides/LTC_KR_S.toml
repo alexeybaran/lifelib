@@ -1,0 +1,11 @@
+# LTC_KR_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "Projection.dem_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.lapse_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.prev_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.share_ge_at: grade is a typed label used as a value (table key, column label or text), spelled grade.name, the upstream string",
+    "Projection.share_slope_at: grade is a typed label used as a value (table key, column label or text), spelled grade.name, the upstream string",
+]

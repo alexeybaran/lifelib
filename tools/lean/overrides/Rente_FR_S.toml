@@ -1,0 +1,9 @@
+# Rente_FR_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "tariff_table_sex is a Reference holding the label 'F' that is passed to annuity_factor and tariff_lives: it holds the member Sex.F, pickled as Sex(1) with the class by persistent id (as the reference does)",
+    "sex(life) is a policy attribute passed on as an argument (mort_rate_at_age(sex(life), ...)): it returns Sex[v] after upstream's own validation, which stays",
+    "Projection.mort_rate_at_age: table_sex is a typed label used as a value (table key, column label or text), spelled table_sex.name, the upstream string",
+]

@@ -1,0 +1,16 @@
+# Child_KR_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "Projection.basis_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.benefit_pp: 'surgery_rate_' + cause is a label computed or read as text, passed to typed Projection.basis_param; looked up by name as BasisParam[...] rather than re-spelled",
+    "Projection.benefit_pp: cause is a typed label used as a value (table key, column label or text), spelled cause.name, the upstream string",
+    "Projection.inc_pivots: cause is a typed label used as a value (table key, column label or text), spelled cause.name, the upstream string",
+    "Projection.inc_pivots: sex() is a typed label used as a value (table key, column label or text), spelled sex().name, the upstream string",
+    "Projection.lapse_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.mort_series: s is a typed label used as a value (table key, column label or text), spelled s.name, the upstream string",
+    "Projection.neonatal_cost_pp: typed timing is compared with str(row['timing']), a string read from data; compared as timing.name",
+    "Projection.neonatal_cost_pp: timing is a typed label used as a value (table key, column label or text), spelled timing.name, the upstream string",
+    "Projection.sum_assured: cover is a typed label used as a value (table key, column label or text), spelled cover.name, the upstream string",
+]

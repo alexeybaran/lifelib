@@ -1,0 +1,34 @@
+# RILA_US_S: overrides of the lean conversion.
+
+# Readings the generator's general rules gave where the lean rules leave a choice
+# (recorded for review; the generator does not read this key).
+choices = [
+    "opt_component_pp(t, leg, timing='BEF_ROLL'): a label default of a typed parameter is dropped like a None default, and the call that omitted it passes Timing.BEF_ROLL",
+    "opt_legs() returns a tuple of OptionLeg labels that its callers loop over and pass on: it returns members",
+    "Projection.market_state: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
+    "Projection.result_iv: leg is a typed label used as a value (table key, column label or text), spelled leg.name, the upstream string",
+    "Projection.market_state: the reference renamed parameter name to field; the lean text keeps upstream's name and types it by position",
+]
+
+# The test reads the timing labels out of the Projection docstring and calls the two cells
+# with each; both take a Timing member in the lean text, so the label read from the text
+# is looked up by name.
+[[tests.replace]]
+file = "test_registered_index_linked_annuity_us.py"
+why = "K1: a label read from text, passed to a typed argument"
+families = ["Timing"]
+old = "            arg_of(24, timing)                      # must not raise\n"
+new = "            arg_of(24, Timing[timing])              # must not raise\n"
+
+# The test calls four cells through getattr with the timing as a literal; each of them
+# types it (Timing) in the lean text.
+[[tests.replace]]
+file = "test_registered_index_linked_annuity_us.py"
+why = "K1: labels passed to typed arguments through getattr"
+families = ["Timing"]
+old = """        before = getattr(scenario_b, cells)(35, "BEF_ROLL")
+        after = getattr(scenario_b, cells)(35, "AFT_WD")
+"""
+new = """        before = getattr(scenario_b, cells)(35, Timing.BEF_ROLL)
+        after = getattr(scenario_b, cells)(35, Timing.AFT_WD)
+"""
