@@ -561,7 +561,10 @@ def glwb_basis():
     younger covered person [S1][S3].  Joint-life *survivorship* is **not implemented**:
     the notes specify the joint payout percentage but no second-life mortality basis.
     """
-    return GlwbBasis[model_point()["glwb_basis"]]
+    v = model_point()["glwb_basis"]
+    if v not in ("single", "joint"):
+        raise ValueError("invalid glwb_basis")
+    return GlwbBasis[v]
 
 
 def joint_age():
@@ -599,7 +602,10 @@ def credit_method():
     which the notes exclude, and its floor convention is itself flagged as ambiguous
     [S4][R1].
     """
-    return CreditMethod[model_point()["credit_method"]]
+    v = model_point()["credit_method"]
+    if v not in ("cap", "par", "par_cap", "spread", "trigger"):
+        raise ValueError("invalid credit_method")
+    return CreditMethod[v]
 
 
 def cap_rate():
