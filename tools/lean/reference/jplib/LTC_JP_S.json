@@ -1,0 +1,206 @@
+{
+ "model": "LTC_JP_S",
+ "lib": "jplib",
+ "product": "nursing_care",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Grade": [
+   [
+    "support1",
+    0
+   ],
+   [
+    "support2",
+    1
+   ],
+   [
+    "care1",
+    2
+   ],
+   [
+    "care2",
+    3
+   ],
+   [
+    "care3",
+    4
+   ]
+  ],
+  "AnnuityTest": [
+   [
+    "survival",
+    0
+   ],
+   [
+    "state",
+    1
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "semiannual",
+    1
+   ],
+   [
+    "annual",
+    2
+   ]
+  ],
+  "PremPeriod": [
+   [
+    "whole_life",
+    0
+   ]
+  ],
+  "PrevParam": [
+   [
+    "prev_ceil",
+    0
+   ],
+   [
+    "prev_beta",
+    1
+   ],
+   [
+    "prev_x_mid",
+    2
+   ],
+   [
+    "prev_age_low",
+    3
+   ],
+   [
+    "prev_rate_low",
+    4
+   ],
+   [
+    "prev_age_high",
+    5
+   ],
+   [
+    "prev_rate_high",
+    6
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "LUMP",
+    0
+   ],
+   [
+    "ANNUITY",
+    1
+   ],
+   [
+    "DEMENTIA",
+    2
+   ],
+   [
+    "LAPSE",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "grade_share": {
+    "0": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "inc_rate": {
+    "1": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "inc_rate_mth": {
+    "1": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "prev_grade": {
+    "1": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "prev_param": {
+    "0": [
+     "PrevParam",
+     "name"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "annuity_test": "AnnuityTest",
+   "grade_annuity": "Grade",
+   "grade_lump": "Grade",
+   "grade_waiver": "Grade",
+   "prem_mode": "PremMode",
+   "prem_period_type": "PremPeriod",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "grade_annuity": "Grade",
+   "grade_lump": "Grade",
+   "grade_waiver": "Grade"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# LTC_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 950: need_max 948; max index 948: check_nesting:1326 scans range(proj_len()+1) and pols_if(t+1) in\n#     pols_if_at:979 / check_pols_roll_fwd_resid:1283; exclusive 949 + 1 spare\n#   j < 80: shipped declaration\n{'cells_param_size': {'t': 950, 'j': 80}}\n"
+}

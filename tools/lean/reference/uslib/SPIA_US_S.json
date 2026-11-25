@@ -1,0 +1,122 @@
+{
+ "model": "SPIA_US_S",
+ "lib": "uslib",
+ "product": "immediate_annuity",
+ "families": {
+  "Form": [
+   [
+    "life_only",
+    0
+   ],
+   [
+    "life_certain",
+    1
+   ],
+   [
+    "cash_refund",
+    2
+   ],
+   [
+    "installment_refund",
+    3
+   ],
+   [
+    "certain_only",
+    4
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "ReductionTrigger": [
+   [
+    "either",
+    0
+   ],
+   [
+    "primary",
+    1
+   ]
+  ],
+  "PaymentTiming": [
+   [
+    "arrears",
+    0
+   ],
+   [
+    "advance",
+    1
+   ]
+  ],
+  "MortBasis": [
+   [
+    "table",
+    0
+   ],
+   [
+    "scenario",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "REFUND",
+    0
+   ],
+   [
+    "ALL",
+    1
+   ]
+  ],
+  "DiscConvention": [
+   [
+    "compound",
+    0
+   ],
+   [
+    "simple",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "form": "Form",
+   "mort_basis": "MortBasis",
+   "payment_timing": "PaymentTiming",
+   "reduction_trigger": "ReductionTrigger",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# SPIA_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1226: need_max 1224 + 1 (lives_if(t+1) / lives_if_last(t+1), lines 742, 768, 849, 1227;\n#     cum_annuity_pp(t+1) via claim_pp line 1050) + 1 margin = 1226\n#   y < 104: policy_year(t) = t//12 + 1 <= 1225//12 + 1 = 103 (calls at lines 575, 962, 1009, 1074); +1 =\n#     104. surr_charge_rate clamps y to surr_charge_table.csv policy_year range (line 994)\n#   k < 1226: month index; k reaches proj_len() (check_lives_roll_fwd range(proj_len()+1), line 1174;\n#     lives_if(t+1)); 1224+1+1\n{'cells_param_size': {'t': 1226, 'y': 104, 'k': 1226}}\n"
+}

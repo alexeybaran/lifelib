@@ -1,0 +1,156 @@
+{
+ "model": "ADE_FR_S",
+ "lib": "frlib",
+ "product": "assurance_emprunteur",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremiumBasis": [
+   [
+    "capital_initial",
+    0
+   ],
+   [
+    "capital_restant_du",
+    1
+   ]
+  ],
+  "IndemnityBasis": [
+   [
+    "forfaitaire",
+    0
+   ],
+   [
+    "indemnitaire",
+    1
+   ]
+  ],
+  "IptBenefitBasis": [
+   [
+    "echeance",
+    0
+   ],
+   [
+    "crd",
+    1
+   ]
+  ],
+  "Status": [
+   [
+    "healthy",
+    0
+   ],
+   [
+    "itt",
+    1
+   ],
+   [
+    "ipt",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DECR",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "PTIA",
+    1
+   ],
+   [
+    "ITT",
+    2
+   ],
+   [
+    "IPT",
+    3
+   ],
+   [
+    "LAPSE",
+    4
+   ],
+   [
+    "MATURITY",
+    5
+   ],
+   [
+    "ALL",
+    6
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "pv_claims": {
+    "0": [
+     "Kind",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "indemnity_basis": "IndemnityBasis",
+   "ipt_benefit_basis": "IptBenefitBasis",
+   "premium_basis": "PremiumBasis",
+   "sex": "Sex",
+   "status": "Status"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_rate"
+   ],
+   "itt_inception_schedule": [
+    "itt_inception_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The healthy-life mortality rates at the policy's sex, by pivot age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"The **healthy-life** annual mortality rate at the attained age.\n\n    Read from ``mort_table.csv`` at the policy's sex, **linearly** interpolated between\n    pivot ages and held flat outside them.  A **[std]** proxy: the homologated French\n    tables for a non-annuity contract are TH 00-02 / TF 00-02 with the annexed *decalage\n    d'age*, which are not redistributable, so the shipped values are shaped from INSEE\n    population data.  Mortality in claim is :func:`itt_mort_rate` and mortality in IPT is\n    :func:`mort_rate_ipt`; reading either out of this cells is the mistake the naming is\n    there to prevent.\n    \"\"\"\n    sub = mort_schedule()\n    x = age(t)\n    if x <= int(sub.index[0]):\n        return float(sub.loc[int(sub.index[0]), \"mort_rate\"])\n    if x >= int(sub.index[-1]):\n        return float(sub.loc[int(sub.index[-1]), \"mort_rate\"])\n    lo = int(sub.index.asof(x))\n    hi = int(sub.index[sub.index.searchsorted(x, side=\"right\")])\n    r_lo = float(sub.loc[lo, \"mort_rate\"])\n    r_hi = float(sub.loc[hi, \"mort_rate\"])\n    return r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)",
+   "itt_inception_schedule": "def itt_inception_schedule():\n    \"\"\"The ITT inception rates at the policy's sex, by pivot age.\"\"\"\n    return data.itt_inception_table().loc[sex()]",
+   "itt_inception_rate": "def itt_inception_rate(t):\n    \"\"\"The annual ITT **claim payment** inception rate out of ``healthy``.\n\n    Read from ``itt_inception_table.csv`` at the policy's sex, linearly interpolated\n    between pivot ages and held flat outside them, then scaled by\n    :func:`franchise_factor` and by the anti-selection lever ``selection_load``.\n\n    It is a claim *payment* inception rate specific to the *franchise* - which is what a\n    real disability basis publishes per deferred period - so the *franchise* needs no\n    state of its own.  Every value is **[std]**: nothing in the retrieved corpus gives a\n    French ITT inception rate.\n    \"\"\"\n    sub = itt_inception_schedule()\n    x = age(t)\n    if x <= int(sub.index[0]):\n        r = float(sub.loc[int(sub.index[0]), \"itt_inception_rate\"])\n    elif x >= int(sub.index[-1]):\n        r = float(sub.loc[int(sub.index[-1]), \"itt_inception_rate\"])\n    else:\n        lo = int(sub.index.asof(x))\n        hi = int(sub.index[sub.index.searchsorted(x, side=\"right\")])\n        r_lo = float(sub.loc[lo, \"itt_inception_rate\"])\n        r_hi = float(sub.loc[hi, \"itt_inception_rate\"])\n        r = r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)\n    return r * franchise_factor() * (1.0 + selection_load)"
+  }
+ },
+ "notes": [],
+ "spec": "# ADE_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 482: need_max 480 (product-spec.md:87, 40y*12) ; largest arg reached = proj_len (pols_if(t+1) in\n#     check_pols_roll_fwd_resid/pols_if_at, itt_cohorts_raw(t+1) in pols_itt_close, crd(t+1)) -> 480+1 = 481\n#     exclusive, +1 margin = 482\n#   k < 482: crd(k) is a time point 0..proj_len(): crd(t+1) and check_crd->crd(proj_len()) (:583); 480+1 =\n#     481, +1 margin\n{'cells_param_size': {'t': 482, 'k': 482}}\n"
+}

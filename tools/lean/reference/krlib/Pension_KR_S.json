@@ -1,0 +1,491 @@
+{
+ "model": "Pension_KR_S",
+ "lib": "krlib",
+ "product": "pension_savings",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PayoutForm": [
+   [
+    "life_guar",
+    0
+   ],
+   [
+    "certain",
+    1
+   ]
+  ],
+  "MortVintage": [
+   [
+    "issue",
+    0
+   ],
+   [
+    "commencement",
+    1
+   ],
+   [
+    "ratchet",
+    2
+   ]
+  ],
+  "LapseBasis": [
+   [
+    "pension",
+    0
+   ],
+   [
+    "savings",
+    1
+   ]
+  ],
+  "RateScenario": [
+   [
+    "base",
+    0
+   ],
+   [
+    "floor",
+    1
+   ],
+   [
+    "hybrid",
+    2
+   ]
+  ],
+  "MortTable": [
+   [
+    "annuitant_issue",
+    0
+   ],
+   [
+    "annuitant_revised",
+    1
+   ]
+  ],
+  "Segment": [
+   [
+    "premium_paying",
+    0
+   ],
+   [
+    "paid_up",
+    1
+   ],
+   [
+    "in_payment",
+    2
+   ]
+  ],
+  "AnchorItem": [
+   [
+    "law_a",
+    0
+   ],
+   [
+    "law_b",
+    1
+   ],
+   [
+    "law_c",
+    2
+   ],
+   [
+    "age_setback",
+    3
+   ],
+   [
+    "omega_age",
+    4
+   ],
+   [
+    "improve_factor",
+    5
+   ],
+   [
+    "pub_q_40",
+    6
+   ],
+   [
+    "pub_q_50",
+    7
+   ],
+   [
+    "pub_q_60",
+    8
+   ],
+   [
+    "pub_q_70",
+    9
+   ],
+   [
+    "pub_q_80",
+    10
+   ]
+  ],
+  "PricingItem": [
+   [
+    "prem_freq",
+    0
+   ],
+   [
+    "annuity_freq",
+    1
+   ],
+   [
+    "prem_int_rate",
+    2
+   ],
+   [
+    "avg_decl_rate",
+    3
+   ],
+   [
+    "acq_charge_rate",
+    4
+   ],
+   [
+    "acq_charge_years",
+    5
+   ],
+   [
+    "maint_charge_rate",
+    6
+   ],
+   [
+    "maint_charge_rate_paid_up",
+    7
+   ],
+   [
+    "addl_charge_rate",
+    8
+   ],
+   [
+    "addl_prem_cap_ratio",
+    9
+   ],
+   [
+    "annuity_charge_rate",
+    10
+   ],
+   [
+    "min_fund_ratio",
+    11
+   ],
+   [
+    "mort_be_factor",
+    12
+   ],
+   [
+    "surr_chg_years",
+    13
+   ],
+   [
+    "surr_chg_cap_rate",
+    14
+   ],
+   [
+    "surr_chg_cap_rate_par",
+    15
+   ],
+   [
+    "surr_chg_cap_term_cap",
+    16
+   ],
+   [
+    "surr_chg_cap_level_years",
+    17
+   ],
+   [
+    "loan_rate",
+    18
+   ],
+   [
+    "loan_draw_frac",
+    19
+   ],
+   [
+    "loan_draw_year",
+    20
+   ],
+   [
+    "holiday_start_year",
+    21
+   ],
+   [
+    "holiday_max_years",
+    22
+   ],
+   [
+    "div_int_rate",
+    23
+   ]
+  ],
+  "ExpenseItem": [
+   [
+    "expense_acq",
+    0
+   ],
+   [
+    "expense_maint_defer",
+    1
+   ],
+   [
+    "expense_maint_payout",
+    2
+   ],
+   [
+    "expense_claim",
+    3
+   ],
+   [
+    "inflation_rate",
+    4
+   ],
+   [
+    "comm_init_rate",
+    5
+   ],
+   [
+    "comm_renewal_rate",
+    6
+   ]
+  ],
+  "TaxItem": [
+   [
+    "credit_rate_low_income",
+    0
+   ],
+   [
+    "credit_rate_high_income",
+    1
+   ],
+   [
+    "credit_income_threshold",
+    2
+   ],
+   [
+    "credit_cap",
+    3
+   ],
+   [
+    "contribution_ceiling",
+    4
+   ],
+   [
+    "other_income_tax_rate",
+    5
+   ],
+   [
+    "pension_tax_rate_under70",
+    6
+   ],
+   [
+    "pension_tax_rate_70to79",
+    7
+   ],
+   [
+    "pension_tax_rate_80plus",
+    8
+   ],
+   [
+    "pension_tax_rate_life",
+    9
+   ],
+   [
+    "aggregation_threshold",
+    10
+   ],
+   [
+    "min_annuity_age",
+    11
+   ],
+   [
+    "min_account_years",
+    12
+   ],
+   [
+    "limit_denominator_base",
+    13
+   ],
+   [
+    "limit_uplift",
+    14
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_INT",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "ANNUITY",
+    0
+   ],
+   [
+    "DEATH",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "annuity_due_factor_on": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "expense_basis": {
+    "0": [
+     "ExpenseItem",
+     "item"
+    ]
+   },
+   "mort_anchor": {
+    "0": [
+     "MortTable",
+     "table"
+    ],
+    "1": [
+     "AnchorItem",
+     "item"
+    ]
+   },
+   "mort_rate_at_age": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "mort_rate_law": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "omega_age": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "pricing_basis": {
+    "0": [
+     "PricingItem",
+     "item"
+    ]
+   },
+   "tax_basis": {
+    "0": [
+     "TaxItem",
+     "item"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "lapse_basis": "LapseBasis",
+   "mort_table_name": "MortTable",
+   "mort_vintage": "MortVintage",
+   "payout_form": "PayoutForm",
+   "rate_scenario": "RateScenario",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "mort_table_name": "MortTable"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "decl_schedule": [
+    "decl_rate"
+   ],
+   "lapse_in_payment": [
+    "lapse_rate"
+   ],
+   "lapse_paid_up": [
+    "lapse_rate"
+   ],
+   "lapse_paying_schedule": [
+    "lapse_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "decl_schedule": "def decl_schedule():\n    \"\"\"The declared rates of the policy's rate scenario, by from_year.\"\"\"\n    return data.decl_rate_table().loc[rate_scenario()]",
+   "decl_rate": "def decl_rate(t):\n    \"\"\"i(t): the **annual** 공시이율 (declared crediting rate) applying in month t.\n\n    A step function of policy year read from the scenario the model point selects.  It is\n    **not** a market rate and must not be modelled as one: 시행세칙 별표 27 builds it from an\n    external index rate and the insurer's own 운용자산이익률 with the external weight capped\n    at 60%, so a Korean declared rate is majority-weighted to realised investment return and\n    moves in steps of two to seven basis points.  One carrier's published thirteen-month\n    history falls 57 basis points over a year without once reversing.\n    \"\"\"\n    tbl = decl_schedule()\n    y = t // 12\n    return float(tbl.loc[tbl.index.asof(y), \"decl_rate\"])",
+   "lapse_in_payment": "def lapse_in_payment():\n    \"\"\"The in-payment lapse rate of the policy's lapse basis.\"\"\"\n    return float(data.lapse_table().loc[(lapse_basis(), Segment.in_payment, 0), \"lapse_rate\"])",
+   "lapse_rate": "def lapse_rate(t):\n    \"\"\"w(t): the **annual** 해지 rate of the policy year month t falls in.\n\n    Read from the model point's basis: a duration curve while premiums are due, a single flat\n    rate between 납입완료 and 연금개시, and **zero once the annuity is in payment**, where a\n    종신연금형 may not be surrendered at all and a 확정기간연금형 pays its instalments to the\n    count.\n\n    The vector is **[std]** and had to be argued rather than fitted: there is no public\n    Korean lapse statistic for 연금저축보험 by policy year — one carrier's own disclosure\n    reads 「적용안함」 on every row of its 경과기간별 중도해지율 column.  It is deliberately\n    flatter than a non-qualified savings vector, because a surrender costs 16.5% 기타소득세\n    on essentially the whole payout, and because part of what an insurer counts as\n    termination is 계좌이체 to a 연금저축펀드, which is not a withdrawal and is not taxed.\n    It is **not** the supervisory 무·저해지 lapse guidance, which is calibrated to\n    순수보장성 business and does not describe a contract with a full surrender value from\n    the first month.\n    \"\"\"\n    if t >= annuitisation_t():\n        return lapse_in_payment()\n    if t >= prem_end_t():\n        return lapse_paid_up()\n    seg = lapse_paying_schedule()\n    y = t // 12\n    return float(seg.loc[seg.index.asof(y), \"lapse_rate\"])",
+   "lapse_paid_up": "def lapse_paid_up():\n    \"\"\"The paid-up lapse rate of the policy's lapse basis.\"\"\"\n    return float(data.lapse_table().loc[(lapse_basis(), Segment.paid_up, 0), \"lapse_rate\"])",
+   "lapse_paying_schedule": "def lapse_paying_schedule():\n    \"\"\"The premium-paying lapse rates of the policy's lapse basis, by from_year.\"\"\"\n    return data.lapse_table().loc[(lapse_basis(), Segment.premium_paying)]"
+  }
+ },
+ "notes": [],
+ "spec": "# Pension_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1465: need_max 1452 + 1 for pols_if(t + 1)/av_pp(t + 1)/cv_pp_net(t + 1) at t = proj_len-1 + 12\n#     margin; annuity window min(t + 12, proj_len()) (:1938) stays inside\n#   x < 122: mort_table.csv age keys 0..120 per (table, sex); mort_rate_at_age(table, x) :836 returns 1.0\n#     without a read for x >= omega_age = 120; x = age(t) (:849) reaches x0 + proj_years = 121 at t =\n#     proj_len; annuity_due_factor_on loops x0+j <= omega (:1330); bound = 121+1 (mort_rate_law(table, x) :820\n#     forms the float x - age_setback internally; its argument is the int age)\n{'cells_param_size': {'t': 1465, 'x': 122}}\n"
+}

@@ -1,0 +1,184 @@
+{
+ "model": "Basis_DE_S",
+ "lib": "delib",
+ "product": "basisrente",
+ "families": {
+  "PremForm": [
+   [
+    "regular",
+    0
+   ],
+   [
+    "single",
+    1
+   ]
+  ],
+  "OptionId": [
+   [
+    "prem_mode",
+    0
+   ],
+   [
+    "guarantee_period",
+    1
+   ],
+   [
+    "survivor",
+    2
+   ]
+  ],
+  "PremMode": [
+   [
+    "annual",
+    0
+   ],
+   [
+    "half_yearly",
+    1
+   ],
+   [
+    "quarterly",
+    2
+   ],
+   [
+    "monthly",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DEATH",
+    1
+   ],
+   [
+    "AFT_FREEZE",
+    2
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_INT",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "ANNUITY",
+    1
+   ],
+   [
+    "SURVIVOR",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pu_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "prem_form": "PremForm",
+   "prem_mode": "PremMode"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "prem_form": [
+    "beitragssumme_pp",
+    "bf_rate",
+    "prem_base_pp",
+    "prem_freq_load"
+   ],
+   "prem_mode": [
+    "prem_freq_load"
+   ],
+   "behaviour_schedule": [
+    "bf_rate",
+    "zuz_take_up"
+   ],
+   "surplus_schedule": [
+    "ann_bonus_rate",
+    "decl_rate"
+   ],
+   "tariff_charges": [
+    "commissions",
+    "expenses"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "prem_form": "def prem_form():\n    \"\"\"The premium form of the policy (regular or single), converted once.\"\"\"\n    return PremForm[model_point()[\"prem_form\"]]",
+   "beitragssumme_pp": "def beitragssumme_pp():\n    \"\"\"S: the contract's *Beitragssumme* at inception, per policy.\n\n    The sum of the contractual *laufende Beiträge* over the whole premium term\n    **including** the *Beitragsdynamik* and **excluding** *Zuzahlungen* and the\n    *Ratenzahlungszuschlag*::\n\n        S = sum_{u=0}^{m-1} prem_base_pp x (1 + prem_dyn_rate)^u,   m = ret_age - entry_age\n\n    and simply ``prem_base_pp`` for a single premium.  Excluding *Zuzahlungen* is the\n    conservative reading of a question no retrieved source settles, and it matters twice:\n    S is the base of the 25 ‰ *Höchstzillmersatz* cap on the acquisition charge written\n    into the account, and it is the base of the initial commission.  On a long-dated\n    contract with a *Dynamik* the cap binds in euro terms far above what the same\n    percentage would allow on a short one.\n\n    Struck once, at inception, from the *contract's* own terms — not from the projection —\n    so an in-force model point carries the same S it was written with.\n    \"\"\"\n    dyn = float(model_point()[\"prem_dyn_rate\"])\n    base = float(model_point()[\"prem_base_pp\"])\n    if prem_form() == PremForm.single:\n        return base\n    m = int(model_point()[\"ret_age\"]) - int(model_point()[\"entry_age\"])\n    return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))",
+   "bf_rate": "def bf_rate(t):\n    \"\"\"f(t): the *Beitragsfreistellung* rate of the year month t falls in, **annual**.\n\n    Read from *behaviour_table.csv* at ``dur = policy_year(t)``: 4,0 % at policy years\n    1–5, 3,0 % at 6–10, 2,0 % at 11+ **[std]**, clamped to the last row beyond the table.\n\n    **An annual rate applied once a year, not a monthly one.**  § 165 VVG lets the\n    policyholder demand a *Beitragsfreistellung* \"für den Schluss der laufenden\n    Versicherungsperiode\", and § 12 Abs. 1 VVG makes that period the *Versicherungsjahr*\n    here, so the election takes effect at the anniversary and :func:`pols_freeze` is\n    non-zero only in the last month of a projection year.  That is also what keeps the\n    premium-paying ledger bit-identical to the annual-step model's at every anniversary.\n\n    **This is not a lapse rate and there is no lapse decrement on this product.** § 165 VVG\n    survives and is the contract's only behavioural exit, but it removes the premium, not\n    the policy: the rate moves policies from :func:`pols_paying` to :func:`pols_paidup` and\n    appears nowhere in :func:`pols_if`.  Treating it as a lapse is the second pitfall.\n\n    Zero from ``t = ret_t()`` — there is no premium left to stop — and zero on a\n    single-premium contract for the same reason.  Applied to the **survivors** of the\n    year's death decrement.\n    \"\"\"\n    if t < 0 or t >= ret_t() or t >= proj_len():\n        return 0.0\n    if prem_form() == PremForm.single:\n        return 0.0\n    sub = behaviour_schedule()\n    d = min(policy_year(t), int(sub.index.max()))\n    return float(sub.loc[max(d, 1), \"bf_rate\"])",
+   "prem_base_pp": "def prem_base_pp(k):\n    \"\"\"The contractual *laufender Beitrag* in year k, before the *Ratenzahlungszuschlag*.\n\n    ``prem_base_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the\n    *Beitragsdynamik* compounds on the base premium from **inception**, so it is keyed to\n    the policy duration and not to the projection year.  For ``prem_form = \"single\"`` the\n    *Einmalbeitrag* is paid once, at ``k = 0`` and only where ``duration_init = 0``, and is\n    zero at every other ``k``.\n\n    This is the contractual amount.  What is actually charged is :func:`prem_pp`, which\n    applies phi and stops at *Rentenbeginn*.\n    \"\"\"\n    if prem_form() == PremForm.single:\n        if k == 0 and int(model_point()[\"duration_init\"]) == 0:\n            return float(model_point()[\"prem_base_pp\"])\n        return 0.0\n    return (float(model_point()[\"prem_base_pp\"])\n            * (1.0 + float(model_point()[\"prem_dyn_rate\"])) ** duration_y(k))",
+   "prem_freq_load": "def prem_freq_load():\n    \"\"\"phi: the *Ratenzahlungszuschlag* for the model point's payment frequency.\n\n    Read from *option_table.csv* under ``option_id = \"prem_mode\"``: 1.000 annual, 1.020\n    half-yearly, 1.030 quarterly, 1.050 monthly **[std]**.  It multiplies the *laufender\n    Beitrag* and **nothing else** — not the *Zuzahlung*, which carries no frequency\n    loading because it is a single payment, and not a single premium, which is why\n    :func:`prem_freq_load` returns 1.0 for ``prem_form = \"single\"``.  Applying it twice, or\n    to the *Zuzahlung*, is the eighth pitfall.\n    \"\"\"\n    if prem_form() == PremForm.single:\n        return 1.0\n    mode = prem_mode()\n    if mode == PremMode.annual:\n        key = \"annual\"\n    elif mode == PremMode.half_yearly:\n        key = \"half_yearly\"\n    elif mode == PremMode.quarterly:\n        key = \"quarterly\"\n    elif mode == PremMode.monthly:\n        key = \"monthly\"\n    else:\n        raise ValueError(\"invalid prem_mode\")\n    return float(data.option_table().loc[                            # noqa: F821\n        (OptionId.prem_mode, key), \"factor\"])",
+   "prem_mode": "def prem_mode():\n    \"\"\"The premium payment mode of the policy, converted once.\"\"\"\n    return PremMode[model_point()[\"prem_mode\"]]",
+   "behaviour_schedule": "def behaviour_schedule():\n    \"\"\"The behaviour rates of the policy's behaviour table, by policy year.\"\"\"\n    return data.behaviour_table().loc[model_point()[\"beh_table_id\"]]",
+   "zuz_take_up": "def zuz_take_up(k):\n    \"\"\"The *Zuzahlung* utilisation rate in year k, from *behaviour_table.csv*.\n\n    Looked up at ``dur = duration_y(k) + 1``, the policy year: 0.70 at policy years 1–5,\n    0.85 at 6–15, 0.90 at 16+ **[std]**, clamped to the last row beyond the table.\n\n    A *utilisation rate*, not a contract term.  The contribution the *Höchstbetrag* makes\n    possible is paid out of a profit not known until the year end, so whether it is paid\n    at all is behavioural; a model that treats the *Zuzahlung* as contractual has quietly\n    set this to 1.0.  Nothing in the delib corpus supports any level.\n    \"\"\"\n    sub = behaviour_schedule()\n    d = min(duration_y(k) + 1, int(sub.index.max()))\n    return float(sub.loc[max(d, 1), \"zuz_take_up\"])",
+   "surplus_schedule": "def surplus_schedule():\n    \"\"\"The declared rates of the policy's surplus scenario, by projection year.\"\"\"\n    return data.surplus_table().loc[model_point()[\"surplus_scenario_id\"]]",
+   "ann_bonus_rate": "def ann_bonus_rate(k):\n    \"\"\"b(k): the *Überschussrente* uplift applied at the end of payout year k.\n\n    1,0 % p.a. compounding in the ``base`` scenario **[std]**, read from\n    *surplus_table.csv*.  A *teildynamische Rente*: a *volldynamische* one would consume\n    the whole first-order margin released in the payout phase and a *konstante* one none,\n    and 1,0 % is deliberately in between.\n\n    It is the mechanism that gives the conversion-basis wedge back to the annuitant — the\n    fund is converted on first-order mortality and run off on the best estimate — so this\n    lever and ``mort_be_factor`` between them decide the payout phase's whole economics.\n    Both are **[std]** independently.\n    \"\"\"\n    sub = surplus_schedule()\n    tt = min(max(k, 0), int(sub.index.max()))\n    return float(sub.loc[tt, \"ann_bonus_rate\"])",
+   "decl_rate": "def decl_rate(k):\n    \"\"\"The declared *laufende Verzinsung* in projection year k, from *surplus_table.csv*.\n\n    2,60 % for ``k = 0 ... 9``, 2,40 % for ``k = 10 ... 19``, 2,20 % thereafter in the\n    ``base`` scenario **[std]**, clamped to the last row beyond the table.\n\n    **It is the total credited rate, not a spread over the *Rechnungszins*.**  German\n    declared rates are quoted that way, which is why :func:`cred_rate` is a maximum and not\n    a sum.  A scenario rather than a forecast: no declared rate specific to a Basisrente\n    was established anywhere in the delib corpus, and the path is set above the 1,00 %\n    *Höchstrechnungszins* by a plausible surplus margin and graded down.\n    \"\"\"\n    sub = surplus_schedule()\n    tt = min(max(k, 0), int(sub.index.max()))\n    return float(sub.loc[tt, \"decl_rate\"])",
+   "tariff_charges": "def tariff_charges():\n    \"\"\"The charge and expense row of the policy's tariff.\"\"\"\n    return data.charge_table().loc[model_point()[\"tariff_id\"]]",
+   "commissions": "def commissions(t):\n    \"\"\"C(t): commission outgo in projection month t, fund level.\n\n    ``comm_init_rate x beitragssumme_pp() x pols_if_init()`` at inception — the\n    *Abschlussprovision*, sized to the *Zillmerung* cap, which is the German design in\n    which what the insurer pays out is what it may write into the reserve — plus\n    ``comm_renew_rate x (premiums(t) + zuzahlungen(t))`` from ``t = 1``, the\n    *Bestandsprovision*.  Both **[std]**: the corpus's only datum is a 1 575 €\n    *Abschlussprovision* on one specimen quotation, and it is [unverified].\n\n    The renewal commission is a percentage of a contribution, so it falls in the month the\n    contribution does and in no other — the ``t >= 1`` condition excludes the first year's\n    premium at ``t = 0`` and admits every later one at ``t = 12, 24, ...``, which is\n    exactly the annual-step model's rule.\n\n    Paid **only** where the model point is new business (``duration_init = 0``): an\n    in-force point's acquisition commission was paid before the valuation date and is not a\n    projected cash flow.\n    \"\"\"\n    if t < 0 or t >= proj_len():\n        return 0.0\n    row = tariff_charges()\n    out = 0.0\n    if t == 0 and int(model_point()[\"duration_init\"]) == 0:\n        out += float(row[\"comm_init_rate\"]) * beitragssumme_pp() * pols_if_init()\n    if t >= 1:\n        out += float(row[\"comm_renew_rate\"]) * (premiums(t) + zuzahlungen(t))\n    return out",
+   "expenses": "def expenses(t):\n    \"\"\"E(t): the insurer's own expense outgo in projection month t, fund level.\n\n    Acquisition expense at inception (``t = 0`` and ``duration_init = 0`` only), then a\n    **twelfth** of the annual maintenance expense per in-force policy in the\n    *Aufschubphase* and a twelfth of the annual annuity administration per annuitant **and\n    per *Rentengarantiezeit* continuation** in the *Rentenphase*, both inflating at\n    ``expense_infl`` from the valuation date.  The payout phase is administratively cheaper\n    than the accumulation phase, which is why the two rates differ.\n\n    The inflation factor steps on the **anniversary**, ``(1 + expense_infl)^proj_year(t)``,\n    because an expense assumption is quoted per policy per year; the twelve months of a\n    projection year therefore carry the same monthly amount.  A policy that dies in the\n    third month of a year now bears three twelfths of that year's maintenance rather than\n    the whole of it, which is the second thing the finer grid changes on this product.\n\n    **The commission is not in here.**  It is a separate line of the notes' cash flow\n    statement and a separate column of :func:`result_cf`, and :func:`net_cf` subtracts each\n    once.\n\n    Nor are the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation\n    are deductions from the policyholder's account and hence insurer **income**.  This\n    cells is therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and\n    those three move :func:`net_cf` only through the smaller annuity that a smaller fund\n    buys at *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.\n    \"\"\"\n    if t < 0 or t >= proj_len():\n        return 0.0\n    row = tariff_charges()\n    infl = (1.0 + float(row[\"expense_infl\"])) ** proj_year(t)\n    out = 0.0\n    if t == 0 and int(model_point()[\"duration_init\"]) == 0:\n        out += float(row[\"acq_expense_pp\"]) * pols_if_init()\n    if t < ret_t():\n        out += float(row[\"maint_expense_pp\"]) / 12.0 * infl * pols_if(t)\n    else:\n        out += (float(row[\"annuity_admin_pp\"]) / 12.0 * infl\n                * (pols_if(t) + pols_gtd(t)))\n    return out"
+  }
+ },
+ "notes": [],
+ "spec": "# Basis_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1225: t = 0..proj_len(): result loops range(proj_len()) and check_pols_roll_fwd reads pols_if(t+1)\n#     at t=proj_len()-1 (line 1807); av roll-forward reads mort_rate(12*k) with k up to proj_len_y() (line\n#     1843) -> t = 12*proj_len_y() = proj_len(). Max t = 1224 -> bound 1225.\n#   k < 103: projection year k = 0..proj_len_y(): result_cf_annual/checks loop range(proj_len_y()) (lines\n#     1854,1891,1968,2037) and check_av_roll_fwd_resid reads av_at(k+1, BEF_PREM) (line 1843). proj_len_y max\n#     = 121-20+1 = 102 -> max k 102 -> bound 103. Table lookups by k clamp (surplus_table min(max(k,0),max)\n#     line 1236; behaviour_table min(duration_y(k)+1, max) line 744).\n#   x < 122: mort_rate_at_age(x, y) reads data.mort_table().loc[x] unclamped (line 946); mort_table.csv age\n#     keys 20..121; mort_rate short-circuits to 1.0 at age >= omega_age() (line 986). Bound 121+1 = 122.\n{'cells_param_size': {'t': 1225, 'k': 103, 'x': 122}}\n"
+}

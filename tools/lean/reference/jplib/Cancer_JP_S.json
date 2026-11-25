@@ -1,0 +1,180 @@
+{
+ "model": "Cancer_JP_S",
+ "lib": "jplib",
+ "product": "cancer",
+ "families": {
+  "Chassis": [
+   [
+    "shushin",
+    0
+   ],
+   [
+    "teiki",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremPeriod": [
+   [
+    "whole_life",
+    0
+   ],
+   [
+    "to_65",
+    1
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "semiannual",
+    1
+   ],
+   [
+    "annual",
+    2
+   ]
+  ],
+  "WaiverTrigger": [
+   [
+    "cancer_diag",
+    0
+   ],
+   [
+    "disability",
+    1
+   ],
+   [
+    "none",
+    2
+   ]
+  ],
+  "StayBasis": [
+   [
+    "all_ages",
+    0
+   ],
+   [
+    "age_band",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DIAG",
+    0
+   ],
+   [
+    "INSITU",
+    1
+   ],
+   [
+    "HOSP",
+    2
+   ],
+   [
+    "SURGERY",
+    3
+   ],
+   [
+    "TREAT",
+    4
+   ],
+   [
+    "OUTPATIENT",
+    5
+   ],
+   [
+    "ADVANCED",
+    6
+   ],
+   [
+    "DISCHARGE",
+    7
+   ],
+   [
+    "LAPSE",
+    8
+   ],
+   [
+    "ALL",
+    9
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "chassis": "Chassis",
+   "hosp_stay_basis": "StayBasis",
+   "prem_mode": "PremMode",
+   "prem_period_type": "PremPeriod",
+   "sex": "Sex",
+   "waiver_trigger": "WaiverTrigger"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "hosp_stay_schedule": [
+    "hosp_stay_days"
+   ],
+   "hosp_stay_basis": [
+    "hosp_stay_schedule"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "hosp_stay_schedule": "def hosp_stay_schedule():\n    \"\"\"The mean-stay rows of the model's basis, keyed by age_from.\"\"\"\n    return data.hosp_stay_table().loc[hosp_stay_basis()]",
+   "hosp_stay_days": "def hosp_stay_days(t):\n    \"\"\"L: the mean cancer hospitalisation in days.\n\n    14.4 days for 悪性新生物 discharges against 28.4 for all conditions, all ages, from 患者調査.\n    With ``hosp_age_gradient`` on, the sourced four-band gradient — 10.7 at 35-64, 15.5 at\n    65+, 17.6 at 75+ — is read instead; the base run takes the all-ages figure **[std]**\n    because the gradient is published on four broad bands and the incidence on twenty-one\n    narrow ones.\n    \"\"\"\n    sub = hosp_stay_schedule()\n    return float(sub.loc[sub.index.asof(age(t)), \"days\"])",
+   "hosp_stay_basis": "def hosp_stay_basis():\n    \"\"\"The mean-stay basis chosen by ``hosp_age_gradient``: the age bands or all ages.\"\"\"\n    return StayBasis.age_band if hosp_age_gradient else StayBasis.all_ages"
+  }
+ },
+ "notes": [],
+ "spec": "# Cancer_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1190: need_max 1188; max index 1188 via pols_if(t+1) in pols_if_at(AFT_DECR):1041 and\n#     check_pols_roll_fwd_resid:1502, pols_cancer(t+1):1525; exclusive 1189 + 1 spare\n{'cells_param_size': {'t': 1190}}\n"
+}

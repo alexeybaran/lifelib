@@ -1,0 +1,178 @@
+{
+ "model": "WP_UK_S",
+ "lib": "uklib",
+ "product": "with_profits",
+ "families": {
+  "Chassis": [
+   [
+    "UWP_bond",
+    0
+   ],
+   [
+    "CWP_endowment",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "TaxBasis": [
+   [
+    "life_net",
+    0
+   ],
+   [
+    "pension_gross",
+    1
+   ]
+  ],
+  "AsTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "BEF_RETURN",
+    1
+   ],
+   [
+    "AFT_RETURN",
+    2
+   ],
+   [
+    "AFT_CHARGE",
+    3
+   ],
+   [
+    "AFT_ST",
+    4
+   ],
+   [
+    "AFT_MC",
+    5
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_SURR",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "ClaimKind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "SURRENDER",
+    1
+   ],
+   [
+    "GUARANTEE",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "SURRENDER",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "asset_share_at": {
+    "1": [
+     "AsTiming",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "smoothing_cost_pp": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "chassis": "Chassis",
+   "sex": "Sex",
+   "tax_basis": "TaxBasis"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_rate"
+   ],
+   "lapse_schedule": [
+    "surr_rate_base"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates of the policy's sex, by age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q(x + duration(t)): the **annual** best-estimate mortality rate **[std]**.\n\n    The shipped table rate times ``mort_be_factor``, entered at an attained age that\n    advances on the policy anniversary, so the rate is level across a policy year.  Both\n    are placeholders: CMI tables issued after March 2013 are subscriber-restricted, so\n    the table is an ONS-shaped proxy and the factor a crude allowance for population\n    mortality being heavier than insured experience.  :func:`mort_rate_mth` is what the\n    projection decrements and charges by.\n    \"\"\"\n    x = min(age(t), omega_age)                                       # noqa: F821\n    return min(1.0, float(mort_schedule().loc[x, \"mort_rate\"]) * mort_be_factor)",
+   "lapse_schedule": "def lapse_schedule():\n    \"\"\"The surrender rates of the policy's chassis, by policy year.\"\"\"\n    return data.lapse_table().loc[chassis()]",
+   "surr_rate_base": "def surr_rate_base(t):\n    \"\"\"The table **annual** surrender rate applying in month t **[std]**.\n\n    Read from the chassis's own row of the lapse table, whose key is the **contractual\n    policy year** - a 1-based label, so month t reads row ``policy_year(t)``; policy\n    years beyond the table take its last row.  A drafting construction: no public UK\n    with-profits lapse experience was retrieved.\n    \"\"\"\n    tbl = lapse_schedule()\n    y = min(policy_year(t), int(tbl.index.max()))\n    return float(tbl.loc[y, \"lapse_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# WP_UK_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a\n# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):\n#   t < 1236: need_max 1224 + t+1 offset -> 1225 required; +12 margin => 1236. bonus_rate offset (t ->\n#     12*(t//12)+11) stays inside the year, i.e. <= horizon-1 since horizon is a multiple of 12.\n{'cells_param_size': {'t': 1236}}\n"
+}

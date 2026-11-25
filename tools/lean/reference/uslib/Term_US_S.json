@@ -1,0 +1,100 @@
+{
+ "model": "Term_US_S",
+ "lib": "uslib",
+ "product": "term_life",
+ "families": {
+  "Plan": [
+   [
+    "T10",
+    0
+   ],
+   [
+    "T20",
+    1
+   ],
+   [
+    "T30",
+    2
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "A",
+    0
+   ],
+   [
+    "SA",
+    1
+   ],
+   [
+    "Q",
+    2
+   ],
+   [
+    "M",
+    3
+   ]
+  ],
+  "RateClass": [
+   [
+    "PPlusNT",
+    0
+   ],
+   [
+    "PNT",
+    1
+   ],
+   [
+    "StdNT",
+    2
+   ],
+   [
+    "StdTob",
+    3
+   ]
+  ]
+ },
+ "params": {},
+ "ref_returns": {
+  "Projection": {
+   "plan": "Plan",
+   "premium_mode": "PremiumMode",
+   "rate_class": "RateClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "plan_term_years": [
+    "policy_term"
+   ],
+   "premium_schedule": [
+    "premium_pp_ann"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "plan_term_years": "def plan_term_years():\n    \"\"\"The level premium period in years of the policy's plan code (D31: one branch per member).\"\"\"\n    if plan() == Plan.T10:\n        return 10\n    elif plan() == Plan.T20:\n        return 20\n    elif plan() == Plan.T30:\n        return 30\n    else:\n        raise ValueError(\"invalid plan\")",
+   "policy_term": "def policy_term():\n    \"\"\"The level premium period in years, from the plan code.\"\"\"\n    return plan_term_years()",
+   "premium_schedule": "def premium_schedule():\n    \"\"\"The premium rates of this policy's plan, sex, class and band, by policy year.\"\"\"\n    return data.premium_rates().loc[(plan(), sex(), rate_class(), band())]",
+   "premium_pp_ann": "def premium_pp_ann(t):\n    \"\"\"AP(t): the guaranteed **annualized** gross premium per policy, fee included.\n\n    The notes' ``AP``, looked up in ``premium_rates.csv`` at ``policy_year(t)``. It is\n    the base for the jump ratio and the conversion credit, neither of which should move\n    with the premium mode; :func:`premium_pp` is what is actually collected in month t,\n    and it is that instalment — not ``AP`` — that :func:`commissions` and\n    :func:`premium_taxes` are charged on.\n    \"\"\"\n    sub = premium_schedule()\n    return float(sub.loc[policy_year(t), \"premium_pp\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# Term_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 937: need_max 924 + largest forward offset 12 (conv_elig(t+12), Projection/__init__.py:497) + 1\n#     margin (t = proj_len terminal) = 937\n#   d < 68: plt_mort_factor(d) (Projection/__init__.py:390), d = policy_year(t) - policy_term(), called only\n#     when d >= 1 (line 418). Max policy_year = 95-18 = 77, min level term 10 (plan_term_years line 238):\n#     d_max = 67, bound 68\n{'cells_param_size': {'t': 937, 'd': 68}}\n"
+}

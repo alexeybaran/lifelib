@@ -1,0 +1,146 @@
+{
+ "model": "TD_FR_S",
+ "lib": "frlib",
+ "product": "temporaire_deces",
+ "families": {
+  "PremiumForm": [
+   [
+    "revisable",
+    0
+   ],
+   [
+    "constante",
+    1
+   ]
+  ],
+  "BenefitShape": [
+   [
+    "constant",
+    0
+   ],
+   [
+    "decreasing",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "N",
+    0
+   ],
+   [
+    "S",
+    1
+   ]
+  ],
+  "PremFreq": [
+   [
+    "annual",
+    0
+   ],
+   [
+    "half_yearly",
+    1
+   ],
+   [
+    "quarterly",
+    2
+   ],
+   [
+    "monthly",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "PTIA",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "benefit_shape": "BenefitShape",
+   "prem_freq": "PremFreq",
+   "premium_form": "PremiumForm",
+   "sex": "Sex",
+   "smoker": "Smoker"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "premium_rate_schedule": [
+    "prem_rate"
+   ],
+   "benefit_schedule_rows": [
+    "benefit_factor"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "premium_rate_schedule": "def premium_rate_schedule():\n    \"\"\"The tariff rates of the policy's rate card, by attained age.\"\"\"\n    return data.premium_rate_table().loc[premium_rate_id()]",
+   "prem_rate": "def prem_rate(t):\n    \"\"\"r(x): the tariff rate at the attained age of month t's policy year, as a fraction of SA.\n\n    Re-read on the **anniversary only**: it is a function of ``age(t)``, which steps at\n    the anniversary, so it is constant across the twelve months of a policy year.\n\n    A **table lookup and nothing else**.  The published grid steps +38 % from age 59 to 60\n    against a trend of about +8 % a year, and a fitted curve smooths that step away — so\n    ``prem_rate(24)/prem_rate(12) = 1.56/1.13 = 1.380531`` on the worked configuration —\n    the third policy year against the second — is a test of the premium engine, not a\n    coincidence.\n\n    ``tariff_drift`` multiplies the card by ``(1 + drift)^duration(t)`` and is 0 in the\n    base run: two of the eight retrieved carriers reserve an express right to reprice the\n    class for experience, but freezing the card at its vintage is what keeps the base run\n    reproducible from cited data alone.  The exponent is **completed policy years** and\n    not months, because a re-rating of the card is an annual act; the rate is therefore\n    flat across the twelve months of a policy year, like everything else contractual\n    here.  The grid itself is a 2019-2021 edition — use it for shape, not for level.\n    \"\"\"\n    sub = premium_rate_schedule()\n    base = float(sub.loc[age(t), \"prem_rate\"])\n    return base * (1.0 + tariff_drift) ** duration(t)",
+   "benefit_schedule_rows": "def benefit_schedule_rows():\n    \"\"\"The benefit factors of the policy's schedule, by policy year.\"\"\"\n    return data.benefit_schedule().loc[benefit_schedule_id()]",
+   "benefit_factor": "def benefit_factor(t):\n    \"\"\"The benefit schedule factor of month t's policy year, from *benefit_schedule.csv*.\n\n    1.0 in every year on the ``constant`` schedule, the only one shipped.  The file is\n    keyed by the **contractual policy year**, 1 to 57, so the lookup maps through\n    :func:`policy_year` — months ``t = 0 ... 11`` read the file's policy year 1 — and\n    policy years beyond the table take its last row.  The schedule is a contract term and\n    steps on the anniversary, never within a year.  A model point naming a schedule the file\n    does not carry fails here, which is the honest failure: the schedule is missing, not\n    the formula.\n    \"\"\"\n    rows = benefit_schedule_rows()\n    return float(rows.loc[\n        min(policy_year(t), int(rows.index.max())), \"benefit_factor\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# TD_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 686: need_max 684; pols_if(t+1) in check_pols_roll_fwd_resid/check_decrement_closure_resid -> max t = 684 ->\n#   y < 58: policy year y in range(proj_len_y()) (tariff_annuity :849), max 56 -> 57 exclusive, +1 margin;\n#     prem_tariff_pp(12*y) <= 672\n{'cells_param_size': {'t': 686, 'y': 58}}\n"
+}

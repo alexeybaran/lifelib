@@ -1,0 +1,264 @@
+{
+ "model": "MYGA_US_S",
+ "lib": "uslib",
+ "product": "fixed_deferred_annuity",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Renewal": [
+   [
+    "rollover",
+    0
+   ],
+   [
+    "annual_redeclare",
+    1
+   ]
+  ],
+  "FreeRule": [
+   [
+    "pct_av",
+    0
+   ],
+   [
+    "interest_only",
+    1
+   ]
+  ],
+  "MgsvWithdrawal": [
+   [
+    "gross",
+    0
+   ],
+   [
+    "net_of_charges",
+    1
+   ]
+  ],
+  "MvaFamily": [
+   [
+    "linear_duration",
+    0
+   ],
+   [
+    "geometric",
+    1
+   ],
+   [
+    "declared_differential",
+    2
+   ]
+  ],
+  "Cap": [
+   [
+    "none",
+    0
+   ],
+   [
+    "sym_sc",
+    1
+   ],
+   [
+    "min_sc_interest",
+    2
+   ],
+   [
+    "asym_sc_snfl",
+    3
+   ],
+   [
+    "gmir_floor",
+    4
+   ]
+  ],
+  "Schedule": [
+   [
+    "initial",
+    0
+   ],
+   [
+    "renewal",
+    1
+   ],
+   [
+    "none",
+    2
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_WD",
+    0
+   ],
+   [
+    "BEF_INV",
+    1
+   ],
+   [
+    "EOM",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_MORT",
+    1
+   ],
+   [
+    "BEF_LAPSE",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "ANNUITIZATION",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ],
+  "RateColumn": [
+   [
+    "mva_ref_yield",
+    0
+   ],
+   [
+    "market_rate",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claim_from_av_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims_over_av": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_decr": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "scenario_rate": {
+    "1": [
+     "RateColumn",
+     "field"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "free_wd_rule": "FreeRule",
+   "mgsv_wd_convention": "MgsvWithdrawal",
+   "mva_cap_rule": "Cap",
+   "mva_family": "MvaFamily",
+   "renewal_architecture": "Renewal",
+   "sex": "Sex",
+   "surr_charge_id": "Schedule"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "scenario_table": [
+    "scenario_rate"
+   ],
+   "has_withdrawals": [
+    "wd_scheduled_pp"
+   ],
+   "withdrawal_rows": [
+    "wd_scheduled_pp"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "scenario_table": "def scenario_table():\n    \"\"\"The rate scenario selected for this policy.\"\"\"\n    return data.rate_scenario().loc[scenario_id()]",
+   "scenario_rate": "def scenario_rate(t, field):\n    \"\"\"Step-function lookup of column ``name`` in the model point's rate scenario.\n\n    Each row of *rate_scenario.csv* states the level that holds from its own month ``t``\n    until the next row of the same scenario, so a flat path is one row at ``t = 0``.\n    \"\"\"\n    sub = scenario_table()\n    if field == RateColumn.mva_ref_yield:\n        return float(sub.loc[sub.index.asof(t), \"mva_ref_yield\"])\n    elif field == RateColumn.market_rate:\n        return float(sub.loc[sub.index.asof(t), \"market_rate\"])\n    else:\n        raise ValueError(\"invalid rate column\")",
+   "has_withdrawals": "def has_withdrawals():\n    \"\"\"Whether the withdrawal table has rows for the model point's withdrawal programme.\"\"\"\n    return wd_schedule_id() in data.withdrawal_table().index",
+   "wd_scheduled_pp": "def wd_scheduled_pp(t):\n    \"\"\"The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.\n\n    An exact-key lookup on ``(wd_schedule_id, t)`` with ``t`` the 0-based policy month.\n    \"\"\"\n    if not has_withdrawals():\n        return 0.0\n    rows = withdrawal_rows()\n    m = t\n    return float(rows.loc[m, \"wd_amount\"]) if m in rows.index else 0.0",
+   "withdrawal_rows": "def withdrawal_rows():\n    \"\"\"The model point's scheduled withdrawals (only read when has_withdrawals()).\"\"\"\n    return data.withdrawal_table().loc[wd_schedule_id()]"
+  }
+ },
+ "notes": [],
+ "spec": "# MYGA_US_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a\n# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):\n#   t < 1202: need_max 1200 + 1 (pols_if(t+1) in av_at EOM line 1518 and check_pols_roll_fwd_resid line 1584) + 1\n#     margin = 1202. free_wd_base calls av_pp_at(12*(y-1)) <= 1188, inside\n#   y < 101: contract year policy_year(t) (callers lines 671, 771) <= 1199//12 + 1 = 100, +1 = 101\n{'cells_param_size': {'t': 1202, 'y': 101}}\n"
+}

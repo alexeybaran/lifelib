@@ -1,0 +1,193 @@
+{
+ "model": "CI_UK_S",
+ "lib": "uklib",
+ "product": "critical_illness",
+ "families": {
+  "ContractType": [
+   [
+    "accelerated",
+    0
+   ],
+   [
+    "standalone",
+    1
+   ]
+  ],
+  "LifeBasis": [
+   [
+    "single",
+    0
+   ],
+   [
+    "joint_first_event",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "NS",
+    0
+   ],
+   [
+    "S",
+    1
+   ]
+  ],
+  "CoverBasis": [
+   [
+    "level",
+    0
+   ]
+  ],
+  "PremiumGuarantee": [
+   [
+    "guaranteed",
+    0
+   ],
+   [
+    "reviewable",
+    1
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "annual",
+    1
+   ]
+  ],
+  "RateColumn": [
+   [
+    "i_ci",
+    0
+   ],
+   [
+    "q_d",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "BenefitKind": [
+   [
+    "MAIN",
+    0
+   ],
+   [
+    "AP",
+    1
+   ],
+   [
+    "CHILD",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "MAIN",
+    0
+   ],
+   [
+    "AP",
+    1
+   ],
+   [
+    "CHILD",
+    2
+   ],
+   [
+    "LAPSE",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "benefit_pp": {
+    "1": [
+     "BenefitKind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pivot_interp": {
+    "1": [
+     "Sex",
+     "sex_"
+    ],
+    "2": [
+     "Smoker",
+     "smoker_"
+    ],
+    "3": [
+     "RateColumn",
+     "column"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "contract_type": "ContractType",
+   "cover_basis": "CoverBasis",
+   "life_basis": "LifeBasis",
+   "premium_guarantee": "PremiumGuarantee",
+   "premium_mode": "PremiumMode",
+   "sex": "Sex",
+   "smoker": "Smoker"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "sex": "Sex",
+   "smoker": "Smoker"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# CI_UK_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a\n# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):\n#   t < 612: need_max 600 + max offset t+1 (pols_if(proj_len) read at t=proj_len-1) = 601 required; +12 one-year\n#     margin => 612.\n#   x < 76: pivot_interp(x,...) receives age(t, life) = age_at_entry + t//12 (Projection:433,438). Max attained age:\n#     policy ends by 75th birthday (product-spec.md:83) so ANB age in last year <= 74 -> 75 exclusive; +1 margin =\n#     76. Note pivot_interp extrapolates beyond ci_rate_table.csv pivots, so no table key caps it.\n{'cells_param_size': {'t': 612, 'x': 76}}\n"
+}

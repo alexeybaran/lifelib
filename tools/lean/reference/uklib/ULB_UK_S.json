@@ -1,0 +1,131 @@
+{
+ "model": "ULB_UK_S",
+ "lib": "uklib",
+ "product": "unit_linked_bond",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Lives": [
+   [
+    "single",
+    0
+   ]
+  ],
+  "WdPattern": [
+   [
+    "none",
+    0
+   ],
+   [
+    "allowance_5pct",
+    1
+   ],
+   [
+    "custom",
+    2
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_GROWTH",
+    0
+   ],
+   [
+    "AFT_GROWTH",
+    1
+   ],
+   [
+    "AFT_CHARGE",
+    2
+   ],
+   [
+    "AFT_WD",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_SURR",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "SURRENDER",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "lives": "Lives",
+   "sex": "Sex",
+   "wd_pattern": "WdPattern"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates of the policy's sex, by age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q_a: the annual best-estimate mortality rate at the attained age **[std]**.\n\n    The shipped table rate times ``mort_be_factor``, a crude allowance for\n    population mortality being heavier than insured-lives experience.  Nearly irrelevant\n    to this product unless the guaranteed minimum death benefit rider is enabled.\n    \"\"\"\n    x = min(age(t), omega_age)                                       # noqa: F821\n    return min(1.0, float(mort_schedule().loc[x, \"mort_rate\"]) * mort_be_factor)"
+  }
+ },
+ "notes": [],
+ "spec": "# ULB_UK_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1236: need_max 1224 + t+1 offset (pols_if(proj_len)) -> 1225 required; +12 margin => 1236.\n{'cells_param_size': {'t': 1236}}\n"
+}

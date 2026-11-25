@@ -1,0 +1,249 @@
+{
+ "model": "ULSG_US_S",
+ "lib": "uslib",
+ "product": "guaranteed_ul",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RateClass": [
+   [
+    "PPlusNT",
+    0
+   ],
+   [
+    "PNT",
+    1
+   ],
+   [
+    "StdPlusNT",
+    2
+   ],
+   [
+    "StdNT",
+    3
+   ],
+   [
+    "PTob",
+    4
+   ],
+   [
+    "StdTob",
+    5
+   ]
+  ],
+  "PremiumType": [
+   [
+    "SINGLE",
+    0
+   ],
+   [
+    "TEN_PAY",
+    1
+   ],
+   [
+    "LEVEL",
+    2
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "A",
+    0
+   ],
+   [
+    "S",
+    1
+   ],
+   [
+    "Q",
+    2
+   ],
+   [
+    "M",
+    3
+   ]
+  ],
+  "Timing": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "BEF_WD",
+    1
+   ],
+   [
+    "BEF_FEE",
+    2
+   ],
+   [
+    "BEF_COI",
+    3
+   ],
+   [
+    "BEF_INV",
+    4
+   ],
+   [
+    "EOM",
+    5
+   ]
+  ],
+  "LoanTiming": [
+   [
+    "BEF_INT",
+    0
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_MAT",
+    0
+   ],
+   [
+    "BEF_NB",
+    1
+   ],
+   [
+    "BEF_DECR",
+    2
+   ]
+  ],
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "REFUND",
+    2
+   ],
+   [
+    "WITHDRAWAL",
+    3
+   ],
+   [
+    "GRACE",
+    4
+   ],
+   [
+    "MATURITY",
+    5
+   ],
+   [
+    "ALL",
+    6
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "loan_bal_pp_at": {
+    "1": [
+     "LoanTiming",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "sg_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "premium_mode": "PremiumMode",
+   "premium_type": "PremiumType",
+   "rate_class": "RateClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "prem_persistency_override": [
+    "has_prem_persistency_override",
+    "prem_persistency"
+   ],
+   "has_prem_persistency_override": [
+    "prem_persistency"
+   ],
+   "wd_pp_amount": [
+    "wd_pp"
+   ],
+   "surr_charge_init": [
+    "surr_charge_rate"
+   ],
+   "surr_charge_runoff_years": [
+    "surr_charge_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "prem_persistency_override": "def prem_persistency_override():\n    \"\"\"The model point's premium persistency override; blank (NaN) when there is none.\"\"\"\n    return model_point()[\"prem_persistency_override\"]",
+   "has_prem_persistency_override": "def has_prem_persistency_override():\n    \"\"\"Whether the model point carries a premium persistency override (D64: the missing-value test, per policy).\"\"\"\n    return not pd.isna(prem_persistency_override())",
+   "prem_persistency": "def prem_persistency(t):\n    \"\"\"phi_t: the probability the scheduled premium is actually paid **[std]**.\n\n    98% a year for a level payer, 100% for single-pay and ten-pay, which is what the\n    notes prescribe; a missed premium is never made up, so it permanently lowers the\n    shadow trajectory, and catch-up behaviour is not modelled in the base run.\n\n    The model point may override it, and the worked-example anchor overrides it to\n    1.00.  That is not a tuning: the notes' worked example is a contract-mechanics\n    view with the behavioural assumptions suppressed, and premium persistency is a\n    class (c) behavioural assumption.  The notes are also not self-consistent about\n    where phi belongs -- their cash flow list writes premium income as\n    ``l_t phi_t P_t`` while their step 2 credits ``(1 - pi) P_t`` to the account, which\n    would hand the account value more than the insurer received.  This model applies\n    phi once, to the premium actually received, so the account value, the shadow\n    account, the cumulative premium and the premium income all move together.\n    \"\"\"\n    o = prem_persistency_override()\n    if has_prem_persistency_override():\n        return float(o)\n    return prem_persistency_ann if premium_type() == PremiumType.LEVEL else 1.0",
+   "wd_pp_amount": "def wd_pp_amount():\n    \"\"\"The model point's constant monthly withdrawal amount.\"\"\"\n    return float(model_point()[\"wd_pp\"])",
+   "wd_pp": "def wd_pp(t):\n    \"\"\"W_t: the partial withdrawal per policy at BOM of policy month t.\n\n    Available after policy year 1 [S3] [S4] [S7] and not after attained age 121\n    **[std]**.  The amount is the constant monthly figure in the model point's\n    ``wd_pp`` column, **0 in every shipped model point**: the notes set utilisation\n    to zero in the base model and give no pattern, so the mechanics are implemented\n    and the behaviour is left to the data **[std]**.  A withdrawal reduces the account\n    value by the amount plus the fee and the shadow account dollar-for-dollar, with no\n    fee **[std]** (one observed design subtracts partial surrenders and their fees from\n    its guarantee measure [S4]).\n    \"\"\"\n    if duration_mth(t) < 12 * wd_first_year:                         # noqa: F821\n        return 0.0\n    if age(t) >= charges_cease_age:                                  # noqa: F821\n        return 0.0\n    return wd_pp_amount()",
+   "surr_charge_init": "def surr_charge_init():\n    \"\"\"The schedule's initial surrender charge per $1,000 of face.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return float(row[\"sc_per_1000_init\"])",
+   "surr_charge_rate": "def surr_charge_rate(t):\n    \"\"\"SC per $1,000 of initial face in policy month t **[std]**.\n\n    ``max(0, sc_init - (sc_init / runoff_years) x m / 12)`` where ``m`` is the notes'\n    own month index ``duration_mth(t) + 1`` -- the current month counts.  With the\n    shipped 15-year schedule at $18 per $1,000 this is the spec's\n    ``18 x max(0, (180 - m) / 180)``: $17.90 in the issue month, zero from the last\n    month of policy year 15.  Reading the notes' month index as ``duration_mth(t)``\n    would shift the entire run-off by a month.\n    \"\"\"\n    if not has_surr_charge():\n        return 0.0\n    init = surr_charge_init()\n    yrs = surr_charge_runoff_years()\n    m = duration_mth(t) + 1\n    return max(0.0, init - (init / yrs) * (m / 12))",
+   "surr_charge_runoff_years": "def surr_charge_runoff_years():\n    \"\"\"The schedule's run-off period in years.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return float(row[\"runoff_years\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# ULSG_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1238: need_max 1236 + 1 (av_at(t+1, BEF_PREM) line 1166/2065; is_lapsed(t+1) in pols_lapse_grace\n#     line 1715) + 1 margin = 1238\n{'cells_param_size': {'t': 1238}}\n"
+}

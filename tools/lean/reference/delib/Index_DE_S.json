@@ -1,0 +1,198 @@
+{
+ "model": "Index_DE_S",
+ "lib": "delib",
+ "product": "indexpolice",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremForm": [
+   [
+    "level",
+    0
+   ],
+   [
+    "single",
+    1
+   ]
+  ],
+  "PremFreq": [
+   [
+    "annual",
+    0
+   ],
+   [
+    "half_yearly",
+    1
+   ],
+   [
+    "quarterly",
+    2
+   ],
+   [
+    "monthly",
+    3
+   ]
+  ],
+  "PayoffForm": [
+   [
+    "cap",
+    0
+   ],
+   [
+    "quote",
+    1
+   ]
+  ],
+  "AnnOption": [
+   [
+    "annuity",
+    0
+   ],
+   [
+    "cash",
+    1
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_CHARGE",
+    2
+   ],
+   [
+    "AFT_GUAR",
+    3
+   ],
+   [
+    "AFT_CREDIT",
+    4
+   ]
+  ],
+  "PolsTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DEATH",
+    1
+   ],
+   [
+    "AFT_LAPSE",
+    2
+   ]
+  ],
+  "ClaimKind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_min_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolsTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "ann_option": "AnnOption",
+   "payoff_form": "PayoffForm",
+   "prem_form": "PremForm",
+   "prem_freq": "PremFreq",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "election_schedule": [
+    "elect_index"
+   ],
+   "index_return_schedule": [
+    "index_return"
+   ],
+   "index_param_schedule": [
+    "index_cap",
+    "index_quote"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "election_schedule": "def election_schedule():\n    \"\"\"The Wahlrecht path of this policy's elect_id, by policy year.\"\"\"\n    return data.election_table().loc[elect_id()]",
+   "elect_index": "def elect_index(k):\n    \"\"\"``w(k)``: the fraction of year k's declared surplus directed to the index arm.\n\n    The *Wahlrecht*, read from this policy's election path.  A fraction in [0, 1] rather\n    than a flag, because some tariffs permit a partial election and all-or-nothing is then\n    the special case ``w in {0, 1}``.  It is a **behavioural** assumption and not a\n    contractual one: whether real policyholders revisit the election at all is not\n    established, and ``always_index`` is a modelling choice made so that the base run\n    demonstrates the index mechanic rather than a claim about behaviour.\n    \"\"\"\n    sub = election_schedule()\n    return float(sub.loc[k, \"w\"])",
+   "index_return_schedule": "def index_return_schedule():\n    \"\"\"The monthly index returns of this policy's index_id, by policy year.\"\"\"\n    return data.index_return_table().loc[index_id()]",
+   "index_return": "def index_return(k, m):\n    \"\"\"``r(k, m)``: the index return of month m of *Indexjahr* k, as a decimal.\n\n    Read from row ``(index_id(), k)`` of *index_return_table.csv*, column ``m01`` ...\n    ``m12``.  The *Indexjahr* is aligned with the policy year **[std]**: the contractual\n    *Indexstichtag* need not fall on the policy anniversary, no carrier's convention was\n    established, and an annual-grid model has no other defensible alignment.\n    \"\"\"\n    sub = index_return_schedule()\n    if m == 1:\n        return float(sub.loc[k, \"m01\"])\n    elif m == 2:\n        return float(sub.loc[k, \"m02\"])\n    elif m == 3:\n        return float(sub.loc[k, \"m03\"])\n    elif m == 4:\n        return float(sub.loc[k, \"m04\"])\n    elif m == 5:\n        return float(sub.loc[k, \"m05\"])\n    elif m == 6:\n        return float(sub.loc[k, \"m06\"])\n    elif m == 7:\n        return float(sub.loc[k, \"m07\"])\n    elif m == 8:\n        return float(sub.loc[k, \"m08\"])\n    elif m == 9:\n        return float(sub.loc[k, \"m09\"])\n    elif m == 10:\n        return float(sub.loc[k, \"m10\"])\n    elif m == 11:\n        return float(sub.loc[k, \"m11\"])\n    elif m == 12:\n        return float(sub.loc[k, \"m12\"])\n    else:\n        raise ValueError(\"invalid month\")",
+   "index_param_schedule": "def index_param_schedule():\n    \"\"\"The Cap and Quote of this policy's index_id, by policy year.\"\"\"\n    return data.index_param_table().loc[index_id()]",
+   "index_cap": "def index_cap(k):\n    \"\"\"``C(k)``: the monthly Cap of *Indexjahr* k.\n\n    3.00 % on the equity path **[std]**, the midpoint of an argued 1.5-5.0 % band that no\n    carrier document could confirm; 6.00 % on the low-volatility house path, which is\n    cheaper to buy options on.  The Cap is fixed before the *Indexjahr* begins and is then\n    binding for its whole length.\n\n    **It is not a marketing parameter but the solution of a pricing equation**: given the\n    option budget, the index's implied volatility and dividend yield and the risk-free\n    rate, there is exactly one Cap at which the twelve-month capped-sum payoff costs the\n    budget.  That is why caps move from year to year with no change in the contract, and it\n    is why the Cap and :func:`surplus_rate` may not be chosen independently — see\n    :func:`index_budget_ratio`.\n    \"\"\"\n    sub = index_param_schedule()\n    return float(sub.loc[k, \"cap\"])",
+   "index_quote": "def index_quote(k):\n    \"\"\"``q(k)``: the *Partizipationsquote* of *Indexjahr* k, used by the ``quote`` design.\n\n    60 % on the equity path and 100 % on the house path **[std]**.  A participation rate\n    near or above 100 % on a volatility-targeted index is not generosity: it is what the\n    same budget buys when the underlying is engineered to be cheap, and it moves the\n    give-up from somewhere the purchaser can see to somewhere they cannot.\n    \"\"\"\n    sub = index_param_schedule()\n    return float(sub.loc[k, \"quote\"])",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The death rates of this policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"``q_d(t)``: the **annual** death rate at the attained age of month t.\n\n    A **[std]** Gompertz proxy anchored at ``qx(M, 40) = 0.001200``; DAV 2008 T and DAV\n    2004 R are proprietary and are cited by name rather than shipped.  Mortality here is a\n    **timing** assumption: the death benefit is the account value with a floor, not a sum\n    at risk, so the rate decides when capital leaves and hardly at all how much.\n\n    The **annual** rate, flat across a policy year because the attained age steps on the\n    anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.\n    \"\"\"\n    sub = mort_schedule()\n    return float(sub.loc[age(t), \"qx\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# Index_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 481: t = t_start()..proj_len(): loops range(t_start(), proj_len()) (lines 1688,1758,1866) and\n#     check_pols_roll_fwd_resid reads pols_if(t+1) at t = proj_len()-1 (line 1744). Max t = 480 -> bound 481\n#     (product-spec-only envelope: 540+1 = 541).\n#   k < 41: policy/index year k = k_start()..proj_len_y(): loops range(k_start(), proj_len_y()) (lines\n#     1726-1913) plus av(k+1) (lines 1173,1714) and guar_cap_pp(k+1) (line 1802) at k = proj_len_y()-1. Tables\n#     keyed k 0..39 (surplus_rate_table.csv / election_table.csv / index_return_table.csv /\n#     index_param_table.csv column t) -> max proj_len_y 40 -> max k 40 -> bound 41.\n{'cells_param_size': {'t': 481, 'k': 41}}\n"
+}

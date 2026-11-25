@@ -1,0 +1,89 @@
+{
+ "model": "WholeLife_JP_S",
+ "lib": "jplib",
+ "product": "whole_life",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "DividendType": [
+   [
+    "none",
+    0
+   ],
+   [
+    "five_year",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "BEF_SPIKE",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "dividend_type": "DividendType",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# WholeLife_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1179: need_max 1177; max index 1177 via pols_if(t+1) check_pols_roll_fwd_resid:1737,\n#     check_decrement_sum_resid:1775; exclusive 1178 + 1 spare\n#   n < 100: annuity_due(y,n) n <= prem_period years, 終身払 = proj_years 99 (prem_period:394); max 99 + 1\n#   y < 115: epv_death(y):847 recursion y+1 until y > omega_age (returns 0 at 114); annuity_due(y,n):860 y+1\n#     to x+n <= 114; mort_rate_at_age(y) reads <= 113 (mort_table.csv max 113); max y 114 + 1\n#   d < 101: anniversary d in range(proj_years()+1) (:1845,1972); proj_years:595 = 113-15+1 = 99; d+1 stays\n#     <= 99; exclusive 100 + 1 spare\n#   s < 100: APL cohort year s <= min(duration(t), prem_end()-1) (:1433,1447) <= proj_years-1 = 98;\n#     exclusive 99 + 1 spare\n#   u < 1179: u = t+1 <= 1177; exclusive 1178 + 1 spare\n{'cells_param_size': {'t': 1179, 'n': 100, 'y': 115, 'd': 101, 's': 100, 'u': 1179}}\n"
+}

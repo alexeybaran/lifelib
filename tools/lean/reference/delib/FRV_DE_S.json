@@ -1,0 +1,147 @@
+{
+ "model": "FRV_DE_S",
+ "lib": "delib",
+ "product": "fondsgebundene_rentenversicherung",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremForm": [
+   [
+    "laufend",
+    0
+   ],
+   [
+    "einmal",
+    1
+   ]
+  ],
+  "DbForm": [
+   [
+    "fund",
+    0
+   ],
+   [
+    "prem_return",
+    1
+   ],
+   [
+    "pct_fund",
+    2
+   ],
+   [
+    "sum_assured",
+    3
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_CHARGE",
+    0
+   ],
+   [
+    "AFT_CHARGE",
+    1
+   ],
+   [
+    "AFT_WD",
+    2
+   ],
+   [
+    "BEF_DECR",
+    3
+   ]
+  ],
+  "PolsTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DEATH",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolsTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "db_form": "DbForm",
+   "prem_form": "PremForm",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "fund_scenario": [
+    "fund_return_gross_ann",
+    "fund_ter_ann"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "fund_scenario": "def fund_scenario():\n    \"\"\"The fund scenario rows of this policy's scenario, by policy year.\"\"\"\n    return data.fund_scenario_table().loc[scenario_id()]",
+   "fund_return_gross_ann": "def fund_return_gross_ann(t):\n    \"\"\"The assumed **gross** annual fund return in month t, before the TER.\n\n    Read from ``fund_scenario_table.csv`` by ``(scenario_id, policy_year)``.  **[std]**\n    and a scenario rather than a forecast: nothing in this product's corpus supplies a\n    return, and PRIIPs deliberately does not — its scenarios are derived from an\n    underlying's own return history, so nothing here may be compared with one.\n\n    Where ``ablauf_flag`` is set, the *Ablaufmanagement* glide overrides it in the last\n    ``glide_months`` months with a linear ramp down to ``mmkt_return_ann``, reaching the\n    money-market rate exactly in the final month.\n    \"\"\"\n    sub = fund_scenario()\n    base = sub.loc[policy_year(t), \"gross_return_ann\"]\n    base = float(base)\n    if not ablauf_flag():\n        return base\n    remaining = (proj_len() - 1) - t\n    if remaining >= glide_months:                                    # noqa: F821\n        return base\n    step = (glide_months - remaining) / float(glide_months)          # noqa: F821\n    return base + (mmkt_return_ann - base) * step",
+   "fund_ter_ann": "def fund_ter_ann(t):\n    \"\"\"The fund's *TER* (*Gesamtkostenquote*) in month t, as an annual rate.\n\n    **A return item, never a policy charge.**  It is borne inside the *Anteilspreis* and\n    accrues to the fund manager, so it appears in no ``charge_*`` cells and in no\n    :func:`result_cf` column: the model nets it off the gross return instead.  Charging it\n    explicitly double-counts the fund's costs; ignoring it overstates the policyholder's\n    return.  0.45 % p.a. on the active composite fund, 0.15 % on the ETF.\n    \"\"\"\n    sub = fund_scenario()\n    return float(sub.loc[policy_year(t), \"ter_ann\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# FRV_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 601: t = proj_start()..proj_len(): loops range(proj_start(), proj_len()) (lines 1886-2094) plus\n#     units_pp(t+1) / pols_if(t+1) at t = proj_len()-1 (check_units_roll_fwd_resid line 1919,\n#     check_pols_roll_fwd_resid line 1990). Max t = 600 (table-limited, see need_source) -> bound 601.\n#     Product-spec envelope (no table limit) would give 804+1 = 805.\n#   x < 101: mort_rate_tariff_at_age(x) reads data.mort_table().loc[x, 'qx_tariff'] unclamped (line 1269);\n#     mort_table.csv ages 18..100 -> bound 100+1 = 101. Reachable x = age(t) = entry_age + policy_year(t) - 1\n#     (line 682) <= 85 (annuity_age max, product-spec.md:204).\n{'cells_param_size': {'t': 601, 'x': 101}}\n"
+}

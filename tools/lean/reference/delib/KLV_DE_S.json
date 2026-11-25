@@ -1,0 +1,206 @@
+{
+ "model": "KLV_DE_S",
+ "lib": "delib",
+ "product": "kapitallebensversicherung",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "N",
+    0
+   ],
+   [
+    "S",
+    1
+   ]
+  ],
+  "PremFreq": [
+   [
+    "annual",
+    0
+   ],
+   [
+    "half_yearly",
+    1
+   ],
+   [
+    "quarterly",
+    2
+   ],
+   [
+    "monthly",
+    3
+   ]
+  ],
+  "UnterjaehrigForm": [
+   [
+    "echt",
+    0
+   ],
+   [
+    "unecht",
+    1
+   ]
+  ],
+  "SurplusUse": [
+   [
+    "ansammlung",
+    0
+   ],
+   [
+    "bonus",
+    1
+   ],
+   [
+    "beitragsverrechnung",
+    2
+   ]
+  ],
+  "ResTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_INT",
+    2
+   ]
+  ],
+  "SurTiming": [
+   [
+    "BEF_INT",
+    0
+   ],
+   [
+    "AFT_INT",
+    1
+   ],
+   [
+    "AFT_CREDIT",
+    2
+   ]
+  ],
+  "PolsTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_MORT",
+    1
+   ],
+   [
+    "AFT_LAPSE",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "MATURITY",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_sur_at": {
+    "1": [
+     "SurTiming",
+     "timing"
+    ]
+   },
+   "av_sur_pp_at": {
+    "1": [
+     "SurTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolsTiming",
+     "timing"
+    ]
+   },
+   "res_pp_at": {
+    "1": [
+     "ResTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "prem_freq": "PremFreq",
+   "sex": "Sex",
+   "smoker": "Smoker",
+   "surplus_use": "SurplusUse",
+   "unterjaehrig_form": "UnterjaehrigForm"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "surplus_rates": [
+    "ans_rate",
+    "decl_rate",
+    "term_rate"
+   ],
+   "cost_row": [
+    "claim_expenses",
+    "commissions",
+    "expenses_pp",
+    "inflation_factor"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "surplus_rates": "def surplus_rates():\n    \"\"\"The declared surplus rates of this policy's scenario, by policy year.\"\"\"\n    return data.surplus_rate_table().loc[scenario_id()]",
+   "ans_rate": "def ans_rate(k):\n    \"\"\"a(k): the *Ansammlungszinssatz* in policy year k, from the scenario table.\n\n    2,70 % on the ``base`` path, set equal to the declared rate **[std]**.  That equality\n    matters for one reason: because ``ans_rate > rechnungszins``, the *verzinsliche\n    Ansammlung* out-accumulates the *Bonussystem* at maturity while the *Bonussystem* pays\n    more on an early death.  Setting it equal to the guarantee would destroy that asymmetry.\n    Keyed by the contractual, 1-based ``policy_year``, so the lookup goes through\n    :func:`policy_year`.\n    \"\"\"\n    sub = surplus_rates()\n    y = min(policy_year_y(k), int(sub.index.max()))\n    return float(sub.loc[y, \"ans_rate\"])",
+   "decl_rate": "def decl_rate(k):\n    \"\"\"d(k): the declared *laufende Verzinsung* in policy year k, from the scenario table.\n\n    The **total** declared rate - the *Garantieverzinsung* plus the *laufende\n    Zinsüberschussbeteiligung* - and not an increment over the guarantee.  2,70 % on the\n    ``base`` path, one carrier's 2026 rate for its classic endowment book held level for the\n    whole projection **[std]**; 1,20 % on ``low``; 0 on ``nil``.  It is\n    insurer-discretionary, revisable annually and **may be zero euros**, which is why it is a\n    scenario rather than an assumption.\n\n    The table is keyed by the **contractual, 1-based** ``policy_year``, so the lookup goes\n    through :func:`policy_year`, clamped at the table's last row.\n    \"\"\"\n    sub = surplus_rates()\n    y = min(policy_year_y(k), int(sub.index.max()))\n    return float(sub.loc[y, \"decl_rate\"])",
+   "term_rate": "def term_rate(k):\n    \"\"\"s(k): the *Schlussüberschussanteilsatz* in policy year k, from the scenario table.\n\n    0,40 % p.a. of the *Deckungskapital* on the ``base`` path **[std]** - **nothing in the\n    corpus fixes a terminal-bonus level, for any insurer, in any year**.  It accrues on the\n    same base as the interest surplus and is paid at the *Ablauf* and on death, and not on\n    surrender unless ``term_surr_share`` is raised.  Keyed by the contractual, 1-based\n    ``policy_year``, so the lookup goes through :func:`policy_year`.\n    \"\"\"\n    sub = surplus_rates()\n    y = min(policy_year_y(k), int(sub.index.max()))\n    return float(sub.loc[y, \"term_rate\"])",
+   "cost_row": "def cost_row():\n    \"\"\"The cost and commission assumptions of this policy's cost_id.\"\"\"\n    return data.cost_table().loc[cost_id()]",
+   "claim_expenses": "def claim_expenses(t):\n    \"\"\"The claim handling expense on the month's exits **[std]**.\n\n    120 € per death, maturity or surrender claim, uninflated.  Named separately because it is\n    the only expense line that scales with **claims** rather than with policies, and it is\n    inside :func:`expenses`.\n    \"\"\"\n    ce = float(cost_row()[\"claim_expense\"])\n    return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))",
+   "commissions": "def commissions(t):\n    \"\"\"Commission outgo in month t **[std]**, excluded from :func:`expenses`.\n\n    2,5 % of the *Beitragssumme* at conclusion - anchored to the 25 ‰ § 4 DeckRV ceiling and\n    to one carrier's reported 25 ‰, a single amount in month ``t_start()`` - plus a 1,5 %\n    *Bestandsprovision* on each *Bruttobeitrag* **instalment** from the second projected\n    policy year.  Neither term applies at ``t_start()`` on an in-force point: it was paid at\n    conclusion, long before the frame opens.\n\n    The **rate** is a policy-year rate and steps on the anniversary; the **base** is the\n    instalment actually charged, so a fractionated payer earns the renewal commission in\n    instalments too.  It is charged on :func:`prem_charged_inst_pp` and **not** on\n    :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff\n    premium, the surplus offset being a policyholder rebate rather than a price reduction.\n    \"\"\"\n    cost = cost_row()\n    init = (float(cost[\"comm_init_rate\"]) * beitragssumme() * pols_if(t)\n            if (t == t_start() and duration_init() == 0) else 0.0)\n    renew = (float(cost[\"comm_renew_rate\"]) * prem_charged_inst_pp(t) * pols_if(t)\n             if duration(t) > k_start() else 0.0)\n    return init + renew",
+   "expenses_pp": "def expenses_pp(t):\n    \"\"\"The per-policy expense in **month** t, in euros, excluding claim handling **[std]**.\n\n    The 300 € acquisition expense at issue - **only** in month ``t_start()`` and **only** for a\n    new-business point, an in-force point having incurred it long ago, and a single amount\n    rather than a twelfth of one - plus **one twelfth** of the 45 € annual maintenance\n    expense, inflated to the policy year the month falls in.  A policy that runs a full year\n    therefore carries the same annual maintenance charge it did on the annual grid, but it is\n    borne by the in-force of **each month** rather than of the anniversary, which is what makes\n    a decrementing block cost less.\n\n    All levels are placeholders: **no charge level of any kind was established for any German\n    carrier**, and the levels shipped are sized so that the first-year acquisition outgo\n    modestly exceeds what the *Zillmerung* recovers, so that the anchor cell carries the\n    new-business strain a real German endowment carries.\n    \"\"\"\n    cost = cost_row()\n    acq = (float(cost[\"acq_expense\"])\n           if (t == t_start() and duration_init() == 0) else 0.0)\n    return (acq + float(cost[\"maint_expense\"]) / 12.0\n            * inflation_factor(duration(t)))",
+   "inflation_factor": "def inflation_factor(k):\n    \"\"\"The expense inflation factor in policy year k: ``(1 + expense_infl)^k`` **[std]**.\n\n    Measured from **issue**, not from the valuation date, so an in-force model point opens on\n    the inflation its duration has already accumulated - and because ``k`` is the 0-based\n    year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.\n    1,8 % p.a. is a placeholder.\n    \"\"\"\n    infl = float(cost_row()[\"expense_infl\"])\n    return (1.0 + infl) ** k"
+  }
+ },
+ "notes": [],
+ "spec": "# KLV_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 481: t = t_start()..proj_len(): loops range(t_start(), proj_len()) (lines 2202-2486),\n#     check_pols_roll_fwd_resid reads pols_if(t+1) at t = proj_len()-1 (line 2215). Max t = 480 -> bound 481.\n#   k < 41: policy year k = k_start()..proj_len_y(): loops range(k_start(), proj_len_y()) (lines 2292-2549)\n#     plus res_pp(k+1)/res_zill_pp(k+1)/av_sur_pp(k+1)/bonus_si_pp(k+1) at k = proj_len_y()-1 (lines\n#     1327-1346, 1875-1898, 2281-2313, 2349). Max k = 40 -> bound 41. NOTE k = -1 is read: res_guar_pp(k-1)\n#     with k = duration(t) = 0 (line 1923; traced lo -1).\n#   x < 121: mort_rate_at_age(x) reads mort_table.csv .loc[(sex, int(x))] (lines 795-805), ages 0..120 per\n#     sex; called with issue_age()+k and x+j (lines 877, 989, 1117, 1139). Bound 120+1 = 121 (reachable max =\n#     60 + 40 = 100 per product-spec.md:158-159).\n{'cells_param_size': {'t': 481, 'k': 41, 'x': 121}}\n"
+}

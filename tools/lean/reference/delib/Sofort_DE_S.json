@@ -1,0 +1,183 @@
+{
+ "model": "Sofort_DE_S",
+ "lib": "delib",
+ "product": "sofortrente",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ],
+   [
+    "U",
+    2
+   ]
+  ],
+  "Basis": [
+   [
+    "FIRST",
+    0
+   ],
+   [
+    "SECOND",
+    1
+   ]
+  ],
+  "RefundForm": [
+   [
+    "none",
+    0
+   ],
+   [
+    "full",
+    1
+   ]
+  ],
+  "PaymentTiming": [
+   [
+    "advance",
+    0
+   ],
+   [
+    "arrears",
+    1
+   ]
+  ],
+  "SurplusForm": [
+   [
+    "none",
+    0
+   ],
+   [
+    "konstant",
+    1
+   ],
+   [
+    "teildynamisch",
+    2
+   ],
+   [
+    "volldynamisch",
+    3
+   ]
+  ],
+  "AnnuityKind": [
+   [
+    "ANNUITANT",
+    0
+   ],
+   [
+    "SURVIVOR",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ],
+  "ClaimKind": [
+   [
+    "GUARANTEE",
+    0
+   ],
+   [
+    "REFUND",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "annuity_payments": {
+    "1": [
+     "AnnuityKind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   },
+   "improve_rate_at_age": {
+    "1": [
+     "Basis",
+     "basis"
+    ]
+   },
+   "mort_rate_at_age": {
+    "1": [
+     "Sex",
+     "table_sex"
+    ],
+    "2": [
+     "Basis",
+     "basis"
+    ]
+   },
+   "mort_rate_gen": {
+    "1": [
+     "Sex",
+     "table_sex"
+    ],
+    "3": [
+     "Basis",
+     "basis"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "payment_timing": "PaymentTiming",
+   "refund_form": "RefundForm",
+   "sex": "Sex",
+   "surplus_form": "SurplusForm"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "sex": "Sex"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_age_max": [
+    "mort_rate_at_age"
+   ],
+   "mort_age_min": [
+    "mort_rate_at_age"
+   ],
+   "improve_age_max": [
+    "improve_rate_at_age"
+   ],
+   "improve_age_min": [
+    "improve_rate_at_age"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_age_max": "def mort_age_max():\n    \"\"\"The last age of the mortality table (every (basis, sex) group spans the same ages, checked at load).\"\"\"\n    return int(data.mort_table().index.max()[2])",
+   "mort_rate_at_age": "def mort_rate_at_age(x, table_sex, basis):\n    \"\"\"The table's annual death rate at attained age ``x``.\n\n    ``table_sex`` is ``M``, ``F`` or ``U``; ``basis`` is ``FIRST`` or ``SECOND``.  ``U`` is\n    **computed** as ``mix_male q_M + (1 - mix_male) q_F`` and is never a row of the CSV,\n    because no real sex-distinct table carries one — the unisex tariff is a blend an\n    insurer strikes on an assumed portfolio mix, not a published table.\n\n    Ages outside the table are clamped to its ends.  The upper clamp is the one that\n    matters: on a joint-life point the frame runs to the *second* life's horizon, so the\n    annuitant's attained age passes the closing row while their survival is already zero.\n    \"\"\"\n    if table_sex == Sex.U:\n        return (mix_male * mort_rate_at_age(x, Sex.M, basis)           # noqa: F821\n                + (1.0 - mix_male) * mort_rate_at_age(x, Sex.F, basis))   # noqa: F821\n    tab = data.mort_table()                                          # noqa: F821\n    xx = min(max(int(x), mort_age_min()), mort_age_max())\n    return float(tab.loc[(basis, table_sex, xx), \"mort_rate\"])",
+   "mort_age_min": "def mort_age_min():\n    \"\"\"The first age of the mortality table (every (basis, sex) group spans the same ages, checked at load).\"\"\"\n    return int(data.mort_table().index.min()[2])",
+   "improve_age_max": "def improve_age_max():\n    \"\"\"The last age of the improvement table (every basis spans the same ages, checked at load).\"\"\"\n    return int(data.improvement_table().index.max()[1])",
+   "improve_rate_at_age": "def improve_rate_at_age(x, basis):\n    \"\"\"lambda(x): the annual mortality improvement rate at attained age ``x``.\n\n    The *Trendfunktion* of the generational surface, in a **[std]** proxy: 1,5 % a year to\n    age 70 on the second-order basis, tapering linearly to zero at 105, with the\n    first-order basis improving 25 % faster.  Prudence in an annuity table must reach the\n    **rate** of improvement as well as its level, because the improvement compounds over a\n    forty-year stream, and a proxy reproducing only the level is not a proxy for the table.\n    \"\"\"\n    tab = data.improvement_table()                                   # noqa: F821\n    xx = min(max(int(x), improve_age_min()), improve_age_max())\n    return float(tab.loc[(basis, xx), \"improve_rate\"])",
+   "improve_age_min": "def improve_age_min():\n    \"\"\"The first age of the improvement table (every basis spans the same ages, checked at load).\"\"\"\n    return int(data.improvement_table().index.min()[1])"
+  }
+ },
+ "notes": [],
+ "spec": "# Sofort_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 853: t = t_start()..proj_len(): loops range(t_start(), proj_len()) (lines 1247-1531), lives_death(t)\n#     and check_lives_roll_fwd_resid read lives_if(t+1) at t = proj_len()-1 (lines 706, 1261). Max t = 852 ->\n#     bound 853 (single-life only: 733).\n#   x < 157: x = age(t, life) = entry_age(life) + t//12 (line 539-547) passed to mort_rate_gen /\n#     mort_rate_at_age / improve_rate_at_age (lines 570-635, 648, 675); lookups clamp to the table (lines 582,\n#     608) so x is NOT limited by the table (max key 120). The annuitant keeps being evaluated over the whole\n#     frame: max x = 85 (max entry age, product-spec.md:168) + 852//12 = 156 (survivor aged 50); single life\n#     max = 85 + (12*15+12*30+12)//12 = 131. Bound 156+1 = 157.\n#   k < 853: tariff_lives(k, life) with k = t+1 for t in range(0, proj_len()) (annuity_pp_derived /\n#     refund_pv, lines 847-848, 888-889): max k = proj_len() = 852 -> bound 853.\n{'cells_param_size': {'t': 853, 'x': 157, 'k': 853}}\n"
+}

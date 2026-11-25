@@ -1,0 +1,242 @@
+{
+ "model": "EC_FR_S",
+ "lib": "frlib",
+ "product": "eurocroissance",
+ "families": {
+  "EngagementModality": [
+   [
+    "euro_and_parts",
+    0
+   ],
+   [
+    "parts_only",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "DecrementBasis": [
+   [
+    "table",
+    0
+   ],
+   [
+    "none",
+    1
+   ]
+  ],
+  "Scenario": [
+   [
+    "shock",
+    0
+   ],
+   [
+    "base",
+    1
+   ],
+   [
+    "downside",
+    2
+   ],
+   [
+    "sloped",
+    3
+   ],
+   [
+    "zero_rate",
+    4
+   ]
+  ],
+  "AcctTiming": [
+   [
+    "BOM",
+    0
+   ],
+   [
+    "AFT_LEVY",
+    1
+   ],
+   [
+    "AFT_EXIT",
+    2
+   ],
+   [
+    "AFT_PREM",
+    3
+   ],
+   [
+    "AFT_STRIKE",
+    4
+   ],
+   [
+    "AFT_RETURN",
+    5
+   ],
+   [
+    "AFT_PERF",
+    6
+   ],
+   [
+    "AFT_TOP_UP",
+    7
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "cum_prem_net_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "mg_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "own_assets_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "part_value_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "parts_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "pm_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "prov_div_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   },
+   "provision_value_at": {
+    "1": [
+     "AcctTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "chassis": "EngagementModality",
+   "decrement_basis": "DecrementBasis",
+   "scenario": "Scenario",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "scenario_returns": [
+    "asset_return",
+    "scenario_last_year"
+   ],
+   "scenario_last_year": [
+    "asset_return"
+   ],
+   "tec_schedule": [
+    "tec_last_year",
+    "tec_rate"
+   ],
+   "tec_last_year": [
+    "tec_rate"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "scenario_returns": "def scenario_returns():\n    \"\"\"The asset returns of the policy's scenario, by year.\"\"\"\n    return data.scenario_table().loc[scenario()]",
+   "asset_return": "def asset_return(t):\n    \"\"\"r(t): the **annual** gross asset return of the policy year containing month t **[std]**.\n\n    Net of asset management fees, which is the basis the notes quote it on.  A **scenario**\n    level rather than a best estimate: the guarantee is a put on the account and its cost\n    is convex in this number, so a deterministic run understates it.\n\n    The **annual** return of the policy year containing month t;\n    :func:`asset_return_mth` is the return actually credited in the month.\n    ``scenario_table.csv`` is keyed by the elapsed **year end** at which the return is\n    credited, so the policy year of month t, which ends at ``duration(t) + 1`` years after\n    issue, reads row ``duration(t) + 1``; its row 0 is the inception placeholder and is\n    never read.  The last row is held beyond the table.\n    \"\"\"\n    y = min(duration(t) + 1, scenario_last_year())\n    return float(scenario_returns().loc[y, \"asset_return\"])",
+   "scenario_last_year": "def scenario_last_year():\n    \"\"\"The last year of the scenario table: later years read it.\"\"\"\n    return int(scenario_returns().index.max())",
+   "tec_schedule": "def tec_schedule():\n    \"\"\"The TEC curves of the policy's scenario, by year and maturity.\"\"\"\n    return data.tec_curve().loc[scenario()]",
+   "tec_last_year": "def tec_last_year():\n    \"\"\"The last year of the TEC curve table: later years read it.\"\"\"\n    return int(tec_schedule().index.max()[0])",
+   "tec_rate": "def tec_rate(m):\n    \"\"\"The *taux de l'échéance constante* at month boundary m, at maturity ``rem_term(m)``.\n\n    A **month boundary**: ``m = 0`` at issue and ``m = 12 n`` at the *échéance*, and month\n    ``t`` reads ``tec_rate(t)`` for its opening and ``tec_rate(t + 1)`` for its end-of-month\n    striking.\n\n    The curve is read in two speeds, and the split is the point.  ``tec_curve.csv``\n    publishes **one curve per elapsed year**, so the row is ``m // 12`` — the **most\n    recently published** curve, which is what A. 134-1's *dernier TEC publié* says\n    **[std]**; interpolating a curve level between published years would invent data the\n    file does not contain.  The remaining maturity, by contrast, shortens continuously, so\n    the interpolation across maturities runs at the **fractional** ``rem_term(m)``.  The\n    consequence is that the *provision mathématique*'s **time effect accrues month by\n    month and its rate effect lands whole on the anniversary**.\n\n    From A. 134-1: linear interpolation between the two bracketing maturities of the\n    published curve, the longest rate held beyond the end of the curve, and the shortest\n    held below its start — which is what ``k = n`` reaches, where the discount factor is 1\n    and the rate is immaterial.  The method choice is irreversible per auxiliary account\n    under the article; this model uses method 1°, the per-engagement one, throughout.\n\n    **The index maturity is [std].**  The article as retrieved fixes it as the holder's\n    guarantee maturity (method 1°) or the auxiliary account's 1°-engagement duration\n    (method 2°), and says nothing about how that maturity is re-read at valuation dates\n    after inception.  This model takes the **remaining** term ``n - k``, the horizon the\n    guarantee is actually discounted over; holding ``n`` fixed at the original term would\n    discount a one-year promise at a ten-year constant-maturity rate on the *échéance*.\n    ``technical-notes.md`` states the reading and is the source of truth for it;\n    ``product-spec.md`` states the article as retrieved.  The two readings differ only on a\n    sloped curve, which is what shipped model point 10 exercises.\n    \"\"\"\n    y = min(m // 12, tec_last_year())\n    curve = tec_schedule().loc[y]\n    ms = [int(v) for v in curve.index]\n    mat = rem_term(m)\n    if mat <= ms[0]:\n        return float(curve.loc[ms[0], \"tec_rate\"])\n    if mat >= ms[-1]:\n        return float(curve.loc[ms[-1], \"tec_rate\"])\n    for lo, hi in zip(ms[:-1], ms[1:]):\n        if lo <= mat <= hi:\n            r_lo, r_hi = float(curve.loc[lo, \"tec_rate\"]), float(curve.loc[hi, \"tec_rate\"])\n            return r_lo + (r_hi - r_lo) * (mat - lo) / (hi - lo)\n    raise ValueError(\"no bracketing maturity for \" + str(mat))",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates at the policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q(x + dur(t) + 1): the **annual** mortality rate of the policy year of month t **[std]**.\n\n    The rate the technical notes tabulate; :func:`mort_rate_mth` is the rate actually\n    applied in the month.  Read at :func:`age_anniv`, the *âge atteint* at the **end** of\n    the policy year, which is the notes' own ``q(x + t + 1)`` restated on the monthly\n    grid: the age rule belongs to the annual assumption, and the finer grid changes only\n    where within the year the decrement falls.  The shipped table rate times\n    ``mort_be_factor``.  Both are\n    placeholders: the\n    homologated tables TH 00-02 / TF 00-02 are cited by arrêté and never shipped, A. 132-18\n    permits an insurer's own certified table besides, and the proxy is INSEE-shaped\n    population mortality with a factor for insured lives being lighter than the population.\n    Nil where the model point switches the decrements off, which is the worked example's\n    configuration.\n    \"\"\"\n    if decrement_basis() == DecrementBasis.none or t < proj_start():\n        return 0.0\n    x = min(age_anniv(t), omega_age)                                 # noqa: F821\n    return min(1.0, float(mort_schedule().loc[\n        x, \"mort_rate\"]) * mort_be_factor)"
+  }
+ },
+ "notes": [],
+ "spec": "# EC_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 481: need_max 480; t-cells only called for t in range(proj_start(), proj_len()) and t-1 -> max 479\n#     -> 480 exclusive, +1 margin\n#   m < 482: month boundary m in 0..proj_len() (rem_term :890, tec_rate :983, i_pm :1030, disc_factor\n#     :1047); disc_factor(t+1)/i_pm(t+1)/rem_term(t+1) reach 480 -> 481 exclusive, +1 margin\n{'cells_param_size': {'t': 481, 'm': 482}}\n"
+}

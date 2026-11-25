@@ -1,0 +1,200 @@
+{
+ "model": "WholeLife_US_S",
+ "lib": "uslib",
+ "product": "whole_life",
+ "families": {
+  "Product": [
+   [
+    "WL_PAR",
+    0
+   ],
+   [
+    "WL_FE_LEVEL",
+    1
+   ],
+   [
+    "WL_FE_GRADED",
+    2
+   ]
+  ],
+  "PremiumPeriod": [
+   [
+    "TO_100",
+    0
+   ],
+   [
+    "PAY_10",
+    1
+   ],
+   [
+    "PAY_20",
+    2
+   ],
+   [
+    "TO_65",
+    3
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RiskClass": [
+   [
+    "PREF_NT",
+    0
+   ],
+   [
+    "STD_NT",
+    1
+   ],
+   [
+    "TOB",
+    2
+   ]
+  ],
+  "DividendOption": [
+   [
+    "CASH",
+    0
+   ],
+   [
+    "REDUCE_PREM",
+    1
+   ],
+   [
+    "ACCUM",
+    2
+   ],
+   [
+    "PUA",
+    3
+   ],
+   [
+    "NONE",
+    4
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "A",
+    0
+   ],
+   [
+    "SA",
+    1
+   ],
+   [
+    "Q",
+    2
+   ],
+   [
+    "M",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_SURR",
+    1
+   ],
+   [
+    "BEF_MAT",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "dividend_option": "DividendOption",
+   "premium_mode": "PremiumMode",
+   "premium_period": "PremiumPeriod",
+   "product": "Product",
+   "risk_class": "RiskClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "cv_schedule": [
+    "cv_pp_anniv"
+   ],
+   "nsp_schedule": [
+    "nsp"
+   ],
+   "mort_schedule": [
+    "mort_rate_guar_at"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "cv_schedule": "def cv_schedule():\n    \"\"\"The guaranteed cash values per $1,000 of this policy's premium period, sex and issue age, by policy year.\"\"\"\n    return data.cv_table().loc[(premium_period(), sex(), age_at_entry())]",
+   "cv_pp_anniv": "def cv_pp_anniv(y):\n    \"\"\"The guaranteed cash value per policy at the anniversary ending policy year y.\n\n    The schedule as it is printed: *cv_table.csv* per $1,000 of face, keyed by the\n    contractual 1-based ``policy_year``. Zero for ``y <= 0`` — there is no cash value\n    at issue — and zero past the projection.\n\n    The notes give the Standard Nonforfeiture Law adjusted-premium formula conceptually\n    but prescribe a table input in practice, because contractual cash value tables are\n    policy-form documents that are not public. The shipped schedule is **[std]**,\n    calibrated to the worked example's CV_107 and CV_119 — the policy-year 9 and 10 rows —\n    and reaching exactly face at attained age 100.\n\n    It is **sex-distinct**, as the notes require of every rate in this product: the male\n    pay-to-100 schedule carries the worked example's anchors, and the female schedule is\n    that schedule's funding-progress shape ``f = CV^M / (F NSP^M_{x+dur+1})`` applied\n    to the female paid-up value ``F NSP^F_{x+dur+1}`` **[std]**. The shape — how far along\n    the way to paid-up status the schedule has come — is a design choice that does not\n    depend on sex; the value it is progressing towards does, through NSP. See the\n    guarantee-basis rubric in the Space docstring for what this construction is *not*.\n    \"\"\"\n    if y <= 0 or y > proj_len() // 12:\n        return 0.0\n    return sum_assured() / 1000.0 * float(\n        cv_schedule().loc[y, \"cv_per_1000\"])",
+   "nsp_schedule": "def nsp_schedule():\n    \"\"\"The net single premiums of this policy's sex, by attained age.\"\"\"\n    return data.nsp_table().loc[sex()]",
+   "nsp": "def nsp(y):\n    \"\"\"NSP_y: net single premium per 1 of paid-up endowment-at-100 face at attained age y.\n\n    The purchase basis for paid-up additions, unloaded, on the guarantee basis\n    **[std]**. NSP_100 = 1 by construction, which is what makes the paid-up-additions\n    cash value equal paid-up-additions face at maturity.\n\n    The shipped curve is *not* the endowment-at-100 net single premium implied by\n    *mort_table.csv* at 4%, and cannot be: see the guarantee-basis rubric in the Space\n    docstring, which shows that the worked example's own anchors rule out any single\n    mortality basis at 4%.\n    \"\"\"\n    return float(nsp_schedule().loc[y, \"nsp\"])",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The guaranteed mortality rates of this policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate_guar_at": "def mort_rate_guar_at(y):\n    \"\"\"q^g_y: the guaranteed **annual** mortality rate at attained age y, from *mort_table.csv*.\n\n    The shipped table is **[std]** illustrative and is *not* the 2017 CSO the notes\n    name; that table is licensed and cannot be shipped here.\n    \"\"\"\n    return float(mort_schedule().loc[y, \"mort_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# WholeLife_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1202: need_max 1200 + 1 (pols_if(t+1) in check_pols_roll_fwd_resid line 1537) + 1 margin = 1202\n{'cells_param_size': {'t': 1202}}\n"
+}

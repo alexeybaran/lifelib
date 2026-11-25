@@ -1,0 +1,116 @@
+{
+ "model": "IncomeTerm_JP_S",
+ "lib": "jplib",
+ "product": "income_guarantee",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RateClass": [
+   [
+    "nonsmoker_preferred",
+    0
+   ],
+   [
+    "smoker_preferred",
+    1
+   ],
+   [
+    "nonsmoker_standard",
+    2
+   ],
+   [
+    "smoker_standard",
+    3
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "semiannual",
+    1
+   ],
+   [
+    "annual",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "ANNUITY",
+    0
+   ],
+   [
+    "COMMUTATION",
+    1
+   ],
+   [
+    "LIVING_NEEDS",
+    2
+   ],
+   [
+    "LAPSE",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "premium_mode": "PremMode",
+   "rate_class": "RateClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# IncomeTerm_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 900: need_max 899 => max index 898 (frame); t+1 only in check_pols_roll_fwd_resid:1083 over\n#     range(term_m()) (<= 840); exclusive 899 + 1 spare\n#   n < 842: annuity_certain_factor(n) n = pay_count(m) = max(term_m - m, guar_m) <= 840 (pay_count:725-738,\n#     term_m max 840); exclusive 841 + 1 spare\n#   m < 900: pay_count/pay_end(m) receive the claim month t (commute_pp:790, check_pay_count_resid:1155) =>\n#     same range as t\n{'cells_param_size': {'t': 900, 'n': 842, 'm': 900}}\n"
+}

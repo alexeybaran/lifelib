@@ -1,0 +1,111 @@
+{
+ "model": "WholeLife_KR_S",
+ "lib": "krlib",
+ "product": "whole_life",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "IntBasis": [
+   [
+    "fixed",
+    0
+   ],
+   [
+    "linked",
+    1
+   ]
+  ],
+  "LapseBasis": [
+   [
+    "loglinear",
+    0
+   ],
+   [
+    "flat",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "REDUCTION",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "int_basis": "IntBasis",
+   "lapse_basis": "LapseBasis",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "lapse_basis_row": [
+    "lapse_rate_base"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "lapse_basis_row": "def lapse_basis_row():\n    \"\"\"The lapse table row of the policy's lapse basis.\"\"\"\n    return data.lapse_table().loc[lapse_basis()]",
+   "lapse_rate_base": "def lapse_rate_base(t):\n    \"\"\"The base annual 해지율 in period t, before any bonus-date spike.\n\n    Written on the contractual policy year ``y = policy_year(t) = t + 1``, because that is\n    what the two published endpoints are quoted against: the first-year rate is ``y = 1``, the\n    period ``t = 0``.  On the ``loglinear`` basis, log-linear in the rate from the first-year\n    value to the completion value at ``y = m``, then flat at the ultimate value — the FSS\n    **원칙모형** of\n    the November 2024 계리가정 decision, whose practical convergence point is **0.1% at\n    납입완료** and whose ultimate rate is **0.8%** [REG-R27].  On the ``flat`` basis, a level\n    rate throughout.  The endpoints are read from ``lapse_table.csv``; the **shape between\n    them is [std]**, no Korean lapse curve by duration being public.  Two independent bases\n    exist in Korea and they do not agree: the *pricing* 적용해지율 is disclosed in the\n    상품요약서 at 연 1%~10% during 납입기간 at one carrier and 연 0%~13.4% at another [S2]\n    [S8], while the *valuation* basis above is much lower.  This is the single largest\n    assumption gap on this product.\n    \"\"\"\n    row = lapse_basis_row()\n    w1 = float(row[\"first_year_rate\"])\n    wm = float(row[\"completion_rate\"])\n    wu = float(row[\"ultimate_rate\"])\n    m = prem_period()\n    y = policy_year(t)\n    if y > m:\n        return wu\n    if m <= 1 or w1 <= 0.0:\n        return wm\n    return w1 * (wm / w1) ** ((min(max(y, 1), m) - 1) / (m - 1))"
+  }
+ },
+ "notes": [],
+ "spec": "# WholeLife_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1236: need_max 1212 + 12 for pols_surr(t) -> pols_reinstate(t + 12) (:1552) at t = proj_len-1 (max t\n#     = proj_len+11, cell returns 0 there but is cached) + 12 margin = 1212+12+12\n#   n < 102: n is the number of annual payments of annuity_due(y, n), the only Cell taking n (the month\n#     annuities take u): prem_period() <= proj_years() = 115 - 15 + 1 = 101, or surr_chg_prem_years = 20; the\n#     recursion goes down\n#   u < 1225: month index from issue: epv_death_mth/annuity_due_mth/... (:862-:912) recurse u+1 up to u =\n#     proj_len (returns 0) -> need 1212+1; + 12 margin\n#   d < 1225: anniversary month d = 0..proj_len (checks sweep range(proj_len() + 1) :1824,:1858; cv_pp(t +\n#     1) :1605, results :1998-2004); need 1212+1, + 12 margin\n{'cells_param_size': {'t': 1236, 'n': 102, 'u': 1225, 'd': 1225}}\n"
+}

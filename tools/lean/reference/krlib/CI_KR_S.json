@@ -1,0 +1,152 @@
+{
+ "model": "CI_KR_S",
+ "lib": "krlib",
+ "product": "ci_insurance",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "FirstYearScope": [
+   [
+    "breast",
+    0
+   ],
+   [
+    "all",
+    1
+   ]
+  ],
+  "LapseBasis": [
+   [
+    "log_linear",
+    0
+   ],
+   [
+    "table",
+    1
+   ]
+  ],
+  "Cause": [
+   [
+    "cancer",
+    0
+   ],
+   [
+    "ami",
+    1
+   ],
+   [
+    "stroke",
+    2
+   ],
+   [
+    "other",
+    3
+   ],
+   [
+    "ltc",
+    4
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "CI",
+    0
+   ],
+   [
+    "DEATH",
+    1
+   ],
+   [
+    "DEATH_CI",
+    2
+   ],
+   [
+    "LAPSE",
+    3
+   ],
+   [
+    "LAPSE_CI",
+    4
+   ],
+   [
+    "ALL",
+    5
+   ]
+  ],
+  "ClaimBasis": [
+   [
+    "FULL",
+    0
+   ],
+   [
+    "REDUCED",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "ci_rate_at_age": {
+    "1": [
+     "Cause",
+     "cause"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_ci_in": {
+    "1": [
+     "ClaimBasis",
+     "basis"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "first_year_scope": "FirstYearScope",
+   "lapse_basis": "LapseBasis",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# CI_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   s < 1165: post-CI cohort label s = month-end of entry: ci_cohort_ids(t) (:1534) = [-1..-min(t,12)] +\n#     [1..t] with t <= proj_len, so s <= proj_len = 1152; need 1153, + 12 margin (same horizon as t)\n#   t < 1165: need_max 1152 + 1 (t = proj_len reached: check_cv_carve_out sweeps range(proj_len() + 1)\n#     :2335; resid_db_pp(t + 1, s) :1690; epv_ben/epv_resid recurse t+1 to proj_len :1268/:1252) + 12 margin\n#   y < 111: mort_table.csv age keys 15..110 (mort_rate_at_age :773); ci_incidence_table.csv age 15..100\n#     read only for y <= ci_cover_end_age = 100 (:889, constant :2496); bound = 110+1\n{'cells_param_size': {'s': 1165, 't': 1165, 'y': 111}}\n"
+}

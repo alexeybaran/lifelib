@@ -1,0 +1,104 @@
+{
+ "model": "Immediate_KR_S",
+ "lib": "krlib",
+ "product": "immediate_annuity",
+ "families": {
+  "Shape": [
+   [
+    "life",
+    0
+   ],
+   [
+    "inheritance",
+    1
+   ],
+   [
+    "certain",
+    2
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RetentionBasis": [
+   [
+    "as_designed",
+    0
+   ],
+   [
+    "as_ordered",
+    1
+   ]
+  ],
+  "CreditingBasis": [
+   [
+    "decl_2017",
+    0
+   ],
+   [
+    "min_guar",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "crediting_basis": "CreditingBasis",
+   "retention_basis": "RetentionBasis",
+   "sex": "Sex",
+   "shape": "Shape"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "credit_schedule": [
+    "decl_rate",
+    "min_guar_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "credit_schedule": "def credit_schedule():\n    \"\"\"The crediting table rows of the policy's crediting basis, by dur_from.\"\"\"\n    return data.crediting_table().loc[crediting_basis()]",
+   "decl_rate": "def decl_rate():\n    \"\"\"i_d: the 공시이율 (*gongsi iyul*), the declared crediting rate.\n\n    2.50% a year on the representative basis, reset on the first of each month and fixed\n    for that month.  It is the **annual** rate, which is how a carrier declares it and how\n    every retrieved illustration quotes it; :func:`crediting_rate_mth` is the monthly\n    equivalent the fund actually rolls on.  It is a **scalar** and not a derived quantity:\n    감독규정 제7-65조제3항\n    makes it the product of a 공시기준이율 and a 조정률, with the 공시기준이율 a weighted\n    average of an external index and the insurer's own 운용자산이익률 whose weighting the\n    two carriers that publish one publish differently.  Any model that claims to derive a\n    Korean declared rate is not defensible; this one exposes it.\n    \"\"\"\n    rows = credit_schedule()\n    if len(rows.index) == 0:\n        raise ValueError(\"no crediting basis %s\" % crediting_basis())\n    values = set(round(float(rows.loc[d, \"decl_rate\"]), 12) for d in rows.index)\n    if len(values) != 1:\n        raise ValueError(\"declared rate is not uniform within a basis\")\n    return float(rows.loc[rows.index[0], \"decl_rate\"])",
+   "min_guar_rate": "def min_guar_rate(t):\n    \"\"\"i_g(t): the 최저보증이율 (*choejeo bojeung iyul*) applying in period t.\n\n    Duration-stepped, 1.25% in policy years 1 to 5, 1.00% to year 10 and 0.75% thereafter\n    on the representative schedule.  Each row of the table gives a half-open band\n    ``[dur_from, dur_to)`` in completed **policy years**, and the table is left in years\n    because that is how the schedule is published: month ``t`` falls in the band containing\n    ``t // 12``, so the floor steps on the 계약해당일 and is level across the twelve months\n    of a policy year.  That a floor exists at all is not a commercial courtesy: 감독규정\n    제7-60조제10호 requires a 금리연동형보험 to set one.  Note what it is **not**: a rate on\n    the fund, never a floor on the annuity, which is the substance of the whole 과소지급\n    dispute.\n    \"\"\"\n    sub = credit_schedule()\n    y = t // 12\n    lo = sub.index.asof(y)\n    if y < int(sub.loc[lo, \"dur_to\"]):\n        return float(sub.loc[lo, \"min_guar_rate\"])\n    raise ValueError(\"no 최저보증이율 band for basis %s at t = %s\"\n                     % (crediting_basis(), t))"
+  }
+ },
+ "notes": [],
+ "spec": "# Immediate_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   m < 805: period count m of annuity_factor_certain(m, i) :676 / accum_factor(m, i) :692: m =\n#     annuity_term_mths() - t (:751,:778), m = t (:1266, t <= proj_len) -> m <= proj_len = 792; need 793, + 12\n#     margin\n#   t < 805: need_max 792 + 1 (t = proj_len reached: check_av_roll_fwd/check_lives_roll_fwd/check_surr_value\n#     sweep range(proj_len() + 1) :1241,:1284,:1435; lives_if(t + 1), pols_if(t + 1), av_pp(t + 1),\n#     disc_factor(t + 1)) + 12 margin\n{'cells_param_size': {'m': 805, 't': 805}}\n"
+}

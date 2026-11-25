@@ -1,0 +1,190 @@
+{
+ "model": "DIA_US_S",
+ "lib": "uslib",
+ "product": "deferred_income_annuity",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "ReductionTrigger": [
+   [
+    "either",
+    0
+   ],
+   [
+    "primary",
+    1
+   ]
+  ],
+  "MarketType": [
+   [
+    "NQ",
+    0
+   ],
+   [
+    "TradIRA",
+    1
+   ],
+   [
+    "RothIRA",
+    2
+   ],
+   [
+    "QLAC",
+    3
+   ]
+  ],
+  "IncomeForm": [
+   [
+    "LO",
+    0
+   ],
+   [
+    "LO_ROP",
+    1
+   ],
+   [
+    "CR",
+    2
+   ],
+   [
+    "IR",
+    3
+   ],
+   [
+    "PC",
+    4
+   ]
+  ],
+  "DbForm": [
+   [
+    "ROP",
+    0
+   ],
+   [
+    "NONE",
+    1
+   ]
+  ],
+  "PaymentTiming": [
+   [
+    "arrears",
+    0
+   ],
+   [
+    "advance",
+    1
+   ]
+  ],
+  "MortBasis": [
+   [
+    "anchor",
+    0
+   ],
+   [
+    "generational",
+    1
+   ]
+  ],
+  "FactorBasis": [
+   [
+    "table",
+    0
+   ],
+   [
+    "formula",
+    1
+   ]
+  ],
+  "Phase": [
+   [
+    "DEFERRAL",
+    0
+   ],
+   [
+    "PAYOUT",
+    1
+   ],
+   [
+    "TERMINATED",
+    2
+   ]
+  ],
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "REFUND",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_ann": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "db_form": "DbForm",
+   "factor_basis": "FactorBasis",
+   "income_form": "IncomeForm",
+   "market_type": "MarketType",
+   "mort_basis": "MortBasis",
+   "payment_timing": "PaymentTiming",
+   "payout_form": "IncomeForm",
+   "phase": "Phase",
+   "reduction_trigger": "ReductionTrigger",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "premium_vec": [
+    "premium_pp"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "premium_vec": "def premium_vec():\n    \"\"\"The policy's premium by month as a vector: element k is premium_by_mth()'s value at k, else 0.0.\"\"\"\n    m = premium_by_mth()\n    n = max(m) + 1 if m else 0\n    out = [0.0] * n\n    for k in range(n):\n        out[k] = m.get(k, 0.0)\n    return out",
+   "premium_pp": "def premium_pp(t):\n    \"\"\"P_k: the premium per contract paid at the **start** of month t; 0 if none falls.\"\"\"\n    v = premium_vec()\n    if t >= len(v):\n        return 0.0\n    if t >= 0:\n        return v[t]\n    return premium_by_mth().get(t, 0.0)"
+  }
+ },
+ "notes": [],
+ "spec": "# DIA_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1206: need_max 1200 + 5 (lives_if(a + j) with j < accel_months = 6, accel_cost line 1403 /\n#   from_mth < 1206: month index (premium month tk, adjust_mth, income_start), < proj_len; same as t\n#   start_mth < 362: month index (income_start_mth_at / adjust_start_mth), < proj_len; same as t\n#   y < 101: policy year 1..proj_len()//12 (result_annual line 1944); 1200//12 = 100, +1 = 101\n{'cells_param_size': {'t': 1206, 'from_mth': 1206, 'start_mth': 362, 'y': 101}}\n"
+}

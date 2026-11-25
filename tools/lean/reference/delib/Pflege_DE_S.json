@@ -1,0 +1,205 @@
+{
+ "model": "Pflege_DE_S",
+ "lib": "delib",
+ "product": "pflegerentenversicherung",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Status": [
+   [
+    "aktiv",
+    0
+   ],
+   [
+    "pg1",
+    1
+   ],
+   [
+    "pg2",
+    2
+   ],
+   [
+    "pg3",
+    3
+   ],
+   [
+    "pg4",
+    4
+   ],
+   [
+    "pg5",
+    5
+   ]
+  ],
+  "BasisParam": [
+   [
+    "rechnungszins",
+    0
+   ],
+   [
+    "omega_age",
+    1
+   ],
+   [
+    "unisex_mix_male",
+    2
+   ],
+   [
+    "rec_age_ref",
+    3
+   ],
+   [
+    "rec_age_decay",
+    4
+   ],
+   [
+    "inc_cap",
+    5
+   ],
+   [
+    "beitragssumme_cap_age",
+    6
+   ],
+   [
+    "roll_fwd_tol",
+    7
+   ],
+   [
+    "inc_margin",
+    8
+   ],
+   [
+    "det_margin",
+    9
+   ],
+   [
+    "rec_margin",
+    10
+   ],
+   [
+    "care_mort_margin",
+    11
+   ],
+   [
+    "act_mort_margin",
+    12
+   ]
+  ],
+  "ExpenseItem": [
+   [
+    "acq_permille",
+    0
+   ],
+   [
+    "admin_prem_pct",
+    1
+   ],
+   [
+    "admin_mth_pp",
+    2
+   ],
+   [
+    "claim_expense_pp",
+    3
+   ],
+   [
+    "expense_infl",
+    4
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "quarterly",
+    1
+   ],
+   [
+    "half_yearly",
+    2
+   ],
+   [
+    "annual",
+    3
+   ],
+   [
+    "single",
+    4
+   ]
+  ],
+  "Timing": [
+   [
+    "BEG",
+    0
+   ],
+   [
+    "END",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "ANNUITY",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "DEATH",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "prem_mode": "PremMode",
+   "sex": "Sex",
+   "status_init": "Status"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {
+  "Projection": [
+   "tar_p_act",
+   "tar_p_pg"
+  ]
+ },
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# Pflege_DE_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a\n# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):\n#   t < 1105: t = duration_mth_init()..proj_len(): loops range(proj_len()) / range(duration_mth_init(), proj_len())\n#     (lines 1745-2144), pols_if_at(t, END) -> pols_if(t+1) (line 1104) and check_pols_roll_fwd_resid reads\n#     pols_if(t+1) (line 1925) at t = proj_len()-1. Max t = 1104 -> bound 1105.\n{'cells_param_size': {'t': 1105}}\n"
+}

@@ -1,0 +1,132 @@
+{
+ "model": "Endowment_JP_S",
+ "lib": "jplib",
+ "product": "endowment",
+ "families": {
+  "Cell": [
+   [
+    "endowment",
+    0
+   ],
+   [
+    "education",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "DividendType": [
+   [
+    "none",
+    0
+   ],
+   [
+    "five_year",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "STAGED",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "LAPSE",
+    3
+   ],
+   [
+    "PH_DEATH",
+    4
+   ],
+   [
+    "ALL",
+    5
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "mort_rate_at_age": {
+    "0": [
+     "Sex",
+     "sx"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "pols_if_pay_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "pols_wv_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "cell": "Cell",
+   "dividend_type": "DividendType",
+   "ph_sex": "Sex",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "ph_sex": "Sex",
+   "sex": "Sex"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# Endowment_JP_S: declared parameter sizes (cells_param_size, model level), only where Probe A showed a\n# policy valid for the product raising on the traced range. Sources (model folder, product-spec.md):\n#   t < 722: need_max 720; max index 720 via pols_if(t+1) check_pols_roll_fwd_resid:1629 and pols_if_*_at(AFT_DECR);\n#     exclusive 721 + 1 spare\n#   u < 722: elapsed month u = t+1 (claims:1491-1493, death_ben_pp:1176-1179, dyn_lapse_factor:781-785) <= 12n =\n#     720; exclusive 721 + 1 spare\n#   z < 62: mort_table.csv age 0..60 (max 60); z = issue_age()+k up to x+n (endow_epv(x+n, 0) at k=n,\n#     pol_val_at:995; annuity_due(x+k,...)) with x+n-1 <= 60 => z <= 61, +1\n#   k < 62: anniversary k in 0..proj_years()=n (loops :1703-1751 range(proj_years()+1)); k+1 in\n#     pol_val_pre_at_m:1116 / apl_advance_pp:1200 stays <= n; surv_prob(z,k) k <= n; n <= 60 (product-spec.md:96) =>\n#     61 + 1 spare\n{'cells_param_size': {'t': 722, 'u': 722, 'z': 62, 'k': 62}}\n"
+}

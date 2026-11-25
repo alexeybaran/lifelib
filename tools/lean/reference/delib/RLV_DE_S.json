@@ -1,0 +1,188 @@
+{
+ "model": "RLV_DE_S",
+ "lib": "delib",
+ "product": "risikolebensversicherung",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "N",
+    0
+   ],
+   [
+    "R",
+    1
+   ]
+  ],
+  "PremiumForm": [
+   [
+    "laufend",
+    0
+   ],
+   [
+    "einmal",
+    1
+   ]
+  ],
+  "PremFreq": [
+   [
+    "jaehrlich",
+    0
+   ],
+   [
+    "halbjaehrlich",
+    1
+   ],
+   [
+    "vierteljaehrlich",
+    2
+   ],
+   [
+    "monatlich",
+    3
+   ]
+  ],
+  "SurplusForm": [
+   [
+    "beitragsverrechnung",
+    0
+   ],
+   [
+    "keine",
+    1
+   ]
+  ],
+  "ResTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ]
+  ],
+  "PolsTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "ClaimKind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   },
+   "mort_rate_at_age": {
+    "0": [
+     "Sex",
+     "sex_code"
+    ],
+    "1": [
+     "Smoker",
+     "smoker_code"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolsTiming",
+     "timing"
+    ]
+   },
+   "res_pp_at": {
+    "1": [
+     "ResTiming",
+     "timing"
+    ]
+   },
+   "res_zill_pp_at": {
+    "1": [
+     "ResTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "prem_freq": "PremFreq",
+   "premium_form": "PremiumForm",
+   "sex": "Sex",
+   "smoker": "Smoker",
+   "surplus_form": "SurplusForm"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "sex": "Sex",
+   "smoker": "Smoker"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_rate_at_age"
+   ],
+   "benefit_factor_schedule": [
+    "benefit_factor"
+   ],
+   "nvg_uplift_schedule": [
+    "sum_uplift_y"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The death rates of this policy's mortality table, by sex, smoker status and age.\"\"\"\n    return data.mort_table().loc[mort_table_id()]",
+   "mort_rate_at_age": "def mort_rate_at_age(sex_code, smoker_code, x):\n    \"\"\"q(x) tilde: the shipped second-order table rate for one life at one attained age.\n\n    A lookup into *mort_table.csv* keyed by ``table_id``, sex, smoker status and attained\n    age, and nothing else — no loading, no rating, no combination across lives.  Both\n    orders and both lives are built from this one cells, which is what keeps the model's\n    unsourced mortality level to a single number.  A **[std]** proxy for DAV 2008 T; see\n    the ``Data`` docstring for the anchors a replacement must preserve.\n    \"\"\"\n    sub = mort_schedule()\n    return float(sub.at[(sex_code, smoker_code, int(x)), \"mort_rate\"])",
+   "benefit_factor_schedule": "def benefit_factor_schedule():\n    \"\"\"The benefit factors of this policy's benefit schedule, by policy year.\"\"\"\n    return data.benefit_schedule().loc[benefit_schedule_id()]",
+   "benefit_factor": "def benefit_factor(t):\n    \"\"\"f(t): the *Versicherungssumme* schedule factor, from *benefit_schedule.csv*.\n\n    1.0 at every year on ``konstant``; ``(20 - y)/20`` on ``linear_fallend``; and the\n    outstanding balance of a thirty-year annuity loan at 3 % on\n    ``annuitaet_fallend_3pct``.  The file is keyed on the contractual **1-based**\n    ``policy_year``, so the lookup maps through :func:`policy_year` and the factor is\n    **flat across a policy year's twelve months**: the *Versicherungssumme* steps on the\n    anniversary, which is where the contract steps it, and the monthly grid does not make\n    a declining sum insured decline monthly.  The last shape is the *Darlehensabsicherung*\n    one and it falls **slowly then fast** — the property a linear schedule gets backwards,\n    and the reason a linear sum is a poor match to an annuity loan.  The rate is a\n    contractual schedule parameter fixed at issue; it does not follow the borrower's loan\n    if that is refinanced, repaid early or rolled onto a new fixed rate.\n    \"\"\"\n    sub = benefit_factor_schedule()\n    return float(sub.at[policy_year(t), \"benefit_factor\"])",
+   "nvg_uplift_schedule": "def nvg_uplift_schedule():\n    \"\"\"The sum uplifts of this policy's Nachversicherungsgarantie schedule, by policy year.\"\"\"\n    return data.nvg_schedule().loc[nvg_schedule_id()]",
+   "sum_uplift_y": "def sum_uplift_y(y):\n    \"\"\"u(y): the cumulative *Nachversicherungsgarantie* multiplier at **policy year** y.\n\n    From *nvg_schedule.csv*, keyed on the contractual **1-based** ``policy_year``, so the\n    lookup is at ``y + 1`` for the 0-based ``y``.  Defined for ``y >= 0`` only: the tranche\n    decomposition in :func:`benefit_paid_pp` takes the base cover as its first tranche with\n    ``delta u(0) = u(0)`` and never reaches below ``y = 0``.  1.0 throughout on ``keine``,\n    the base run.\n\n    The argument is a **policy year and not a month**.  A *Nachversicherungsgarantie*\n    increment is granted at a policy anniversary, and its own § 161 window is a whole\n    number of years from that anniversary, so the tranche decomposition is an annual\n    construction on both counts and stays one on the monthly grid.\n\n    Take-up is exogenous: no event list, cap, exercise window or age limit was established\n    from any document, so an increase is supplied as a schedule rather than modelled as a\n    decision.  What the model does *with* an increase is not exogenous — see\n    :func:`benefit_paid_pp`.\n    \"\"\"\n    sub = nvg_uplift_schedule()\n    return float(sub.at[int(y) + 1, \"sum_uplift\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# RLV_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 481: t = proj_start()..proj_len(): loops range(proj_start(), proj_len()) (lines 1841-2068),\n#     check_pols_roll_fwd_resid reads pols_if(t+1) at t = proj_len()-1 (line 1855);\n#     mort_rate_tar(12*y)/benefit_pp(12*y) with y <= proj_len_y()-1 stay < proj_len(). Max t = 480 -> bound\n#     481.\n#   x < 81: mort_rate_at_age(sex_code, smoker_code, x) reads mort_table.csv .at[(sex, smoker, int(x))]\n#     unclamped (line 720); age keys 18..80 -> bound 80+1 = 81. Reachable x = age(t)/age2(t) = issue_age +\n#     duration(t) (lines 681-698) <= Endalter 75 (product-spec.md:186).\n{'cells_param_size': {'t': 481, 'x': 81}}\n"
+}

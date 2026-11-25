@@ -1,0 +1,331 @@
+{
+ "model": "RV_DE_S",
+ "lib": "delib",
+ "product": "klassische_rentenversicherung",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremiumForm": [
+   [
+    "laufend",
+    0
+   ],
+   [
+    "einmal",
+    1
+   ]
+  ],
+  "PremFreq": [
+   [
+    "annual",
+    0
+   ],
+   [
+    "half_yearly",
+    1
+   ],
+   [
+    "quarterly",
+    2
+   ],
+   [
+    "monthly",
+    3
+   ]
+  ],
+  "DeathBenefitForm": [
+   [
+    "prem_refund",
+    0
+   ],
+   [
+    "deckungskapital",
+    1
+   ],
+   [
+    "max",
+    2
+   ]
+  ],
+  "PayoutSystem": [
+   [
+    "konstant",
+    0
+   ],
+   [
+    "volldynamisch",
+    1
+   ],
+   [
+    "teildynamisch",
+    2
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_INT",
+    2
+   ]
+  ],
+  "PolsTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "ClaimKind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "COMMUTATION",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ],
+  "ParamItem": [
+   [
+    "expense_acq_pp",
+    0
+   ],
+   [
+    "expense_maint_pp",
+    1
+   ],
+   [
+    "expense_annuity_pp",
+    2
+   ],
+   [
+    "expense_claim_pp",
+    3
+   ],
+   [
+    "expense_infl",
+    4
+   ],
+   [
+    "mort_be_factor",
+    5
+   ],
+   [
+    "mort_base_year",
+    6
+   ],
+   [
+    "omega_age",
+    7
+   ],
+   [
+    "val_reserve_rate",
+    8
+   ],
+   [
+    "sur_ann_rate",
+    9
+   ],
+   [
+    "sur_ann_growth",
+    10
+   ],
+   [
+    "sur_ann_theta",
+    11
+   ],
+   [
+    "roll_fwd_tol",
+    12
+   ]
+  ],
+  "ChargeItem": [
+   [
+    "alpha_rate",
+    0
+   ],
+   [
+    "alpha_spread_years",
+    1
+   ],
+   [
+    "beta_rate",
+    2
+   ],
+   [
+    "gamma_rate",
+    3
+   ],
+   [
+    "gamma_pup_rate",
+    4
+   ],
+   [
+    "stornoabzug_rate",
+    5
+   ],
+   [
+    "min_annuity_mth",
+    6
+   ],
+   [
+    "annuity_admin_rate",
+    7
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_spread_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_sur_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_sur_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "ClaimKind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolsTiming",
+     "timing"
+    ]
+   },
+   "spread_diff_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "death_benefit_form": "DeathBenefitForm",
+   "payout_system": "PayoutSystem",
+   "prem_freq": "PremFreq",
+   "premium_form": "PremiumForm",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "prem_freq": [
+    "freq_load"
+   ],
+   "premium_form": [
+    "prem_pp_sched"
+   ],
+   "charge_schedule": [
+    "charge_acq_spread_pp",
+    "charge_admin_pp",
+    "charge_prem_pp",
+    "surr_charge_pp"
+   ],
+   "sex": [
+    "mort_schedule"
+   ],
+   "mort_schedule": [
+    "improve_rate",
+    "mort_rate_at_age"
+   ],
+   "decl_rate_schedule": [
+    "decl_rate"
+   ],
+   "death_benefit_form": [
+    "db_base_pp",
+    "db_pp"
+   ],
+   "payout_system": [
+    "annuity_sur_mth_pp"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "prem_freq": "def prem_freq():\n    \"\"\"The premium payment mode, read once per policy.\"\"\"\n    return PremFreq[model_point()[\"prem_freq\"]]",
+   "freq_load": "def freq_load():\n    \"\"\"phi: the *Ratenzahlungszuschlag* for the model point's *Zahlweise* **[std]**.\n\n    1,000 annual, 1,020 half-yearly, 1,030 quarterly, 1,050 monthly.\n\n    **The loading is what a sub-annual *Zahlweise* costs, and it is the whole of what this\n    model takes from the *Zahlweise*.**  The premium is charged once a policy year, at the\n    start of it, on a monthly grid exactly as on the annual one, because § 12 Abs. 1 VVG\n    makes the *Versicherungsperiode* the **year** for this tariff — and the *Deckungskapital*\n    the whole model turns on is defined at anniversaries and nowhere between them.  The\n    instalments themselves are therefore still not modelled and ``n_instalments`` in the\n    table remains documentation; what a finer grid would buy here is an unearned-premium\n    convention on mid-year exits that no source in this product's corpus establishes.\n    Compare ``KLV_DE_S``, whose *Zahlweise* **is** in the frame: there the ``echt`` reading\n    makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing\n    else, which is what justifies the instalment stream.\n    \"\"\"\n    return float(data.freq_load_table().at[                          # noqa: F821\n        prem_freq(), \"freq_load\"])",
+   "premium_form": "def premium_form():\n    \"\"\"laufend or einmal, read once per policy.\"\"\"\n    return PremiumForm[model_point()[\"premium_form\"]]",
+   "prem_pp_sched": "def prem_pp_sched(k):\n    \"\"\"P_sched(k): the premium schedule **as written at inception**, per policy.\n\n    Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag* in the\n    first year (``k = 0``) on the ``einmal`` form; otherwise the loaded gross premium grown\n    by the *Dynamik*.\n\n    It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is\n    the sum of all premiums payable under the contract **as written**, and a later election\n    does not retrospectively shrink that base — which is why :func:`beitragssumme_pp` sums\n    this cells and not :func:`prem_pp`.\n    \"\"\"\n    mp = model_point()\n    if k < 0 or k >= int(mp[\"aufschub_y\"]) or k >= int(mp[\"prem_term_y\"]):\n        return 0.0\n    if premium_form() == PremiumForm.einmal:\n        return float(mp[\"premium_single_pp\"]) if k == 0 else 0.0\n    return (float(mp[\"prem_gross_pp\"]) * freq_load()\n            * (1.0 + float(mp[\"dynamik_rate\"])) ** k)",
+   "charge_schedule": "def charge_schedule():\n    \"\"\"The charge parameters of this policy's charge_id, by item.\"\"\"\n    return data.charge_table().loc[model_point()[\"charge_id\"]]",
+   "charge_acq_spread_pp": "def charge_acq_spread_pp(k):\n    \"\"\"alpha~(k): the same charge spread **evenly over the first five contract years**.\n\n    ``alpha_total_pp() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the\n    § 169 Abs. 3 VVG treatment, and it enters no account of its own: it drives\n    :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the\n    statutory surrender floor.  255,00 € on the anchor cell.\n    \"\"\"\n    sub = charge_schedule()\n    years = int(sub.at[ChargeItem.alpha_spread_years, \"value\"])\n    return alpha_total_pp() / years if 0 <= k < years else 0.0",
+   "charge_admin_pp": "def charge_admin_pp(k):\n    \"\"\"gamma(k): the reserve-based administration charge on the **start-of-year** balance.\n\n    ``gamma_rate x av_pp(k)`` while premiums are being paid and ``gamma_pup_rate x av_pp(k)``\n    while the contract is premium-free **[std]** — a paid-up contract still bears\n    administration cost, and the higher premium-free rate is what makes\n    *Beitragsfreistellung* cost something instead of being free.  Struck on the start-of-year\n    balance so the recursion stays acyclic.\n    \"\"\"\n    item = ChargeItem.gamma_pup_rate if paid_up(k) else ChargeItem.gamma_rate\n    sub = charge_schedule()\n    return float(sub.at[item, \"value\"]) * av_pp(k)",
+   "charge_prem_pp": "def charge_prem_pp(k):\n    \"\"\"beta(k): the premium charge, ``beta_rate x P(k)`` **[std]**.\n\n    4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the\n    *Sparbeitrag* and produces no cash flow.\n    \"\"\"\n    sub = charge_schedule()\n    return float(sub.at[ChargeItem.beta_rate, \"value\"]) * prem_pp(k)",
+   "surr_charge_pp": "def surr_charge_pp(k):\n    \"\"\"The *Stornoabzug*: ``stornoabzug_rate x (av_pp_at + av_sur_pp_at)`` at ``\"AFT_INT\"``.\n\n    A **flat percentage of the pre-deduction value with no duration term**, which is the\n    shape § 169 Abs. 5 VVG allows: a deduction is permitted only if agreed, quantified and\n    appropriate, and an agreement of a deduction in respect of not-yet-amortised *Abschluss-\n    und Vertriebskosten* is void.  A duration-graded deduction that unwound over the first\n    years would be exactly the void kind.  2,0 % on ``zillmer_25`` and nil on ``zillmer_40``\n    **[std]**; whatever it is set to, :func:`cv_pp` cannot fall below :func:`cv_floor_pp`.\n    \"\"\"\n    sub = charge_schedule()\n    return (float(sub.at[ChargeItem.stornoabzug_rate, \"value\"])\n            * (av_pp_at(k, AvTiming.AFT_INT) + av_sur_pp_at(k, AvTiming.AFT_INT)))",
+   "sex": "def sex():\n    \"\"\"The sex of the insured life, read once per policy.\"\"\"\n    return Sex[model_point()[\"sex\"]]",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The base mortality and improvement of this policy's sex, by age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "improve_rate": "def improve_rate(x):\n    \"\"\"The annual mortality improvement rate at attained age x, from *mort_table.csv*.\n\n    1,5 % below age 60, grading linearly to 0,5 % at 100 and to zero at 110 **[std]** — a\n    deliberate simplification of the *Starttrend* / *Zieltrend* structure the German\n    construction uses, documented as one rather than presented as a replication.\n    \"\"\"\n    sub = mort_schedule()\n    return float(sub.at[int(x), \"improve\"])",
+   "mort_rate_at_age": "def mort_rate_at_age(x):\n    \"\"\"The first-order base-year death rate at attained age x, for the model point's sex.\n\n    ``q_base`` from *mort_table.csv*, a **[std]** Gompertz proxy anchored at\n    ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the\n    Deutsche Aktuarvereinigung, is not public and is not redistributed here.\n    \"\"\"\n    sub = mort_schedule()\n    return float(sub.at[int(x), \"q_base\"])",
+   "decl_rate_schedule": "def decl_rate_schedule():\n    \"\"\"The declared rates of this policy's decl_scenario_id, by calendar year.\"\"\"\n    return data.decl_rate_table().loc[model_point()[\"decl_scenario_id\"]]",
+   "decl_rate": "def decl_rate(k):\n    \"\"\"d(k): the declared *laufende Verzinsung* for the model point's scenario in year k.\n\n    Read from *decl_rate_table.csv* at ``(decl_scenario_id, calendar_year_y(k))``, clamped to\n    the table's calendar range so a projection running past its last declared year holds that\n    year flat.  2,55 % level on the ``base`` path, 1,50 % on ``low`` **[std]**.\n\n    **The declared rate contains the guarantee.**  It is the *Garantieverzinsung* plus the\n    *laufende Zinsüberschussbeteiligung*, never a surplus on top of the guarantee.\n    \"\"\"\n    sub = decl_rate_schedule()\n    years = sub.index\n    y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))\n    return float(sub.at[y, \"decl_rate\"])",
+   "death_benefit_form": "def death_benefit_form():\n    \"\"\"The deferment-phase death benefit form, read once per policy.\"\"\"\n    return DeathBenefitForm[model_point()[\"death_benefit_form\"]]",
+   "db_base_pp": "def db_base_pp(k):\n    \"\"\"Dcheck(k): the death benefit measured on **start-of-year** balances.\n\n    Used for one thing only — striking the *Risikobeitrag* through :func:`nar_pp`.  A risk\n    charge computed on the post-premium, post-charge balance would make the recursion\n    circular, since that balance depends on the charge.  Compare :func:`db_pp`, which is what\n    a claim actually pays and reads end-of-year balances: the two are different quantities\n    with deliberately similar names.\n    \"\"\"\n    form = death_benefit_form()\n    paid = prem_cum_pp(k) + prem_pp(k)\n    if form == DeathBenefitForm.prem_refund:\n        return paid\n    if form == DeathBenefitForm.deckungskapital:\n        return av_pp(k)\n    if form == DeathBenefitForm.max:\n        return max(paid, av_pp(k))\n    raise ValueError(\"invalid death_benefit_form\")",
+   "db_pp": "def db_pp(k):\n    \"\"\"D(k): the death benefit per policy actually paid on a death in period k.\n\n    Three documented designs, on **end-of-year** balances: *Beitragsrückgewähr* (the premiums\n    paid, including the year's), the accumulated *Deckungskapital*, or the larger of the two;\n    plus the *Ansammlungsguthaben* where ``db_incl_surplus`` is set.\n\n    **Zero after the *Rentenbeginn*.**  *Beitragsrückgewähr in der Rentenbezugsphase* was not\n    established by any source in this product's corpus, so it is not asserted; what the corpus\n    does establish for post-*Rentenbeginn* death is the *Rentengarantiezeit*, which is\n    modelled in :func:`pols_annuity`.\n    \"\"\"\n    mp = model_point()\n    if k >= int(mp[\"aufschub_y\"]):\n        return 0.0\n    form = death_benefit_form()\n    paid = prem_cum_pp(k) + prem_pp(k)\n    if form == DeathBenefitForm.prem_refund:\n        base = paid\n    elif form == DeathBenefitForm.deckungskapital:\n        base = av_pp_at(k, AvTiming.AFT_INT)\n    elif form == DeathBenefitForm.max:\n        base = max(paid, av_pp_at(k, AvTiming.AFT_INT))\n    else:\n        raise ValueError(\"invalid death_benefit_form\")\n    if int(mp[\"db_incl_surplus\"]):\n        base = base + av_sur_pp_at(k, AvTiming.AFT_INT)\n    return base",
+   "payout_system": "def payout_system():\n    \"\"\"The Ueberschussrente payout system, read once per policy.\"\"\"\n    return PayoutSystem[model_point()[\"payout_system\"]]",
+   "annuity_sur_mth_pp": "def annuity_sur_mth_pp(k):\n    \"\"\"U(k): the *Überschussrente*, monthly, per policy, by *Überschussverwendung*.\n\n    The argument is the **policy year**, because all three escalations are annual: an\n    *Überschussrente* is redeclared once a year and steps on the anniversary, so the twelve\n    instalments of a payout year are equal and the monthly grid refines when they are *paid*\n    rather than what they are.\n\n    ``konstant``\n        ``sur_ann_rate x G``, level.  Set from a whole-period projection at outset and\n        falling if the insurer earns less.\n\n    ``volldynamisch``\n        ``G x ((1 + sur_ann_growth)^j - 1)`` with ``j = k - n`` the completed payout years:\n        nil in the first payout year and rising with actual surplus development thereafter.\n\n    ``teildynamisch``\n        ``theta sur_ann_rate G + G ((1 + theta sur_ann_growth)^j - 1)``: a stated combination\n        of the two, half of each at ``theta = 0.5``.\n\n    The three systems and their *directions* are established; **no level, rate or split was\n    established for any of them**, so all three parameters are **[std]**.\n    \"\"\"\n    mp = model_point()\n    n = int(mp[\"aufschub_y\"])\n    if k < n:\n        return 0.0\n    par = data.param_table()                                         # noqa: F821\n    rate = float(par.at[ParamItem.sur_ann_rate, \"value\"])\n    growth = float(par.at[ParamItem.sur_ann_growth, \"value\"])\n    theta = float(par.at[ParamItem.sur_ann_theta, \"value\"])\n    j = k - n\n    system = payout_system()\n    guar = annuity_guar_mth_pp()\n    if system == PayoutSystem.konstant:\n        return rate * guar\n    if system == PayoutSystem.volldynamisch:\n        return guar * ((1.0 + growth) ** j - 1.0)\n    if system == PayoutSystem.teildynamisch:\n        return (theta * rate * guar\n                + guar * ((1.0 + theta * growth) ** j - 1.0))\n    raise ValueError(\"invalid payout_system\")"
+  }
+ },
+ "notes": [],
+ "spec": "# RV_DE_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1237: t = t_start()..proj_len(): loops range(t_start(), proj_len()) (lines 1853, 2268),\n#     check_pols_roll_fwd_resid reads pols_if(t+1) at t = proj_len()-1 (lines 2045, 2077), av_release/pup\n#     cells read pols_if(12*(k+1)) with k = proj_len_y()-1 (lines 1010, 1091, 1505) = proj_len(). Max t = 1236\n#     -> bound 1237.\n#   k < 104: policy year k = k_start()..proj_len_y(): loops range(k_start(), proj_len_y()) (lines 2112-2319)\n#     with av(k+1) / av_sur(k+1) (lines 2107, 2128) at k = proj_len_y()-1. Max k = 103 -> bound 104. Lookups\n#     by k clamp (decl_rate line 1268, lapse line 1312).\n{'cells_param_size': {'t': 1237, 'k': 104}}\n"
+}

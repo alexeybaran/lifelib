@@ -1,0 +1,229 @@
+{
+ "model": "PER_FR_S",
+ "lib": "frlib",
+ "product": "per_assurance",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Compartment": [
+   [
+    "c1",
+    0
+   ],
+   [
+    "c2",
+    1
+   ],
+   [
+    "c3",
+    2
+   ]
+  ],
+  "AllocationProfile": [
+   [
+    "prudent",
+    0
+   ],
+   [
+    "equilibre",
+    1
+   ],
+   [
+    "dynamique",
+    2
+   ],
+   [
+    "offensif",
+    3
+   ]
+  ],
+  "ExitForm": [
+   [
+    "capital_single",
+    0
+   ],
+   [
+    "capital_staged",
+    1
+   ],
+   [
+    "annuity",
+    2
+   ],
+   [
+    "mixed",
+    3
+   ]
+  ],
+  "MortBasis": [
+   [
+    "flat",
+    0
+   ],
+   [
+    "table",
+    1
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_REBAL",
+    0
+   ],
+   [
+    "BOM",
+    1
+   ],
+   [
+    "BEF_CHARGE",
+    2
+   ],
+   [
+    "EOM",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_RELEASE",
+    1
+   ],
+   [
+    "BEF_TRANSFER",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "EARLY_RELEASE",
+    1
+   ],
+   [
+    "TRANSFER",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_euro_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_uc_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "death_floor_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "allocation_profile": "AllocationProfile",
+   "compartment": "Compartment",
+   "exit_form": "ExitForm",
+   "mort_basis": "MortBasis",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "allocation_schedule": [
+    "alloc_euro",
+    "alloc_uc"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ],
+   "exit_schedule": [
+    "early_release_rate",
+    "transfer_out_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "allocation_schedule": "def allocation_schedule():\n    \"\"\"The euro and UC shares of the policy's allocation profile, by years to horizon.\"\"\"\n    return data.allocation_grid().loc[allocation_profile()]",
+   "alloc_euro": "def alloc_euro(t):\n    \"\"\"a(t): the target euro (low-risk) share in month t, read from the grid.\n\n    A lookup, not a formula, and one that steps **once a plan year**: its key\n    :func:`years_to_horizon` is whole years, so every month of a plan year reads the same\n    row and the glide path never moves between anniversaries.  The *équilibré* ladder is 0 / 20 / 50 / 70% as the horizon\n    closes, and **the boundary belongs to the tighter band** — ``k = 10`` reads 20%,\n    ``k = 5`` reads 50%, ``k = 2`` reads 70% — a **[std]** convention, because the\n    arrêté's band headings as extracted overlap at each boundary year and do not settle\n    which band it falls in.\n\n    Years beyond the last row of the grid take that row, which is the ``k > 10`` band in\n    the shipped file.\n    \"\"\"\n    grid = allocation_schedule()\n    k = max(1, min(years_to_horizon(t), int(grid.index.max())))\n    return float(grid.loc[k, \"euro_share\"])",
+   "alloc_uc": "def alloc_uc(t):\n    \"\"\"1 - a(t): the target *unités de compte* share in month t, from the grid's column.\n\n    Constant through a plan year, like :func:`alloc_euro`.  Read rather than computed, so that the file's two columns are both live and a grid\n    whose rows do not close is caught by :func:`check_glide_path_closes` instead of being\n    silently half-ignored.\n    \"\"\"\n    grid = allocation_schedule()\n    k = max(1, min(years_to_horizon(t), int(grid.index.max())))\n    return float(grid.loc[k, \"uc_share\"])",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates at the policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q(t): the **annual** mortality rate of the plan year containing month t.\n\n    The rate the technical notes tabulate, and it keeps the bare name for that reason —\n    :func:`mort_rate_mth` is the rate actually applied in the month.  It is a property of\n    the plan year and not of the month: it is constant across the twelve months of a plan\n    year and steps at the anniversary, because :func:`age` does.\n\n    On a ``flat`` cell the model point's own placeholder; on a ``table`` cell the shipped\n    **[std]** proxy at ``age(t)`` — the attained age the plan year opens at — times\n    ``mort_be_factor``.\n\n    Both are placeholders.  TH 00-02 and TF 00-02 govern the death benefit during\n    accumulation and are cited rather than shipped, their *décalage d'âge* age shifts are\n    not reproduced, and no sampled contract publishes a mortality basis at all.\n    \"\"\"\n    if mort_basis() == MortBasis.flat:\n        return mort_rate_flat()\n    x = min(age(t), omega_age)                                       # noqa: F821\n    return min(1.0, float(mort_schedule().loc[\n        x, \"mort_rate\"]) * mort_be_factor)",
+   "exit_schedule": "def exit_schedule():\n    \"\"\"The early-release and transfer rates of the policy's compartment, by duration.\"\"\"\n    return data.exit_table().loc[compartment()]",
+   "early_release_rate": "def early_release_rate(t):\n    \"\"\"w_e(t): the **annual** *déblocage anticipé* decrement of the plan year **[std]**.\n\n    The annual rate ``exit_table.csv`` tabulates, keeping the bare name for that reason;\n    :func:`early_release_rate_mth` is the rate actually applied in the month.  It is a\n    property of the plan year, constant across its twelve months.\n\n    **Not a lapse rate.**  A release requires one of the seven listed triggering events —\n    death of a spouse, invalidity, serious illness of a dependent child,\n    over-indebtedness, exhaustion of unemployment rights, business liquidation, purchase\n    of the main residence — bears **no charge**, and may be partial, leaving the plan in\n    force.  The base model treats it as a full exit paying the whole account value.\n\n    Only the last of the seven cases is discretionary and none of them responds to\n    investment performance, so a dynamic moneyness multiplier would be a category error\n    on this decrement.  It is read from ``exit_table.csv`` at (``compartment``,\n    ``duration``) — a 1-based *ancienneté* label, so the key is :func:`plan_year` and not\n    the 0-based :func:`duration` — and compartment 3 carries a lower rate because the\n    main-residence limb is closed to it.\n    \"\"\"\n    tbl = exit_schedule()\n    d = max(1, min(plan_year(t), int(tbl.index.max())))\n    return float(tbl.loc[d, \"early_release_rate\"])",
+   "transfer_out_rate": "def transfer_out_rate(t):\n    \"\"\"w_r(t): the **annual** transfer-out decrement of the plan year **[std]**.\n\n    The annual rate ``exit_table.csv`` tabulates, keeping the bare name for that reason;\n    :func:`transfer_out_rate_mth` is the rate actually applied in the month.\n\n    **Not a lapse rate either.**  The plan ends for this insurer but the savings do not\n    leave the regime: rights under accumulation are transferable to any other PER, and\n    the transfer does not alter the surrender or liquidation conditions.  It pays a\n    transfer value, not a surrender value, and differs from the release amount by\n    :func:`transfer_indemnity_rate`.\n\n    Flat in the base run.  The indemnity falls to nil at the fifth anniversary and a\n    rational holder waits, so the reference behavioural shape is a multiplier of 0.7 in\n    the years before the anniversary and 1.3 in the anniversary year **[std]**, the pair\n    chosen so that the two adjacent years average to 1.00 and the flat calibration is not\n    quietly raised by turning the shape on.  It is switched off here so that the worked\n    example stays transparent.  Note that the pair is mean-preserving over those two years\n    only: applied over a longer pre-anniversary run it is below 1 on average, and a\n    calibration that spans one would have to rescale.\n    \"\"\"\n    tbl = exit_schedule()\n    d = max(1, min(plan_year(t), int(tbl.index.max())))\n    return float(tbl.loc[d, \"transfer_out_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# PER_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 746: need_max 744; check_horizon (:1967) probes premium_pp(proj_len()) and\n#     years_to_horizon(proj_len()) -> max t = 744 -> 745 exclusive, +1 margin\n{'cells_param_size': {'t': 746}}\n"
+}

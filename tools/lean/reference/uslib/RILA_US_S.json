@@ -1,0 +1,411 @@
+{
+ "model": "RILA_US_S",
+ "lib": "uslib",
+ "product": "registered_index_linked_annuity",
+ "families": {
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ],
+  "MarketField": [
+   [
+    "index_level",
+    0
+   ],
+   [
+    "mvr",
+    1
+   ],
+   [
+    "risk_free",
+    2
+   ],
+   [
+    "div_yield",
+    3
+   ],
+   [
+    "impl_vol",
+    4
+   ]
+  ],
+  "OptionLeg": [
+   [
+    "ATM_CALL",
+    0
+   ],
+   [
+    "OTM_CALL",
+    1
+   ],
+   [
+    "OTM_PUT",
+    2
+   ],
+   [
+    "ATM_PUT",
+    3
+   ],
+   [
+    "FLOOR_PUT",
+    4
+   ],
+   [
+    "STEP_BINARY",
+    5
+   ],
+   [
+    "EDGE_BINARY",
+    6
+   ]
+  ],
+  "MarketQuote": [
+   [
+    "CURRENT",
+    0
+   ],
+   [
+    "TERM_START",
+    1
+   ]
+  ],
+  "Timing": [
+   [
+    "BEF_CREDIT",
+    0
+   ],
+   [
+    "BEF_ROLL",
+    1
+   ],
+   [
+    "BEF_WD",
+    2
+   ],
+   [
+    "AFT_WD",
+    3
+   ],
+   [
+    "BEF_DECR",
+    4
+   ],
+   [
+    "BEF_LAPSE",
+    5
+   ],
+   [
+    "BEF_TERM_SURR",
+    6
+   ],
+   [
+    "AFT_DECR",
+    7
+   ]
+  ],
+  "Bucket": [
+   [
+    "OPTION",
+    0
+   ],
+   [
+    "FIXED",
+    1
+   ],
+   [
+    "HOLDING",
+    2
+   ]
+  ],
+  "CreditType": [
+   [
+    "CAP",
+    0
+   ],
+   [
+    "STEP",
+    1
+   ],
+   [
+    "EDGE",
+    2
+   ],
+   [
+    "FLOOR",
+    3
+   ]
+  ],
+  "InterimValueFamily": [
+   [
+    "portfolio",
+    0
+   ],
+   [
+    "notional",
+    1
+   ],
+   [
+    "delta",
+    2
+   ],
+   [
+    "legacy",
+    3
+   ]
+  ],
+  "Amortization": [
+   [
+    "straight_line",
+    0
+   ],
+   [
+    "updated_expiry",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "budget_amort_pp": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "claim_from_av_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_over_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "deriv_proxy_pp": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "fixed_acct_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "fixed_proxy_pp": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "guar_min_rate": {
+    "0": [
+     "CreditType",
+     "kind"
+    ]
+   },
+   "holding_acct_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "interim_value_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "inv_amt_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "iv_notional_pp": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "market_state": {
+    "1": [
+     "MarketField",
+     "field"
+    ]
+   },
+   "opt_component": {
+    "1": [
+     "OptionLeg",
+     "leg"
+    ],
+    "4": [
+     "MarketQuote",
+     "mkt"
+    ]
+   },
+   "opt_component_pp": {
+    "1": [
+     "OptionLeg",
+     "leg"
+    ],
+    "2": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "opt_portfolio": {
+    "3": [
+     "MarketQuote",
+     "mkt"
+    ]
+   },
+   "opt_portfolio_abs": {
+    "3": [
+     "MarketQuote",
+     "mkt"
+    ]
+   },
+   "pols_decr": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "roll_share": {
+    "0": [
+     "Bucket",
+     "bucket"
+    ]
+   },
+   "roll_to_acct_pp": {
+    "1": [
+     "Bucket",
+     "bucket"
+    ]
+   },
+   "trading_cost_pp": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "wd_alloc_pp": {
+    "1": [
+     "Bucket",
+     "bucket"
+    ]
+   },
+   "wd_bucket_value_pp": {
+    "1": [
+     "Bucket",
+     "bucket"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "amort_rule": "Amortization",
+   "crediting_type": "CreditType",
+   "iv_family": "InterimValueFamily",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {
+  "Projection": {
+   "opt_legs": "OptionLeg"
+  }
+ },
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "market_table": [
+    "market_state"
+   ],
+   "has_withdrawals": [
+    "wd_scheduled_pp"
+   ],
+   "withdrawal_rows": [
+    "wd_scheduled_pp"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "market_table": "def market_table():\n    \"\"\"The market scenario selected for this policy.\"\"\"\n    return data.market_scenario().loc[scenario_id()]",
+   "market_state": "def market_state(k, field):\n    \"\"\"Step-function lookup of column ``name`` in the model point's market scenario.\n\n    ``k`` is a **time** in policy months from the Issue Date, ``k = 0`` at issue, not the\n    month index: the market state month ``t`` is valued at is ``market_state(t + 1, ...)``\n    and the state locked on a Term Start Date is ``market_state(term_start_month(t), ...)``.\n    Each row of *market_scenario.csv* is keyed by that same ``month_end`` and states the\n    market state that holds from it until the next row of the same scenario, so a flat\n    path is one row. The index path is therefore piecewise constant between the scenario's\n    own anchor months; that is a property of the deterministic scenario, not of the model.\n    \"\"\"\n    sub = market_table()\n    if field == MarketField.index_level:\n        return float(sub.loc[sub.index.asof(k), \"index_level\"])\n    elif field == MarketField.mvr:\n        return float(sub.loc[sub.index.asof(k), \"mvr\"])\n    elif field == MarketField.risk_free:\n        return float(sub.loc[sub.index.asof(k), \"risk_free\"])\n    elif field == MarketField.div_yield:\n        return float(sub.loc[sub.index.asof(k), \"div_yield\"])\n    elif field == MarketField.impl_vol:\n        return float(sub.loc[sub.index.asof(k), \"impl_vol\"])\n    else:\n        raise ValueError(\"invalid market field\")",
+   "has_withdrawals": "def has_withdrawals():\n    \"\"\"Whether the withdrawal table has rows for the model point's withdrawal programme.\"\"\"\n    return wd_schedule_id() in data.withdrawal_table().index",
+   "wd_scheduled_pp": "def wd_scheduled_pp(t):\n    \"\"\"The gross withdrawal scheduled for month t in *withdrawal_table.csv*, else zero.\n\n    The file is keyed by the **month end** the withdrawal is taken at, so month ``t``\n    reads key ``t + 1``: the worked example's $8,000 at the 3-year point sits at month end\n    36 and is taken in month 35.\n    \"\"\"\n    if not has_withdrawals():\n        return 0.0\n    rows = withdrawal_rows()\n    m = t + 1\n    return float(rows.loc[m, \"wd_amount\"]) if m in rows.index else 0.0",
+   "withdrawal_rows": "def withdrawal_rows():\n    \"\"\"The model point's scheduled withdrawals (only read when has_withdrawals()).\"\"\"\n    return data.withdrawal_table().loc[wd_schedule_id()]"
+  }
+ },
+ "notes": [],
+ "spec": "# RILA_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1082: need_max 1080 + 1 (market_state(t+1, ...) in index_level/mvr/risk_free/div_yield/impl_vol\n#     lines 674-719; opt_component CURRENT k = t+1; pols_if(t+1) in av_at line 2064, check_pols_roll_fwd_resid\n#     line 2136) + 1 margin = 1082\n#   k < 1082: month index into market_scenario.csv month_end via index.asof (market_state line ~650); k =\n#     t+1 or term_start_month(t) <= proj_len(); same as t\n{'cells_param_size': {'t': 1082, 'k': 1082}}\n"
+}

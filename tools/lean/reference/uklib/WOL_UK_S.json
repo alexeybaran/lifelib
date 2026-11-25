@@ -1,0 +1,166 @@
+{
+ "model": "WOL_UK_S",
+ "lib": "uklib",
+ "product": "whole_of_life",
+ "families": {
+  "Cell": [
+   [
+    "O50",
+    0
+   ],
+   [
+    "UW",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "NS",
+    0
+   ],
+   [
+    "S",
+    1
+   ]
+  ],
+  "Escalation": [
+   [
+    "level",
+    0
+   ],
+   [
+    "fixed_5pct",
+    1
+   ],
+   [
+    "rpi",
+    2
+   ]
+  ],
+  "MortBasis": [
+   [
+    "population",
+    0
+   ],
+   [
+    "assured",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "BenefitKind": [
+   [
+    "NON_ACC",
+    0
+   ],
+   [
+    "ACC",
+    1
+   ],
+   [
+    "DEATH",
+    2
+   ],
+   [
+    "PAID_UP",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "DEATH_PU",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "benefit_pp": {
+    "1": [
+     "BenefitKind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "cell": "Cell",
+   "escalation": "Escalation",
+   "mort_basis": "MortBasis",
+   "sex": "Sex",
+   "smoker": "Smoker"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_rate"
+   ],
+   "lapse_schedule": [
+    "lapse_rate_base"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates of the policy's basis, sex and smoker status, by age.\"\"\"\n    return data.mort_table().loc[(mort_basis(), sex(), smoker())]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q(y): the annual mortality rate applied in the policy year containing month t.\n\n    The cell's table rate at the attained age, times the anti-selection loading and the\n    improvement factor, capped at 1.  Both shipped bases are **[std]** proxies shaped\n    like the tables the notes name and are not published tables.\n    \"\"\"\n    q = float(mort_schedule().loc[age(t), \"mort_rate\"])\n    return min(1.0, q * mort_loading() * mort_improve_factor(t))",
+   "lapse_schedule": "def lapse_schedule():\n    \"\"\"The lapse rates of the policy's cell, by policy year.\"\"\"\n    return data.lapse_table().loc[cell()]",
+   "lapse_rate_base": "def lapse_rate_base(t):\n    \"\"\"The table annual lapse rate in month t **[std]**, before the crossover stress.\n\n    Read from the cell's own row of the lapse table, which is keyed by the contractual\n    1-based policy year ``policy_year(t) = t // 12 + 1``; policy years beyond the table\n    take its last row.  Both tables are drafting constructions - no public UK whole of life\n    lapse study was retrieved - and on a product with no surrender value they are the\n    single largest lever on the liability.\n    \"\"\"\n    tbl = lapse_schedule()\n    y = policy_year(t)\n    return float(tbl.loc[min(y, int(tbl.index.max())), \"lapse_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# WOL_UK_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1236: need_max 1224 + t+1 offset -> 1225 required; +12 margin => 1236.\n{'cells_param_size': {'t': 1236}}\n"
+}

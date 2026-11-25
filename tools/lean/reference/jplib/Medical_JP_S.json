@@ -1,0 +1,136 @@
+{
+ "model": "Medical_JP_S",
+ "lib": "jplib",
+ "product": "medical",
+ "families": {
+  "Chassis": [
+   [
+    "shushin",
+    0
+   ],
+   [
+    "teiki",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PremPeriod": [
+   [
+    "whole_life",
+    0
+   ],
+   [
+    "to_65",
+    1
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "semiannual",
+    1
+   ],
+   [
+    "annual",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "HOSP",
+    0
+   ],
+   [
+    "SURGERY",
+    1
+   ],
+   [
+    "ADVANCED",
+    2
+   ],
+   [
+    "LUMP",
+    3
+   ],
+   [
+    "LAPSE",
+    4
+   ],
+   [
+    "ALL",
+    5
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "chassis": "Chassis",
+   "prem_mode": "PremMode",
+   "prem_period_type": "PremPeriod",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {
+  "Projection": [
+   "los_days",
+   "los_probs"
+  ]
+ },
+ "hoists": {
+  "Data": {
+   "los_band_table": []
+  }
+ },
+ "hoist_sources": {
+  "Data": {
+   "los_band_table": "def los_band_table():\n    \"\"\"The length-of-stay bands of :func:`los_table`, one row per band, keyed by band_start.\"\"\"\n    frame = los_table().reset_index()\n    return frame[[\"band_start\", \"band_end\"]].drop_duplicates().set_index(\"band_start\")"
+  }
+ },
+ "notes": [],
+ "spec": "# Medical_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1190: need_max 1188; max index 1188 via t+1 in check_* residuals (pols_if, agg_days_*, adv_paid,\n#     lump_count, waived; :1413-1523); exclusive 1189 + 1 spare\n#   x < 120: mort_rate_at_age(x):563 (clamps to omega) called with lo and lo+1 (:595) from age(t) <= 118;\n#     lo+1 reaches 119 when age_basis_offset = 0.5; mort_table.csv max 118 => 119 + 1\n{'cells_param_size': {'t': 1190, 'x': 120}}\n"
+}

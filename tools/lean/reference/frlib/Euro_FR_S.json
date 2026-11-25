@@ -1,0 +1,154 @@
+{
+ "model": "Euro_FR_S",
+ "lib": "frlib",
+ "product": "assurance_vie_euro",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "GuaranteeForm": [
+   [
+    "net",
+    0
+   ],
+   [
+    "gross",
+    1
+   ]
+  ],
+  "Scenario": [
+   [
+    "base",
+    0
+   ],
+   [
+    "low",
+    1
+   ],
+   [
+    "high",
+    2
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_WD",
+    2
+   ],
+   [
+    "AFT_INT",
+    3
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "guarantee_form": "GuaranteeForm",
+   "scenario_id": "Scenario",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "scenario_rates": [
+    "r_fin",
+    "ref_rate"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "scenario_rates": "def scenario_rates():\n    \"\"\"The policy's financial scenario: r_fin and ref_rate by projection year.\"\"\"\n    return data.fin_rate_table().loc[scenario_id()]",
+   "r_fin": "def r_fin(y):\n    \"\"\"r(y): the fund's financial return rate in projection year y, from the scenario.\n\n    A **scenario**, not a forecast.  The base path is anchored to the ACPR's observed\n    `taux de rendement de l'actif` and to the reinvestment picture behind it: the 10-year\n    OAT averaged 3.4% in 2025 while about 60% of fixed-coupon bonds maturing within four\n    years still carried a coupon below 3%.  It dominates everything downstream - it sets\n    the `compte financier`, hence the statutory floor, hence how fast the PPB drains.\n\n    The scenario table is an **annual** path and stays one; the month reaches it through\n    ``proj_year(t)``.\n    \"\"\"\n    tbl = scenario_rates()\n    return float(tbl.loc[min(y, int(tbl.index.max())), \"r_fin\"])",
+   "ref_rate": "def ref_rate(y):\n    \"\"\"The market reference rate the dynamic surrender term keys off, in year y.\n\n    2.20% throughout, the 2025 average Livret A rate.  It is carried in the scenario\n    table rather than as a Reference because in a different financial scenario the rate\n    available elsewhere is a different rate too.\n    \"\"\"\n    tbl = scenario_rates()\n    return float(tbl.loc[min(y, int(tbl.index.max())), \"ref_rate\"])",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates at the policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q(y): the **annual** best-estimate mortality rate of the policy year of month t.\n\n    The shipped table rate at ``age(t)`` times ``mort_be_factor``, and it is the rate the\n    technical notes tabulate - one rate for the twelve months of a policy year.\n    :func:`mort_rate_mth` is the rate actually applied in the month.  Both are\n    placeholders: the statutory tables annexed to the arrêté du 1er août 2006 are cited in\n    the documents but not redistributed here, so the table is an INSEE-shaped population\n    proxy and the factor a crude allowance for population mortality being heavier than\n    insured experience.  The two together give the notes' placeholder ``q = 0.0060`` at\n    male age 60 exactly **[std]**.\n\n    Mortality here is a **timing** assumption, not an amount assumption: the death\n    benefit is the `épargne acquise`, so the basis affects only *when* the account is\n    released - far less than in any protection product.\n    \"\"\"\n    x = min(age(t), omega_age)                                       # noqa: F821\n    return min(1.0, float(mort_schedule().loc[\n        x, \"mort_rate\"]) * mort_be_factor)"
+  }
+ },
+ "notes": [],
+ "spec": "# Euro_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 482: proj_len 480 (12*proj_years=40); max arg 480 via av(t+1)/av_pp(t+1)/pols_if(t+1) and\n#     pb_cum_pp(12*(y+1)) with y<=39 in check_cliquet_resid -> 481 exclusive, +1 margin\n#   y < 42: projection year y = t//12 (:624) in range(proj_years=40); ppb_pp(y+1) in\n#     check_ppb_roll_fwd/result_pb reaches 40 -> 41 exclusive, +1 margin; r_fin/ref_rate clamp to\n#     fin_rate_table.csv y max 39 (:717)\n#   v in [-8, 41): v reaches -ppb_vintages_init(); the PPB clock is 8 years (A132-16, product-\n#     spec.md:168/239, [std]); no model-point validation enforces 8: a point with more vintages raises\n{'cells_param_size': {'t': 482, 'y': 42, 'v': (-8, 41)}}\n"
+}

@@ -1,0 +1,419 @@
+{
+ "model": "Child_KR_S",
+ "lib": "krlib",
+ "product": "child",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "CvForm": [
+   [
+    "std",
+    0
+   ],
+   [
+    "susp",
+    1
+   ],
+   [
+    "graded",
+    2
+   ]
+  ],
+  "LapseBasis": [
+   [
+    "loglinear",
+    0
+   ],
+   [
+    "disclosed",
+    1
+   ],
+   [
+    "flat",
+    2
+   ]
+  ],
+  "LapseColumn": [
+   [
+    "first_year_rate",
+    0
+   ],
+   [
+    "completion_rate",
+    1
+   ],
+   [
+    "ultimate_rate",
+    2
+   ]
+  ],
+  "Cover": [
+   [
+    "disability",
+    0
+   ],
+   [
+    "disease_disab",
+    1
+   ],
+   [
+    "cancer",
+    2
+   ],
+   [
+    "minor_cancer",
+    3
+   ],
+   [
+    "cerebral",
+    4
+   ],
+   [
+    "cardiac",
+    5
+   ],
+   [
+    "surgery",
+    6
+   ],
+   [
+    "fracture",
+    7
+   ],
+   [
+    "burn",
+    8
+   ],
+   [
+    "hosp_acc",
+    9
+   ],
+   [
+    "hosp_dis",
+    10
+   ],
+   [
+    "liability",
+    11
+   ],
+   [
+    "neonatal",
+    12
+   ]
+  ],
+  "Kind": [
+   [
+    "DISABILITY",
+    0
+   ],
+   [
+    "DIAGNOSIS",
+    1
+   ],
+   [
+    "SURGERY",
+    2
+   ],
+   [
+    "HOSPITAL",
+    3
+   ],
+   [
+    "EVENT",
+    4
+   ],
+   [
+    "LIABILITY",
+    5
+   ],
+   [
+    "NEONATAL",
+    6
+   ],
+   [
+    "DEATH",
+    7
+   ],
+   [
+    "LAPSE",
+    8
+   ],
+   [
+    "MATURITY",
+    9
+   ],
+   [
+    "VOID",
+    10
+   ],
+   [
+    "ALL",
+    11
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "NeoTiming": [
+   [
+    "birth",
+    0
+   ],
+   [
+    "block",
+    1
+   ]
+  ],
+  "BasisParam": [
+   [
+    "disab_severity",
+    0
+   ],
+   [
+    "disease_disab_severity",
+    1
+   ],
+   [
+    "surgery_rate_cancer",
+    2
+   ],
+   [
+    "surgery_rate_cerebral",
+    3
+   ],
+   [
+    "surgery_rate_cardiac",
+    4
+   ],
+   [
+    "liability_severity",
+    5
+   ],
+   [
+    "hosp_cap_factor",
+    6
+   ],
+   [
+    "waiver_disab_share",
+    7
+   ],
+   [
+    "payer_disab_ratio",
+    8
+   ],
+   [
+    "leak_share",
+    9
+   ],
+   [
+    "void_rate_ann",
+    10
+   ],
+   [
+    "broad_def_factor",
+    11
+   ],
+   [
+    "net_prem_ratio",
+    12
+   ]
+  ],
+  "AvCurve": [
+   [
+    "build",
+    0
+   ],
+   [
+    "taper",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "basis_param": {
+    "0": [
+     "BasisParam",
+     "name"
+    ]
+   },
+   "benefit_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "cover_open": {
+    "1": [
+     "Cover",
+     "cover"
+    ]
+   },
+   "frac_open": {
+    "1": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "inc_pivot_ages": {
+    "0": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "inc_pivot_rates": {
+    "0": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "inc_rate": {
+    "1": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "inc_rate_at": {
+    "1": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "inc_rate_mth": {
+    "1": [
+     "Cover",
+     "cause"
+    ]
+   },
+   "lapse_param": {
+    "0": [
+     "LapseColumn",
+     "name"
+    ]
+   },
+   "mort_rate_at_age": {
+    "1": [
+     "Sex",
+     "s"
+    ]
+   },
+   "mort_series": {
+    "0": [
+     "Sex",
+     "s"
+    ]
+   },
+   "neonatal_cost_pp": {
+    "0": [
+     "NeoTiming",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "sum_assured": {
+    "0": [
+     "Cover",
+     "cover"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "cv_form": "CvForm",
+   "lapse_basis": "LapseBasis",
+   "payer_sex": "Sex",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "payer_sex": "Sex",
+   "sex": "Sex"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {
+  "Projection": {
+   "ref_sex": "Sex"
+  }
+ },
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "inc_pivot_ages": [
+    "inc_rate_at"
+   ],
+   "inc_pivot_rates": [
+    "inc_rate_at"
+   ],
+   "av_build_keys": [
+    "refund_build"
+   ],
+   "av_build_values": [
+    "refund_build"
+   ],
+   "av_taper_keys": [
+    "refund_taper"
+   ],
+   "av_taper_values": [
+    "refund_taper"
+   ],
+   "av_build_curve": [
+    "av_build_keys",
+    "av_build_values"
+   ],
+   "av_taper_curve": [
+    "av_taper_keys",
+    "av_taper_values"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "inc_pivot_ages": "def inc_pivot_ages(cause):\n    \"\"\"The pivot ages of ``cause`` for this model point's sex, as integers in age order (the keys\n    of :func:`inc_pivots`).\"\"\"\n    s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821\n    return [int(s.index[i]) for i in range(len(s.index))]",
+   "inc_rate_at": "def inc_rate_at(x, cause):\n    \"\"\"i_j(x): the annual incidence of cause ``j`` at 만나이 ``x``, log-linearly graduated.\n\n    Interpolated in the logarithm between the fourteen pivot ages of\n    *incidence_table.csv*, held flat outside them and returned **exactly** at a pivot, so\n    that the one published rate in the file reproduces to every digit it is printed with.\n    A logarithmic interpolation is the\n    right one here because every one of these rates spans two or more orders of magnitude\n    across the age range — cancer incidence rises about two hundredfold from age 10 to age\n    80 — and a linear interpolation between decade pivots would be wrong by a factor of\n    two in the middle of every span.\n\n    **Every rate is a [std] construction** save the ``disability`` pivot at age 5, which is\n    the one 적용위험률 published anywhere in this file [S1].  The provenance column of each\n    row names the authority its shape rests on.\n    \"\"\"\n    xs = inc_pivot_ages(cause)\n    ys = inc_pivot_rates(cause)\n    if x <= xs[0]:\n        return ys[0]\n    if x >= xs[-1]:\n        return ys[-1]\n    for i in range(len(xs)):\n        if xs[i] == x:\n            return ys[i]\n    import math\n    for i in range(len(xs) - 1):\n        x0 = xs[i]\n        y0 = ys[i]\n        x1 = xs[i + 1]\n        y1 = ys[i + 1]\n        if x0 <= x <= x1:\n            w = (x - x0) / (x1 - x0)\n            return math.exp(math.log(y0) + w * (math.log(y1) - math.log(y0)))\n    raise ValueError(\"age out of range\")",
+   "inc_pivot_rates": "def inc_pivot_rates(cause):\n    \"\"\"The pivot rates of ``cause`` for this model point's sex, at :func:`inc_pivot_ages`.\"\"\"\n    s = data.incidence_table().loc[(cause, sex())]                   # noqa: F821\n    return [float(s.loc[s.index[i], \"rate\"]) for i in range(len(s.index))]",
+   "av_build_keys": "def av_build_keys():\n    \"\"\"The ``build`` pivots of av_table: the durations in years, as floats, in key order.\"\"\"\n    tab = av_build_curve()\n    return [float(tab.index[i]) for i in range(len(tab.index))]",
+   "refund_build": "def refund_build(d):\n    \"\"\"The published 표준형 환급률 at duration ``d`` years, linearly interpolated.\n\n    The grid is the one a current 상품요약서 publishes on a named specimen contract — 0.0%\n    at 1 year, 45.6% at 3, 62.5% at 5, 73.7% at 10, 78.3% at 15, 82.6% at 20, 101.2% at 30,\n    122.5% at 40, 144.1% at 50 and 158.9% at 60, at 공시이율 1.7% (2026-07), 평균공시이율\n    2.5% and 최저보증이율 0.3% [S2] — held flat beyond 60 years and taken down to maturity\n    by :func:`refund_taper`.\n\n    The shape has two features no other ``krlib`` protection product produces.  The value\n    **crosses premiums paid at about year 30**, because the 적립부분 compounds at the\n    공시이율 while the 보장부분 reserve is still building.  And only a hundred-year term\n    can do it.\n    \"\"\"\n    xs = av_build_keys()\n    ys = av_build_values()\n    if d <= xs[0]:\n        return ys[0]\n    if d >= xs[-1]:\n        return ys[-1]\n    for i in range(len(xs) - 1):\n        x0 = xs[i]\n        y0 = ys[i]\n        x1 = xs[i + 1]\n        y1 = ys[i + 1]\n        if x0 <= d <= x1:\n            return y0 + (d - x0) / (x1 - x0) * (y1 - y0)\n    raise ValueError(\"duration out of range\")",
+   "av_build_values": "def av_build_values():\n    \"\"\"The ``build`` pivots of av_table: the values at :func:`av_build_keys`, as floats.\"\"\"\n    tab = av_build_curve()\n    return [float(tab.loc[tab.index[i], \"value\"]) for i in range(len(tab.index))]",
+   "av_taper_keys": "def av_taper_keys():\n    \"\"\"The ``taper`` pivots of av_table: the runoff fractions, as floats, in key order.\"\"\"\n    tab = av_taper_curve()\n    return [float(tab.index[i]) for i in range(len(tab.index))]",
+   "refund_taper": "def refund_taper(r):\n    \"\"\"The terminal collapse factor at runoff fraction ``r``, linearly interpolated.\n\n    1.0 until 85% of the term has run, then down to zero at 만기.  **Both forms collapse at\n    maturity** — the 표준형 to 16.0% of premiums paid at 95 years and the 미지급형 to 0.0%\n    [S2] — because there is no 만기환급금 on the protection part and what remains is only\n    the residual 적립부분.  The node at 0.95 is calibrated to reproduce that published\n    16.0% on a 100세만기 contract; indexing on the fraction of the term rather than on a\n    duration is what lets one shipped grid also serve the 30세만기 and 110세만기 points.\n    \"\"\"\n    xs = av_taper_keys()\n    ys = av_taper_values()\n    if r <= xs[0]:\n        return ys[0]\n    if r >= xs[-1]:\n        return ys[-1]\n    for i in range(len(xs) - 1):\n        x0 = xs[i]\n        y0 = ys[i]\n        x1 = xs[i + 1]\n        y1 = ys[i + 1]\n        if x0 <= r <= x1:\n            return y0 + (r - x0) / (x1 - x0) * (y1 - y0)\n    raise ValueError(\"runoff out of range\")",
+   "av_taper_values": "def av_taper_values():\n    \"\"\"The ``taper`` pivots of av_table: the values at :func:`av_taper_keys`, as floats.\"\"\"\n    tab = av_taper_curve()\n    return [float(tab.loc[tab.index[i], \"value\"]) for i in range(len(tab.index))]",
+   "av_build_curve": "def av_build_curve():\n    \"\"\"The ``build`` curve of av_table: the published 환급률 by duration in years.\"\"\"\n    return data.av_table().loc[AvCurve.build]",
+   "av_taper_curve": "def av_taper_curve():\n    \"\"\"The ``taper`` curve of av_table: the terminal collapse factor by runoff fraction.\"\"\"\n    return data.av_table().loc[AvCurve.taper]"
+  }
+ },
+ "notes": [],
+ "spec": "# Child_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1334: need_max 1321 + 1 for pols_if(t + 1)/frac_open(t+1) at t = proj_len-1 + 12 margin\n#   x < 121: mort_table.csv age keys 0..120; mort_rate_at_age(x, s) :675 clamps the lookup to\n#     min(max(x,0),120) (:684); insured 만나이 <= 110 (term_age 110), inc_rate_at(min(age_man(t),100), cause)\n#     :869, payer_age()+t//12 :714 only for t <= prem_end (20년납, product-spec.md:310), ref_age = 40 (:2315);\n#     bound = 120+1\n{'cells_param_size': {'t': 1334, 'x': 121}}\n"
+}

@@ -1,0 +1,234 @@
+{
+ "model": "Medical_KR_S",
+ "lib": "krlib",
+ "product": "indemnity_medical",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Stream": [
+   [
+    "ge_in",
+    0
+   ],
+   [
+    "ge_out",
+    1
+   ],
+   [
+    "np_in",
+    2
+   ],
+   [
+    "np_room",
+    3
+   ],
+   [
+    "np_out",
+    4
+   ],
+   [
+    "physio",
+    5
+   ],
+   [
+    "inject",
+    6
+   ],
+   [
+    "mri",
+    7
+   ]
+  ],
+  "UtilColumn": [
+   [
+    "adm_rate",
+    0
+   ],
+   [
+    "los_days",
+    1
+   ],
+   [
+    "visit_rate_ge",
+    2
+   ],
+   [
+    "visit_rate_np",
+    3
+   ],
+   [
+    "act_rate_physio",
+    4
+   ],
+   [
+    "act_rate_inject",
+    5
+   ],
+   [
+    "act_rate_mri",
+    6
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "BEF_SUSPEND",
+    2
+   ],
+   [
+    "BEF_RENEWAL",
+    3
+   ],
+   [
+    "AFT_DECR",
+    4
+   ]
+  ],
+  "Kind": [
+   [
+    "GE_IN",
+    0
+   ],
+   [
+    "GE_OUT",
+    1
+   ],
+   [
+    "NP_IN",
+    2
+   ],
+   [
+    "NP_OUT",
+    3
+   ],
+   [
+    "NP_THREE",
+    4
+   ],
+   [
+    "ALL",
+    5
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "claims_ann_pp": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "paid_out_per_visit": {
+    "0": [
+     "Stream",
+     "stream"
+    ]
+   },
+   "paid_per_act": {
+    "0": [
+     "Stream",
+     "stream"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "sev_costs": {
+    "0": [
+     "Stream",
+     "stream"
+    ]
+   },
+   "sev_mean": {
+    "0": [
+     "Stream",
+     "stream"
+    ]
+   },
+   "sev_probs": {
+    "0": [
+     "Stream",
+     "stream"
+    ]
+   },
+   "util_value": {
+    "1": [
+     "UtilColumn",
+     "column"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_max_age": [
+    "mort_rate"
+   ],
+   "util_top_age": [
+    "util_band"
+   ],
+   "sev_costs": [
+    "claims_np_in_pp",
+    "paid_out_per_visit",
+    "paid_per_act",
+    "sev_mean"
+   ],
+   "sev_probs": [
+    "claims_np_in_pp",
+    "paid_out_per_visit",
+    "paid_per_act",
+    "sev_mean"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_max_age": "def mort_max_age():\n    \"\"\"The last age of the mortality table at the policy's sex.\"\"\"\n    return int(data.mort_table().loc[sex()].index.max())",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"The annual mortality rate at the attained 만나이 in policy month t.\n\n    The **[std]** Makeham construction of ``mort_table.csv``, read at ``age(t)`` and held\n    flat at the terminal age.  On this contract **death releases the liability**: the\n    main contract pays nothing on death beyond the 미경과보험료, so the direction of\n    prudence is the reverse of every protection product in this library and an\n    over-statement of mortality is *anti*-conservative.\n    \"\"\"\n    x = min(age(t), mort_max_age())\n    return float(data.mort_table().loc[(sex(), x), \"mort_rate\"])",
+   "util_top_age": "def util_top_age():\n    \"\"\"The last age band start of the utilisation table at the policy's sex.\"\"\"\n    return int(data.utilisation_table().loc[sex()].index.max())",
+   "util_band": "def util_band(y):\n    \"\"\"The five-year utilisation band containing the attained age in policy year y.\n\n    The lower edge of the band, capped at the last band of the table.  Utilisation is\n    published by five-year band and not by single year, which is the granularity the\n    NHIS coverage-ratio series comes at.\n    \"\"\"\n    x = issue_age() + y - 1\n    top = util_top_age()\n    return min(5 * (x // 5), top)",
+   "sev_costs": "def sev_costs(stream):\n    \"\"\"The costs of :func:`sev_points` as floats: the vector form of sev_points (rule V, D90).\"\"\"\n    sub = data.severity_table().loc[stream]                          # noqa: F821\n    return [float(sub.loc[k, \"cost\"]) for k in sub.index]",
+   "claims_np_in_pp": "def claims_np_in_pp(y):\n    \"\"\"paid_np_in(y): 비급여 입원 reimbursement per policy in year y, before the limit.\n\n    Two limbs [S1 특별약관 제3조].  ``0.70 x 비급여 의료비`` excluding the room charge;\n    and the 상급병실료 차액 at **50% of the non-covered room charge, capped at ₩100,000\n    per day averaged over the whole admission** — the average being total non-covered\n    room charge divided by total days, which is why :func:`los_days` is carried and why\n    a per-night implementation of the cap understates the benefit.\n    \"\"\"\n    tr = trend_np(y)\n    base = sev_mean(Stream.np_in) * tr * (1.0 - retain_rate_np())\n    room = 0.0\n    for c, p in zip(sev_costs(Stream.np_room), sev_probs(Stream.np_room)):\n        room += p * min(room_rate * c * tr,                          # noqa: F821\n                        room_cap_day * los_days(y))                  # noqa: F821\n    return adm_rate(y) * (base + room)",
+   "paid_out_per_visit": "def paid_out_per_visit(stream, floor, retain, trend):\n    \"\"\"The expected reimbursement of one outpatient visit of a severity stream.\n\n    ``E[ min( max(0, c - max(floor, retain x c)), visit_cap ) ]`` over the stream's own\n    cost distribution.  The deductible is a **flat floor that becomes a percentage**: at\n    the 급여 clinic tier it is ₩10,000 until the covered cost reaches ₩50,000 and 20%\n    thereafter, at the hospital tier ₩20,000 until ₩100,000, and on the 비급여 side a\n    flat ₩30,000 until ₩100,000 and 30% thereafter.  Above the crossing point the\n    payment is a straight percentage of cost until the per-visit cap binds — at\n    ₩250,000 of covered cost on the 급여 side, the same point at both tiers.\n    \"\"\"\n    tot = 0.0\n    for c, p in zip(sev_costs(stream), sev_probs(stream)):\n        cost = c * trend\n        ded = max(floor, retain * cost)\n        tot += p * min(max(0.0, cost - ded), visit_cap())\n    return tot",
+   "paid_per_act": "def paid_per_act(stream, trend):\n    \"\"\"The expected reimbursement of one act of a 3대비급여 class.\n\n    ``E[ max(0, c - max(₩30,000, 30% x c)) ]`` [S1 특별약관 제3조(3) <표1>].  There is no\n    per-visit cap on these classes: what caps them is the annual money limit and, on two\n    of the three, the act counter.\n    \"\"\"\n    tot = 0.0\n    for c, p in zip(sev_costs(stream), sev_probs(stream)):\n        cost = c * trend\n        tot += p * max(0.0, cost - max(ded_np_out,                   # noqa: F821\n                                       retain_rate_np() * cost))\n    return tot",
+   "sev_mean": "def sev_mean(stream):\n    \"\"\"The expected cost of one event in a severity stream, KRW, before any trend.\"\"\"\n    return sum(c * p for c, p in zip(sev_costs(stream), sev_probs(stream)))",
+   "sev_probs": "def sev_probs(stream):\n    \"\"\"The probabilities of :func:`sev_points`: the vector form of sev_points (rule V, D90).\"\"\"\n    sub = data.severity_table().loc[stream]                          # noqa: F821\n    return [float(sub.loc[k, \"prob\"]) for k in sub.index]"
+  }
+ },
+ "notes": [],
+ "spec": "# Medical_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   y < 13: policy year y = t//12 + 1 (:599); checks loop y in range(1, policy_year(proj_len() - 1) + 1) =\n#     1..10 (:1902 etc.); policy_year(proj_len) = 11; bound 11+1, + 1 year margin (matches t margin)\n#   t < 133: need_max 120 + 1 for pols_if(t + 1)/pols_if(t+1) roll-forward at t = proj_len-1 + 12 margin\n{'cells_param_size': {'y': 13, 't': 133}}\n"
+}

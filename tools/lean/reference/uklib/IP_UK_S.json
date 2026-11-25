@@ -1,0 +1,130 @@
+{
+ "model": "IP_UK_S",
+ "lib": "uklib",
+ "product": "income_protection",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Escalation": [
+   [
+    "RPI",
+    0
+   ],
+   [
+    "none",
+    1
+   ]
+  ],
+  "PremiumBasis": [
+   [
+    "guaranteed",
+    0
+   ]
+  ],
+  "Status": [
+   [
+    "active",
+    0
+   ],
+   [
+    "in_claim",
+    1
+   ]
+  ],
+  "RecoveryBasis": [
+   [
+    "return_to_h",
+    0
+   ],
+   [
+    "exit",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DECR",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "BENEFIT",
+    0
+   ],
+   [
+    "DEATH",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "escalation": "Escalation",
+   "premium_basis": "PremiumBasis",
+   "recovery_basis": "RecoveryBasis",
+   "sex": "Sex",
+   "status": "Status"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "inception_schedule": [
+    "inception_rate"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "inception_schedule": "def inception_schedule():\n    \"\"\"The inception rates at the policy's sex, occupation class and deferred period, by age.\"\"\"\n    return data.inception_table().loc[                               # noqa: F821\n        (sex(), occ_class(), deferred_weeks())]",
+   "inception_rate": "def inception_rate(t):\n    \"\"\"iota_a(a): the annual claim payment inception rate out of state H.\n\n    Read from ``inception_table.csv`` at the policy's sex, occupation class and deferred\n    period, **linearly** interpolated between pivot ages and linearly extrapolated\n    beyond them, then multiplied by the economic-cycle overlay ``cycle_factor``.\n    Floored at zero, since linear extrapolation below the first pivot can go negative.\n\n    The rate is a *claim payment* inception rate specific to the deferred period, which\n    is exactly what the CMI publishes per deferred period - so the deferred period needs\n    no state of its own.  The shipped values are **[std]** proxies shaped like IP11 and\n    carry no CMI authority; IP11's own inception rates are additionally known to be\n    understated through exposure errors, and licensees must apply the CMI's indicative\n    adjustments.\n    \"\"\"\n    sub = inception_schedule()\n    x = age(t)\n    if x <= sub.index[0]:\n        lo, hi = int(sub.index[0]), int(sub.index[1])\n    elif x >= sub.index[-1]:\n        lo, hi = int(sub.index[-2]), int(sub.index[-1])\n    else:\n        lo = int(sub.index.asof(x))\n        hi = int(sub.index[sub.index.searchsorted(x, side=\"right\")])\n    r_lo = float(sub.loc[lo, \"inception_rate\"])\n    r_hi = float(sub.loc[hi, \"inception_rate\"])\n    r = r_lo + (r_hi - r_lo) * (x - lo) / (hi - lo)\n    return max(0.0, r) * cycle_factor",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The active-life mortality rates at the policy's sex, by age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q_H_a(a): the **active-life** annual mortality rate.\n\n    A minor decrement in income protection, and a **[std]** proxy shaped like the ONS\n    national life tables scaled by ``mort_active_factor``.  Claimant mortality is a\n    different rate on a different clock - see :func:`mort_rate_sick`.\n    \"\"\"\n    return float(mort_schedule().loc[age(t), \"mort_rate\"]) * mort_active_factor"
+  }
+ },
+ "notes": [],
+ "spec": "# IP_UK_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 636: need_max 624 + t+1 offset -> 625 required; +12 margin => 636.\n#   z < 626: z (1-based claim-duration month) ranges 1..max_dur() (claim_rate_vectors, Projection:593),\n#     max_dur() = proj_len() + claim_duration_months() + 1 (Projection:465). For an admissible in_claim cell\n#     z0 = elapsed claim months <= 12*(attained_age - 18), so proj_len + z0 <= 12*(expiry_age - 18) <=\n#     12*(70-18) = 624; max_dur <= 625; exclusive 626. Termination table (termination_table.csv\n#     claim_duration_year 1-5) is clamped via min(), so does not limit z.\n{'cells_param_size': {'t': 636, 'z': 626}}\n"
+}

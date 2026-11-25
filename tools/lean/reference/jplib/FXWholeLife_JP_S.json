@@ -1,0 +1,233 @@
+{
+ "model": "FXWholeLife_JP_S",
+ "lib": "jplib",
+ "product": "fx_whole_life",
+ "families": {
+  "Shape": [
+   [
+    "LEVEL",
+    0
+   ],
+   [
+    "SINGLE",
+    1
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Currency": [
+   [
+    "USD",
+    0
+   ]
+  ],
+  "IdbBasis": [
+   [
+    "fund",
+    0
+   ],
+   [
+    "prospective",
+    1
+   ]
+  ],
+  "TargetAction": [
+   [
+    "convert",
+    0
+   ],
+   [
+    "surrender",
+    1
+   ],
+   [
+    "none",
+    2
+   ]
+  ],
+  "ChargeItem": [
+   [
+    "prem_charge_early",
+    0
+   ],
+   [
+    "prem_charge_late",
+    1
+   ],
+   [
+    "prem_charge_early_months",
+    2
+   ],
+   [
+    "maint_rate",
+    3
+   ],
+   [
+    "coi_charged",
+    4
+   ],
+   [
+    "surr_charge_start",
+    5
+   ],
+   [
+    "surr_charge_step",
+    6
+   ],
+   [
+    "surr_charge_months",
+    7
+   ],
+   [
+    "low_cv_ge4",
+    8
+   ],
+   [
+    "low_cv_3",
+    9
+   ],
+   [
+    "low_cv_2",
+    10
+   ],
+   [
+    "low_cv_1",
+    11
+   ],
+   [
+    "mva_spread",
+    12
+   ],
+   [
+    "mva_base_rate",
+    13
+   ],
+   [
+    "mva_damping",
+    14
+   ],
+   [
+    "special_reserve_rate_10",
+    15
+   ],
+   [
+    "special_reserve_rate_20",
+    16
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_CHARGE_MAINT",
+    2
+   ],
+   [
+    "AFT_CHARGE",
+    3
+   ],
+   [
+    "AFT_INT",
+    4
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "charge_param": {
+    "0": [
+     "ChargeItem",
+     "item"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "currency": "Currency",
+   "idb_basis": "IdbBasis",
+   "sex": "Sex",
+   "shape": "Shape",
+   "target_action": "TargetAction"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "lapse_schedule": [
+    "lapse_rate_base"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "lapse_schedule": "def lapse_schedule():\n    \"\"\"The lapse rates of this policy's shape, by policy year.\"\"\"\n    return data.lapse_table().loc[shape()]",
+   "lapse_rate_base": "def lapse_rate_base(t):\n    \"\"\"The table annual surrender rate for this shape in month t, before any module.\n\n    Two curves.  The SINGLE curve, 28 / 23 / 18 / 14 / 8%, is calibrated so the\n    cumulative four-year exit is 60.90%, against a published reading that about 60% of\n    外貨建一時払保険 are surrendered within four years; the LEVEL curve, 8 / 7 / 6 / 5 / 5 /\n    4 / 3%, rests on no public evidence at all and is a **[std]** judgement.  Policy\n    years beyond the table take its last row.\n    \"\"\"\n    tbl = lapse_schedule()\n    y = min(policy_year(t), int(tbl.index.max()))\n    return float(tbl.loc[y, \"lapse_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# FXWholeLife_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1154: need_max 1152; max index 1152: target_month:1170 loops range(..., proj_len()+1),\n#     av0_pro_pp(t+1):995 terminates at proj_len, cv_pp(t+1)/av_pp(t+1)/pols_if(t+1) in claims:1385,\n#     result_cf:1707, checks; exclusive 1153 + 1 spare\n{'cells_param_size': {'t': 1154}}\n"
+}

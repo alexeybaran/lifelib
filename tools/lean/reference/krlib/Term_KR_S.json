@@ -1,0 +1,187 @@
+{
+ "model": "Term_KR_S",
+ "lib": "krlib",
+ "product": "term_life",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RenewalType": [
+   [
+    "gaengsin",
+    0
+   ],
+   [
+    "bi_gaengsin",
+    1
+   ]
+  ],
+  "RateClass": [
+   [
+    "standard",
+    0
+   ],
+   [
+    "nonsmoker",
+    1
+   ],
+   [
+    "preferred",
+    2
+   ],
+   [
+    "super_preferred",
+    3
+   ]
+  ],
+  "MaturityForm": [
+   [
+    "pure",
+    0
+   ],
+   [
+    "rop",
+    1
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "monthly",
+    0
+   ]
+  ],
+  "ContractBoundary": [
+   [
+    "ceiling",
+    0
+   ],
+   [
+    "current_term",
+    1
+   ]
+  ],
+  "Segment": [
+   [
+    "in_payment_start",
+    0
+   ],
+   [
+    "in_payment_end",
+    1
+   ],
+   [
+    "post_payment",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "BEF_DECLINE",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "ACC_DEATH",
+    1
+   ],
+   [
+    "ACCEL",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ],
+   [
+    "LAPSE",
+    4
+   ],
+   [
+    "ALL",
+    5
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "contract_boundary": "ContractBoundary",
+   "maturity_form": "MaturityForm",
+   "premium_mode": "PremiumMode",
+   "rate_class": "RateClass",
+   "renewal_type": "RenewalType",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "lapse_in_payment_end": [
+    "lapse_rate"
+   ],
+   "lapse_in_payment_start": [
+    "lapse_rate"
+   ],
+   "lapse_post_payment": [
+    "lapse_rate"
+   ],
+   "prem_anchor_key": [
+    "prem_rate_mth"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "lapse_in_payment_end": "def lapse_in_payment_end():\n    \"\"\"The lapse rate the grade converges to at the end of the payment term.\"\"\"\n    return float(data.lapse_table().loc[Segment.in_payment_end, \"lapse_rate\"])",
+   "lapse_rate": "def lapse_rate(t):\n    \"\"\"w(t): the ordinary lapse rate applied at the end of period t.\n\n    The **shape is supervisory and not chosen**: the 2024 IFRS17 계리가정 가이드라인 makes\n    a **로그-선형 model converging to 0.1%** the 원칙모형 for 무·저해지 business, permits\n    only 선형-로그 and 로그-로그 as exceptions and on onerous disclosure conditions, and\n    sets a post-완납 ultimate of **0.8%** [REG-R27].  The **endpoints are disclosed**:\n    「납입기간 이내에 대하여 경과기간별로 연 0.1%~4.6%, 납입기간 이후에 대하여 경과기간별로\n    연 0.7%~1.6%」 at the anchor carrier [S12] and 「연 0.1%~8.4%, 납입기간 이후 연 0.8%」\n    at another [S1].  So::\n\n        w(t) = 0.046 * (0.001 / 0.046) ** (t / (n_p - 1))   for t <  n_p\n        w(t) = 0.008                                        for t >= n_p\n\n    times ``lapse_be_factor``, read at the **0-based policy year** ``y = policy_year(t) -\n    1`` rather than at the month index: the vector is published by 경과기간 in years, so\n    the 4.6% upper endpoint covers the whole of the first projected year and the 0.1%\n    convergence point the whole of the last paying one.  :func:`lapse_rate_mth` is the\n    decrement actually applied.  Two **[std]** steps remain and both are recorded rather\n    than absorbed.  Both disclosed ranges are on a **10년납** basis and the composite is\n    전기납 over twenty years, so the same endpoints are **stretched over the\n    representative's own 납입기간** — which flattens the curve and is why model point 5,\n    at 10년납, is the one that reproduces the disclosed shape at its disclosed length.\n    And the 적용해지율 is a **pricing** rate for the 무해지 form, deliberately low by\n    regulatory design [REG-R19 제7-66조제4항], and is **not** a best-estimate.  Nothing\n    retrieved discloses a best-estimate term lapse rate; the only Korean experience datum\n    available is a whole-life one, a 저해지 단기납 종신보험 running a 37회차 유지율 of\n    50.2% against an assumed 71.5% [R18].  The **direction** of that error is the reason\n    ``lapse_be_factor`` exists as a switch and is 1.0 **[std]** in the base run, with the\n    sensitivity carried in the technical notes rather than a point estimate dressed as a\n    fact.\n\n    A lapse pays nothing on this form: there is no 해약환급금 at any duration\n    [S1] [S2 제33조제2항] [S12].\n    \"\"\"\n    start = lapse_in_payment_start()\n    end = lapse_in_payment_end()\n    post = lapse_post_payment()\n    n_p = pay_term()\n    y = policy_year(t) - 1\n    if y >= n_p:\n        rate = post\n    elif n_p <= 1:\n        rate = end\n    else:\n        rate = start * (end / start) ** (y / (n_p - 1.0))\n    return lapse_be_factor * rate",
+   "lapse_in_payment_start": "def lapse_in_payment_start():\n    \"\"\"The lapse rate at the start of the payment term (the start of the log-linear grade).\"\"\"\n    return float(data.lapse_table().loc[Segment.in_payment_start, \"lapse_rate\"])",
+   "lapse_post_payment": "def lapse_post_payment():\n    \"\"\"The lapse rate after the payment term.\"\"\"\n    return float(data.lapse_table().loc[Segment.post_payment, \"lapse_rate\"])",
+   "prem_anchor_key": "def prem_anchor_key():\n    \"\"\"The (issue_age, term_y) key of the is_anchor row of this policy's form and sex in prem_rate_table.\"\"\"\n    sub = data.prem_rate_table().loc[(maturity_form(), sex())]       # noqa: F821\n    return min(k for k in sub.index if sub.loc[k, \"is_anchor\"] == 1)",
+   "prem_rate_mth": "def prem_rate_mth(t):\n    \"\"\"r(form, sex, x_k, m_k): the monthly 표준체 rate per 100,000,000 won of cover.\n\n    The **published cell** where one exists — the anchor carrier's 20-year grid at ages\n    30, 40 and 50 for both sexes and both maturity forms [S12], and the 갱신형 ladder at\n    ages 40, 50, 60 and 70 on a ten-year cycle [S6] [S7] — and otherwise the **[std]**\n    extension off the ``is_anchor`` row of the matching form and sex::\n\n        r(form, sex, x, m) = r_anchor * qbar(x, m) / qbar(x_a, m_a)\n\n    The anchor is the age-40 20-year cell, which for the 순수보장형 is simultaneously the\n    감독규정 기준연령 요건 [REG-R9] and the disclosure's 대표계약 [S5], and whose 15,080\n    won appears independently in the carrier's own grid and in the cross-carrier\n    disclosure, agreeing to the won [S12] [S4].\n\n    The 10-year rows and the 20-year rows are **different carriers**, and the model never\n    mixes them: the shipped 갱신형 points reach published cells only.  That the two are\n    at the same level is checkable — the 흥국생명 비갱신형 20-year premium on the\n    disclosure basis is 15,000 won against the anchor's 15,080 [S4].\n    \"\"\"\n    k = term_index(t)\n    x_k, m_k = term_start_age(k), term_len(k)\n    tbl = data.prem_rate_table()                                     # noqa: F821\n    key = (maturity_form(), sex(), int(x_k), int(m_k))\n    if key in tbl.index:\n        return float(tbl.loc[key, \"prem_mth_per_100m\"])\n    sub = tbl.loc[(maturity_form(), sex())]\n    a = prem_anchor_key()\n    return (float(sub.loc[a, \"prem_mth_per_100m\"])\n            * mort_table_mean(x_k, m_k)\n            / mort_table_mean(int(a[0]), int(a[1])))"
+  }
+ },
+ "notes": [],
+ "spec": "# Term_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   x < 121: mort_table.csv column age, keys 19..120 (read by mort_rate_at_age :759 and acc_mort_rate_at_age :772\n#   m < 72: mort_table_mean(x, m) :785 is called with m = term_len(k) (:1030/:1038) <= policy_term() <= 71 years\n#   t < 865: need_max 852 (see need_source) + 1 for t+1 reads at t=proj_len-1 (check_pols_roll_fwd_resid\n#     :1675 pols_if(t + 1), lapse pool :1700 pols_lapse_pool(t + 1)) + 12-month margin = 852+1+12\n#   k < 8: k = term_index(t) = 1 + (t//12)//policy_term() (:679). 갱신형 is the modelled 10-year cycle to\n#     ceiling 보험나이 80 (product-spec.md:164,181): from entry 19, proj_years = 61, t//12 <= 61 at t=proj_len ->\n#     k <= 1+61//10 = 7; 비갱신형 k = 1; bound = 7+1\n{'cells_param_size': {'x': 121, 'm': 72, 't': 865, 'k': 8}}\n"
+}

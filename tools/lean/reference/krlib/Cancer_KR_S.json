@@ -1,0 +1,253 @@
+{
+ "model": "Cancer_KR_S",
+ "lib": "krlib",
+ "product": "cancer",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Chassis": [
+   [
+    "bi_gaengsin",
+    0
+   ],
+   [
+    "gaengsin",
+    1
+   ]
+  ],
+  "WaiverTrigger": [
+   [
+    "cancer_diag",
+    0
+   ],
+   [
+    "none",
+    1
+   ]
+  ],
+  "CvForm": [
+   [
+    "mijigeup",
+    0
+   ],
+   [
+    "pyojun",
+    1
+   ]
+  ],
+  "Tier": [
+   [
+    "high",
+    0
+   ],
+   [
+    "general",
+    1
+   ],
+   [
+    "minor",
+    2
+   ],
+   [
+    "similar",
+    3
+   ]
+  ],
+  "Segment": [
+   [
+    "first_year",
+    0
+   ],
+   [
+    "at_completion",
+    1
+   ],
+   [
+    "post_payment",
+    2
+   ]
+  ],
+  "ShareColumn": [
+   [
+    "minor_share",
+    0
+   ],
+   [
+    "high_share",
+    1
+   ],
+   [
+    "similar_share",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DECR",
+    1
+   ],
+   [
+    "BEF_LAPSE",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DIAG_GEN",
+    0
+   ],
+   [
+    "DIAG_HIGH",
+    1
+   ],
+   [
+    "DIAG_MINOR",
+    2
+   ],
+   [
+    "DIAG_SIMILAR",
+    3
+   ],
+   [
+    "HOSP",
+    4
+   ],
+   [
+    "SURGERY",
+    5
+   ],
+   [
+    "TREAT",
+    6
+   ],
+   [
+    "DEATH",
+    7
+   ],
+   [
+    "LAPSE",
+    8
+   ],
+   [
+    "MATURITY",
+    9
+   ],
+   [
+    "ALL",
+    10
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "benefit_ratio": {
+    "0": [
+     "Tier",
+     "tier"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "excess_hazard": {
+    "0": [
+     "Tier",
+     "tier"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "tier_share": {
+    "0": [
+     "ShareColumn",
+     "col"
+    ]
+   },
+   "tier_wait_months": {
+    "0": [
+     "Tier",
+     "tier"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "chassis": "Chassis",
+   "cv_form": "CvForm",
+   "sex": "Sex",
+   "waiver_trigger": "WaiverTrigger"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_max_age": [
+    "mort_rate"
+   ],
+   "lapse_at_completion": [
+    "lapse_rate"
+   ],
+   "lapse_first_year": [
+    "lapse_rate"
+   ],
+   "lapse_post_payment": [
+    "lapse_rate"
+   ],
+   "inc_schedule": [
+    "inc_ages",
+    "inc_rate"
+   ],
+   "inc_ages": [
+    "inc_rate"
+   ],
+   "tier_share_schedule": [
+    "tier_share",
+    "tier_share_ages"
+   ],
+   "tier_share_ages": [
+    "tier_share"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_max_age": "def mort_max_age():\n    \"\"\"The last age of the mortality table at the policy's sex.\"\"\"\n    return int(data.mort_table().loc[sex()].index.max())",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"The annual all-cause mortality of the insured at :func:`age` ``(t)``.\n\n    ``mort_be_factor`` times the shipped **[std]** table, which is a Makeham reproducing the\n    국가데이터처 생명표's published 2024 기대여명 at 40 and 65 exactly [REG-R38] rather than a\n    copy of the 제10회 경험생명표, which is not published in full [REG-R33] [REG-R34]. The\n    factor is 1.0: the table is already a *population* all-cause basis rather than a valuation\n    table with a margin in it, so there is nothing to unwind. Mortality here is a pure\n    liability-releasing decrement except for the 계약자적립액 it pays out.\n    \"\"\"\n    tbl = data.mort_table()                                          # noqa: F821\n    a = min(age(t), mort_max_age())\n    return min(1.0, mort_be_factor * float(tbl.loc[(sex(), a), \"mort_rate\"]))",
+   "lapse_at_completion": "def lapse_at_completion():\n    \"\"\"The lapse rate the grade converges to at the end of the payment term.\"\"\"\n    return float(data.lapse_table().loc[Segment.at_completion, \"lapse_rate\"])",
+   "lapse_rate": "def lapse_rate(t):\n    \"\"\"The **annual** lapse rate applying in policy year ``y(t)`` **[std]**.\n\n    A 로그-선형 curve from 4.6% in policy year 1 to **0.1% at 납입완료**, stepping to a\n    **0.8%** ultimate thereafter. The functional form is prescribed rather than fitted: the\n    FSS's November 2024 계리가정 ruling makes the 로그-선형 모형 converging to 0.1% at 완납 the\n    **원칙모형** for 무.저해지 business, with a 0.8% post-완납 ultimate [REG-R27], and\n    감독규정 제7-66조제4항 permits the 미지급형 form only where a **최적해지율** was used to\n    price it [REG-R19]. **No public Korean lapse or persistency figure for 암보험 exists**\n    [R3], so the level of the first year is standardized and the shape is not.\n\n    Nothing breaks the fall on this product: the 미지급형 form has no surrender value during\n    the 납입기간, so there is no 보험계약대출 to draw on and no 자동대출납입, and a missed\n    premium lapses at the end of the 14-day 납입최고 [S3] [REG-R25 제26조] [REG-R28].\n    \"\"\"\n    r0 = lapse_first_year()\n    r1 = lapse_at_completion()\n    r2 = lapse_post_payment()\n    n = max(pay_months() // 12, 2)\n    y = policy_year(t)\n    if y > n:\n        return r2\n    return r0 * (r1 / r0) ** ((y - 1) / (n - 1))",
+   "lapse_first_year": "def lapse_first_year():\n    \"\"\"The first-year lapse rate (the start of the log-linear grade).\"\"\"\n    return float(data.lapse_table().loc[Segment.first_year, \"lapse_rate\"])",
+   "lapse_post_payment": "def lapse_post_payment():\n    \"\"\"The lapse rate after the payment term.\"\"\"\n    return float(data.lapse_table().loc[Segment.post_payment, \"lapse_rate\"])",
+   "inc_schedule": "def inc_schedule():\n    \"\"\"The base incidence rates at the policy's sex, by pivot age.\"\"\"\n    return data.incidence_table().loc[sex()]",
+   "inc_ages": "def inc_ages():\n    \"\"\"The pivot ages of :func:`inc_schedule`, ascending.\"\"\"\n    return list(inc_schedule().index)",
+   "inc_rate": "def inc_rate(t):\n    \"\"\"The annual incidence of an invasive cancer **excluding C44 and C73**, per policy.\n\n    Read off 보험개발원's published 「기타피부암 및 갑상선암 이외의 암 발생률」 grid for the\n    참조순보험요율 in force from 2024-04-01 [R5] [REG-R61] and interpolated **log-linearly**\n    between its ten-year age points, which is the shape cancer incidence actually has. 0.001343\n    at the anchor cell, sourced and not standardized.\n\n    Its definition is the *insured* one -- invasive cancer excluding 기타피부암 and 갑상선암,\n    classified by **원발부위** -- so it already embodies both the tier carve-out the 약관 make\n    and the primary-site rule the supervisor imposed from 2011-04-01, which was a direct\n    instruction about the pricing basis: 「갑상선을 원발부위로 하는 경우를 갑상선암에 모두\n    포함한 위험률을 적용하라는 것임」 [R3]. An independent reconciliation against the registry\n    agrees to within 1.6% at male 만나이 40 [R1].\n\n    ``inc_be_factor`` is the **[std]** adjustment from a 참조순보험요율 -- a net premium rate\n    with a safety loading inside it [REG-R4] -- to a best estimate, and it is left at 1.0\n    because the only figure for the loading is **[unverified]**.\n    \"\"\"\n    tbl = inc_schedule()\n    ages = inc_ages()\n    a = min(max(age(t), ages[0]), ages[-1])\n    lo = int(tbl.index.asof(a))\n    hi = min(g for g in ages if g >= a)\n    r_lo = float(tbl.loc[lo, \"inc_rate\"])\n    if hi == lo:\n        return r_lo * inc_be_factor                                  # noqa: F821\n    r_hi = float(tbl.loc[hi, \"inc_rate\"])\n    frac = (a - lo) / (hi - lo)\n    return math.exp(math.log(r_lo) + frac * (                        # noqa: F821\n        math.log(r_hi) - math.log(r_lo))) * inc_be_factor",
+   "tier_share_schedule": "def tier_share_schedule():\n    \"\"\"The tier shares at the policy's sex, by pivot age.\"\"\"\n    return data.tier_share_table().loc[sex()]",
+   "tier_share": "def tier_share(col, t):\n    \"\"\"The **[std]** tier share ``col`` at :func:`age` ``(t)``, linear in age.\n\n    Reads *tier_share_table.csv*, whose anchors are at 만나이 20, 40, 60 and 80 and which is\n    clamped outside them. The three shares are graded in age because the tiers' age mixes\n    differ violently: 갑상선 is the rank-1 site for women to 39 and for men to 49 [R1] while\n    the invasive base rate rises by a factor of 20 between 40 and 80 [R5], so an age-invariant\n    decomposition misprices the reduced tier by a wide margin.\n    \"\"\"\n    tbl = tier_share_schedule()\n    ages = tier_share_ages()\n    a = min(max(age(t), ages[0]), ages[-1])\n    lo = int(tbl.index.asof(a))\n    hi = min(g for g in ages if g >= a)\n    if col == ShareColumn.minor_share:\n        v_lo = float(tbl.loc[lo, \"minor_share\"])\n        if hi == lo:\n            return v_lo\n        v_hi = float(tbl.loc[hi, \"minor_share\"])\n    elif col == ShareColumn.high_share:\n        v_lo = float(tbl.loc[lo, \"high_share\"])\n        if hi == lo:\n            return v_lo\n        v_hi = float(tbl.loc[hi, \"high_share\"])\n    elif col == ShareColumn.similar_share:\n        v_lo = float(tbl.loc[lo, \"similar_share\"])\n        if hi == lo:\n            return v_lo\n        v_hi = float(tbl.loc[hi, \"similar_share\"])\n    else:\n        raise ValueError(\"invalid column\")\n    return v_lo + (v_hi - v_lo) * (a - lo) / (hi - lo)",
+   "tier_share_ages": "def tier_share_ages():\n    \"\"\"The pivot ages of :func:`tier_share_schedule`, ascending.\"\"\"\n    return list(tier_share_schedule().index)"
+  }
+ },
+ "notes": [],
+ "spec": "# Cancer_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1034: need_max 1021 + 1 for pols_if(t + 1)/pols_cancer(t + 1) roll-forward checks at t = proj_len-1\n#     + 12 margin\n{'cells_param_size': {'t': 1034}}\n"
+}

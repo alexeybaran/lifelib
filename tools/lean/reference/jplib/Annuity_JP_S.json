@@ -1,0 +1,300 @@
+{
+ "model": "Annuity_JP_S",
+ "lib": "jplib",
+ "product": "individual_annuity",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PayoutForm": [
+   [
+    "certain",
+    0
+   ],
+   [
+    "life_guar",
+    1
+   ]
+  ],
+  "MortTable": [
+   [
+    "death_cover_2018",
+    0
+   ],
+   [
+    "annuity_payout_2007",
+    1
+   ]
+  ],
+  "Segment": [
+   [
+    "premium_paying",
+    0
+   ],
+   [
+    "defer_gap",
+    1
+   ],
+   [
+    "pre_annuitisation",
+    2
+   ]
+  ],
+  "PricingItem": [
+   [
+    "int_rate_defer",
+    0
+   ],
+   [
+    "int_rate_payout",
+    1
+   ],
+   [
+    "expense_loading",
+    2
+   ],
+   [
+    "annuitisation_charge",
+    3
+   ],
+   [
+    "surr_charge_years",
+    4
+   ],
+   [
+    "surr_charge_prems",
+    5
+   ],
+   [
+    "mort_be_factor_defer",
+    6
+   ],
+   [
+    "mort_be_factor_payout",
+    7
+   ],
+   [
+    "annuity_round_to",
+    8
+   ],
+   [
+    "div_int_rate",
+    9
+   ],
+   [
+    "loan_rate",
+    10
+   ],
+   [
+    "apl_rate",
+    11
+   ],
+   [
+    "loan_draw_frac",
+    12
+   ],
+   [
+    "loan_draw_year",
+    13
+   ],
+   [
+    "lapse_dyn_phi",
+    14
+   ],
+   [
+    "lapse_dyn_cap",
+    15
+   ],
+   [
+    "commute_int_rate",
+    16
+   ]
+  ],
+  "ExpenseItem": [
+   [
+    "expense_acq",
+    0
+   ],
+   [
+    "comm_init_rate",
+    1
+   ],
+   [
+    "comm_renewal_rate",
+    2
+   ],
+   [
+    "expense_maint_defer",
+    3
+   ],
+   [
+    "expense_maint_payout",
+    4
+   ],
+   [
+    "expense_claim",
+    5
+   ],
+   [
+    "inflation_rate",
+    6
+   ]
+  ],
+  "AvTiming": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "AFT_PREM",
+    1
+   ],
+   [
+    "AFT_INT",
+    2
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "ANNUITY",
+    0
+   ],
+   [
+    "DEATH",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "COMMUTATION",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ],
+  "Weighting": [
+   [
+    "count",
+    0
+   ],
+   [
+    "fund",
+    1
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "expense_basis": {
+    "0": [
+     "ExpenseItem",
+     "item"
+    ]
+   },
+   "lapse_rate_mean": {
+    "0": [
+     "Weighting",
+     "weighting"
+    ]
+   },
+   "makeham_coeff": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "mort_anchor_ages": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "mort_rate_at_age": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "mort_rate_graduated": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "omega_age": {
+    "0": [
+     "MortTable",
+     "table"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "pricing_basis": {
+    "0": [
+     "PricingItem",
+     "item"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "mort_table_name": "MortTable",
+   "payout_form": "PayoutForm",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "mort_table_name": "MortTable"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# Annuity_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1275: need_max 1273; max index 1273 via pols_if(t+1) in pols_death:1308, pols_if_at:1274,\n#     lives_if(t+1):1530; exclusive 1274 + 1 spare\n#   s < 109: anniversary s in range(proj_years()) (:1567) with s+1 (check_fund_resid:1553) and s+1 in\n#     av_at_m; proj_years:494 = omega 126 - 20 + 1 = 107; exclusive 108 + 1 spare\n#   u < 1275: u = t+1 (claims:1415-1417) <= 1273; exclusive 1274 + 1 spare\n{'cells_param_size': {'t': 1275, 's': 109, 'u': 1275}}\n"
+}

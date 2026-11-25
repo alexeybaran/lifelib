@@ -1,0 +1,336 @@
+{
+ "model": "LTC_KR_S",
+ "lib": "krlib",
+ "product": "long_term_care",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Grade": [
+   [
+    "g1",
+    0
+   ],
+   [
+    "g2",
+    1
+   ],
+   [
+    "g3",
+    2
+   ],
+   [
+    "g4",
+    3
+   ],
+   [
+    "g5",
+    4
+   ],
+   [
+    "g6",
+    5
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ]
+  ],
+  "CvForm": [
+   [
+    "mijigeup",
+    0
+   ],
+   [
+    "half_during",
+    1
+   ],
+   [
+    "pyojun",
+    2
+   ]
+  ],
+  "LapseForm": [
+   [
+    "mujihae",
+    0
+   ],
+   [
+    "pyojun",
+    1
+   ]
+  ],
+  "LapseParam": [
+   [
+    "lapse_year1",
+    0
+   ],
+   [
+    "lapse_completion",
+    1
+   ],
+   [
+    "lapse_ultimate",
+    2
+   ],
+   [
+    "lapse_level_std",
+    3
+   ]
+  ],
+  "PrevParam": [
+   [
+    "prev_ceil",
+    0
+   ],
+   [
+    "prev_beta",
+    1
+   ],
+   [
+    "prev_x_mid",
+    2
+   ],
+   [
+    "prev_obs_67",
+    3
+   ],
+   [
+    "prev_obs_72",
+    4
+   ],
+   [
+    "prev_obs_77",
+    5
+   ],
+   [
+    "prev_obs_82",
+    6
+   ],
+   [
+    "prev_obs_88",
+    7
+   ]
+  ],
+  "DemParam": [
+   [
+    "dem_ceil",
+    0
+   ],
+   [
+    "dem_beta",
+    1
+   ],
+   [
+    "dem_x_mid",
+    2
+   ],
+   [
+    "dem_factor_m",
+    3
+   ],
+   [
+    "dem_factor_f",
+    4
+   ],
+   [
+    "dem_obs_67",
+    5
+   ],
+   [
+    "dem_obs_72",
+    6
+   ],
+   [
+    "dem_obs_77",
+    7
+   ],
+   [
+    "dem_obs_82",
+    8
+   ],
+   [
+    "dem_obs_88",
+    9
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "LUMP",
+    0
+   ],
+   [
+    "ANNUITY",
+    1
+   ],
+   [
+    "DEMENTIA",
+    2
+   ],
+   [
+    "DEATH",
+    3
+   ],
+   [
+    "LAPSE",
+    4
+   ],
+   [
+    "VOID",
+    5
+   ],
+   [
+    "MATURITY",
+    6
+   ],
+   [
+    "ALL",
+    7
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "dem_param": {
+    "0": [
+     "DemParam",
+     "name"
+    ]
+   },
+   "grade_ages": {
+    "0": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "grade_shares": {
+    "0": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "lapse_param": {
+    "0": [
+     "LapseParam",
+     "name"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "prev_param": {
+    "0": [
+     "PrevParam",
+     "name"
+    ]
+   },
+   "share_ge_at": {
+    "0": [
+     "Grade",
+     "grade"
+    ]
+   },
+   "share_slope_at": {
+    "0": [
+     "Grade",
+     "grade"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "benefit_grade": "Grade",
+   "cv_form": "CvForm",
+   "lapse_form": "LapseForm",
+   "prem_mode": "PremMode",
+   "sex": "Sex"
+  }
+ },
+ "returns": {
+  "Projection": {
+   "benefit_grade": "Grade"
+  }
+ },
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "grade_ages": [
+    "grade_shares",
+    "share_ge_at",
+    "share_slope_at"
+   ],
+   "grade_shares": [
+    "share_ge_at",
+    "share_slope_at"
+   ],
+   "inc_schedule": [
+    "disclosed_inc_at",
+    "inc_ages",
+    "sub65_gradient"
+   ],
+   "inc_ages": [
+    "disclosed_inc_at",
+    "sub65_gradient"
+   ],
+   "av_fractions": [
+    "av_ratio_at",
+    "av_ratios"
+   ],
+   "av_ratios": [
+    "av_ratio_at"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "grade_ages": "def grade_ages(grade):\n    \"\"\"The pivot ages of grade_share_table at ``grade``, as floats in ascending order.\"\"\"\n    tbl = data.grade_share_table().loc[grade]                        # noqa: F821\n    return sorted(float(a) for a in tbl.index)",
+   "grade_shares": "def grade_shares(grade):\n    \"\"\"The ``share_ge`` of grade_share_table at ``grade``, at :func:`grade_ages`.\"\"\"\n    tbl = data.grade_share_table().loc[grade]                        # noqa: F821\n    return [float(tbl.loc[a, \"share_ge\"]) for a in grade_ages(grade)]",
+   "share_ge_at": "def share_ge_at(grade, x):\n    \"\"\"s_G(x): the share of certified lives at ``grade`` or above at 만나이 ``x``.\n\n    Linear in age between the six sourced band representative ages — 60 for the under-65\n    band, then 67, 72, 77, 82 and 88.5 — and flat outside them.  A **proportion of a\n    population**, never a rate.  Carrying it by age rather than as one all-ages vector is\n    load-bearing: the 1~2등급 share is **U-shaped**, 22.2% below 65, 11.1% at 80-84 and 14.8%\n    at 85 and over, and a model applying a single vector at all ages mis-prices this benefit\n    by up to a factor of two.\n    \"\"\"\n    ages = grade_ages(grade)\n    shares = grade_shares(grade)\n    if x <= ages[0]:\n        return shares[0]\n    if x >= ages[-1]:\n        return shares[-1]\n    for i in range(len(ages) - 1):\n        lo = ages[i]\n        hi = ages[i + 1]\n        if lo <= x <= hi:\n            v_lo = shares[i]\n            v_hi = shares[i + 1]\n            return v_lo + (v_hi - v_lo) * (x - lo) / (hi - lo)\n    raise ValueError(\"age out of range\")",
+   "share_slope_at": "def share_slope_at(grade, x):\n    \"\"\"s_G'(x): the slope of :func:`share_ge_at` in age, per year.\n\n    Exact for the piecewise-linear share: the constant slope of the bracketing segment, zero\n    outside the sourced range.  It enters :func:`prev_care_slope_at` as the first half of the\n    product rule, and it is **negative** over most of the range for a severe threshold, which\n    is the U-shape doing its work.\n    \"\"\"\n    ages = grade_ages(grade)\n    shares = grade_shares(grade)\n    if x < ages[0] or x >= ages[-1]:\n        return 0.0\n    for i in range(len(ages) - 1):\n        lo = ages[i]\n        hi = ages[i + 1]\n        if lo <= x < hi:\n            v_lo = shares[i]\n            v_hi = shares[i + 1]\n            return (v_hi - v_lo) / (hi - lo)\n    return 0.0",
+   "inc_schedule": "def inc_schedule():\n    \"\"\"The disclosed incidence rates at the policy's sex, by pivot age.\"\"\"\n    return data.incidence_table().loc[sex()]",
+   "disclosed_inc_at": "def disclosed_inc_at(x):\n    \"\"\"The disclosed 예정위험률 for a combined 1·2등급 benefit at 만나이 ``x``.\n\n    The sum of the 요양(1등급) and 요양(2등급) 발생률 of the one carrier that publishes them,\n    log-linearly graduated between the three quoted ages and extrapolated on the end\n    gradients outside them.  Summing the two rows is an **upper bound**, the two events being\n    mutually exclusive at first certification.  This is a *pricing* rate for a select,\n    underwritten, 180-day-waited population quoted on 보험나이 and it is **not** this model's\n    level; it is read here for its gradient and its sex ratio, and published against the\n    model's own rate by :func:`disclosed_inc_ratio_at`.\n    \"\"\"\n    tbl = inc_schedule()\n    ages = inc_ages()\n    lo, hi = ages[0], ages[-1]\n    if x <= lo:\n        a, b = ages[0], ages[1]\n    elif x >= hi:\n        a, b = ages[-2], ages[-1]\n    else:\n        a, b = next((p, q) for p, q in zip(ages[:-1], ages[1:]) if p <= x <= q)\n    r_a = float(tbl.loc[a, \"rate_g1\"]) + float(tbl.loc[a, \"rate_g2\"])\n    r_b = float(tbl.loc[b, \"rate_g1\"]) + float(tbl.loc[b, \"rate_g2\"])\n    g = math.log(r_b / r_a) / (b - a)                                # noqa: F821\n    return r_a * math.exp(g * (x - a))",
+   "inc_ages": "def inc_ages():\n    \"\"\"The pivot ages of :func:`inc_schedule`, ascending.\"\"\"\n    return sorted(int(a) for a in inc_schedule().index)",
+   "sub65_gradient": "def sub65_gradient():\n    \"\"\"The log-gradient of the disclosed 예정위험률 per year of age, for this life's sex.\n\n    ``ln(i(60) / i(40)) / 20`` on the combined 1·2등급 rate: **0.1222 for men (13.0% a year)**\n    and **0.1648 for women (17.9%)**.  It is the only Korean evidence anywhere on how\n    long-term-care incidence behaves below 65, and it carries the sex ratio with it — female\n    over male on the combined rate runs 0.37 at 40, 0.58 at 50 and 0.87 at 60, so a curve\n    built on this gradient crosses one in the late sixties, exactly where the population data\n    finds the crossover.\n    \"\"\"\n    tbl = inc_schedule()\n    ages = inc_ages()\n    lo, hi = ages[0], ages[-1]\n    r_lo = float(tbl.loc[lo, \"rate_g1\"]) + float(tbl.loc[lo, \"rate_g2\"])\n    r_hi = float(tbl.loc[hi, \"rate_g1\"]) + float(tbl.loc[hi, \"rate_g2\"])\n    return math.log(r_hi / r_lo) / (hi - lo)",
+   "av_fractions": "def av_fractions():\n    \"\"\"The run-off fractions of av_table, as floats in ascending order.\"\"\"\n    tbl = data.av_table()                                            # noqa: F821\n    return sorted(float(v) for v in tbl.index)",
+   "av_ratio_at": "def av_ratio_at(fraction):\n    \"\"\"The 계약자적립액 as a ratio to cumulative premiums, at ``fraction`` of the way from\n    납입완료 to maturity.\n\n    Linear between the four sourced anchors of *av_table.csv*: **0.974** at 납입완료, 1.088\n    one third of the way on, 1.010 two thirds, and **0.000** at maturity.  They are the\n    published 해약환급금 미지급형 환급률 progression — 48.7% / 54.4% / 50.5% / 0.0% at 20, 30,\n    40 and 50 years on the anchor cell's own specification — doubled, because that form pays\n    50% of the notional 기본형 value once the premiums are paid and the 해약공제 has expired.\n    Indexing on the *fraction* rather than on the policy year is the **[std]** step that lets\n    one published progression serve every term and every paying period.\n    \"\"\"\n    xs = av_fractions()\n    ratios = av_ratios()\n    if fraction <= xs[0]:\n        return ratios[0]\n    if fraction >= xs[-1]:\n        return ratios[-1]\n    for i in range(len(xs) - 1):\n        lo = xs[i]\n        hi = xs[i + 1]\n        if lo <= fraction <= hi:\n            v_lo = ratios[i]\n            v_hi = ratios[i + 1]\n            return v_lo + (v_hi - v_lo) * (fraction - lo) / (hi - lo)\n    raise ValueError(\"fraction out of range\")",
+   "av_ratios": "def av_ratios():\n    \"\"\"The ``av_ratio`` of av_table at :func:`av_fractions`.\"\"\"\n    tbl = data.av_table()                                            # noqa: F821\n    return [float(tbl.loc[v, \"av_ratio\"]) for v in av_fractions()]"
+  }
+ },
+ "notes": [],
+ "spec": "# LTC_KR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   x < 121: mort_table.csv age keys 30..120; mort_rate_at_age clamps to min(x, 120) (:453); int x = age(t)\n#     <= term_age = 90 (:469,:928-938,:1030); bound 120+1\n#   j < 71: shipped declaration\n{'cells_param_size': {'x': 121, 'j': 71}}\n"
+}

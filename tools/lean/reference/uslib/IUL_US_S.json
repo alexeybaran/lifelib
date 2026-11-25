@@ -1,0 +1,272 @@
+{
+ "model": "IUL_US_S",
+ "lib": "uslib",
+ "product": "indexed_ul",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RateClass": [
+   [
+    "PElite",
+    0
+   ],
+   [
+    "PPlus",
+    1
+   ],
+   [
+    "Pref",
+    2
+   ],
+   [
+    "NT",
+    3
+   ],
+   [
+    "PTob",
+    4
+   ],
+   [
+    "Tob",
+    5
+   ],
+   [
+    "Juv",
+    6
+   ]
+  ],
+  "DeathBenefitOption": [
+   [
+    "A",
+    0
+   ],
+   [
+    "B",
+    1
+   ]
+  ],
+  "Qualification": [
+   [
+    "GPT",
+    0
+   ],
+   [
+    "CVAT",
+    1
+   ]
+  ],
+  "PremiumType": [
+   [
+    "SINGLE",
+    0
+   ],
+   [
+    "LEVEL",
+    1
+   ],
+   [
+    "TARGET",
+    2
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "ANNUAL",
+    0
+   ],
+   [
+    "MONTHLY",
+    1
+   ]
+  ],
+  "Basis": [
+   [
+    "CURRENT",
+    0
+   ],
+   [
+    "GUARANTEED",
+    1
+   ]
+  ],
+  "CreditBase": [
+   [
+    "REMAINING",
+    0
+   ],
+   [
+    "ADJ_BEGIN",
+    1
+   ]
+  ],
+  "Timing": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "BEF_CREDIT",
+    1
+   ],
+   [
+    "BEF_WD",
+    2
+   ],
+   [
+    "BEF_FEE",
+    3
+   ],
+   [
+    "BEF_SWEEP",
+    4
+   ],
+   [
+    "BEF_INV",
+    5
+   ],
+   [
+    "EOM",
+    6
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_MAT",
+    0
+   ],
+   [
+    "BEF_NB",
+    1
+   ],
+   [
+    "BEF_DECR",
+    2
+   ]
+  ],
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "WITHDRAWAL",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "fa_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "lca_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "db_option": "DeathBenefitOption",
+   "premium_mode": "PremiumMode",
+   "premium_type": "PremiumType",
+   "qual_test": "Qualification",
+   "rate_class": "RateClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "wd_pp_amount": [
+    "wd_pp"
+   ],
+   "loan_new_pp_amount": [
+    "loan_new_pp"
+   ],
+   "surr_charge_init": [
+    "surr_charge_rate"
+   ],
+   "surr_charge_runoff_years": [
+    "surr_charge_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "wd_pp_amount": "def wd_pp_amount():\n    \"\"\"The model point's constant monthly withdrawal amount.\"\"\"\n    return float(model_point()[\"wd_pp\"])",
+   "wd_pp": "def wd_pp(t):\n    \"\"\"W_t: the partial withdrawal per policy at BOM of month t, **gross of the fee**.\n\n    A constant monthly amount from :func:`wd_first_year`, taken from the model point's\n    ``wd_pp`` column and **0 in the baseline** [std]: the notes give no withdrawal\n    utilization pattern, so the mechanics are implemented and the behaviour is left to\n    the data.  Model point 5 switches it on.\n\n    The account is debited ``W_t``; the policyholder receives ``W_t - 25`` and the\n    insurer keeps the $25 fee [S3].  This differs from the universal life chassis,\n    where the fee is charged on top of the withdrawal -- these notes write the\n    withdrawal outflow as ``W_t - $25 fee``, so the fee is inside ``W_t`` here.\n    \"\"\"\n    if policy_year(t) < wd_first_year():\n        return 0.0\n    if age(t) >= charges_cease_age:                                  # noqa: F821\n        return 0.0\n    return wd_pp_amount()",
+   "loan_new_pp_amount": "def loan_new_pp_amount():\n    \"\"\"The model point's new loan taken at each policy anniversary.\"\"\"\n    return float(model_point()[\"loan_new_pp_ann\"])",
+   "loan_new_pp": "def loan_new_pp(t):\n    \"\"\"B_t: a new standard loan taken at BOM of policy month t **[std]**.\n\n    The notes' distribution-scenario module borrows a level amount annually from a\n    start age **[std]**; here that is ``loan_new_pp_ann`` from the first month of policy\n    year :func:`loan_first_year`.  **Zero in the baseline** -- the notes set loan\n    utilization to none -- and switched on by model point 5.\n\n    Participating (indexed) loans are a documented variation, not modeled: the baseline\n    uses standard loans only **[std]** (F18), which decouples loan modeling from index\n    scenarios.\n    \"\"\"\n    if policy_year(t) < loan_first_year():\n        return 0.0\n    if duration_mth(t) % 12 != 0:\n        return 0.0\n    return loan_new_pp_amount()",
+   "surr_charge_init": "def surr_charge_init():\n    \"\"\"The schedule's initial surrender charge per $1,000 of face.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return float(row[\"sc_per_1000_init\"])",
+   "surr_charge_rate": "def surr_charge_rate(t):\n    \"\"\"SC per $1,000 of initial face in policy month t **[std]** scale (F17).\n\n    ``max(0, sc_init - (sc_init / runoff_years) x m / 12)`` where ``m`` is the notes'\n    own month index ``duration_mth(t) + 1`` -- the current month counts.  With the\n    shipped schedule of $25.00 per $1,000 running off over 10 years this is $24.79 in\n    the issue month, declining linearly to zero in the last month of policy year 10.\n    The ten-year period is sourced [S1][S5][S7]; the dollar scale is not public and is\n    a placeholder of realistic magnitude.\n    \"\"\"\n    if not has_surr_charge():\n        return 0.0\n    init = surr_charge_init()\n    yrs = surr_charge_runoff_years()\n    m = duration_mth(t) + 1\n    return max(0.0, init - (init / yrs) * (m / 12))",
+   "surr_charge_runoff_years": "def surr_charge_runoff_years():\n    \"\"\"The schedule's run-off period in years.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return float(row[\"runoff_years\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# IUL_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1454: need_max 1452 + 1 (av_at(t+1, BEF_PREM) av_change line 1542, check_av_roll_fwd line 2141) + 1\n#     margin = 1454\n#   m < 1454: segment birth month (seg_new_pp(m) = sweep_pp(m), line 1220), m <= t; same as t\n{'cells_param_size': {'t': 1454, 'm': 1454}}\n"
+}

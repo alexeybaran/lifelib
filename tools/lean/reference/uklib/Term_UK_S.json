@@ -1,0 +1,126 @@
+{
+ "model": "Term_UK_S",
+ "lib": "uklib",
+ "product": "term_assurance",
+ "families": {
+  "Shape": [
+   [
+    "level",
+    0
+   ],
+   [
+    "decreasing",
+    1
+   ],
+   [
+    "fib",
+    2
+   ]
+  ],
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "Smoker": [
+   [
+    "N",
+    0
+   ],
+   [
+    "S",
+    1
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "annual",
+    1
+   ]
+  ],
+  "MortBasis": [
+   [
+    "applied",
+    0
+   ],
+   [
+    "select",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "FIB",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "mort_basis": "MortBasis",
+   "premium_mode": "PremiumMode",
+   "sex": "Sex",
+   "shape": "Shape",
+   "smoker": "Smoker"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {},
+ "hoist_sources": {},
+ "notes": [],
+ "spec": "# Term_UK_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 612: need_max 600 + t+1 offset -> 601 required; +12 margin => 612.\n#   m < 612: annuity_certain_factor(m) called with m = term_mths() - t (fib_commute_pp, Projection:930); t\n#     in [proj_start, proj_len) -> m in 1..600 -> 601 exclusive; shares 612. m <= 0 only if t >= term_mths\n#     (returns 0).\n#   k < 612: benefit_sched(k) called with k = duration_mth(t) = t (benefit_pp, Projection:942) for t <\n#     proj_len -> k <= 599; shares the t bound 612.\n{'cells_param_size': {'t': 612, 'm': 612, 'k': 612}}\n"
+}

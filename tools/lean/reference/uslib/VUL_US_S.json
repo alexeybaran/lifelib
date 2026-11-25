@@ -1,0 +1,285 @@
+{
+ "model": "VUL_US_S",
+ "lib": "uslib",
+ "product": "variable_ul",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "RateClass": [
+   [
+    "PPlusNT",
+    0
+   ],
+   [
+    "PNT",
+    1
+   ],
+   [
+    "StdPlusNT",
+    2
+   ],
+   [
+    "StdNT",
+    3
+   ],
+   [
+    "PTob",
+    4
+   ],
+   [
+    "StdTob",
+    5
+   ]
+  ],
+  "DeathBenefitOption": [
+   [
+    "A",
+    0
+   ],
+   [
+    "B",
+    1
+   ]
+  ],
+  "Qualification": [
+   [
+    "GPT",
+    0
+   ],
+   [
+    "CVAT",
+    1
+   ]
+  ],
+  "PremiumType": [
+   [
+    "SINGLE",
+    0
+   ],
+   [
+    "LEVEL",
+    1
+   ]
+  ],
+  "Timing": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "BEF_WD",
+    1
+   ],
+   [
+    "BEF_FEE",
+    2
+   ],
+   [
+    "BEF_INV",
+    3
+   ],
+   [
+    "BEF_ME",
+    4
+   ],
+   [
+    "EOM",
+    5
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_MAT",
+    0
+   ],
+   [
+    "BEF_NB",
+    1
+   ],
+   [
+    "BEF_DECR",
+    2
+   ]
+  ],
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "WITHDRAWAL",
+    2
+   ],
+   [
+    "MATURITY",
+    3
+   ],
+   [
+    "ALL",
+    4
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pricing_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "fa_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "fa_pricing_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "la_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "loan_bal_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "sa_pp_at": {
+    "2": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "sa_pricing_pp_at": {
+    "2": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "unloaned_av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "db_option": "DeathBenefitOption",
+   "premium_type": "PremiumType",
+   "qual_test": "Qualification",
+   "rate_class": "RateClass",
+   "sex": "Sex"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "return_rows": [
+    "gross_return_mth"
+   ],
+   "wd_pp_amount": [
+    "wd_pp"
+   ],
+   "corridor_override_m1": [
+    "corridor_factor",
+    "has_corridor_override_m1"
+   ],
+   "has_corridor_override_m1": [
+    "corridor_factor"
+   ],
+   "coi_rate_override_m1": [
+    "coi_rate",
+    "has_coi_rate_override_m1"
+   ],
+   "has_coi_rate_override_m1": [
+    "coi_rate"
+   ],
+   "surr_charge_init": [
+    "surr_charge_rate"
+   ],
+   "surr_charge_runoff_years": [
+    "surr_charge_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "return_rows": "def return_rows():\n    \"\"\"The model point's return scenario: gross returns keyed by (subaccount, projected month).\"\"\"\n    return data.scenario_table().loc[scenario_id()]",
+   "gross_return_mth": "def gross_return_mth(t, i):\n    \"\"\"r_{i,t}: the **gross** monthly return of subaccount i, a scenario input.\n\n    Read from *scenario_table.csv* for this model point's :func:`scenario_id`, whose\n    ``t`` column is the **projected** month, 0-based, exactly as here -- the scenario\n    restarts with the projection, not with the contract.  Months beyond the end of a\n    scenario take its last row, so a two-row scenario is a level path with one\n    distinguished opening month -- which is exactly the shipped ``WE`` scenario, whose\n    ``t = 0`` is the worked example's month (+1.00% equity, -0.50% bond).\n\n    Gross means before the fund expense ratio and before the M&E charge; both are\n    applied in :func:`inv_return_mth`.  A stochastic set is more rows in this table,\n    not a formula change.\n    \"\"\"\n    tbl = return_rows().loc[i]\n    m = min(t, int(tbl.index.max()))\n    return float(tbl.loc[m, \"gross_return_mth\"])",
+   "wd_pp_amount": "def wd_pp_amount():\n    \"\"\"The model point's constant monthly withdrawal amount.\"\"\"\n    return float(model_point()[\"wd_pp\"])",
+   "wd_pp": "def wd_pp(t):\n    \"\"\"W(t): the partial withdrawal per policy at the monthiversary of month t.\n\n    The constant monthly figure in the model point's ``wd_pp`` column, **0 in every\n    shipped model point**: the notes make withdrawals explicitly none in the baseline,\n    so the mechanics are implemented and the behavior is left to the data **[std]**.\n    Not taken after attained age 121.\n    \"\"\"\n    if age(t) >= charges_cease_age:                                  # noqa: F821\n        return 0.0\n    return wd_pp_amount()",
+   "corridor_override_m1": "def corridor_override_m1():\n    \"\"\"The model point's month-1 corridor factor override; blank (NaN) when there is none.\"\"\"\n    return model_point()[\"corridor_override_m1\"]",
+   "corridor_factor": "def corridor_factor(t):\n    \"\"\"kappa_t: the corridor factor in projected month t, at the **attained** age.\n\n    Only the Guideline Premium Test is modeled; CVAT is a documented variation, so any\n    other ``qual_test`` raises rather than being treated as GPT.\n\n    A model point may pin the factor **in the projection's first month** through the\n    ``corridor_override_m1`` column.  Model point 1 does, at 2.15, because the notes'\n    worked example sits in policy year 3 -- attained age 47, where the rule gives\n    2.03 -- but quotes ``kappa(45) = 215%``, the **issue**-age factor.  The pin\n    reproduces the worked example's corridor product exactly.\n\n    The pin is deliberately confined to ``t == 0``, the first projected month and the\n    one month the worked example describes (the ``_m1`` in the column name is \"the\n    first month\", which is ``t = 0``).  It is a *lookup* that the notes performed at\n    the wrong age, not a parameter of the contract; holding an issue-age corridor\n    factor across the seventy-seven years this projection runs would misstate every\n    later month and is no reading of the notes at all.  Model point 2 is the same cell\n    with the pin blank, so the rule applies from the first month too, and a test holds\n    the gap open in both directions.\n    \"\"\"\n    if qual_test() != Qualification.GPT:\n        raise ValueError(\"invalid qual_test\")\n    o = corridor_override_m1()\n    if t == 0 and has_corridor_override_m1():\n        return float(o)\n    return corridor_factor_at(age(t))",
+   "has_corridor_override_m1": "def has_corridor_override_m1():\n    \"\"\"Whether the model point carries a month-1 corridor factor override (D64: the missing-value test, per policy).\"\"\"\n    return not pd.isna(corridor_override_m1())",
+   "coi_rate_override_m1": "def coi_rate_override_m1():\n    \"\"\"The model point's month-1 COI rate override; blank (NaN) when there is none.\"\"\"\n    return model_point()[\"coi_rate_override_m1\"]",
+   "coi_rate": "def coi_rate(t):\n    \"\"\"c_t: the current monthly COI rate in projected month t.\n\n    A model point may pin the rate **in the projection's first month** through the\n    ``coi_rate_override_m1`` column.  Model point 1 does, at 0.04: that is the year-1\n    current rate disclosed for this cell [S4], which the notes' worked example applies\n    in policy year 3, and it is 18% of the year-1 guaranteed $0.22 rather than the 50%\n    the placeholder assumes.  The notes acknowledge the gap themselves -- \"disclosed\n    year-1 current/guaranteed ratios are much lower (select effect)\" -- so the\n    placeholder is conservative early and the select-to-ultimate shape matters.\n\n    As with :func:`corridor_factor`, the pin is confined to ``t == 0``, the first\n    projected month: a single disclosed point is not a scale, and holding $0.04 flat\n    for seventy-seven years would leave a policy paying almost nothing for its\n    insurance at age 100.  Model point 2 is the same cell with the pin blank and takes\n    the placeholder from the first month, and a test holds the gap open in both\n    directions.\n    \"\"\"\n    o = coi_rate_override_m1()\n    if t == 0 and has_coi_rate_override_m1():\n        return min(float(o), coi_rate_guar(t), coi_rate_cap)         # noqa: F821\n    return coi_rate_at(policy_year(t))",
+   "has_coi_rate_override_m1": "def has_coi_rate_override_m1():\n    \"\"\"Whether the model point carries a month-1 COI rate override (D64: the missing-value test, per policy).\"\"\"\n    return not pd.isna(coi_rate_override_m1())",
+   "surr_charge_init": "def surr_charge_init():\n    \"\"\"The schedule's initial surrender charge per $1,000 of face.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return float(row[\"sc_per_1000_init\"])",
+   "surr_charge_rate": "def surr_charge_rate(t):\n    \"\"\"SC per $1,000 of initial face in policy year y **[std]**.\n\n    ``sc_init x (runoff_years + 1 - y) / runoff_years``, floored at zero: $18.00 per\n    $1,000 in policy year 1, declining **by policy year** to zero at the end of policy\n    year 14.  In policy year 3 that is ``18.00 x 12/14 = 15.428571``, the factor the\n    worked example quotes.\n\n    Note the contrast with the fixed-UL chassis, whose surrender charge amortizes every\n    *month*.  The variable-UL notes step it by policy year, and the worked example pins\n    the step: carrying the chassis's monthly run-off across would give\n    ``18 x (1 - 25/168)`` here instead.\n    \"\"\"\n    if not has_surr_charge():\n        return 0.0\n    init = surr_charge_init()\n    yrs = surr_charge_runoff_years()\n    return max(0.0, init * (yrs + 1 - policy_year(t)) / yrs)",
+   "surr_charge_runoff_years": "def surr_charge_runoff_years():\n    \"\"\"The schedule's run-off period in whole years.\"\"\"\n    row = data.surr_charge_table().loc[surr_charge_id()]             # noqa: F821\n    return int(row[\"runoff_years\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# VUL_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1466: need_max 1464 + 1 (av_at(t+1, BEF_PREM) in av_change line 1479, check_av_roll_fwd line 2110) +\n#     1 margin = 1466\n#   y < 123: policy year policy_year(t) = duration(t)+1 (callers lines 1126, 1178) and\n#     policy_year_pricing(m) = m//12+1 <= 1463//12+1 = 122, +1 = 123 (coi_rate_guar_at clamps to the coi scale\n#     max)\n{'cells_param_size': {'t': 1466, 'y': 123}}\n"
+}

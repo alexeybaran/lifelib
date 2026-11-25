@@ -1,0 +1,217 @@
+{
+ "model": "Dep_FR_S",
+ "lib": "frlib",
+ "product": "dependance",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "CoverType": [
+   [
+    "total_and_partial",
+    0
+   ],
+   [
+    "total_only",
+    1
+   ]
+  ],
+  "TriggerGrid": [
+   [
+    "avq5",
+    0
+   ],
+   [
+    "avq6",
+    1
+   ],
+   [
+    "aggir",
+    2
+   ]
+  ],
+  "PremiumMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "quarterly",
+    1
+   ],
+   [
+    "half_yearly",
+    2
+   ],
+   [
+    "annual",
+    3
+   ]
+  ],
+  "Cause": [
+   [
+    "accident",
+    0
+   ],
+   [
+    "illness",
+    1
+   ],
+   [
+    "neuro",
+    2
+   ]
+  ],
+  "Status": [
+   [
+    "autonomous",
+    0
+   ],
+   [
+    "partial",
+    1
+   ],
+   [
+    "total",
+    2
+   ],
+   [
+    "reduced",
+    3
+   ]
+  ],
+  "PrevParam": [
+   [
+    "prev_ceil",
+    0
+   ],
+   [
+    "prev_beta",
+    1
+   ],
+   [
+    "prev_x_mid",
+    2
+   ]
+  ],
+  "Severity": [
+   [
+    "partial",
+    0
+   ],
+   [
+    "total",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "AFT_DECR",
+    1
+   ]
+  ],
+  "Kind": [
+   [
+    "RENTE",
+    0
+   ],
+   [
+    "CAPITAL",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "carence_months": {
+    "0": [
+     "Cause",
+     "cause"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "prev_param": {
+    "0": [
+     "PrevParam",
+     "name"
+    ]
+   },
+   "severity_share": {
+    "0": [
+     "Severity",
+     "kind"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "cover_type": "CoverType",
+   "premium_mode": "PremiumMode",
+   "sex": "Sex",
+   "status": "Status",
+   "trigger_grid": "TriggerGrid"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "mort_schedule": [
+    "mort_force_at",
+    "mort_rate",
+    "mort_top_age"
+   ],
+   "mort_top_age": [
+    "mort_force_at"
+   ],
+   "prevalence_schedule": [
+    "prev_param"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The base mortality rates at the policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_force_at": "def mort_force_at(x):\n    \"\"\"mu_H at an **exact**, possibly fractional, age x.\n\n    Log-linear in age between the integer ages of ``mort_table.csv``, which reproduces\n    the shipped Gompertz force exactly, since a Gompertz force is exponential in age.\n    Only the two sojourn calibrations use it: the projection itself reads the force at\n    integer attained ages through :func:`mort_force`.\n    \"\"\"\n    lo = int(math.floor(x))                                          # noqa: F821\n    hi = lo + 1\n    top = mort_top_age()\n    if lo >= top:\n        return float(\"inf\")\n    q_lo = float(mort_schedule().loc[lo, \"mort_rate\"])\n    q_hi = float(mort_schedule().loc[min(hi, top), \"mort_rate\"])\n    if q_lo >= 1.0 or q_hi >= 1.0:\n        return float(\"inf\")\n    m_lo = -math.log(1.0 - q_lo)                                     # noqa: F821\n    m_hi = -math.log(1.0 - q_hi)                                     # noqa: F821\n    return m_lo * (m_hi / m_lo) ** (x - lo)",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"The **healthy-life** annual mortality rate at the attained age in month t.\n\n    A **[std]** Gompertz proxy shaped like a French population table, read from\n    ``mort_table.csv`` by sex and age; **not** TH 00-02 / TF 00-02 or TGH05 / TGF05.\n    The two dependent states carry heavier rates on different cells —\n    :func:`mort_rate_partial` and :func:`mort_rate_total` — and reading a dependent's\n    mortality out of this cells is the largest single error available on this product.\n    \"\"\"\n    return float(mort_schedule().loc[age(t), \"mort_rate\"])",
+   "mort_top_age": "def mort_top_age():\n    \"\"\"The last attained age of the mortality rates at the policy's sex.\"\"\"\n    return mort_schedule().index.max()",
+   "prevalence_schedule": "def prevalence_schedule():\n    \"\"\"The prevalence-curve parameters at the policy's sex, by name.\"\"\"\n    return data.prevalence_table().loc[sex()]",
+   "prev_param": "def prev_param(name):\n    \"\"\"One parameter of the APA-prevalence logistic for this model point's sex.\n\n    ``prev_ceil``, ``prev_beta`` or ``prev_x_mid``.  The two slope parameters are pinned\n    to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,\n    and it governs the tail — where 65% of this product's lifetime claims fall.\n    \"\"\"\n    return float(prevalence_schedule().loc[name, \"value\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# Dep_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 842: need_max 840; check_states sweeps range(proj_len()+1) (:1927) and\n#   y < 73: policy year y = duration(t)+1 (:667); premium_factor(policy_year(t)), t<=840 -> y<=71 -> 72 exclusive,\n#   z < 843: claim duration cohorts 1..max_dur(); max_dur (:682) = proj_len()+claim_duration_months()+1; z0 <=\n#   n < 72: reduction_coeff(n) (:842), n = years_paid() or years_premiums_paid(t-1)=(t)//12 <= 70 = 110-40 -> 71\n#   y_e < 73: shipped declaration\n{'cells_param_size': {'t': 842, 'y': 73, 'z': 843, 'n': 72, 'y_e': 73}}\n"
+}

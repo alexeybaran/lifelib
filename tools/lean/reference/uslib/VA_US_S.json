@@ -1,0 +1,313 @@
+{
+ "model": "VA_US_S",
+ "lib": "uslib",
+ "product": "variable_annuity",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "DesignatedLives": [
+   [
+    "single",
+    0
+   ],
+   [
+    "joint",
+    1
+   ]
+  ],
+  "TaxStatus": [
+   [
+    "NQ",
+    0
+   ],
+   [
+    "Q",
+    1
+   ]
+  ],
+  "StepupBasis": [
+   [
+    "annual_CV",
+    0
+   ],
+   [
+    "highest_quarterly_CV",
+    1
+   ]
+  ],
+  "GmdbOption": [
+   [
+    "basic",
+    0
+   ],
+   [
+    "rollup",
+    1
+   ],
+   [
+    "ratchet",
+    2
+   ]
+  ],
+  "FeeResetRule": [
+   [
+    "none",
+    0
+   ],
+   [
+    "quinquennial",
+    1
+   ],
+   [
+    "vix",
+    2
+   ]
+  ],
+  "RollupRule": [
+   [
+    "fixed",
+    0
+   ],
+   [
+    "cmt_linked",
+    1
+   ]
+  ],
+  "Phase": [
+   [
+    "ACCUM",
+    0
+   ],
+   [
+    "DEPLETED",
+    1
+   ],
+   [
+    "EXPIRED",
+    2
+   ]
+  ],
+  "RateColumn": [
+   [
+    "vix_sq",
+    0
+   ],
+   [
+    "cmt10",
+    1
+   ]
+  ],
+  "Timing": [
+   [
+    "BEF_PREM",
+    0
+   ],
+   [
+    "BEF_WD",
+    1
+   ],
+   [
+    "BEF_INV",
+    2
+   ],
+   [
+    "BEF_FEE",
+    3
+   ],
+   [
+    "BEF_ANNIV",
+    4
+   ],
+   [
+    "EOM",
+    5
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Claim": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "MATURITY",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "claim_from_av_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claim_pp": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_from_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "claims_over_av": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "gawa_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "gwb_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "pols_decr": {
+    "1": [
+     "Claim",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   },
+   "rb_pp_at": {
+    "1": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "sa_pp_at": {
+    "2": [
+     "Timing",
+     "timing"
+    ]
+   },
+   "scenario_rate": {
+    "1": [
+     "RateColumn",
+     "field"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "designated_lives": "DesignatedLives",
+   "fee_reset_rule": "FeeResetRule",
+   "gmdb_option": "GmdbOption",
+   "phase": "Phase",
+   "rollup_rule": "RollupRule",
+   "sex": "Sex",
+   "stepup_basis": "StepupBasis",
+   "tax_status": "TaxStatus"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "return_rows": [
+    "inv_return_mth"
+   ],
+   "rate_scenario_path": [
+    "scenario_rate"
+   ],
+   "has_transactions": [
+    "prem_scheduled_pp",
+    "wd_scheduled_pp"
+   ],
+   "transaction_rows": [
+    "prem_scheduled_pp",
+    "wd_scheduled_pp"
+   ],
+   "gawa_grid": [
+    "gawa_pct_at_age"
+   ],
+   "cdsc_grid": [
+    "surr_charge_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "return_rows": "def return_rows():\n    \"\"\"The model point's return scenario: gross returns keyed by (subaccount, projection month).\"\"\"\n    return data.return_scenario().loc[scenario_id()]",
+   "inv_return_mth": "def inv_return_mth(t, i):\n    \"\"\"r_i(t): the gross monthly fund return of subaccount i, a scenario input.\n\n    Read from *return_scenario.csv* as a step function of the **elapsed policy** month\n    :func:`duration_mth` ``(t)``, so a flat path is one row per subaccount. The file's\n    ``t`` column is that 0-based elapsed month, and its first row is ``t = 0``. VM-21 requires each variable subaccount to be mapped\n    to a crafted proxy fund, normally a linear combination of recognized market indices\n    [R1]; the model takes the return series as an input rather than hard-coding one.\n    \"\"\"\n    sub = return_rows().loc[i]\n    return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), \"gross_return\"])",
+   "rate_scenario_path": "def rate_scenario_path():\n    \"\"\"The model point's rate scenario (VIX squared, CMT10) by projection month.\"\"\"\n    return data.rate_scenario().loc[scenario_id()]",
+   "scenario_rate": "def scenario_rate(t, field):\n    \"\"\"Step-function lookup of column ``name`` in the model point's rate scenario.\n\n    Each row of *rate_scenario.csv* states the level that holds from its own elapsed\n    policy month — the file's 0-based ``t`` column — until the next row of the same\n    scenario, so a flat path is one row, keyed ``t = 0``.\n    \"\"\"\n    sub = rate_scenario_path()\n    if field == RateColumn.vix_sq:\n        return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), \"vix_sq\"])\n    elif field == RateColumn.cmt10:\n        return float(sub.loc[sub.index.asof(max(duration_mth(t), 0)), \"cmt10\"])\n    else:\n        raise ValueError(\"invalid rate column\")",
+   "has_transactions": "def has_transactions():\n    \"\"\"Whether the transaction table has rows for the model point's transaction id.\"\"\"\n    return txn_id() in data.transaction_table().index",
+   "prem_scheduled_pp": "def prem_scheduled_pp(t):\n    \"\"\"The gross premium scheduled for month t in *transaction_table.csv*, else zero.\n\n    The file's ``t`` column is the **elapsed** policy month, so the key is\n    :func:`duration_mth` ``(t)``.\n    \"\"\"\n    if t < 0 or not has_transactions():\n        return 0.0\n    rows = transaction_rows()\n    m = duration_mth(t)\n    return float(rows.loc[m, \"prem_amount\"]) if m in rows.index else 0.0",
+   "wd_scheduled_pp": "def wd_scheduled_pp(t):\n    \"\"\"The gross withdrawal scheduled for month t in *transaction_table.csv*, else zero.\n\n    Keyed on the **elapsed** policy month :func:`duration_mth` ``(t)``, as\n    :func:`prem_scheduled_pp` is.\n    \"\"\"\n    if t < 0 or not has_transactions():\n        return 0.0\n    rows = transaction_rows()\n    m = duration_mth(t)\n    return float(rows.loc[m, \"wd_amount\"]) if m in rows.index else 0.0",
+   "transaction_rows": "def transaction_rows():\n    \"\"\"The model point's scheduled transactions, keyed by contract month (only read when\n    has_transactions()).\"\"\"\n    return data.transaction_table().loc[txn_id()]",
+   "gawa_grid": "def gawa_grid():\n    \"\"\"The withdrawal-percentage grid of the policy's GLWB option, by band starting age.\"\"\"\n    return data.gawa_pct_table().loc[glwb_option()]",
+   "gawa_pct_at_age": "def gawa_pct_at_age(a):\n    \"\"\"g(a): the GAWA% for attained age a, from *gawa_pct_table.csv* [S3].\"\"\"\n    grid = gawa_grid()\n    if a < grid.index[0]:\n        return 0.0\n    return float(grid.loc[grid.index.asof(a), \"gawa_pct\"])",
+   "cdsc_grid": "def cdsc_grid():\n    \"\"\"The policy's CDSC schedule, by completed years.\"\"\"\n    return data.cdsc_table().loc[cdsc_schedule()]",
+   "surr_charge_rate": "def surr_charge_rate(t):\n    \"\"\"The CDSC rate at month t, read off the **contract duration** [S2].\n\n    The scale runs 8.5% down to 0.0% at seven completed years and is read from\n    *cdsc_table.csv*, keyed by :func:`duration`.\n\n    The notes key it on *completed years since receipt of the premium being withdrawn*\n    [S2], which coincides with the contract duration only while the contract is single\n    premium. It is **not implemented** by premium tranche: :func:`rp_pp` carries Remaining\n    Premium as one undifferentiated pool, so a subsequent premium does not restart its\n    own charge clock — model point 4 pays a second premium at ``t = 72``, its 73rd policy\n    month, and is read\n    at that contract's 6-completed-year band rather than at the new tranche's 8.5%. Named\n    in the model docstring's and the README's *not implemented* lists and pinned by a\n    test; splitting the pool needs a withdrawal-ordering rule across tranches that no\n    retrieved source states.\n    \"\"\"\n    grid = cdsc_grid()\n    years = min(duration(t), int(grid.index.max()))\n    return float(grid.loc[years, \"surr_charge_rate\"])"
+  }
+ },
+ "notes": [],
+ "spec": "# VA_US_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 963: need_max 960 + 2 (scenario_rate(t_of_month(3*k-1)) with k = contract_quarter(t) reaches month\n#   a < 121: gawa_pct_at_age(age(t)) (lines 1072, 1640, 1658): attained age <= omega_age 120 - 1;\n#     gawa_pct_table.csv clamps via index.asof; omega_age 120 + 1 = 121\n#   k < 321: contract quarter contract_quarter(t) = duration_mth(t)//3 + 1 (line 723), duration_mth <= 12*80\n#     - 1 = 959 -> k <= 320, +1 = 321\n#   m < 961: t_of_month(m) month since issue (line 745): m = 3k-1 <= 959 or 12*(policy_year(t)-1)(-1) (lines\n#     1046, 1736) <= 959; 959+1 +1 margin = 961\n{'cells_param_size': {'t': 963, 'a': 121, 'k': 321, 'm': 961}}\n"
+}

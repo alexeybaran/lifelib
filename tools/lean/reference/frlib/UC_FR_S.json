@@ -1,0 +1,191 @@
+{
+ "model": "UC_FR_S",
+ "lib": "frlib",
+ "product": "assurance_vie_uc",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "PlancherBasis": [
+   [
+    "simple",
+    0
+   ],
+   [
+    "indexee",
+    1
+   ],
+   [
+    "cliquet",
+    2
+   ]
+  ],
+  "LevySource": [
+   [
+    "euro_first",
+    0
+   ],
+   [
+    "uc_units",
+    1
+   ]
+  ],
+  "WdPattern": [
+   [
+    "none",
+    0
+   ],
+   [
+    "one_off",
+    1
+   ],
+   [
+    "programmed",
+    2
+   ]
+  ],
+  "ArbPattern": [
+   [
+    "none",
+    0
+   ],
+   [
+    "one_off",
+    1
+   ],
+   [
+    "progressive",
+    2
+   ]
+  ],
+  "LapseDynamic": [
+   [
+    "none",
+    0
+   ],
+   [
+    "full",
+    1
+   ]
+  ],
+  "AvTiming": [
+   [
+    "OPENING",
+    0
+   ],
+   [
+    "BEF_FEE",
+    1
+   ],
+   [
+    "BEF_WD",
+    2
+   ],
+   [
+    "BEF_LEVY",
+    3
+   ],
+   [
+    "BEF_DECR",
+    4
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "AFT_DECR",
+    2
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LAPSE",
+    1
+   ],
+   [
+    "ALL",
+    2
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "av_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "av_pp_at": {
+    "1": [
+     "AvTiming",
+     "timing"
+    ]
+   },
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "arb_pattern": "ArbPattern",
+   "lapse_dynamic": "LapseDynamic",
+   "plancher_basis": "PlancherBasis",
+   "plancher_levy_source": "LevySource",
+   "sex": "Sex",
+   "wd_pattern": "WdPattern"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "uc_scenario_segments": [
+    "uc_return_mth"
+   ],
+   "mort_schedule": [
+    "mort_rate"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "uc_scenario_segments": "def uc_scenario_segments():\n    \"\"\"The month segments of the policy's UC return scenario, keyed by ``from_month``.\"\"\"\n    return data.uc_scenario_table().loc[uc_return_scenario()]",
+   "uc_return_mth": "def uc_return_mth(t):\n    \"\"\"r_uc(t): the UC support's return in month t, from the elected scenario.\n\n    The scenario table holds **segments**: a monthly return applying from ``from_month``\n    to ``to_month`` inclusive, both written in the model's own 0-based months, so the first\n    segment of every shipped scenario opens at ``from_month = 0``.  A month outside every\n    segment of the elected scenario raises, rather than falling back on a last-row default -\n    a projection that has run off the end of its scenario is not projecting anything.\n    \"\"\"\n    tbl = uc_scenario_segments()\n    lo = tbl.index.asof(t)\n    if t <= int(tbl.loc[lo, \"to_month\"]):\n        return float(tbl.loc[lo, \"uc_return_mth\"])\n    raise ValueError(\"no scenario segment covers this month\")",
+   "mort_schedule": "def mort_schedule():\n    \"\"\"The mortality rates at the policy's sex, by attained age.\"\"\"\n    return data.mort_table().loc[sex()]",
+   "mort_rate": "def mort_rate(t):\n    \"\"\"q_a: the annual best-estimate mortality rate at the attained age **[std]**.\n\n    The shipped table rate times ``mort_be_factor``, which is anchored so the male rate at\n    age 65 reproduces the notes' placeholder 1.20% a year exactly.  It is an\n    **assumption** and the plancher tariff is a **price**; their difference is the rider's\n    margin, and because no insurer publishes the mortality, the loading or the margin\n    behind a tariff, the sign of that margin at any age is genuinely unknown.  Sensitivity\n    test the two independently, never as a single \"plancher basis\".\n    \"\"\"\n    x = min(age(t), omega_age)                                       # noqa: F821\n    return min(1.0, float(mort_schedule().loc[\n        x, \"mort_rate\"]) * mort_be_factor)"
+  }
+ },
+ "notes": [],
+ "spec": "# UC_FR_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 1226: need_max 1224 = 12*(120-18); no forward offsets in code (only t-1, t-12) -> 1225 exclusive, +1\n#     margin\n{'cells_param_size': {'t': 1226}}\n"
+}

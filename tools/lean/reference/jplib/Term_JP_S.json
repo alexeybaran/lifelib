@@ -1,0 +1,130 @@
+{
+ "model": "Term_JP_S",
+ "lib": "jplib",
+ "product": "term_life",
+ "families": {
+  "Sex": [
+   [
+    "M",
+    0
+   ],
+   [
+    "F",
+    1
+   ]
+  ],
+  "TermType": [
+   [
+    "nen",
+    0
+   ],
+   [
+    "sai",
+    1
+   ]
+  ],
+  "PremMode": [
+   [
+    "monthly",
+    0
+   ],
+   [
+    "semiannual",
+    1
+   ],
+   [
+    "annual",
+    2
+   ]
+  ],
+  "ContractBoundary": [
+   [
+    "ceiling",
+    0
+   ],
+   [
+    "current_term",
+    1
+   ]
+  ],
+  "PolTiming": [
+   [
+    "BEF_DECR",
+    0
+   ],
+   [
+    "BEF_LAPSE",
+    1
+   ],
+   [
+    "BEF_DECLINE",
+    2
+   ],
+   [
+    "AFT_DECR",
+    3
+   ]
+  ],
+  "Kind": [
+   [
+    "DEATH",
+    0
+   ],
+   [
+    "LIVING_NEEDS",
+    1
+   ],
+   [
+    "LAPSE",
+    2
+   ],
+   [
+    "ALL",
+    3
+   ]
+  ]
+ },
+ "params": {
+  "Projection": {
+   "claims": {
+    "1": [
+     "Kind",
+     "kind"
+    ]
+   },
+   "pols_if_at": {
+    "1": [
+     "PolTiming",
+     "timing"
+    ]
+   }
+  }
+ },
+ "ref_returns": {
+  "Projection": {
+   "contract_boundary": "ContractBoundary",
+   "premium_mode": "PremMode",
+   "sex": "Sex",
+   "term_type": "TermType"
+  }
+ },
+ "returns": {},
+ "seq_returns": {},
+ "member_refs": {},
+ "list_cells": {},
+ "hoists": {
+  "Projection": {
+   "prem_anchor_key": [
+    "prem_rate_m"
+   ]
+  }
+ },
+ "hoist_sources": {
+  "Projection": {
+   "prem_anchor_key": "def prem_anchor_key():\n    \"\"\"The (issue_age, term_y) key of the is_anchor row of this policy's sex in prem_rate_table.\"\"\"\n    sub = data.prem_rate_table().loc[sex()]                          # noqa: F821\n    return min(k for k in sub.index if sub.loc[k, \"is_anchor\"] == 1)",
+   "prem_rate_m": "def prem_rate_m(t):\n    \"\"\"r(sex, x_k, m_k): the marginal monthly rate per ¥5,000,000 of cover in month t.\n\n    The published cell where one exists [S2] — male ages 30, 40 and 50 and female age 30,\n    all at a ten-year term — and otherwise the **[std]** extension off the ``is_anchor``\n    row of the matching sex::\n\n        r(sex, x, m) = r_anchor * qbar(x, m) / qbar(x_a, m_a)\n\n    Ages 60 and 70 are published by no carrier and the anchor cell reaches both, so the\n    extension is unavoidable rather than optional.  It back-casts to ¥958.9 at age 30\n    against the published ¥974 (-1.5%) and to ¥1,806.4 at age 40 against ¥1,823 (-0.9%),\n    which is reassuring about the form of the scale and says nothing about the level an\n    insurer will charge decades out.\n    \"\"\"\n    k = term_index(t)\n    x_k, m_k = term_start_age(k), term_len(k)\n    tbl = data.prem_rate_table()                                     # noqa: F821\n    key = (sex(), int(x_k), int(m_k))\n    if key in tbl.index:\n        return float(tbl.loc[key, \"rate_per_5m\"])\n    sub = tbl.loc[sex()]\n    a = prem_anchor_key()\n    return (float(sub.loc[a, \"rate_per_5m\"])\n            * mort_table_mean(x_k, m_k)\n            / mort_table_mean(int(a[0]), int(a[1])))"
+  }
+ },
+ "notes": [],
+ "spec": "# Term_JP_S: declared parameter ranges (cells_param_size, model level) from the product limits; a\n# (lower, stop) pair where the parameter is an absolute value. Sources (model folder, product-spec.md):\n#   t < 722: need_max 720 (proj_len:532); max index reached 720 via pols_if(t+1) in\n#     check_pols_roll_fwd_resid:1447 and pols_lapse_pool(t+1):1472 over range(proj_len()); exclusive 721 + 1\n#     spare\n#   x < 81: mort_table.csv age 20..80 per sex (max key 80) + 1; mort_rate_at_age:638 read at age(t)<=79 and\n#     min(age+1, omega_age)=80 (mort_age_shift, :678); mort_table_mean:650 x = term_start_age <= 79\n#   m < 61: mort_table_mean(x, m) m = term_len(k) <= policy_term; max sai term 80-20 = 60 years (product-\n#     spec.md:94-95) + 1\n#   k < 8: term index k = 1 + duration//policy_term (term_index:581); composite 年満了 term 10y (product-\n#     spec.md:95,121-127), duration <= 59 => k <= 6; exclusive 7 + 1 spare\n{'cells_param_size': {'t': 722, 'x': 81, 'm': 61, 'k': 8}}\n"
+}
