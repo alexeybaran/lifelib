@@ -112,6 +112,7 @@ committed file written on one of them must check clean on the others.
 """
 import csv
 import dataclasses
+import enum
 import io
 import itertools
 import math
@@ -486,6 +487,21 @@ def _is_month(x):
     return isinstance(x, numbers.Integral) and not _is_bool(x)
 
 
+#: The members of the lean S models that stand for upstream's ``kind=None`` default.
+LEAN_NONE_MEMBERS = frozenset({("Claim", "ALL"), ("Kind", "ALL")})
+
+
+def _labels(x):
+    """A lean S model's members as the labels its SEC twin takes (``None`` for ALL)."""
+    if isinstance(x, enum.Enum):
+        return None if (type(x).__name__, x.name) in LEAN_NONE_MEMBERS else x.name
+    if isinstance(x, tuple):
+        return tuple(_labels(e) for e in x)
+    if isinstance(x, list):
+        return [_labels(e) for e in x]
+    return x
+
+
 def _twin_lines(s_proj, sec_proj, exempt, arg_map, t_offset, rtol, atol, codes=None):
     """Every mismatch line, lazily, so :func:`twin_mismatches` can stop at its limit."""
     sec_cells = sec_proj.cells
@@ -508,6 +524,7 @@ def _twin_lines(s_proj, sec_proj, exempt, arg_map, t_offset, rtol, atol, codes=N
                     and _is_month(args[s_t_pos]) and args[s_t_pos] >= end):
                 continue                        # read ahead of S's frame: not compared
             expected = s_cells(*args)           # a cached key: the cache, not a new value
+            args, expected = _labels(args), _labels(expected)   # lean S: members as labels
             sec_args = args if arg_map is None else arg_map(name, args)
             if sec_args is None:
                 continue

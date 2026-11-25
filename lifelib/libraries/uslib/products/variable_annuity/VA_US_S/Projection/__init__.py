@@ -781,7 +781,7 @@ def scenario_rate(t, name):
     """
     sub = data.rate_scenario().loc[scenario_id()]                     # noqa: F821
     months = [m for m in sub.index if m <= max(duration_mth(t), 0)]
-    return float(sub.loc[max(months), name])
+    return float(sub.loc[max(months), name.name])
 
 
 def vix_sq(k):
@@ -790,7 +790,7 @@ def vix_sq(k):
     Read at the last month of the quarter, which is the month with ``3k - 1`` elapsed
     policy months. Used only by the ``vix`` fee reset rule.
     """
-    return scenario_rate(t_of_month(3 * k - 1), "vix_sq")
+    return scenario_rate(t_of_month(3 * k - 1), RateColumn.vix_sq)
 
 
 def cmt10(t):
@@ -798,7 +798,7 @@ def cmt10(t):
 
     Used only by the ``cmt_linked`` roll-up rule.
     """
-    return scenario_rate(t, "cmt10")
+    return scenario_rate(t, RateColumn.cmt10)
 
 
 def unit_growth(t, i):
@@ -828,28 +828,28 @@ def sa_pp_at(t, i, timing):
     if t < 0 or t >= proj_len() or depleted_flag(t - 1):
         return 0.0
     sa = alloc(i) * av_pp_init() if t == 0 else sa_pp(t - 1, i)
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return sa
     sa = sa + alloc(i) * prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return sa
-    base = av_pp_at(t, "BEF_WD")
+    base = av_pp_at(t, Timing.BEF_WD)
     sa = sa * (1.0 - wd_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "BEF_INV":
+    if timing == Timing.BEF_INV:
         return sa
     sa = sa * unit_growth(t, i)
-    if timing == "BEF_FEE":
+    if timing == Timing.BEF_FEE:
         return sa
-    base = av_pp_at(t, "BEF_FEE")
+    base = av_pp_at(t, Timing.BEF_FEE)
     sa = sa * (1.0 - charge_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "EOM":
+    if timing == Timing.EOM:
         return sa
     raise ValueError("invalid timing")
 
 
 def sa_pp(t, i):
     """SA_i(t): the value of subaccount i per contract at the end of month t."""
-    return sa_pp_at(t, i, "EOM")
+    return sa_pp_at(t, i, Timing.EOM)
 
 
 def av_pp_at(t, timing):
@@ -859,7 +859,7 @@ def av_pp_at(t, timing):
 
 def av_pp(t):
     """AV(t): the contract value per contract at the end of month t."""
-    return av_pp_at(t, "EOM")
+    return av_pp_at(t, Timing.EOM)
 
 
 def sa_weight(t, i):
@@ -868,15 +868,15 @@ def sa_weight(t, i):
     Read at ``BEF_FEE``, where the notes read it: after the month's growth and before the
     charges that cancel units.
     """
-    base = av_pp_at(t, "BEF_FEE")
-    return sa_pp_at(t, i, "BEF_FEE") / base if base > 0.0 else 0.0
+    base = av_pp_at(t, Timing.BEF_FEE)
+    return sa_pp_at(t, i, Timing.BEF_FEE) / base if base > 0.0 else 0.0
 
 
 def gross_inv_income_pp(t):
     """The gross fund return over month t, before any charge."""
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum(sa_pp_at(t, i, "BEF_INV") * inv_return_mth(t, i) for i in sub_ids())
+    return sum(sa_pp_at(t, i, Timing.BEF_INV) * inv_return_mth(t, i) for i in sub_ids())
 
 
 def fund_expense_pp(t):
@@ -887,7 +887,7 @@ def fund_expense_pp(t):
     """
     if t < 0 or depleted_flag(t - 1):
         return 0.0
-    return sum(sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+    return sum(sa_pp_at(t, i, Timing.BEF_INV) * (1.0 + inv_return_mth(t, i))
                * fund_expense_rate(i) / 12.0 for i in sub_ids())
 
 
@@ -901,7 +901,7 @@ def asset_charge_pp(t):
     if t < 0 or depleted_flag(t - 1):
         return 0.0
     rate = (asset_charge_me + asset_charge_admin) / 12.0             # noqa: F821
-    return sum(sa_pp_at(t, i, "BEF_INV") * (1.0 + inv_return_mth(t, i))
+    return sum(sa_pp_at(t, i, Timing.BEF_INV) * (1.0 + inv_return_mth(t, i))
                * (1.0 - fund_expense_rate(i) / 12.0) * rate for i in sub_ids())
 
 
@@ -913,7 +913,7 @@ def inv_income_pp(t):
     """
     if t < 0:
         return 0.0
-    return av_pp_at(t, "BEF_FEE") - av_pp_at(t, "BEF_INV")
+    return av_pp_at(t, Timing.BEF_FEE) - av_pp_at(t, Timing.BEF_INV)
 
 
 def prem_scheduled_pp(t):
@@ -1041,8 +1041,8 @@ def wd_limit_pp(t):
     non-qualified and no RMD module is implemented.
     """
     if is_first_wd(t):
-        return gawa_pct_at_age(age(t)) * gwb_pp_at(t, "BEF_WD")
-    return gawa_pp_at(t, "BEF_WD")
+        return gawa_pct_at_age(age(t)) * gwb_pp_at(t, Timing.BEF_WD)
+    return gawa_pp_at(t, Timing.BEF_WD)
 
 
 def wd_glwb_pp(t):
@@ -1068,7 +1068,7 @@ def wd_pp(t):
     charge** for all guarantee calculations [S1]; using net proceeds would understate the
     benefit-base reduction. Capped at the available contract value **[std]**.
     """
-    return min(wd_pp_due(t), av_pp_at(t, "BEF_WD"))
+    return min(wd_pp_due(t), av_pp_at(t, Timing.BEF_WD))
 
 
 def sum_wd_pp(t):
@@ -1103,7 +1103,7 @@ def cv_pre_excess_pp(t):
     **first**, and the proportional factor for the excess is computed against the
     contract value *after* that reduction. Reversing it changes both GWB and GAWA.
     """
-    return av_pp_at(t, "BEF_WD") - wd_nonexcess_pp(t)
+    return av_pp_at(t, Timing.BEF_WD) - wd_nonexcess_pp(t)
 
 
 def excess_factor(t):
@@ -1122,7 +1122,7 @@ def free_wd_allow(t):
     scale delivers by reaching 0.0% at seven completed years [S2].
     """
     rp = (rp_pp_init() if t == 0 else rp_pp(t - 1)) + premium_pp(t)
-    earnings = max(0.0, av_pp_at(t, "BEF_WD") - rp)
+    earnings = max(0.0, av_pp_at(t, Timing.BEF_WD) - rp)
     return max(earnings, free_wd_rate * rp)                          # noqa: F821
 
 
@@ -1337,7 +1337,7 @@ def fee_glwb_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_quarterly_anniv(t):
         return 0.0
-    return (phi_glwb(t) / 4.0) * gwb_pp_at(t, "BEF_ANNIV")
+    return (phi_glwb(t) / 4.0) * gwb_pp_at(t, Timing.BEF_ANNIV)
 
 
 def fee_gmdb_pp_due(t):
@@ -1348,7 +1348,7 @@ def fee_gmdb_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_quarterly_anniv(t):
         return 0.0
-    return (phi_gmdb(t) / 4.0) * rb_pp_at(t, "BEF_ANNIV")
+    return (phi_gmdb(t) / 4.0) * rb_pp_at(t, Timing.BEF_ANNIV)
 
 
 def maint_fee_pp_due(t):
@@ -1360,7 +1360,7 @@ def maint_fee_pp_due(t):
     """
     if t < 0 or depleted_flag(t - 1) or not is_anniv(t):
         return 0.0
-    after_riders = (av_pp_at(t, "BEF_FEE")
+    after_riders = (av_pp_at(t, Timing.BEF_FEE)
                     - fee_glwb_pp_due(t) - fee_gmdb_pp_due(t))
     return 0.0 if after_riders >= maint_fee_waiver_av else maint_fee  # noqa: F821
 
@@ -1380,7 +1380,7 @@ def charge_scale(t):
     due = charge_pp_due(t)
     if due <= 0.0:
         return 0.0
-    return min(1.0, av_pp_at(t, "BEF_FEE") / due)
+    return min(1.0, av_pp_at(t, Timing.BEF_FEE) / due)
 
 
 def fee_glwb_pp(t):
@@ -1421,17 +1421,17 @@ def gwb_pp_at(t, timing):
     g = gwb_pp_init() if t == 0 else gwb_pp(t - 1)
     if depleted_flag(t - 1):
         return g
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return g
     g = min(gwb_cap, g + prem_to_av_pp(t))                           # noqa: F821
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return g
     if wd_pp(t) > 0.0:
         if sum_wd_pp(t) <= wd_limit_pp(t):
             g = max(g - wd_pp(t), 0.0)
         else:
             g = max((g - wd_nonexcess_pp(t)) * excess_factor(t), 0.0)
-    if timing == "BEF_ANNIV":
+    if timing == Timing.BEF_ANNIV:
         return g
     raise ValueError("invalid timing")
 
@@ -1448,7 +1448,7 @@ def bb_pp_bef_anniv(t):
         return prev
     b = min(gwb_cap, prev + prem_to_av_pp(t))                        # noqa: F821
     if wd_pp(t) > 0.0 and sum_wd_pp(t) > wd_limit_pp(t):
-        b = min(gwb_pp_at(t, "BEF_ANNIV"), b)
+        b = min(gwb_pp_at(t, Timing.BEF_ANNIV), b)
     return b
 
 
@@ -1472,7 +1472,7 @@ def bonus_pp(t):
 
 def gwb_pp_aft_bonus(t):
     """GWB after anniversary sub-step 3, the GLWB bonus."""
-    return gwb_pp_at(t, "BEF_ANNIV") + bonus_pp(t)
+    return gwb_pp_at(t, Timing.BEF_ANNIV) + bonus_pp(t)
 
 
 def stepup_base_pp(t):
@@ -1613,19 +1613,19 @@ def gawa_pp_at(t, timing):
     g = gawa_pp_init() if t == 0 else gawa_pp(t - 1)
     if depleted_flag(t - 1):
         return g
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return g
     had_wd = has_wd_init() if t == 0 else has_wd_by(t - 1)
     if had_wd and prem_to_av_pp(t) > 0.0:
         pct = gawa_pct_init() if t == 0 else gawa_pct_fixed(t - 1)
         g = g + pct * prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return g
     if is_first_wd(t):
-        g = gawa_pct_at_age(age(t)) * gwb_pp_at(t, "BEF_WD")
+        g = gawa_pct_at_age(age(t)) * gwb_pp_at(t, Timing.BEF_WD)
     if wd_pp(t) > 0.0 and sum_wd_pp(t) > wd_limit_pp(t):
-        g = min(g * excess_factor(t), gwb_pp_at(t, "BEF_ANNIV"))
-    if timing == "BEF_ANNIV":
+        g = min(g * excess_factor(t), gwb_pp_at(t, Timing.BEF_ANNIV))
+    if timing == Timing.BEF_ANNIV:
         return g
     raise ValueError("invalid timing")
 
@@ -1639,7 +1639,7 @@ def gawa_pp(t):
     """
     if depleted_flag(t - 1):
         return gawa_pp_init() if t == 0 else gawa_pp(t - 1)
-    g = gawa_pp_at(t, "BEF_ANNIV")
+    g = gawa_pp_at(t, Timing.BEF_ANNIV)
     if is_anniv(t):
         pct = gawa_pct_fixed(t)
         if has_wd_by(t) and pct > 0.0:
@@ -1680,7 +1680,7 @@ def rp_reduction_pp(t):
     if t < 0 or wd_pp(t) <= 0.0:
         return 0.0
     rp = (rp_pp_init() if t == 0 else rp_pp(t - 1)) + premium_pp(t)
-    earnings = max(0.0, av_pp_at(t, "BEF_WD") - rp)
+    earnings = max(0.0, av_pp_at(t, Timing.BEF_WD) - rp)
     return min(rp, max(0.0, wd_pp(t) - earnings))
 
 
@@ -1701,7 +1701,7 @@ def rb_prior_anniv_pp(t):
     Benefit Base plus the premium taken at the start of the first projected month.
     """
     u = t_of_month(12 * (policy_year(t) - 1) - 1)
-    return rb_pp(u) if u >= 0 else rb_pp_at(0, "BEF_WD")
+    return rb_pp(u) if u >= 0 else rb_pp_at(0, Timing.BEF_WD)
 
 
 def gmdb_allow_pp(t):
@@ -1738,7 +1738,7 @@ def gmdb_wd_factor(t):
     """
     if gmdb_wd_excess_pp(t) <= 0.0:
         return 1.0
-    base = av_pp_at(t, "BEF_WD") - gmdb_wd_dfd_pp(t)
+    base = av_pp_at(t, Timing.BEF_WD) - gmdb_wd_dfd_pp(t)
     if base <= 0.0:
         return 0.0
     return max(0.0, 1.0 - gmdb_wd_excess_pp(t) / base)
@@ -1774,15 +1774,15 @@ def rb_pp_at(t, timing):
     r = rb_pp_init() if t == 0 else rb_pp(t - 1)
     if depleted_flag(t - 1):
         return r
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         return r
     r = r + prem_to_av_pp(t)
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return r
     if wd_pp(t) > 0.0 and gmdb_option() != "rollup":
-        base = av_pp_at(t, "BEF_WD")
+        base = av_pp_at(t, Timing.BEF_WD)
         r = r * max(0.0, 1.0 - wd_pp(t) / base) if base > 0.0 else 0.0
-    if timing == "BEF_ANNIV":
+    if timing == Timing.BEF_ANNIV:
         return r
     raise ValueError("invalid timing")
 
@@ -1796,7 +1796,7 @@ def rb_pp(t):
     """
     if depleted_flag(t - 1):
         return rb_pp_init() if t == 0 else rb_pp(t - 1)
-    r = rb_pp_at(t, "BEF_ANNIV")
+    r = rb_pp_at(t, Timing.BEF_ANNIV)
     if not is_anniv(t):
         return r
     option = gmdb_option()
@@ -2013,7 +2013,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -2026,13 +2026,13 @@ def pols_if_at(t, timing):
     if t < 0:
         return 0.0
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -2044,7 +2044,7 @@ def pols_death(t):
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of mortality."""
-    return 0.0 if t < 0 else pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return 0.0 if t < 0 else pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -2053,16 +2053,16 @@ def pols_maturity(t):
     Not a decrement — the projection runs out — but needed for the in-force roll-forward
     to close; see the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return pols_lapse(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -2075,11 +2075,11 @@ def claim_pp(t, kind):
     proceeds :func:`surr_benefit_pp`. ``"MATURITY"`` is the surrender value of the
     survivors at the projection horizon.
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return db_pp(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return surr_benefit_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -2091,7 +2091,7 @@ def claim_from_av_pp(t, kind):
     Always ``AV(t)``: the separate account gives up the account value, and whatever the
     guarantee adds on top is general-account money, reported as :func:`claims_over_av`.
     """
-    if kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind in (Claim.DEATH, Claim.LAPSE, Claim.MATURITY):
         return av_pp(t)
     raise ValueError("invalid kind")
 
@@ -2156,11 +2156,11 @@ def glwb_payments(t):
     return 0.0 if t < 0 else glwb_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE")
-                + claims(t, "MATURITY"))
+    if kind == Claim.ALL:
+        return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE)
+                + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -2169,16 +2169,16 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the contract value released, ``claims - claims_from_av``.
 
     On death this is exactly the GMDB guarantee claim — the general-account strain. On a
     surrender it is negative by the withdrawal charge, which the separate account keeps.
     A reconciliation quantity, never a ledger line of its own.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "MATURITY"))
+    if kind == Claim.ALL:
+        return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
+                + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -2235,7 +2235,7 @@ def net_cf(t):
     account-value identity.
     """
     return (premiums(t) + charge_income(t)
-            - withdrawals(t) - glwb_payments(t) - claims(t)
+            - withdrawals(t) - glwb_payments(t) - claims(t, Claim.ALL)
             - expenses(t) - commissions(t) - premium_taxes(t))
 
 
@@ -2266,7 +2266,7 @@ def av_at(t, timing):
     """
     if t < 0:
         return 0.0
-    if timing == "EOM":
+    if timing == Timing.EOM:
         return av_pp(t) * pols_if(t + 1)
     return av_pp_at(t, timing) * pols_if(t)
 
@@ -2293,8 +2293,8 @@ def av_change(t):
     projected month and ``av_at(t - 1, "EOM")`` after it.
     """
     opening = (av_pp_init() * pols_if_init() if t == 0
-               else av_at(t - 1, "EOM"))
-    return av_at(t, "EOM") - opening
+               else av_at(t - 1, Timing.EOM))
+    return av_at(t, Timing.EOM) - opening
 
 
 def check_av_roll_fwd_resid(t):
@@ -2314,8 +2314,8 @@ def check_av_roll_fwd_resid(t):
         return 0.0
     expected = (prem_to_av(t) - wd_from_av(t) + inv_income(t)
                 - charges_from_av(t)
-                - claims_from_av(t, "DEATH") - claims_from_av(t, "LAPSE")
-                - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Claim.DEATH) - claims_from_av(t, Claim.LAPSE)
+                - claims_from_av(t, Claim.MATURITY))
     return av_change(t) - expected
 
 
@@ -2398,9 +2398,9 @@ def result_cf():
             "maint_fees": [maint_fees(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
             "glwb_payments": [glwb_payments(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Claim.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Claim.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Claim.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2425,7 +2425,7 @@ def result_pols():
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2441,7 +2441,7 @@ def result_av():
     cols = {}
     for i in sub_ids():
         cols["sa_pp_%s" % i] = [sa_pp(t, i) for t in ts]
-    cols["av_pp_bef_fee"] = [av_pp_at(t, "BEF_FEE") for t in ts]
+    cols["av_pp_bef_fee"] = [av_pp_at(t, Timing.BEF_FEE) for t in ts]
     cols["fee_glwb_pp"] = [fee_glwb_pp(t) for t in ts]
     cols["fee_gmdb_pp"] = [fee_gmdb_pp(t) for t in ts]
     cols["maint_fee_pp"] = [maint_fee_pp(t) for t in ts]
@@ -2590,3 +2590,11 @@ comm_rate_acq = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+RateColumn = ("Pickle", 2)
+
+Timing = ("Pickle", 3)
+
+PolTiming = ("Pickle", 4)
+
+Claim = ("Pickle", 5)

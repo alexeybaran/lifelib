@@ -1597,18 +1597,18 @@ def claim_pp(t, kind):
     refund and period certain deliver their guarantee as continued payments through the
     certain floor rather than as a lump sum.
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         if is_payout(t) or db_form() != "ROP":
             return 0.0
         return cum_premium_pp(t)
-    if kind == "REFUND":
+    if kind == Claim.REFUND:
         if not is_payout(t) or payout_form() != "CR":
             return 0.0
         return refund_balance(t)
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Expected claim outgo in month t; ``kind=None`` totals every kind.
 
     Weighted by :func:`lives_death_last`, the death that ends the contract: on a joint
@@ -1617,8 +1617,8 @@ def claims(t, kind=None):
     The two kinds are mutually exclusive by construction - ``"DEATH"`` is zero from the
     income start month and ``"REFUND"`` is zero before it.
     """
-    if kind is None:
-        return claims(t, "DEATH") + claims(t, "REFUND")
+    if kind == Claim.ALL:
+        return claims(t, Claim.DEATH) + claims(t, Claim.REFUND)
     return pols_if_init() * lives_death_last(t) * claim_pp(t, kind)
 
 
@@ -1660,7 +1660,7 @@ def liability_outgo(t):
     contract has no cash surrender value at any time before the income start date and
     none after [S1][S2][R13 SS3.P].
     """
-    return annuity_payments(t) + claims(t) + commutations(t) + expenses(t)
+    return annuity_payments(t) + claims(t, Claim.ALL) + commutations(t) + expenses(t)
 
 
 def liability_cf(t):
@@ -1874,7 +1874,7 @@ def lives_if_ann(y):
     return lives_if_last(12 * y)
 
 
-def claims_ann(y, kind=None):
+def claims_ann(y, kind):
     """Expected claim outgo over policy year y; the notes' ``E[DB]`` when kind="DEATH".
 
     The monthly cash flows summed over the twelve months of the year.  Because ``CP`` is
@@ -1909,7 +1909,7 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims": [claims(t) for t in ts],
+            "claims": [claims(t, Claim.ALL) for t in ts],
             "commutations": [commutations(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1960,8 +1960,8 @@ def result_annual():
             "cum_premium_pp": [cum_premium_pp(12 * y - 1) for y in ys],
             "annual_income": [annual_income(12 * y - 1) for y in ys],
             "lives_if": [lives_if_ann(y) for y in ys],
-            "claims_death": [claims_ann(y, "DEATH") for y in ys],
-            "claims_refund": [claims_ann(y, "REFUND") for y in ys],
+            "claims_death": [claims_ann(y, Claim.DEATH) for y in ys],
+            "claims_refund": [claims_ann(y, Claim.REFUND) for y in ys],
             "annuity_payments": [annuity_payments_ann(y) for y in ys],
         },
         index=pd.Index(ys, name="policy_year"),                      # noqa: F821
@@ -2006,3 +2006,5 @@ qlac_premium_limit = 210000.0
 qlac_max_start_age = 85
 
 pd = ("Module", "pandas")
+
+Claim = ("Pickle", 2)

@@ -547,7 +547,7 @@ def scenario_rate(t, name):
     """
     sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
     months = [i for i in sub.index if i <= t]
-    return float(sub.loc[max(months), name])
+    return float(sub.loc[max(months), name.name])
 
 
 def market_rate(t):
@@ -557,7 +557,7 @@ def market_rate(t):
     50% A / 50% AA spread less the pricing spread [R2 6.B.5]; the model takes it as an
     exogenous input because the index is a state-filed variable **[std]**.
     """
-    return scenario_rate(t, "market_rate")
+    return scenario_rate(t, RateColumn.market_rate)
 
 
 def mva_ref_yield(t):
@@ -566,7 +566,7 @@ def mva_ref_yield(t):
     The source design is Barclay's US Credit Index with a state-varying formula [S8]; the
     model takes a scalar series rather than hard-coding an index.
     """
-    return scenario_rate(t, "mva_ref_yield")
+    return scenario_rate(t, RateColumn.mva_ref_yield)
 
 
 def credit_rate(t):
@@ -661,7 +661,7 @@ def av_pp(t):
     value: this chassis carries no front-end load, no annual fee and no rider charges
     [S5][S10][S13][S16].
     """
-    return av_pp_at(t, "BEF_INV") * (1.0 + credit_rate_mth(t))
+    return av_pp_at(t, AvTiming.BEF_INV) * (1.0 + credit_rate_mth(t))
 
 
 def av_pp_at(t, timing):
@@ -671,11 +671,11 @@ def av_pp_at(t, timing):
     ``av_pp(t - 1)`` after; ``"BEF_INV"`` is ``AV'(t) = AV(t-1) - W(t)``; ``"EOM"`` is
     ``AV(t)``, the closing balance.
     """
-    if timing == "BEF_WD":
+    if timing == AvTiming.BEF_WD:
         return av_pp_init() if t == 0 else av_pp(t - 1)
-    elif timing == "BEF_INV":
-        return av_pp_at(t, "BEF_WD") - wd_pp(t)
-    elif timing == "EOM":
+    elif timing == AvTiming.BEF_INV:
+        return av_pp_at(t, AvTiming.BEF_WD) - wd_pp(t)
+    elif timing == AvTiming.EOM:
         return av_pp(t)
     else:
         raise ValueError("invalid timing")
@@ -683,7 +683,7 @@ def av_pp_at(t, timing):
 
 def inv_income_pp(t):
     """Interest credited to one contract's account value at the end of month t."""
-    return av_pp_at(t, "BEF_INV") * credit_rate_mth(t)
+    return av_pp_at(t, AvTiming.BEF_INV) * credit_rate_mth(t)
 
 
 def interest_credited_pp(t):
@@ -717,7 +717,7 @@ def free_wd_base(y):
     *fixed known amount* at each anniversary is what lets ``E(t) = AV(t) - FW(t)`` be
     evaluated without a fixed point.
     """
-    return premium_pp() if y <= 1 else av_pp_at(12 * (y - 1), "BEF_WD")
+    return premium_pp() if y <= 1 else av_pp_at(12 * (y - 1), AvTiming.BEF_WD)
 
 
 def free_wd_allow(y):
@@ -1074,7 +1074,7 @@ def taxable_wd_pp(t):
     flow.
     """
     opening_basis = tax_basis_pp_init() if t == 0 else tax_basis_pp(t - 1)
-    gain = max(0.0, av_pp_at(t, "BEF_WD") - opening_basis)
+    gain = max(0.0, av_pp_at(t, AvTiming.BEF_WD) - opening_basis)
     return min(wd_pp(t), gain)
 
 
@@ -1250,7 +1250,7 @@ def pols_if(t):
         return pols_if_init()
     if t >= proj_len():
         return 0.0
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1262,33 +1262,33 @@ def pols_if_at(t, timing):
     ``l(t) = l(t-1)(1 - a)(1 - q)(1 - w)`` **[std order]**.
     """
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - annuitization_rate(t))
-    if timing == "BEF_MORT":
+    if timing == PolTiming.BEF_MORT:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
 
 def pols_annuitization(t):
     """Annuitization elections in month t, taken at BOM before crediting."""
-    return pols_if_at(t, "BEF_DECR") * annuitization_rate(t)
+    return pols_if_at(t, PolTiming.BEF_DECR) * annuitization_rate(t)
 
 
 def pols_death(t):
     """Deaths in month t, on the in-force net of annuitization elections."""
-    return pols_if_at(t, "BEF_MORT") * mort_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_MORT) * mort_rate_mth(t)
 
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of annuitization and mortality."""
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1297,18 +1297,18 @@ def pols_maturity(t):
     Not a decrement — the projection horizon runs out — but needed for the in-force
     roll-forward to close; see the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return pols_lapse(t)
-    elif kind == "ANNUITIZATION":
+    elif kind == Kind.ANNUITIZATION:
         return pols_annuitization(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -1337,7 +1337,7 @@ def annuitization_pp(t):
     Payout factors are out of scope: no retrieved product document contains an annuity
     rate table, so the accumulation model emits the transfer and hands the amount on.
     """
-    account = av_pp_at(t, "BEF_INV")
+    account = av_pp_at(t, AvTiming.BEF_INV)
     if in_gp_window(t):
         return account
     excess = (max(0.0, account - free_wd_remain(t)) if free_wd_mva_exempt()
@@ -1355,13 +1355,13 @@ def claim_pp(t, kind):
     ``"LAPSE"`` is SB(t). ``"ANNUITIZATION"`` is :func:`annuitization_pp`.
     ``"MATURITY"`` is the account value floored at MGSV at the projection horizon.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return max(av_pp(t), surr_benefit_pp(t))
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "ANNUITIZATION":
+    elif kind == Kind.ANNUITIZATION:
         return annuitization_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         return max(av_pp(t), mgsv_pp(t))
     else:
         raise ValueError("invalid kind")
@@ -1374,9 +1374,9 @@ def claim_from_av_pp(t, kind):
     :func:`claims_over_av`. Annuitizers leave at BOM and so release ``AV'(t)``, before the
     month's interest.
     """
-    if kind == "ANNUITIZATION":
-        return av_pp_at(t, "BEF_INV")
-    elif kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind == Kind.ANNUITIZATION:
+        return av_pp_at(t, AvTiming.BEF_INV)
+    elif kind in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY):
         return av_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -1403,11 +1403,11 @@ def withdrawals(t):
     return wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all four."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE")
-                + claims(t, "ANNUITIZATION") + claims(t, "MATURITY"))
+    if kind == Kind.ALL:
+        return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
+                + claims(t, Kind.ANNUITIZATION) + claims(t, Kind.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -1416,7 +1416,7 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed, and normally **negative** on this chassis: a surrender pays out less than the
@@ -1426,9 +1426,9 @@ def claims_over_av(t, kind=None):
     SB(t), it does not add a separate top-up line, and the charge and the MVA are
     internal accounting entries rather than ledger lines.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "ANNUITIZATION") + claims_over_av(t, "MATURITY"))
+    if kind == Kind.ALL:
+        return (claims_over_av(t, Kind.DEATH) + claims_over_av(t, Kind.LAPSE)
+                + claims_over_av(t, Kind.ANNUITIZATION) + claims_over_av(t, Kind.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -1474,7 +1474,7 @@ def net_cf(t):
     the benefit *amount* but are never cash flows of their own. Only amounts paid to or
     received from the contract holder, and the insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t)
+    return (premiums(t) - withdrawals(t) - claims(t, Kind.ALL)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 
@@ -1490,11 +1490,11 @@ def av_at(t, timing):
     :func:`check_av_roll_fwd` would not close. At ``t = 0`` the ``"BEF_WD"`` value is the
     premium just deposited, ``av_pp_init() * pols_if_init()``.
     """
-    if timing == "BEF_WD":
-        return av_pp_at(t, "BEF_WD") * pols_if(t)
-    elif timing == "BEF_INV":
-        return av_pp_at(t, "BEF_INV") * pols_if_at(t, "BEF_MORT")
-    elif timing == "EOM":
+    if timing == AvTiming.BEF_WD:
+        return av_pp_at(t, AvTiming.BEF_WD) * pols_if(t)
+    elif timing == AvTiming.BEF_INV:
+        return av_pp_at(t, AvTiming.BEF_INV) * pols_if_at(t, PolTiming.BEF_MORT)
+    elif timing == AvTiming.EOM:
         return av_pp(t) * pols_if(t + 1)
     else:
         raise ValueError("invalid timing")
@@ -1502,7 +1502,7 @@ def av_at(t, timing):
 
 def inv_income(t):
     """Interest credited to the whole block in month t."""
-    return av_at(t, "BEF_INV") * credit_rate_mth(t)
+    return av_at(t, AvTiming.BEF_INV) * credit_rate_mth(t)
 
 
 def wd_from_av(t):
@@ -1517,8 +1517,8 @@ def av_change(t):
     before the purchase payment, so at ``t = 0`` the change is the whole closing balance
     and :func:`prem_to_av` is the deposit that explains it.
     """
-    opening = av_at(t - 1, "EOM") if t > 0 else 0.0
-    return av_at(t, "EOM") - opening
+    opening = av_at(t - 1, AvTiming.EOM) if t > 0 else 0.0
+    return av_at(t, AvTiming.EOM) - opening
 
 
 def check_av_roll_fwd_resid(t):
@@ -1534,8 +1534,8 @@ def check_av_roll_fwd_resid(t):
     much* :func:`check_av_roll_fwd` failed.
     """
     expected = (prem_to_av(t) - wd_from_av(t) + inv_income(t)
-                - claims_from_av(t, "ANNUITIZATION") - claims_from_av(t, "DEATH")
-                - claims_from_av(t, "LAPSE") - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Kind.ANNUITIZATION) - claims_from_av(t, Kind.DEATH)
+                - claims_from_av(t, Kind.LAPSE) - claims_from_av(t, Kind.MATURITY))
     return av_change(t) - expected
 
 
@@ -1593,10 +1593,10 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_annuitization": [claims(t, "ANNUITIZATION") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_annuitization": [claims(t, Kind.ANNUITIZATION) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -1623,7 +1623,7 @@ def result_pols():
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -1639,9 +1639,9 @@ def result_av():
     ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "av_pp_bef_wd": [av_pp_at(t, "BEF_WD") for t in ts],
+            "av_pp_bef_wd": [av_pp_at(t, AvTiming.BEF_WD) for t in ts],
             "wd_pp": [wd_pp(t) for t in ts],
-            "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
+            "av_pp_bef_inv": [av_pp_at(t, AvTiming.BEF_INV) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "mgsv_pp": [mgsv_pp(t) for t in ts],
             "free_wd_avail": [free_wd_remain(t) for t in ts],
@@ -1736,3 +1736,11 @@ check_tol_pols = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+AvTiming = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Kind = ("Pickle", 4)
+
+RateColumn = ("Pickle", 5)

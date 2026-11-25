@@ -1230,7 +1230,7 @@ def claim_pp(t, kind):
                     t = proj_len() - 1, and zero in every other month. On the
                     non-participating design this is F - L.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         if product() == "WL_FE_GRADED" and duration(t) < fe_graded_years:  # noqa: F821
             return ((1 - fe_accid_share) * fe_graded_factor * prem_cum(t)  # noqa: F821
                     + fe_accid_share * sum_assured())                # noqa: F821
@@ -1239,9 +1239,9 @@ def claim_pp(t, kind):
         loan = loan_bal(t - 1) if t > proj_start() else loan_inforce()
         face = sum_assured() + puaf + oyt_face(t)
         return face + accum - loan
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return cv_pp(t) + pua_cv(t) + div_accum(t) - loan_bal(t)
-    elif kind == "MATURITY":
+    elif kind == Kind.MATURITY:
         if t != proj_len() - 1:
             return 0.0
         return sum_assured() + pua_face(t) + div_accum(t) - loan_bal(t)
@@ -1268,18 +1268,18 @@ def pols_if_at(t, timing):
         because that model has no name for the point past the last decrement,
         which is where these notes keep their in-force probability.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    elif timing == "BEF_SURR":
-        return pols_if_at(t, "BEF_DECR") * (1 - mort_rate_mth(t))
-    elif timing == "BEF_MAT":
-        return pols_if_at(t, "BEF_SURR") * (1 - lapse_rate_mth(t))
-    elif timing == "AFT_DECR":
+    elif timing == PolTiming.BEF_SURR:
+        return pols_if_at(t, PolTiming.BEF_DECR) * (1 - mort_rate_mth(t))
+    elif timing == PolTiming.BEF_MAT:
+        return pols_if_at(t, PolTiming.BEF_SURR) * (1 - lapse_rate_mth(t))
+    elif timing == PolTiming.AFT_DECR:
         if t < proj_start():
             return pols_if_init()
         elif t >= proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "BEF_MAT")
+        return pols_if_at(t, PolTiming.BEF_MAT)
     else:
         raise ValueError("invalid timing")
 
@@ -1298,17 +1298,17 @@ def pols_if(t):
     """
     if t <= proj_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_death(t):
     """Deaths in month t, the monthly rate applied to the policies in force at its start."""
-    return pols_if_at(t, "BEF_DECR") * mort_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_DECR) * mort_rate_mth(t)
 
 
 def pols_lapse(t):
     """Surrenders at the end of month t, the monthly rate applied to the month's survivors."""
-    return pols_if_at(t, "BEF_SURR") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_SURR) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1317,7 +1317,7 @@ def pols_maturity(t):
     Not a decrement — the modelled contract simply ends — but the in-force
     roll-forward does not close without it.
     """
-    return pols_if_at(t, "BEF_MAT") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.BEF_MAT) if t == proj_len() - 1 else 0.0
 
 
 def inflation_factor(t):
@@ -1333,12 +1333,12 @@ def inflation_factor(t):
 
 def premiums(t):
     """Premium income at the start of month t (an inflow), net of any dividend offset."""
-    return premium_net_pp(t) * pols_if_at(t, "BEF_DECR")
+    return premium_net_pp(t) * pols_if_at(t, PolTiming.BEF_DECR)
 
 
 def rider_premiums(t):
     """Paid-up-additions rider premium income at the start of month t (an inflow)."""
-    return rider_premium_pp(t) * pols_if_at(t, "BEF_DECR")
+    return rider_premium_pp(t) * pols_if_at(t, PolTiming.BEF_DECR)
 
 
 def premium_taxes(t):
@@ -1363,26 +1363,26 @@ def expenses(t):
     acq = (expense_acq_prem_rate * premium_pp_ann(t) + expense_acq   # noqa: F821
            if t == 0 else 0.0)
     return ((acq + expense_maint / 12 * inflation_factor(t))         # noqa: F821
-            * pols_if_at(t, "BEF_DECR"))
+            * pols_if_at(t, PolTiming.BEF_DECR))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted."""
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY"))
-    elif kind == "DEATH":
-        return claim_pp(t, "DEATH") * pols_death(t)
-    elif kind == "LAPSE":
-        return claim_pp(t, "LAPSE") * pols_lapse(t)
-    elif kind == "MATURITY":
-        return claim_pp(t, "MATURITY") * pols_maturity(t)
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
+    elif kind == Kind.DEATH:
+        return claim_pp(t, Kind.DEATH) * pols_death(t)
+    elif kind == Kind.LAPSE:
+        return claim_pp(t, Kind.LAPSE) * pols_lapse(t)
+    elif kind == Kind.MATURITY:
+        return claim_pp(t, Kind.MATURITY) * pols_maturity(t)
     else:
         raise ValueError("invalid kind")
 
 
 def div_cash_paid(t):
     """Cash dividends paid out at the end of month t, to the survivors of the month."""
-    return div_cash(t) * pols_if_at(t, "BEF_SURR")
+    return div_cash(t) * pols_if_at(t, PolTiming.BEF_SURR)
 
 
 def loan_draws(t):
@@ -1393,7 +1393,7 @@ def loan_draws(t):
     policies still in force; the balance is recovered through the death, surrender and
     maturity benefits, which are all net of the loan.
     """
-    return loan_draw(t) * pols_if_at(t, "BEF_MAT")
+    return loan_draw(t) * pols_if_at(t, PolTiming.BEF_MAT)
 
 
 def liability_cf(t):
@@ -1413,7 +1413,7 @@ def liability_cf(t):
     """
     return (-premiums(t) - rider_premiums(t)
             + expenses(t) + premium_taxes(t)
-            + claims(t) + div_cash_paid(t) + loan_draws(t))
+            + claims(t, Kind.ALL) + div_cash_paid(t) + loan_draws(t))
 
 
 def net_cf(t):
@@ -1446,9 +1446,9 @@ def result_cf():
             "rider_premiums": [rider_premiums(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "div_cash_paid": [div_cash_paid(t) for t in ts],
             "loan_draws": [loan_draws(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1510,8 +1510,8 @@ def result_cv():
             "pua_cv": [pua_cv(t) for t in ts],
             "div_accum": [div_accum(t) for t in ts],
             "loan_bal": [loan_bal(t) for t in ts],
-            "db_pp": [claim_pp(t, "DEATH") for t in ts],
-            "surr_value_pp": [claim_pp(t, "LAPSE") for t in ts],
+            "db_pp": [claim_pp(t, Kind.DEATH) for t in ts],
+            "surr_value_pp": [claim_pp(t, Kind.LAPSE) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -1633,3 +1633,7 @@ prem_offset_on = False
 prem_offset_share = 0.5
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

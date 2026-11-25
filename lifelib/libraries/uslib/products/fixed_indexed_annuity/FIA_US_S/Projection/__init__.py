@@ -561,7 +561,7 @@ def glwb_basis():
     younger covered person [S1][S3].  Joint-life *survivorship* is **not implemented**:
     the notes specify the joint payout percentage but no second-life mortality basis.
     """
-    return model_point()["glwb_basis"]
+    return GlwbBasis[model_point()["glwb_basis"]]
 
 
 def joint_age():
@@ -599,7 +599,7 @@ def credit_method():
     which the notes exclude, and its floor convention is itself flagged as ambiguous
     [S4][R1].
     """
-    return model_point()["credit_method"]
+    return CreditMethod[model_point()["credit_method"]]
 
 
 def cap_rate():
@@ -829,7 +829,7 @@ def covered_age(t):
     joint-life basis [S1][S3].  Timed like :func:`age`, at the opening anniversary; the
     payout percentage and the minimum exercise age are read at :func:`exercise_age`.
     """
-    if glwb_basis() == "joint":
+    if glwb_basis() == GlwbBasis.joint:
         return min(age_at_entry(), joint_age()) + duration(t)
     return age(t)
 
@@ -861,7 +861,7 @@ def scenario_value(y, name):
     sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
     keys = [i for i in sub.index if i <= y]
     key = max(keys) if keys else min(sub.index)
-    return float(sub.loc[key, name])
+    return float(sub.loc[key, name.name])
 
 
 def index_level(y):
@@ -872,7 +872,7 @@ def index_level(y):
     anniversary's.  The S&P 500 **price** index in the composite; dividends are excluded
     [S2][S6][R1].
     """
-    return scenario_value(y, "index_level")
+    return scenario_value(y, ScenarioField.index_level)
 
 
 def index_return(t):
@@ -947,15 +947,15 @@ def credit_rate_on(r, method):
     implemented — see :func:`credit_method`.
     """
     net = r - index_cost_rate                                        # noqa: F821
-    if method == "cap":
+    if method == CreditMethod.cap:
         raw = min(cap_rate_in_force(), net)
-    elif method == "par":
+    elif method == CreditMethod.par:
         raw = par_rate * net                                         # noqa: F821
-    elif method == "par_cap":
+    elif method == CreditMethod.par_cap:
         raw = min(cap_rate_in_force(), par_rate * net)               # noqa: F821
-    elif method == "spread":
+    elif method == CreditMethod.spread:
         raw = par_rate * net - spread_rate                           # noqa: F821
-    elif method == "trigger":
+    elif method == CreditMethod.trigger:
         raw = trigger_rate if net >= 0.0 else floor_rate             # noqa: F821
     else:
         raise ValueError("invalid credit_method")
@@ -1009,7 +1009,7 @@ def fixed_interest_pp(t):
     if phase_open(t) in ("DEPLETED", "TERMINATED"):
         return 0.0
     rate = (1.0 + fixed_rate_in_force()) ** (1.0 / 12.0) - 1.0
-    return av_fixed_pp_at(t, "BEF_INV") * rate
+    return av_fixed_pp_at(t, Timing.BEF_INV) * rate
 
 
 def fixed_interest_ann_pp(t):
@@ -1062,7 +1062,7 @@ def rider_charge_pp(t):
     if phase_open(t) in ("DEPLETED", "TERMINATED"):
         return 0.0
     return (min(rider_charge_rate, rider_charge_rate_max)             # noqa: F821
-            * benefit_base_pp_at(t, "BEF_ROLLUP"))
+            * benefit_base_pp_at(t, Timing.BEF_ROLLUP))
 
 
 def av_pp_at(t, timing):
@@ -1084,25 +1084,25 @@ def av_pp_at(t, timing):
     """
     if t < entry_mth():
         return av_pp_init()
-    if timing == "BEF_PREM":
-        return 0.0 if t == entry_mth() == 0 else av_pp_at(t, "BEF_INV")
+    if timing == Timing.BEF_PREM:
+        return 0.0 if t == entry_mth() == 0 else av_pp_at(t, Timing.BEF_INV)
     opening = av_pp_init() if t == entry_mth() else av_pp(t - 1)
-    if timing == "BEF_INV":
+    if timing == Timing.BEF_INV:
         return opening
     val = opening + inv_income_pp(t)
-    if timing == "BEF_FEE":
+    if timing == Timing.BEF_FEE:
         return val
     val = val - rider_charge_pp(t)
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return max(0.0, val - wd_pp(t))
     raise ValueError("invalid timing")
 
 
 def av_pp(t):
     """AV(t): the account value per contract closing **month** t, after all processing."""
-    return av_pp_at(t, "EOY")
+    return av_pp_at(t, Timing.EOY)
 
 
 def av_pp_year_open(t):
@@ -1140,19 +1140,19 @@ def av_fixed_pp_at(t, timing):
     """
     if t < entry_mth():
         return av_fixed_pp_init()
-    if timing == "BEF_PREM":
-        return 0.0 if t == entry_mth() == 0 else av_fixed_pp_at(t, "BEF_INV")
+    if timing == Timing.BEF_PREM:
+        return 0.0 if t == entry_mth() == 0 else av_fixed_pp_at(t, Timing.BEF_INV)
     opening = av_fixed_pp_init() if t == entry_mth() else av_fixed_pp(t - 1)
-    if timing == "BEF_INV":
+    if timing == Timing.BEF_INV:
         return opening
     val = opening + fixed_interest_pp(t)
-    if timing == "BEF_FEE":
+    if timing == Timing.BEF_FEE:
         return val
     val = max(0.0, val - rider_charge_pp(t))
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
-        total = av_pp_at(t, "BEF_WD")
+    if timing == Timing.EOY:
+        total = av_pp_at(t, Timing.BEF_WD)
         if total <= 0.0:
             return 0.0
         share = min(1.0, max(0.0, wd_pp(t) / total))
@@ -1162,7 +1162,7 @@ def av_fixed_pp_at(t, timing):
 
 def av_fixed_pp(t):
     """F(t): the fixed account balance per contract closing month t."""
-    return av_fixed_pp_at(t, "EOY")
+    return av_fixed_pp_at(t, Timing.EOY)
 
 
 def av_indexed_pp_at(t, timing):
@@ -1177,7 +1177,7 @@ def av_indexed_pp(t):
     each anniversary by that year's index credit net of its share of the charge and the
     withdrawal.
     """
-    return av_indexed_pp_at(t, "EOY")
+    return av_indexed_pp_at(t, Timing.EOY)
 
 
 def av_depletion_pp(t):
@@ -1197,7 +1197,7 @@ def av_depletion_pp(t):
     """
     if t < entry_mth():
         return 0.0
-    return max(0.0, wd_pp(t) - av_pp_at(t, "BEF_WD"))
+    return max(0.0, wd_pp(t) - av_pp_at(t, Timing.BEF_WD))
 
 
 def surr_charge_rate(t):
@@ -1247,9 +1247,9 @@ def payout_rate(a, basis):
     [S1][S3].  Zero below the first band, because no lifetime withdrawal is permitted
     there; the last band holds above its upper age.
     """
-    if basis == "single":
+    if basis == GlwbBasis.single:
         column = "payout_rate_single"
-    elif basis == "joint":
+    elif basis == GlwbBasis.joint:
         column = "payout_rate_joint"
     else:
         raise ValueError("invalid glwb_basis")
@@ -1535,23 +1535,23 @@ def benefit_base_pp_at(t, timing):
     prev = year_open_mth(t)
     opening = (benefit_base_pp_init() if prev < entry_mth()
                else benefit_base_pp(prev))
-    if timing == "BEF_ROLLUP":
+    if timing == Timing.BEF_ROLLUP:
         return opening
     val = opening + rollup_pp(t) + stack_pp(t)
-    if timing == "BEF_STEP_UP":
+    if timing == Timing.BEF_STEP_UP:
         return val
     if step_up_applies(t):
-        val = max(val, av_pp_at(t, "BEF_WD"))
-    if timing == "BEF_WD":
+        val = max(val, av_pp_at(t, Timing.BEF_WD))
+    if timing == Timing.BEF_WD:
         return val
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return val * (1.0 - wd_reduction_rate(t))
     raise ValueError("invalid timing")
 
 
 def benefit_base_pp(t):
     """BB(t): the GLWB benefit base per contract closing month t."""
-    return benefit_base_pp_at(t, "EOY")
+    return benefit_base_pp_at(t, Timing.EOY)
 
 
 def rollup_base_pp(t):
@@ -1590,7 +1590,7 @@ def lw_pp_at(t, timing):
     """
     if t < entry_mth():
         return lw_pp_init()
-    if timing not in ("BEF_WD", "EOY"):
+    if timing not in (Timing.BEF_WD, Timing.EOY):
         raise ValueError("invalid timing")
     prev = year_open_mth(t)
     prior = lw_pp_init() if prev < entry_mth() else lw_pp(prev)
@@ -1602,18 +1602,18 @@ def lw_pp_at(t, timing):
     elif opening == "DEPLETED":
         val = prior
     elif opening == "INCOME":
-        candidate = payout_rate_locked(t) * benefit_base_pp_at(t, "BEF_WD")
+        candidate = payout_rate_locked(t) * benefit_base_pp_at(t, Timing.BEF_WD)
         val = candidate if is_exercise(t) else max(prior, candidate)
     else:
         val = 0.0
-    if timing == "BEF_WD":
+    if timing == Timing.BEF_WD:
         return val
     return val * (1.0 - wd_reduction_rate(t))
 
 
 def lw_pp(t):
     """LW(t): the lifetime withdrawal amount per contract closing month t."""
-    return lw_pp_at(t, "EOY")
+    return lw_pp_at(t, Timing.EOY)
 
 
 def wd_scheduled_pp(t):
@@ -1649,9 +1649,9 @@ def wd_pp(t):
     if opening == "TERMINATED":
         return 0.0
     if opening == "DEPLETED":
-        return lw_pp_at(t, "BEF_WD")
+        return lw_pp_at(t, Timing.BEF_WD)
     if opening == "INCOME":
-        return utilization_intensity() * lw_pp_at(t, "BEF_WD") + wd_scheduled_pp(t)
+        return utilization_intensity() * lw_pp_at(t, Timing.BEF_WD) + wd_scheduled_pp(t)
     return wd_scheduled_pp(t)
 
 
@@ -1662,7 +1662,7 @@ def wd_guar_pp(t):
     reduces the account value dollar for dollar and leaves the benefit base and the
     income amount unchanged [S9].
     """
-    return min(wd_pp(t), lw_pp_at(t, "BEF_WD"))
+    return min(wd_pp(t), lw_pp_at(t, Timing.BEF_WD))
 
 
 def wd_excess_pp(t):
@@ -1674,7 +1674,7 @@ def wd_excess_pp(t):
     :func:`wd_charge_base_pp` here.  Before exercise ``LW`` is zero, so the whole
     withdrawal is an excess.
     """
-    return max(0.0, wd_pp(t) - lw_pp_at(t, "BEF_WD"))
+    return max(0.0, wd_pp(t) - lw_pp_at(t, Timing.BEF_WD))
 
 
 def wd_unfunded_pp(t):
@@ -1703,7 +1703,7 @@ def wd_unfunded_pp(t):
         return 0.0
     if phase(t) != "TERMINATED":
         return 0.0
-    return wd_pp(t) - min(wd_pp(t), max(0.0, av_pp_at(t, "BEF_WD")))
+    return wd_pp(t) - min(wd_pp(t), max(0.0, av_pp_at(t, Timing.BEF_WD)))
 
 
 def wd_guar_paid_pp(t):
@@ -1778,7 +1778,7 @@ def wd_free_pp(t):
     if t < entry_mth() or not is_anniv(t):
         return 0.0
     if phase_open(t) == "INCOME":
-        return min(free_wd_allow(t), lw_pp_at(t, "BEF_WD"))
+        return min(free_wd_allow(t), lw_pp_at(t, Timing.BEF_WD))
     return min(free_wd_allow(t), wd_pp(t))
 
 
@@ -1853,7 +1853,7 @@ def mva_ref_yield(y):
     index; generic here **[std]**, and named as Barclay's US Credit Index in the
     linear-form products [S6][S7].
     """
-    return scenario_value(y, "mva_ref_yield")
+    return scenario_value(y, ScenarioField.mva_ref_yield)
 
 
 def mva_term(t):
@@ -2005,9 +2005,9 @@ def wd_reduction_rate(t):
     if opening in ("DEPLETED", "TERMINATED"):
         return 0.0
     if opening == "INCOME":
-        return wd_reduction_rate_on(av_pp_at(t, "BEF_WD"),
-                                    lw_pp_at(t, "BEF_WD"), wd_pp(t))
-    return wd_reduction_rate_on(av_pp_at(t, "BEF_WD"), 0.0, wd_pp(t))
+        return wd_reduction_rate_on(av_pp_at(t, Timing.BEF_WD),
+                                    lw_pp_at(t, Timing.BEF_WD), wd_pp(t))
+    return wd_reduction_rate_on(av_pp_at(t, Timing.BEF_WD), 0.0, wd_pp(t))
 
 
 def surr_charge_pp(t):
@@ -2288,7 +2288,7 @@ def pols_if(t):
         return pols_if_init()
     if t >= proj_len():
         return 0.0
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -2303,13 +2303,13 @@ def pols_if_at(t, timing):
     if t < entry_mth():
         return pols_if_init()
     pols = pols_if(t)
-    if timing in ("BEF_DECR", "BEF_MORT"):
+    if timing in (PolTiming.BEF_DECR, PolTiming.BEF_MORT):
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -2317,13 +2317,13 @@ def pols_if_at(t, timing):
 def pols_death(t):
     """Deaths in month t, on the monthly mortality rate."""
     return (0.0 if t < entry_mth()
-            else pols_if_at(t, "BEF_MORT") * mort_rate_mth(t))
+            else pols_if_at(t, PolTiming.BEF_MORT) * mort_rate_mth(t))
 
 
 def pols_lapse(t):
     """Full surrenders in month t, on the survivors of that month's mortality."""
     return (0.0 if t < entry_mth()
-            else pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t))
+            else pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t))
 
 
 def pols_maturity(t):
@@ -2334,16 +2334,16 @@ def pols_maturity(t):
     1.000000 at age 120, hence a monthly rate of 1.0, so the projection closes itself; see
     the Space docstring.
     """
-    return pols_if_at(t, "AFT_DECR") if t == proj_len() - 1 else 0.0
+    return pols_if_at(t, PolTiming.AFT_DECR) if t == proj_len() - 1 else 0.0
 
 
 def pols_decr(t, kind):
     """The number of contracts leaving in month t by benefit ``kind``."""
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return pols_lapse(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return pols_maturity(t)
     else:
         raise ValueError("invalid kind")
@@ -2362,11 +2362,11 @@ def claim_pp(t, kind):
     """
     if phase(t) == "DEPLETED":
         return 0.0
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return max(av_pp(t), mgsv_pp(t))
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return surr_benefit_pp(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return max(av_pp(t), mgsv_pp(t))
     else:
         raise ValueError("invalid kind")
@@ -2379,7 +2379,7 @@ def claim_from_av_pp(t, kind):
     :func:`claims_over_av`, positive when the Model #805 floor binds and negative when
     the surrender charge and a negative MVA bite.
     """
-    if kind in ("DEATH", "LAPSE", "MATURITY"):
+    if kind in (Claim.DEATH, Claim.LAPSE, Claim.MATURITY):
         return av_pp(t)
     else:
         raise ValueError("invalid kind")
@@ -2452,7 +2452,7 @@ def income_payments(t):
         return 0.0
     if phase_open(t) != "DEPLETED":
         return 0.0
-    return lw_pp_at(t, "BEF_WD") * pols_if(t)
+    return lw_pp_at(t, Timing.BEF_WD) * pols_if(t)
 
 
 def withdrawals(t):
@@ -2467,10 +2467,10 @@ def withdrawals(t):
     return 0.0 if t < entry_mth() else wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind is None:
-        return (claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "MATURITY"))
+    if kind == Claim.ALL:
+        return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
 
@@ -2479,16 +2479,16 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind=None):
+def claims_over_av(t, kind):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed and a reconciliation quantity only: positive exactly when the Model #805 floor
     binds, negative when the surrender charge, the clawback and a negative MVA bite.  A
     binding floor does not add a top-up cash flow — it raises the benefit.
     """
-    if kind is None:
-        return (claims_over_av(t, "DEATH") + claims_over_av(t, "LAPSE")
-                + claims_over_av(t, "MATURITY"))
+    if kind == Claim.ALL:
+        return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
+                + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
 
 
@@ -2544,7 +2544,7 @@ def net_cf(t):
     of their own.  Only amounts paid to or received from the contract holder, and the
     insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t)
+    return (premiums(t) - withdrawals(t) - claims(t, Claim.ALL)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 
@@ -2558,9 +2558,9 @@ def av_at(t, timing):
     """
     if t < entry_mth():
         return 0.0
-    if timing in ("BEF_PREM", "BEF_INV", "BEF_FEE", "BEF_WD"):
+    if timing in (Timing.BEF_PREM, Timing.BEF_INV, Timing.BEF_FEE, Timing.BEF_WD):
         return av_pp_at(t, timing) * pols_if(t)
-    if timing == "EOY":
+    if timing == Timing.EOY:
         return av_pp(t) * pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -2593,7 +2593,7 @@ def av_change(t):
     in.  Away from the first month ``av_at(t, "BEF_PREM")`` is exactly the previous
     month's closing value.
     """
-    return av_at(t, "EOY") - av_at(t, "BEF_PREM")
+    return av_at(t, Timing.EOY) - av_at(t, Timing.BEF_PREM)
 
 
 def check_av_roll_fwd_resid(t):
@@ -2614,8 +2614,8 @@ def check_av_roll_fwd_resid(t):
         return 0.0
     expected = (prem_to_av(t) + inv_income(t) - rider_charges(t) - wd_from_av(t)
                 + av_depletion(t)
-                - claims_from_av(t, "DEATH") - claims_from_av(t, "LAPSE")
-                - claims_from_av(t, "MATURITY"))
+                - claims_from_av(t, Claim.DEATH) - claims_from_av(t, Claim.LAPSE)
+                - claims_from_av(t, Claim.MATURITY))
     return av_change(t) - expected
 
 
@@ -2692,9 +2692,9 @@ def result_cf():
             "wd_guar": [wd_guar(t) for t in ts],
             "wd_excess": [wd_excess(t) for t in ts],
             "income_payments": [income_payments(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Claim.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Claim.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Claim.MATURITY) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2726,7 +2726,7 @@ def result_pols():
             "pols_death": [pols_death(t) for t in ts],
             "pols_lapse": [pols_lapse(t) for t in ts],
             "pols_maturity": [pols_maturity(t) for t in ts],
-            "pols_if_aft_decr": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_aft_decr": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2744,12 +2744,12 @@ def result_av():
     ts = list(range(entry_mth(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
+            "av_pp_bef_inv": [av_pp_at(t, Timing.BEF_INV) for t in ts],
             "credit_rate": [credit_rate(t) for t in ts],
             "index_credit_pp": [index_credit_pp(t) for t in ts],
             "fixed_interest_pp": [fixed_interest_pp(t) for t in ts],
             "rider_charge_pp": [rider_charge_pp(t) for t in ts],
-            "av_pp_bef_wd": [av_pp_at(t, "BEF_WD") for t in ts],
+            "av_pp_bef_wd": [av_pp_at(t, Timing.BEF_WD) for t in ts],
             "wd_pp": [wd_pp(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "mgsv_pp": [mgsv_pp(t) for t in ts],
@@ -2777,7 +2777,7 @@ def result_glwb():
             "phase": [phase(t) for t in ts],
             "rollup_pp": [rollup_pp(t) for t in ts],
             "stack_pp": [stack_pp(t) for t in ts],
-            "bb_pp_bef_step_up": [benefit_base_pp_at(t, "BEF_STEP_UP") for t in ts],
+            "bb_pp_bef_step_up": [benefit_base_pp_at(t, Timing.BEF_STEP_UP) for t in ts],
             "benefit_base_pp": [benefit_base_pp(t) for t in ts],
             "rollup_base_pp": [rollup_base_pp(t) for t in ts],
             "lw_pp": [lw_pp(t) for t in ts],
@@ -2927,3 +2927,15 @@ premium_tax_rate = 0.0
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+GlwbBasis = ("Pickle", 2)
+
+CreditMethod = ("Pickle", 3)
+
+ScenarioField = ("Pickle", 4)
+
+Timing = ("Pickle", 5)
+
+PolTiming = ("Pickle", 6)
+
+Claim = ("Pickle", 7)

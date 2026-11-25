@@ -945,7 +945,7 @@ def db_pp(t):
     unrealized index credit [S3]: with a 0% floor design segments simply carry no
     interim interest, so nothing extra is needed here.
     """
-    av = av_pp_at(t, "BEF_FEE")
+    av = av_pp_at(t, Timing.BEF_FEE)
     if db_option() == "A":
         opt = sum_assured_at(t)
     elif db_option() == "B":
@@ -964,7 +964,7 @@ def net_amt_at_risk(t):
     post-deduction account value, makes the cost of insurance implicit and requires
     iteration, and produces small systematic errors.
     """
-    return max(0.0, db_pp(t) / naar_factor() - av_pp_at(t, "BEF_FEE"))
+    return max(0.0, db_pp(t) / naar_factor() - av_pp_at(t, Timing.BEF_FEE))
 
 
 def coi_rate_scale():
@@ -1109,7 +1109,7 @@ def draw_from_seg_pp(t):
     Amounts leaving a segment mid-term earn no index credit [S3], which under the
     baseline credit base happens automatically.
     """
-    short = draw_pp(t) - max(0.0, fa_pp_at(t, "BEF_WD"))
+    short = draw_pp(t) - max(0.0, fa_pp_at(t, Timing.BEF_WD))
     if short <= 0:
         return 0.0
     return min(short, max(0.0, seg_bal_active_pp(t)))
@@ -1149,7 +1149,7 @@ def mth_deduction_from_seg_pp(t):
     deductions in its credit base [S3] -- and the notes list picking one and keeping
     the formulas consistent among the modeling pitfalls; see :func:`seg_credit_base`.
     """
-    short = mth_deduction_pp(t) - max(0.0, fa_pp_at(t, "BEF_FEE"))
+    short = mth_deduction_pp(t) - max(0.0, fa_pp_at(t, Timing.BEF_FEE))
     if short <= 0:
         return 0.0
     return min(short, max(0.0, seg_bal_active_pp(t) - draw_from_seg_pp(t)))
@@ -1208,7 +1208,7 @@ def sweep_pp(t):
     dates align with monthly processing.  A third carrier's charge-holdback in the
     fixed strategy [S5] is a documented variation and is not modeled.
     """
-    return index_alloc_rate() * max(0.0, fa_pp_at(t, "BEF_SWEEP"))
+    return index_alloc_rate() * max(0.0, fa_pp_at(t, Timing.BEF_SWEEP))
 
 
 def seg_new_pp(m):
@@ -1357,20 +1357,20 @@ def fa_pp_at(t, timing):
         reversing the two overstates the account value by about one month's interest on
         the deduction, every month.
     """
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         if t == 0:
             return av_pp_init() - loan_bal_init()
         return fa_pp(t - 1)
-    elif timing == "BEF_CREDIT":
-        return fa_pp_at(t, "BEF_PREM") + prem_to_av_pp(t)
-    elif timing == "BEF_WD":
-        return fa_pp_at(t, "BEF_CREDIT") + seg_roll_pp(t)
-    elif timing == "BEF_FEE":
-        return fa_pp_at(t, "BEF_WD") - draw_from_fa_pp(t)
-    elif timing == "BEF_SWEEP":
-        return fa_pp_at(t, "BEF_FEE") - mth_deduction_from_fa_pp(t)
-    elif timing == "BEF_INV":
-        return fa_pp_at(t, "BEF_SWEEP") - sweep_pp(t)
+    elif timing == Timing.BEF_CREDIT:
+        return fa_pp_at(t, Timing.BEF_PREM) + prem_to_av_pp(t)
+    elif timing == Timing.BEF_WD:
+        return fa_pp_at(t, Timing.BEF_CREDIT) + seg_roll_pp(t)
+    elif timing == Timing.BEF_FEE:
+        return fa_pp_at(t, Timing.BEF_WD) - draw_from_fa_pp(t)
+    elif timing == Timing.BEF_SWEEP:
+        return fa_pp_at(t, Timing.BEF_FEE) - mth_deduction_from_fa_pp(t)
+    elif timing == Timing.BEF_INV:
+        return fa_pp_at(t, Timing.BEF_SWEEP) - sweep_pp(t)
     else:
         raise ValueError("invalid timing")
 
@@ -1382,7 +1382,7 @@ def fa_pp(t):
     fixed-account rate.  The opening balance of the month, including the ``t == 0``
     seed, is ``fa_pp_at(t, "BEF_PREM")``.
     """
-    return fa_pp_at(t, "BEF_INV") * (1 + inv_return_mth(t))
+    return fa_pp_at(t, Timing.BEF_INV) * (1 + inv_return_mth(t))
 
 
 def lca_pp_at(t, timing):
@@ -1394,12 +1394,12 @@ def lca_pp_at(t, timing):
     collateral for any new loan taken at step 3, which is the balance one month's
     interest is credited on.
     """
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         if t == 0:
             return loan_bal_init()
         return lca_pp(t - 1)
-    elif timing == "BEF_INV":
-        return lca_pp_at(t, "BEF_PREM") + loan_new_pp(t)
+    elif timing == Timing.BEF_INV:
+        return lca_pp_at(t, Timing.BEF_PREM) + loan_new_pp(t)
     else:
         raise ValueError("invalid timing")
 
@@ -1414,7 +1414,7 @@ def lca_pp(t):
     ``- L_t``.  A closing balance; the opening value, including the ``t == 0`` seed, is
     ``lca_pp_at(t, "BEF_PREM")``.
     """
-    return lca_pp_at(t, "BEF_INV") * (1 + loan_credit_rate_mth(t))
+    return lca_pp_at(t, Timing.BEF_INV) * (1 + loan_credit_rate_mth(t))
 
 
 def loan_bal_pp(t):
@@ -1440,8 +1440,8 @@ def inv_income_pp(t):
     is what stops the floor being confused with an in-segment guarantee, which the notes
     list among the pitfalls.
     """
-    return (fa_pp_at(t, "BEF_INV") * inv_return_mth(t)
-            + lca_pp_at(t, "BEF_INV") * loan_credit_rate_mth(t))
+    return (fa_pp_at(t, Timing.BEF_INV) * inv_return_mth(t)
+            + lca_pp_at(t, Timing.BEF_INV) * loan_credit_rate_mth(t))
 
 
 def inv_income(t):
@@ -1484,18 +1484,18 @@ def av_pp_at(t, timing):
     :func:`check_av_components` asserts that it still equals the sum of its three
     parts.
     """
-    if timing == "BEF_PREM":
+    if timing == Timing.BEF_PREM:
         if t == 0:
             return av_pp_init()
         return av_pp(t - 1)
-    elif timing == "BEF_CREDIT":
-        return av_pp_at(t, "BEF_PREM") + prem_to_av_pp(t)
-    elif timing == "BEF_WD":
-        return av_pp_at(t, "BEF_CREDIT") + index_credit_pp(t)
-    elif timing == "BEF_FEE":
-        return av_pp_at(t, "BEF_WD") - wd_pp(t)
-    elif timing == "BEF_INV":
-        return av_pp_at(t, "BEF_FEE") - mth_deduction_pp(t)
+    elif timing == Timing.BEF_CREDIT:
+        return av_pp_at(t, Timing.BEF_PREM) + prem_to_av_pp(t)
+    elif timing == Timing.BEF_WD:
+        return av_pp_at(t, Timing.BEF_CREDIT) + index_credit_pp(t)
+    elif timing == Timing.BEF_FEE:
+        return av_pp_at(t, Timing.BEF_WD) - wd_pp(t)
+    elif timing == Timing.BEF_INV:
+        return av_pp_at(t, Timing.BEF_FEE) - mth_deduction_pp(t)
     else:
         raise ValueError("invalid timing")
 
@@ -1509,7 +1509,7 @@ def av_pp(t):
     balance, as on the universal life chassis; the index credit is not part of it --
     that arrives at BOM when a segment matures.
     """
-    return av_pp_at(t, "BEF_INV") + inv_income_pp(t)
+    return av_pp_at(t, Timing.BEF_INV) + inv_income_pp(t)
 
 
 def av_at(t, timing):
@@ -1520,7 +1520,7 @@ def av_at(t, timing):
     values as :func:`av_pp_at`, plus ``"EOM"`` for the closing balance before
     decrements.
     """
-    if timing == "EOM":
+    if timing == Timing.EOM:
         return av_pp(t) * pols_if(t)
     return av_pp_at(t, timing) * pols_if(t)
 
@@ -1530,7 +1530,7 @@ def av_change(t):
 
     ``av_at(t + 1, "BEF_PREM") - av_at(t, "BEF_PREM")``, following ``CashValue_SE``.
     """
-    return av_at(t + 1, "BEF_PREM") - av_at(t, "BEF_PREM")
+    return av_at(t + 1, Timing.BEF_PREM) - av_at(t, Timing.BEF_PREM)
 
 
 def surr_charge_rate(t):
@@ -1685,7 +1685,7 @@ def is_shortfall(t):
     terminated for insufficiency here.
     """
     loan_opening = loan_bal_init() if t == 0 else loan_bal_pp(t - 1)
-    csv = av_pp_at(t, "BEF_FEE") - surr_charge_pp(t) - loan_opening
+    csv = av_pp_at(t, Timing.BEF_FEE) - surr_charge_pp(t) - loan_opening
     return csv < mth_deduction_pp(t) and not nlg_in_effect(t)
 
 
@@ -1868,7 +1868,7 @@ def pols_if_at(t, timing):
     :func:`pols_if`: there is no new business inside a projection, and the contract has
     no maturity that terminates coverage.
     """
-    if timing in ("BEF_MAT", "BEF_NB", "BEF_DECR"):
+    if timing in (PolTiming.BEF_MAT, PolTiming.BEF_NB, PolTiming.BEF_DECR):
         return pols_if(t)
     else:
         raise ValueError("invalid timing")
@@ -1916,11 +1916,11 @@ def claim_pp(t, kind):
         This kind survives here, where :func:`claims` no longer accepts it, because the
         per-policy rule has to live somewhere; :func:`withdrawals` is its only caller.
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return max(0.0, db_pp(t) - loan_bal_pp(t))
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return ncsv_pp(t)
-    elif kind == "WITHDRAWAL":
+    elif kind == Claim.WITHDRAWAL:
         return max(0.0, wd_pp(t) - wd_fee_pp(t))
     else:
         raise ValueError("invalid kind")
@@ -1933,11 +1933,11 @@ def claims_from_av(t, kind):
     decrements follow the interest credit.  ``"MATURITY"`` is zero: the contract does
     not mature within the projection.
     """
-    if kind == "DEATH":
+    if kind == Claim.DEATH:
         return av_pp(t) * pols_death(t)
-    elif kind == "LAPSE":
+    elif kind == Claim.LAPSE:
         return av_pp(t) * pols_lapse(t)
-    elif kind == "MATURITY":
+    elif kind == Claim.MATURITY:
         return 0.0
     else:
         raise ValueError("invalid kind")
@@ -1949,10 +1949,10 @@ def claims_over_av(t):
     ``(claim_pp(t, "DEATH") - AV_t) x pols_death(t)``.  The cost of insurance charge
     net of this is the mortality margin.
     """
-    return (claim_pp(t, "DEATH") - av_pp(t)) * pols_death(t)
+    return (claim_pp(t, Claim.DEATH) - av_pp(t)) * pols_death(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Claim outgo in policy month t, optionally by ``kind``.
 
     ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``None`` for the total.  Death claims are
@@ -1964,12 +1964,12 @@ def claims(t, kind=None):
     :func:`withdrawals` and its own ``result_cf()`` column.  Keeping it out of the
     ``kind is None`` total is what stops it being counted twice.
     """
-    if kind == "DEATH":
-        return claim_pp(t, "DEATH") * pols_death(t)
-    elif kind == "LAPSE":
-        return claim_pp(t, "LAPSE") * pols_lapse(t)
-    elif kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
+    if kind == Claim.DEATH:
+        return claim_pp(t, Claim.DEATH) * pols_death(t)
+    elif kind == Claim.LAPSE:
+        return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
+    elif kind == Claim.ALL:
+        return sum(claims(t, k) for k in (Claim.DEATH, Claim.LAPSE))
     else:
         raise ValueError("invalid kind")
 
@@ -1985,7 +1985,7 @@ def withdrawals(t):
     A withdrawal is not a claim, and this cells is why :func:`claims` does not take a
     ``"WITHDRAWAL"`` kind.
     """
-    return claim_pp(t, "WITHDRAWAL") * pols_if(t)
+    return claim_pp(t, Claim.WITHDRAWAL) * pols_if(t)
 
 
 def wd_fees(t):
@@ -2071,7 +2071,7 @@ def net_cf(t):
     credits to the policyholder, not insurer cash flows, so they do not appear either --
     see :func:`check_margin` for how it all reconciles.
     """
-    return (premiums(t) - claims(t) - withdrawals(t) - expenses(t)
+    return (premiums(t) - claims(t, Claim.ALL) - withdrawals(t) - expenses(t)
             - premium_taxes(t) + net_loan_cf(t))
 
 
@@ -2116,16 +2116,16 @@ def check_av_roll_fwd():
     """
     res = []
     for t in range(proj_len()):
-        av = (av_at(t, "BEF_PREM")
+        av = (av_at(t, Timing.BEF_PREM)
               + prem_to_av(t)
               + index_credits(t)
               - withdrawals(t)
               - wd_fees(t)
               - mth_deduction(t)
               + inv_income(t)
-              - claims_from_av(t, "DEATH")
-              - claims_from_av(t, "LAPSE"))
-        res.append(math.isclose(av_at(t + 1, "BEF_PREM"), av,        # noqa: F821
+              - claims_from_av(t, Claim.DEATH)
+              - claims_from_av(t, Claim.LAPSE))
+        res.append(math.isclose(av_at(t + 1, Timing.BEF_PREM), av,        # noqa: F821
                                 rel_tol=1e-9, abs_tol=1e-8))
     return all(res)
 
@@ -2211,8 +2211,8 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Claim.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Claim.LAPSE) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "premium_taxes": [premium_taxes(t) for t in ts],
@@ -2256,15 +2256,15 @@ def result_av():
     ts = list(range(proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "av_pp_bef_prem": [av_pp_at(t, "BEF_PREM") for t in ts],
+            "av_pp_bef_prem": [av_pp_at(t, Timing.BEF_PREM) for t in ts],
             "prem_to_av_pp": [prem_to_av_pp(t) for t in ts],
             "index_credit_pp": [index_credit_pp(t) for t in ts],
-            "av_pp_bef_fee": [av_pp_at(t, "BEF_FEE") for t in ts],
+            "av_pp_bef_fee": [av_pp_at(t, Timing.BEF_FEE) for t in ts],
             "db_pp": [db_pp(t) for t in ts],
             "net_amt_at_risk": [net_amt_at_risk(t) for t in ts],
             "coi_pp": [coi_pp(t) for t in ts],
             "mth_deduction_pp": [mth_deduction_pp(t) for t in ts],
-            "av_pp_bef_inv": [av_pp_at(t, "BEF_INV") for t in ts],
+            "av_pp_bef_inv": [av_pp_at(t, Timing.BEF_INV) for t in ts],
             "inv_income_pp": [inv_income_pp(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "surr_charge_pp": [surr_charge_pp(t) for t in ts],
@@ -2388,3 +2388,9 @@ premium_tax_rate = 0.02
 pd = ("Module", "pandas")
 
 math = ("Module", "math")
+
+Timing = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Claim = ("Pickle", 4)

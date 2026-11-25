@@ -31,6 +31,8 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
+from us_registry import model_enums
+Kind, = model_enums("SPIA_US_S", "Kind")
 
 MODEL_PATH = LIB / "products/immediate_annuity/SPIA_US_S"
 
@@ -191,12 +193,12 @@ def test_cash_refund_lump_sum(immediate_annuity):
     # G is indexed by time, so the notes' G(13) is cum_annuity_pp(13) unchanged: the
     # thirteen instalments of months 0 ... 12, paid by the time month 13 opens.
     assert p.cum_annuity_pp(13) == pytest.approx(12 * 500.00 + 515.00, abs=CENT)
-    assert p.claim_pp(13, "REFUND") == pytest.approx(93485.00, abs=CENT)
-    assert p.claims(13) == pytest.approx(93485.00, abs=CENT)
-    assert p.claims(13, "REFUND") == pytest.approx(93485.00, abs=CENT)
+    assert p.claim_pp(13, Kind.REFUND) == pytest.approx(93485.00, abs=CENT)
+    assert p.claims(13, Kind.ALL) == pytest.approx(93485.00, abs=CENT)
+    assert p.claims(13, Kind.REFUND) == pytest.approx(93485.00, abs=CENT)
     # Paid once, at the terminating death, and never again.
-    assert p.claims(12) == 0.0
-    assert p.claims(14) == 0.0
+    assert p.claims(12, Kind.ALL) == 0.0
+    assert p.claims(14, Kind.ALL) == 0.0
 
 
 def test_derived_installment_refund_period(immediate_annuity):
@@ -346,10 +348,10 @@ def test_pitfall_refund_balance_timing(immediate_annuity):
     ``cum_annuity_pp(t + 1)`` on advance; the death is in month ``t = 13``.
     """
     arrears, advance = immediate_annuity.Projection[6], immediate_annuity.Projection[11]
-    assert arrears.claim_pp(13, "REFUND") == pytest.approx(93485.00, abs=CENT)
-    assert advance.claim_pp(13, "REFUND") == pytest.approx(92970.00, abs=CENT)
+    assert arrears.claim_pp(13, Kind.REFUND) == pytest.approx(93485.00, abs=CENT)
+    assert advance.claim_pp(13, Kind.REFUND) == pytest.approx(92970.00, abs=CENT)
     # Exactly one instalment apart, and the advance figure is the smaller of the two.
-    assert arrears.claim_pp(13, "REFUND") - advance.claim_pp(13, "REFUND") == (
+    assert arrears.claim_pp(13, Kind.REFUND) - advance.claim_pp(13, Kind.REFUND) == (
         pytest.approx(515.00, abs=CENT))
 
 
@@ -464,7 +466,7 @@ def test_there_is_no_premium_income_in_the_projection(anchor):
     assert anchor.premium_net_pp() == 100000.0          # tau = 0 in the base run
     for t in (0, 13, 119):
         assert anchor.liability_cf(t) == pytest.approx(
-            anchor.annuity_payments(t) + anchor.claims(t)
+            anchor.annuity_payments(t) + anchor.claims(t, Kind.ALL)
             + anchor.commutations(t) + anchor.expenses(t), rel=1e-12)
 
 
