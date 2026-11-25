@@ -1690,7 +1690,7 @@ def claim_pp(t, kind):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Each kind weights :func:`claim_pp` by its own decrement, so a benefit is never
@@ -1698,7 +1698,7 @@ def claims(t, kind):
     not a benefit paid to the policyholder but capital handed to the annuity model, and
     it carries its own line in :func:`result_cf`.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.DEATH, Kind.EARLY_RELEASE, Kind.TRANSFER, Kind.MATURITY))
     if kind == Kind.DEATH:
@@ -1771,7 +1771,7 @@ def liability_cf(t):
     handed to the annuity model, plus expenses, less *versements*.  :func:`net_cf` is its
     negative.
     """
-    return (claims(t, Kind.ALL) + annuity_conversion(t) + expenses(t) - premiums(t))
+    return (claims(t) + annuity_conversion(t) + expenses(t) - premiums(t))
 
 
 def net_cf(t):

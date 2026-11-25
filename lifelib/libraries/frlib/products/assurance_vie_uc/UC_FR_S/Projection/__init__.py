@@ -1371,7 +1371,7 @@ def pols_lapse(t):
     return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Gross benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1388,7 +1388,7 @@ def claims(t, kind):
     but they are not in :func:`net_cf`, because :func:`av_releases` cancels them against
     the account value - all except the death strain.  See the Space docstring.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
     av = av_pp_at(t, AvTiming.BEF_DECR)
     if kind == Kind.DEATH:
@@ -1648,7 +1648,7 @@ def check_benefit_funding_resid(t):
     whole benefit rather than as ``K``, would be inconsistent with these three cells and
     the residual would move.
     """
-    return claims(t, Kind.ALL) - av_releases(t) - plancher_strain(t)
+    return claims(t) - av_releases(t) - plancher_strain(t)
 
 
 def check_benefit_funding():

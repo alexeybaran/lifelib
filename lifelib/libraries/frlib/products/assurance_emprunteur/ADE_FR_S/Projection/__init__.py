@@ -1424,7 +1424,7 @@ def benefit_itt_pp():
     return echeance() * quotite() * indemnity_ratio() * claim_admission  # noqa: F821
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1456,7 +1456,7 @@ def claims(t, kind):
     The two zero kinds are published rather than omitted so that the product facts are
     stated instead of inferred from a missing column.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.DEATH, Kind.PTIA, Kind.ITT, Kind.IPT, Kind.LAPSE, Kind.MATURITY))
     if kind == Kind.DEATH:
@@ -1506,7 +1506,7 @@ def liability_cf(t):
     that orientation in the technical notes.  It is published verbatim so that the notes
     and the model can be compared line by line, and :func:`net_cf` is its negative.
     """
-    return claims(t, Kind.ALL) + expenses(t) - premiums(t)
+    return claims(t) + expenses(t) - premiums(t)
 
 
 def net_cf(t):
@@ -1685,7 +1685,7 @@ def pv_premiums():
                for t in range(proj_len()))
 
 
-def pv_claims(kind):
+def pv_claims(kind=None):
     """The present value of benefit outgo, by kind; the total when kind is omitted.
 
     On the anchor cell: Décès 7 170.56, PTIA 635.87, ITT 1 932.71 and IPT 1 293.18, so
@@ -1710,7 +1710,7 @@ def pv_outgo():
 
     EUR 11 366.49 on the anchor cell against EUR 12 602.19 of premium, a margin of 9.81 %.
     """
-    return pv_claims(Kind.ALL) + pv_expenses()
+    return pv_claims() + pv_expenses()
 
 
 # -- Result tables -----------------------------------------------------------

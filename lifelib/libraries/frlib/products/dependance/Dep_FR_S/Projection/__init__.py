@@ -1076,7 +1076,7 @@ def prev_param(name):
     to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,
     and it governs the tail — where 65% of this product's lifetime claims fall.
     """
-    return float(data.prevalence_table().loc[(sex(), name.name), "value"])  # noqa: F821
+    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
 
 
 def prev_rate(t):
@@ -1124,7 +1124,7 @@ def severity_share(kind):
     if kind not in (Severity.partial, Severity.total):
         raise ValueError("invalid kind")
     return float(data.severity_share_table().loc[                    # noqa: F821
-        trigger_grid(), "share_" + kind.name])
+        trigger_grid(), "share_" + kind])
 
 
 def prev_partial(t):
@@ -1709,7 +1709,7 @@ def instalments(t):
     return out
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of month t, by kind; the total when kind is omitted.
 
     ``"RENTE"``
@@ -1732,7 +1732,7 @@ def claims(t, kind):
     There is deliberately **no** ``"DEATH"`` kind: this composite carries no death
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.RENTE, Kind.CAPITAL, Kind.LAPSE))
     if kind == Kind.RENTE:
         part, tot, totr, val = dep_cohorts(t)
@@ -1815,7 +1815,7 @@ def net_cf(t):
     risk-free term structure to exactly this stream, and that is a layer above this
     model.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - refunds_carence(t)
+    return (premiums(t) - claims(t) - refunds_carence(t)
             - expenses(t) - claim_expenses(t))
 
 

@@ -1064,7 +1064,7 @@ def premiums(t):
     return prem_due_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1095,7 +1095,7 @@ def claims(t, kind):
     the contract ends only on death, on *rachat* or on lapse, and maturity outgo is
     identically zero because there is no maturity.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.DEATH_PAID_UP, Kind.LAPSE))
     if kind == Kind.DEATH:
         return pols_death(t) * benefit_pp(t, BenefitKind.DEATH)

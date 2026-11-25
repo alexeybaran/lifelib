@@ -622,7 +622,7 @@ def mort_rate_at_age(table_sex, gen, x):
                 * mort_rate_at_age(Sex.F, gen, x))
     if table_sex not in (Sex.M, Sex.F):
         raise ValueError("invalid table_sex")
-    return float(data.mort_table().loc[(table_sex.name, gen, x), "mort_rate"])  # noqa: F821
+    return float(data.mort_table().loc[(table_sex, gen, x), "mort_rate"])  # noqa: F821
 
 
 def mort_rate(t, life):
@@ -1081,7 +1081,7 @@ def annuity_payments(t):
             * (payment_factor(t) + reversion_factor(t)))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Expected death-settlement outgo in month t, by kind; the total when kind is omitted.
 
     ``"PRORATA"``
@@ -1092,7 +1092,7 @@ def claims(t, kind):
         design is *capital aliéné*, with no death capital and no refund of any
         part of the *capital constitutif*.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.PRORATA,))
     if kind == Kind.PRORATA:
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
@@ -1168,7 +1168,7 @@ def liability_cf(t):
     no surrender value at any duration, and no death capital, the representative design
     being *capital aliéné*.
     """
-    return (annuity_payments(t) + claims(t, Kind.ALL) - arrerage_charges(t)
+    return (annuity_payments(t) + claims(t) - arrerage_charges(t)
             + expenses(t))
 
 
@@ -1427,7 +1427,7 @@ point_id = 1
 
 omega_age = 120
 
-tariff_table_sex = ("Pickle", 5)
+tariff_table_sex = "F"
 
 portfolio_male_share = 0.45
 

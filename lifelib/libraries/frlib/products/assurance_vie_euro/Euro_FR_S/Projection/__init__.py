@@ -1487,14 +1487,14 @@ def claim_pp(t, kind):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"`` and ``"LAPSE"`` weight :func:`claim_pp` by the corresponding decrement.
     `Rachats partiels` are **not** here: they are an owner election and live in
     :func:`withdrawals`.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
     if kind == Kind.DEATH:
         return claim_pp(t, Kind.DEATH) * pols_death(t)

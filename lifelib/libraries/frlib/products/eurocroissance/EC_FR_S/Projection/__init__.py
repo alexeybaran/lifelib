@@ -2207,7 +2207,7 @@ def withdrawals(t):
     return wd_pp(t) * pols_if_at(t, PolTiming.BEF_DECR)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Deaths and surrenders are now settled in the **month they happen**, priced on that
@@ -2219,7 +2219,7 @@ def claims(t, kind):
     contribution, which :func:`rider_claims` reports separately; it is a decomposition of
     this column and not a fourth kind.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
     if kind == Kind.DEATH:
         return claim_pp(t, Kind.DEATH) * pols_death(t)
@@ -2295,7 +2295,7 @@ def liability_cf(t):
     appear nowhere in it — they are state variables, not cash flows — and neither do the
     insurer's own-funds items, which are capital rather than benefit.
     """
-    return (claims(t, Kind.ALL) + withdrawals(t) + expenses(t) - premiums(t))
+    return (claims(t) + withdrawals(t) + expenses(t) - premiums(t))
 
 
 def net_cf(t):

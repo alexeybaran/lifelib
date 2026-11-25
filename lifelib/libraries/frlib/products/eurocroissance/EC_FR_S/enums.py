@@ -1,27 +1,29 @@
-"""IntEnum families passed as cell arguments in EC_FR_S, stored with the model."""
+"""Label families passed as cell arguments in EC_FR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class AcctTiming(IntEnum):
-    BOM = 0
-    AFT_LEVY = 1
-    AFT_EXIT = 2
-    AFT_PREM = 3
-    AFT_STRIKE = 4
-    AFT_RETURN = 5
-    AFT_PERF = 6
-    AFT_TOP_UP = 7
+from enum import StrEnum
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class AcctTiming(StrEnum):
+    BOM = "BOM"
+    AFT_LEVY = "AFT_LEVY"
+    AFT_EXIT = "AFT_EXIT"
+    AFT_PREM = "AFT_PREM"
+    AFT_STRIKE = "AFT_STRIKE"
+    AFT_RETURN = "AFT_RETURN"
+    AFT_PERF = "AFT_PERF"
+    AFT_TOP_UP = "AFT_TOP_UP"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    MATURITY = 2
-    ALL = 3
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"

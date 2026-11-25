@@ -1,32 +1,34 @@
-"""IntEnum families passed as cell arguments in Dep_FR_S, stored with the model."""
+"""Label families passed as cell arguments in Dep_FR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Cause(IntEnum):
-    accident = 0
-    illness = 1
-    neuro = 2
+from enum import StrEnum
 
 
-class PrevParam(IntEnum):
-    prev_ceil = 0
-    prev_beta = 1
-    prev_x_mid = 2
+class Cause(StrEnum):
+    accident = "accident"
+    illness = "illness"
+    neuro = "neuro"
 
 
-class Severity(IntEnum):
-    partial = 0
-    total = 1
+class PrevParam(StrEnum):
+    prev_ceil = "prev_ceil"
+    prev_beta = "prev_beta"
+    prev_x_mid = "prev_x_mid"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    AFT_DECR = 1
+class Severity(StrEnum):
+    partial = "partial"
+    total = "total"
 
 
-class Kind(IntEnum):
-    RENTE = 0
-    CAPITAL = 1
-    LAPSE = 2
-    ALL = 3
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    RENTE = "RENTE"
+    CAPITAL = "CAPITAL"
+    LAPSE = "LAPSE"

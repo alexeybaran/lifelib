@@ -1384,7 +1384,7 @@ def suicide_factor(t):
     return suicide_year1_factor if duration(t) == 0 else 1.0         # noqa: F821
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1405,7 +1405,7 @@ def claims(t, kind):
         zero is stated rather than left to inference.  See
         :func:`check_no_cash_value`.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.PTIA, Kind.LAPSE))
     if kind == Kind.DEATH:
         return pols_death(t) * (
@@ -1524,7 +1524,7 @@ def net_cf(t):
     strongly positive in the first year and carrying a real *provision mathématique*
     against the later years.
     """
-    return premiums(t) - claims(t, Kind.ALL) - expenses(t)
+    return premiums(t) - claims(t) - expenses(t)
 
 
 def liability_cf(t):
