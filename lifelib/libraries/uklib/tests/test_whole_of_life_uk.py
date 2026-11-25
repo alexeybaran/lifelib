@@ -28,8 +28,6 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from uk_registry import MODELS, LIB
-from uk_registry import model_enums
-BenefitKind, Kind = model_enums("WOL_UK_S", "BenefitKind", "Kind")
 
 
 def model_files(folder):
@@ -84,11 +82,11 @@ def test_worked_example_row(uk_o50_anchor, t):
     p = uk_o50_anchor
     assert p.policy_year(t) == year
     assert p.prem_cum_pp(t) == pytest.approx(cum, abs=PENNY)
-    assert p.benefit_pp(t, BenefitKind.NON_ACC) == pytest.approx(db_na, abs=PENNY)
-    assert p.benefit_pp(t, BenefitKind.ACC) == pytest.approx(db_ac, abs=PENNY)
+    assert p.benefit_pp(t, "NON_ACC") == pytest.approx(db_na, abs=PENNY)
+    assert p.benefit_pp(t, "ACC") == pytest.approx(db_ac, abs=PENNY)
     assert p.pols_if(t) == pytest.approx(pols, abs=INFORCE)
     assert p.premiums(t) == pytest.approx(prem, abs=PENNY)
-    assert p.claims(t, Kind.DEATH) == pytest.approx(death, abs=PENNY)
+    assert p.claims(t, "DEATH") == pytest.approx(death, abs=PENNY)
 
 
 def test_worked_example_first_month_trace(uk_o50_anchor):
@@ -99,8 +97,8 @@ def test_worked_example_first_month_trace(uk_o50_anchor):
     assert p.mort_rate_mth(0) == pytest.approx(Q_M_0, abs=5e-8)
     assert p.lapse_rate(0) == 0.08
     assert p.lapse_rate_mth(0) == pytest.approx(W_M_0, abs=5e-8)
-    assert p.benefit_pp(0, BenefitKind.DEATH) == pytest.approx(179.10, abs=PENNY)
-    assert p.claims(0, Kind.DEATH) == pytest.approx(Q_M_0 * 179.10, abs=PENNY)
+    assert p.benefit_pp(0, "DEATH") == pytest.approx(179.10, abs=PENNY)
+    assert p.claims(0, "DEATH") == pytest.approx(Q_M_0 * 179.10, abs=PENNY)
 
 
 def test_the_year_one_outgo_is_dominated_by_the_accidental_tail(uk_o50_anchor):
@@ -111,8 +109,8 @@ def test_the_year_one_outgo_is_dominated_by_the_accidental_tail(uk_o50_anchor):
     """
     p = uk_o50_anchor
     accidental_part = 0.03 * 5000.0
-    assert accidental_part / p.benefit_pp(0, BenefitKind.DEATH) > 0.83
-    assert p.benefit_pp(0, BenefitKind.DEATH) == pytest.approx(
+    assert accidental_part / p.benefit_pp(0, "DEATH") > 0.83
+    assert p.benefit_pp(0, "DEATH") == pytest.approx(
         0.97 * 30.0 + 0.03 * 5000.0, abs=PENNY)
 
 
@@ -121,8 +119,8 @@ def test_worked_example_moratorium_end_trace(uk_o50_anchor):
     p = uk_o50_anchor
     assert p.mort_rate(12) == pytest.approx(0.0264, rel=1e-12)     # q(2) = 0.024 x 1.10
     assert p.mort_rate_mth(12) == pytest.approx(Q_M_12, abs=5e-8)
-    assert p.benefit_pp(12, BenefitKind.DEATH) == pytest.approx(5000.0, abs=PENNY)
-    assert p.claims(12, Kind.DEATH) == pytest.approx(
+    assert p.benefit_pp(12, "DEATH") == pytest.approx(5000.0, abs=PENNY)
+    assert p.claims(12, "DEATH") == pytest.approx(
         p.pols_if(12) * Q_M_12 * 5000.0, abs=PENNY)
 
 
@@ -156,10 +154,10 @@ def test_the_moratorium_boundary_is_a_step(uk_o50_anchor):
     p = uk_o50_anchor
     assert p.in_moratorium(11) is True
     assert p.in_moratorium(12) is False
-    assert p.claims(12, Kind.DEATH) / p.claims(11, Kind.DEATH) > 10.0
+    assert p.claims(12, "DEATH") / p.claims(11, "DEATH") > 10.0
     # The step is in the benefit, not in the mortality or the in-force.
-    assert p.benefit_pp(11, BenefitKind.DEATH) < 600.0
-    assert p.benefit_pp(12, BenefitKind.DEATH) == 5000.0
+    assert p.benefit_pp(11, "DEATH") < 600.0
+    assert p.benefit_pp(12, "DEATH") == 5000.0
     assert p.pols_if(12) < p.pols_if(11)          # in-force moves smoothly across it
 
 
@@ -168,17 +166,17 @@ def test_the_refund_base_is_cumulative_premiums_paid(uk_o50_anchor):
     p = uk_o50_anchor
     for t in range(12):
         # t + 1 premiums have been paid by the end of month t.
-        assert p.benefit_pp(t, BenefitKind.NON_ACC) == pytest.approx(30.0 * (t + 1), abs=PENNY)
-        assert p.benefit_pp(t, BenefitKind.NON_ACC) < p.sum_assured()
-    assert p.benefit_pp(0, BenefitKind.NON_ACC) == 30.0     # one month's premium, not nothing
-    assert p.benefit_pp(11, BenefitKind.NON_ACC) == 360.0
-    assert p.benefit_pp(12, BenefitKind.NON_ACC) == 5000.0
+        assert p.benefit_pp(t, "NON_ACC") == pytest.approx(30.0 * (t + 1), abs=PENNY)
+        assert p.benefit_pp(t, "NON_ACC") < p.sum_assured()
+    assert p.benefit_pp(0, "NON_ACC") == 30.0     # one month's premium, not nothing
+    assert p.benefit_pp(11, "NON_ACC") == 360.0
+    assert p.benefit_pp(12, "NON_ACC") == 5000.0
 
 
 def test_accidental_death_pays_the_full_cash_sum_from_day_one(uk_o50_anchor):
     """No moratorium on the accidental benefit."""
     p = uk_o50_anchor
-    assert all(p.benefit_pp(t, BenefitKind.ACC) == 5000.0 for t in (0, 5, 11, 12, 239))
+    assert all(p.benefit_pp(t, "ACC") == 5000.0 for t in (0, 5, 11, 12, 239))
 
 
 def test_the_accidental_multiplier_applies_past_the_moratorium_only(whole_of_life):
@@ -190,12 +188,12 @@ def test_the_accidental_multiplier_applies_past_the_moratorium_only(whole_of_lif
     p1, p2 = whole_of_life.Projection[1], whole_of_life.Projection[2]
     assert p2.adb_multiplier() == 2.0
     for t in range(12):
-        assert p2.benefit_pp(t, BenefitKind.ACC) == 5000.0            # unchanged in the moratorium
-        assert p2.claims(t, Kind.DEATH) == pytest.approx(p1.claims(t, Kind.DEATH), rel=1e-12)
-    assert p2.benefit_pp(12, BenefitKind.ACC) == 10000.0
-    assert p2.claims(12, Kind.DEATH) > p1.claims(12, Kind.DEATH)
+        assert p2.benefit_pp(t, "ACC") == 5000.0            # unchanged in the moratorium
+        assert p2.claims(t, "DEATH") == pytest.approx(p1.claims(t, "DEATH"), rel=1e-12)
+    assert p2.benefit_pp(12, "ACC") == 10000.0
+    assert p2.claims(12, "DEATH") > p1.claims(12, "DEATH")
     # And it moves only the accidental share, so the blended benefit rises by 3% of SA.
-    assert p2.benefit_pp(12, BenefitKind.DEATH) == pytest.approx(
+    assert p2.benefit_pp(12, "DEATH") == pytest.approx(
         5000.0 + 0.03 * 5000.0, abs=PENNY)
 
 
@@ -207,13 +205,13 @@ def test_the_underwritten_cell_has_no_moratorium_but_a_suicide_carve_out(whole_o
     assert all(p.in_moratorium(t) is False for t in (0, 5, 11))
     # Inside the first twelve months (t = 0 .. 11), 1% of deaths refund premiums instead
     # of paying SA.
-    assert p.benefit_pp(0, BenefitKind.DEATH) == pytest.approx(
+    assert p.benefit_pp(0, "DEATH") == pytest.approx(
         0.99 * 150000.0 + 0.01 * 101.25, abs=PENNY)
-    assert p.benefit_pp(11, BenefitKind.DEATH) < 150000.0
-    assert p.benefit_pp(12, BenefitKind.DEATH) == 150000.0
-    assert p.benefit_pp(0, BenefitKind.NON_ACC) == 150000.0       # the non-accidental benefit is SA
+    assert p.benefit_pp(11, "DEATH") < 150000.0
+    assert p.benefit_pp(12, "DEATH") == 150000.0
+    assert p.benefit_pp(0, "NON_ACC") == 150000.0       # the non-accidental benefit is SA
     # The carve-out is small: a fraction of a percent of the benefit.
-    assert p.benefit_pp(0, BenefitKind.DEATH) / 150000.0 > 0.98
+    assert p.benefit_pp(0, "DEATH") / 150000.0 > 0.98
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +225,7 @@ def test_lapse_pays_nothing_on_either_cell(whole_of_life):
         assert (proj.result_cf()["claims_lapse"] == 0.0).all()
     p = whole_of_life.Projection[1]
     assert p.pols_lapse(5) > 0.0                  # lapses happen
-    assert p.claims(5, Kind.LAPSE) == 0.0            # and pay nothing
+    assert p.claims(5, "LAPSE") == 0.0            # and pay nothing
 
 
 def test_lapse_stops_when_premiums_cease(uk_o50_anchor):
@@ -250,7 +248,7 @@ def test_the_post_cessation_period_is_pure_outgo(uk_o50_anchor):
     assert p.premium_pp(239) == 30.0
     assert p.premium_pp(240) == 0.0
     assert p.premiums(240) == 0.0
-    assert p.claims(240, Kind.DEATH) > p.claims(239, Kind.DEATH)
+    assert p.claims(240, "DEATH") > p.claims(239, "DEATH")
     assert p.net_cf(240) < 0.0
     # And the in-force runs off on mortality alone from there.
     assert p.pols_if(241) == pytest.approx(
@@ -340,8 +338,8 @@ def test_pu_variant_converts_lapses_to_paid_up_after_the_halfway_point(whole_of_
     assert p.pu_eligible(119) is True
     assert p.pols_convert(118) == 0.0
     assert p.pols_convert(119) > 0.0
-    assert p.benefit_pp(119, BenefitKind.PAID_UP) == pytest.approx(2500.0, abs=PENNY)
-    assert p.benefit_pp(239, BenefitKind.PAID_UP) == pytest.approx(5000.0, abs=PENNY)
+    assert p.benefit_pp(119, "PAID_UP") == pytest.approx(2500.0, abs=PENNY)
+    assert p.benefit_pp(239, "PAID_UP") == pytest.approx(5000.0, abs=PENNY)
     # Before the halfway point a lapse is still a total loss.
     assert p.pols_lapse(118) > 0.0
     assert p.pols_lapse(119) == 0.0
@@ -365,8 +363,8 @@ def test_the_paid_up_strand_carries_its_own_benefit_total(whole_of_life):
     for t in (149, 249):
         assert p.pu_benefit(t + 1) == pytest.approx(
             p.pu_benefit(t) * (1 - p.mort_rate_mth(t))
-            + p.pols_convert(t) * p.benefit_pp(t, BenefitKind.PAID_UP), rel=1e-12)
-        assert p.claims(t, Kind.DEATH_PU) == pytest.approx(
+            + p.pols_convert(t) * p.benefit_pp(t, "PAID_UP"), rel=1e-12)
+        assert p.claims(t, "DEATH_PU") == pytest.approx(
             p.pu_benefit(t) * p.mort_rate_mth(t), rel=1e-14)
     # The average paid-up payout sits between half and all of the cash sum.
     avg = p.pu_benefit(299) / p.pols_pu(299)
@@ -623,7 +621,7 @@ def test_the_notes_table_omits_expenses(uk_o50_anchor):
     assert p.commissions(0) > 0.0
     assert p.net_cf(0) != pytest.approx(30.00 - 0.36, abs=0.5)
     assert p.net_cf(0) == pytest.approx(
-        p.premiums(0) - p.claims(0, Kind.ALL) - p.expenses(0) - p.commissions(0), rel=1e-14)
+        p.premiums(0) - p.claims(0) - p.expenses(0) - p.commissions(0), rel=1e-14)
 
 
 def test_expenses_differ_by_cell(whole_of_life):
@@ -718,12 +716,12 @@ def test_an_input_can_be_swapped_without_touching_formulas():
         alt_name = "mort_table_light.csv"
         lighter.to_csv(model.Data.input_dir() / alt_name)
         try:
-            base = model.Projection[1].claims(12, Kind.DEATH)
+            base = model.Projection[1].claims(12, "DEATH")
             model.Data.mort_table_file = alt_name
             model.Data.clear_all()
             model.Projection.clear_all()
             assert model.Projection[1].mort_rate(0) == pytest.approx(0.012, rel=1e-12)
-            assert model.Projection[1].claims(12, Kind.DEATH) < base
+            assert model.Projection[1].claims(12, "DEATH") < base
         finally:
             (model.Data.input_dir() / alt_name).unlink(missing_ok=True)
     finally:
@@ -749,7 +747,7 @@ def test_round_trip_is_stable(tmp_path):
         anchor = reread.Projection[1]
         for t, row in WORKED_EXAMPLE.items():
             assert anchor.pols_if(t) == pytest.approx(row[4], abs=INFORCE)
-            assert anchor.claims(t, Kind.DEATH) == pytest.approx(row[6], abs=PENNY)
+            assert anchor.claims(t, "DEATH") == pytest.approx(row[6], abs=PENNY)
         assert "Notes symbol" in reread.Projection.doc
     finally:
         reread.close()

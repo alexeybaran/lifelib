@@ -1,32 +1,34 @@
-"""IntEnum families passed as cell arguments in WP_UK_S, stored with the model."""
+"""Label families passed as cell arguments in WP_UK_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class AsTiming(IntEnum):
-    BEF_PREM = 0
-    BEF_RETURN = 1
-    AFT_RETURN = 2
-    AFT_CHARGE = 3
-    AFT_ST = 4
-    AFT_MC = 5
+from enum import StrEnum
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_SURR = 1
-    AFT_DECR = 2
+class AsTiming(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    BEF_RETURN = "BEF_RETURN"
+    AFT_RETURN = "AFT_RETURN"
+    AFT_CHARGE = "AFT_CHARGE"
+    AFT_ST = "AFT_ST"
+    AFT_MC = "AFT_MC"
 
 
-class ClaimKind(IntEnum):
-    DEATH = 0
-    SURRENDER = 1
-    GUARANTEE = 2
-    MATURITY = 3
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_SURR = "BEF_SURR"
+    AFT_DECR = "AFT_DECR"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    SURRENDER = 1
-    MATURITY = 2
-    ALL = 3
+class ClaimKind(StrEnum):
+    DEATH = "DEATH"
+    SURRENDER = "SURRENDER"
+    GUARANTEE = "GUARANTEE"
+    MATURITY = "MATURITY"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    SURRENDER = "SURRENDER"
+    MATURITY = "MATURITY"

@@ -459,7 +459,7 @@ def pivot_interp(x, sex_, smoker_, column):
     **extrapolation** and should be read as one: the shipped pivots run 40 to 65, so a
     policy issued young or running long leaves the tabulated region.
     """
-    sub = data.ci_rate_table().loc[(sex_.name, smoker_.name)]                  # noqa: F821
+    sub = data.ci_rate_table().loc[(sex_, smoker_)]                  # noqa: F821
     ages = sorted(int(a) for a in sub.index)
     if x <= ages[0]:
         lo, hi = ages[0], ages[1]
@@ -468,8 +468,8 @@ def pivot_interp(x, sex_, smoker_, column):
     else:
         lo = max(a for a in ages if a <= x)
         hi = min(a for a in ages if a > x)
-    r_lo = float(sub.loc[lo, column.name])
-    r_hi = float(sub.loc[hi, column.name])
+    r_lo = float(sub.loc[lo, column])
+    r_hi = float(sub.loc[hi, column])
     return r_lo * (r_hi / r_lo) ** ((x - lo) / (hi - lo))
 
 
@@ -858,7 +858,7 @@ def benefit_pp(t, kind):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"MAIN"``
@@ -876,7 +876,7 @@ def claims(t, kind):
         zero, always.  There is no surrender or paid-up value [S1][S4][S5];
         the kind exists so that the zero is stated rather than inferred.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.MAIN, Kind.AP, Kind.CHILD, Kind.LAPSE))
     if kind == Kind.MAIN:
         return benefit_pp(t, BenefitKind.MAIN) * claim_rate_paid_mth(t) * pols_if(t)
@@ -934,7 +934,7 @@ def net_cf(t):
     £200 separately as taking the month to -168.12.  This cells is the total, so
     ``net_cf(0)`` is -168.12 and the notes' column is ``net_cf(0) + 200``.
     """
-    return premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
+    return premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
 
 
 def check_pols_roll_fwd_resid(t):

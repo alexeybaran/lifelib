@@ -1,38 +1,40 @@
-"""IntEnum families passed as cell arguments in CI_UK_S, stored with the model."""
+"""Label families passed as cell arguments in CI_UK_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Sex(IntEnum):
-    M = 0
-    F = 1
+from enum import StrEnum
 
 
-class Smoker(IntEnum):
-    NS = 0
-    S = 1
+class Sex(StrEnum):
+    M = "M"
+    F = "F"
 
 
-class RateColumn(IntEnum):
-    i_ci = 0
-    q_d = 1
+class Smoker(StrEnum):
+    NS = "NS"
+    S = "S"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class RateColumn(StrEnum):
+    i_ci = "i_ci"
+    q_d = "q_d"
 
 
-class BenefitKind(IntEnum):
-    MAIN = 0
-    AP = 1
-    CHILD = 2
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
 
 
-class Kind(IntEnum):
-    MAIN = 0
-    AP = 1
-    CHILD = 2
-    LAPSE = 3
-    ALL = 4
+class BenefitKind(StrEnum):
+    MAIN = "MAIN"
+    AP = "AP"
+    CHILD = "CHILD"
+
+
+class Kind(StrEnum):
+    MAIN = "MAIN"
+    AP = "AP"
+    CHILD = "CHILD"
+    LAPSE = "LAPSE"

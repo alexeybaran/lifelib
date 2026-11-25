@@ -977,7 +977,7 @@ def fib_cum(t):
     return fib_cum(t - 1) + pols_death(t - 1)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -997,7 +997,7 @@ def claims(t, kind):
         [S1][S6][S8][R8]; the kind exists so that the zero is stated rather
         than left to inference.  See the Space docstring.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.FIB, Kind.LAPSE))
     if kind == Kind.DEATH:
         if shape() == "fib":
@@ -1106,7 +1106,7 @@ def net_cf(t):
     mortality cost, so early lapses forfeit margin to the insurer and late ones
     relieve it.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 

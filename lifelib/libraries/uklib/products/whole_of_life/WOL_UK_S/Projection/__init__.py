@@ -819,7 +819,7 @@ def premiums(t):
     return premium_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Death outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -834,7 +834,7 @@ def claims(t, kind):
         zero, always.  There is no surrender value at any time on either
         cell; the kind exists so the zero is stated rather than inferred.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.DEATH_PU, Kind.LAPSE))
     if kind == Kind.DEATH:
         return pols_death(t) * benefit_pp(t, BenefitKind.DEATH)
@@ -903,7 +903,7 @@ def net_cf(t):
     equal any column of that table.  Lapse contributes nothing at all: it moves
     :func:`pols_if` and pays no cash.
     """
-    return premiums(t) - claims(t, Kind.ALL) - expenses(t) - commissions(t)
+    return premiums(t) - claims(t) - expenses(t) - commissions(t)
 
 
 def check_pols_roll_fwd_resid(t):

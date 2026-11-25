@@ -890,7 +890,7 @@ def annuity_payments(t):
     return pols_if_init() * annuity_pp(t) * (payment_factor(t) + dependant_factor(t))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Expected lump-sum outgo in month t, by kind; the total when kind is omitted.
 
     ``"VP"``
@@ -910,7 +910,7 @@ def claims(t, kind):
         Zero on the representative default, where nothing is paid for the final
         partial period.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.VP, Kind.PROP))
     if kind == Kind.VP:
         if vp_pct() <= 0.0:
@@ -973,7 +973,7 @@ def liability_cf(t):
     paid at outset, before the first projected month - and no surrender outgo, because
     the contract has no surrender value at any time.
     """
-    return annuity_payments(t) + claims(t, Kind.ALL) + expenses(t)
+    return annuity_payments(t) + claims(t) + expenses(t)
 
 
 def net_cf(t):

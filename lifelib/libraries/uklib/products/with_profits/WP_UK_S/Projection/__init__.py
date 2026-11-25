@@ -1490,14 +1490,14 @@ def withdrawals(t):
     return wd_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``, ``"SURRENDER"`` and ``"MATURITY"`` weight :func:`claim_pp` by the
     corresponding decrement.  ``"GUARANTEE"`` is not a separate outgo: a guarantee-date
     exit *is* a surrender, paid MVR-free, so it is already inside the surrender line.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.SURRENDER, Kind.MATURITY))
     if kind == Kind.DEATH:
         return claim_pp(t, ClaimKind.DEATH) * pols_death(t)
@@ -1571,7 +1571,7 @@ def net_cf(t):
     share appears nowhere in it: it is a state variable, not a cash flow, and the
     payouts it drives are already in ``claims``.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - withdrawals(t)
+    return (premiums(t) - claims(t) - withdrawals(t)
             - expenses(t) - shareholder_transfers(t))
 
 

@@ -1,14 +1,16 @@
-"""IntEnum families passed as cell arguments in PA_UK_S, stored with the model."""
+"""Label families passed as cell arguments in PA_UK_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class AnnuityKind(IntEnum):
-    ANNUITANT = 0
-    ALL = 1
+from enum import StrEnum
 
 
-class Kind(IntEnum):
-    VP = 0
-    PROP = 1
-    ALL = 2
+class AnnuityKind(StrEnum):
+    ANNUITANT = "ANNUITANT"
+    ALL = "ALL"
+
+
+class Kind(StrEnum):
+    VP = "VP"
+    PROP = "PROP"

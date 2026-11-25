@@ -824,7 +824,7 @@ def pols_maturity(t):
     return pols_if(t) - pols_death(t) - pols_surr(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Gross benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -840,7 +840,7 @@ def claims(t, kind):
     picture, but they are not in :func:`net_cf`, because :func:`unit_releases` cancels
     them against the fund - all except the death strain.  See the Space docstring.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.SURRENDER))
     uf = av_pp_at(t, AvTiming.AFT_WD)
     if kind == Kind.DEATH:
@@ -994,7 +994,7 @@ def check_unit_funding_resid(t):
     the uplift is precisely the death strain.  A model that funded benefits twice - once
     from the fund and once from the insurer - would show it here.
     """
-    return claims(t, Kind.ALL) - unit_releases(t) - death_strain(t)
+    return claims(t) - unit_releases(t) - death_strain(t)
 
 
 def check_unit_funding():
