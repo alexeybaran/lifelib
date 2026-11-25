@@ -1,26 +1,27 @@
-"""IntEnum families passed as cell arguments in Sofort_DE_S, stored with the model."""
+"""Label families passed as cell arguments in Sofort_DE_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Sex(IntEnum):
-    M = 0
-    F = 1
-    U = 2
+from enum import StrEnum
 
 
-class Basis(IntEnum):
-    FIRST = 0
-    SECOND = 1
+class Sex(StrEnum):
+    M = "M"
+    F = "F"
+    U = "U"
 
 
-class AnnuityKind(IntEnum):
-    ANNUITANT = 0
-    SURVIVOR = 1
-    ALL = 2
+class Basis(StrEnum):
+    FIRST = "FIRST"
+    SECOND = "SECOND"
 
 
-class ClaimKind(IntEnum):
-    GUARANTEE = 0
-    REFUND = 1
-    ALL = 2
+class AnnuityKind(StrEnum):
+    ANNUITANT = "ANNUITANT"
+    SURVIVOR = "SURVIVOR"
+
+
+class ClaimKind(StrEnum):
+    GUARANTEE = "GUARANTEE"
+    REFUND = "REFUND"

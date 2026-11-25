@@ -1821,7 +1821,7 @@ def annuity_due_factor():
 # Claims, expenses and the cash flow statement
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in **month** t, by kind; the total when kind is omitted.
 
     The **counts are monthly and the amounts are annual**, which is the whole shape of this
@@ -1847,7 +1847,7 @@ def claims(t, kind):
     The annuity itself is **not** a claim kind: it is a recurring benefit with its own
     weighting rule and is published as :func:`annuity_payments`.
     """
-    if kind == ClaimKind.ALL:
+    if kind is None:
         return sum(claims(t, j) for j in (ClaimKind.DEATH, ClaimKind.LAPSE, ClaimKind.COMMUTATION))
     if kind == ClaimKind.DEATH:
         return db_pp(duration(t)) * pols_death(t)
@@ -1985,7 +1985,7 @@ def check_net_cf():
     exactly, which is the library-wide sign convention.
     """
     for t in result_cf().index:
-        scale = max(1.0, abs(premiums(t)) + abs(claims(t, ClaimKind.ALL))
+        scale = max(1.0, abs(premiums(t)) + abs(claims(t))
                     + abs(annuity_payments(t)) + abs(expenses(t)))
         if abs(check_net_cf_resid(t)) > roll_fwd_tol() * scale:
             return False

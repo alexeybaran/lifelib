@@ -1,24 +1,26 @@
-"""IntEnum families passed as cell arguments in Riester_DE_S, stored with the model."""
+"""Label families passed as cell arguments in Riester_DE_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    AFT_DECR = 1
+from enum import StrEnum
 
 
-class AvTiming(IntEnum):
-    BEF_PREM = 0
-    AFT_PREM = 1
-    AFT_INT = 2
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    AFT_DECR = "AFT_DECR"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    TRANSFER = 2
-    LUMPSUM = 3
-    COMMUTATION = 4
-    ANNUITY = 5
-    ALL = 6
+class AvTiming(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    AFT_PREM = "AFT_PREM"
+    AFT_INT = "AFT_INT"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    TRANSFER = "TRANSFER"
+    LUMPSUM = "LUMPSUM"
+    COMMUTATION = "COMMUTATION"
+    ANNUITY = "ANNUITY"

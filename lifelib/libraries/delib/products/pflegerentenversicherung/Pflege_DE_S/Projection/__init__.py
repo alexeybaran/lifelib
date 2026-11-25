@@ -1293,7 +1293,7 @@ def brg_pp(t):
     return cum_prem_max_pp(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month ``t`` by ``kind``; the total when ``kind`` is omitted.
 
     ``"ANNUITY"`` is the *Pflegerente*, ``R sum_g pi_g E_g(t)``, paid **in advance** on the
@@ -1308,7 +1308,7 @@ def claims(t, kind):
     ``"LAPSE"`` is the *Rückkaufswert* and ``"DEATH"`` the *Beitragsrückgewähr*, both at the
     **end** of the month on the lives that left during it.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.ANNUITY) + claims(t, Kind.LAPSE)
                 + claims(t, Kind.DEATH))
     elif kind == Kind.ANNUITY:
@@ -1431,7 +1431,7 @@ def net_cf(t):
     where the *Deckungskapital* peaks, and it is the whole economic content of an ageing
     reserve carried on a life-assurance chassis.
     """
-    return premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 
 
 def liability_cf(t):
@@ -1564,7 +1564,7 @@ def tar_p_act(t):
         mu_i = -math.log(1.0 - min(tar_inc_rate(t), 1.0 - 1e-12))    # noqa: F821
     total = mu_a + mu_i
     stay = math.exp(-total / 12.0)                                   # noqa: F821
-    return [stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay)]
+    return (stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay))
 
 
 def tar_p_pg(t, g):
@@ -1586,7 +1586,7 @@ def tar_p_pg(t, g):
     total = mu_g + mu_d + mu_r
     stay = math.exp(-total / 12.0)                                   # noqa: F821
     rest = 1.0 - stay
-    return [stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest]
+    return (stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest)
 
 
 def tar_pols_act(t):

@@ -1,22 +1,25 @@
-"""IntEnum families passed as cell arguments in FRV_DE_S, stored with the model."""
+"""Label families passed as cell arguments in FRV_DE_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class AvTiming(IntEnum):
-    BEF_CHARGE = 0
-    AFT_CHARGE = 1
-    AFT_WD = 2
-    BEF_DECR = 3
+from enum import StrEnum
 
 
-class PolsTiming(IntEnum):
-    BEF_DECR = 0
-    AFT_DEATH = 1
-    AFT_DECR = 2
+class AvTiming(StrEnum):
+    BEF_CHARGE = "BEF_CHARGE"
+    AFT_CHARGE = "AFT_CHARGE"
+    AFT_WD = "AFT_WD"
+    BEF_DECR = "BEF_DECR"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    MATURITY = 2
+class PolsTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    AFT_DEATH = "AFT_DEATH"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"

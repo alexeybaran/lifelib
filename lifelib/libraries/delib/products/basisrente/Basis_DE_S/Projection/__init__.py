@@ -1557,7 +1557,7 @@ def db_pu_pp(k):
     return av_pu_at(k, AvTiming.AFT_INT) / pols_paidup(12 * k)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in projection month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1591,7 +1591,7 @@ def claims(t, kind):
     no partial capital payment and no commutation exist on this product.
     :func:`check_no_capital` asserts that the total is exactly the sum of these three.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.ANNUITY, Kind.SURVIVOR))
     if kind == Kind.DEATH:
         if float(model_point()["surv_annuity_rate"]) <= 0.0:
@@ -1883,7 +1883,7 @@ def check_no_capital_resid(t):
     is asserted in the product's own test module, because it is an absence and cannot be
     computed here.
     """
-    resid = abs(claims(t, Kind.ALL) - claims(t, Kind.DEATH) - claims(t, Kind.ANNUITY)
+    resid = abs(claims(t) - claims(t, Kind.DEATH) - claims(t, Kind.ANNUITY)
                 - claims(t, Kind.SURVIVOR))
     if float(model_point()["surv_annuity_rate"]) <= 0.0 or t >= ret_t():
         resid += abs(claims(t, Kind.DEATH))
@@ -1892,7 +1892,7 @@ def check_no_capital_resid(t):
 
 def check_no_capital():
     """True when no payment other than a permitted annuity or survivor benefit is made."""
-    scale = max([1.0] + [abs(claims(t, Kind.ALL)) for t in range(proj_len())])
+    scale = max([1.0] + [abs(claims(t)) for t in range(proj_len())])
     return all(check_no_capital_resid(t) <= roll_fwd_tol * scale      # noqa: F821
                for t in range(proj_len()))
 

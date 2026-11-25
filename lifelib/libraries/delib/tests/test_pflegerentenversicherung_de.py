@@ -50,8 +50,6 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from de_registry import MODELS, LIB
-from de_registry import model_enums
-Timing, Kind = model_enums("Pflege_DE_S", "Timing", "Kind")
 
 
 def model_files(folder):
@@ -264,9 +262,9 @@ def test_worked_example_row(de_pflege_anchor, t):
     assert p.pols_care(t) == pytest.approx(care, abs=SIX_DP)
     assert p.pols_prem(t) == pytest.approx(prem_pols, abs=SIX_DP)
     assert p.premiums(t) == pytest.approx(prem, abs=CENT)
-    assert p.claims(t, Kind.ANNUITY) == pytest.approx(ann, abs=CENT)
-    assert p.claims(t, Kind.LAPSE) == pytest.approx(lapse, abs=CENT)
-    assert p.claims(t, Kind.DEATH) == 0.0
+    assert p.claims(t, "ANNUITY") == pytest.approx(ann, abs=CENT)
+    assert p.claims(t, "LAPSE") == pytest.approx(lapse, abs=CENT)
+    assert p.claims(t, "DEATH") == 0.0
     assert p.expenses(t) == pytest.approx(exp, abs=CENT)
     assert p.claim_expenses(t) == pytest.approx(cexp, abs=CENT)
     assert p.net_cf(t) == pytest.approx(net, abs=CENT)
@@ -371,7 +369,7 @@ def test_month_zero_rebuilt_with_a_calculator(de_pflege_anchor):
         770.380907 + 2.000000 + 1.925952, abs=CENT)
     assert 0.03 * p.premiums(0) == pytest.approx(1.925952, abs=5e-6)
     assert p.claim_expenses(0) == 0.0
-    assert p.claims(0, Kind.ALL) == 0.0
+    assert p.claims(0) == 0.0
     assert p.net_cf(0) == pytest.approx(-710.108450, abs=CENT)
     assert p.net_cf(0) == pytest.approx(p.premiums(0) - p.expenses(0), rel=1e-12)
 
@@ -433,7 +431,7 @@ def test_the_first_annuity_payment_grade_by_grade(de_pflege_anchor):
             contribution, abs=5e-8)
         total += contribution
     assert total == pytest.approx(FIRST_ANNUITY_TOTAL, abs=5e-9)
-    assert p.claims(1, Kind.ANNUITY) == pytest.approx(FIRST_ANNUITY_TOTAL, abs=5e-8)
+    assert p.claims(1, "ANNUITY") == pytest.approx(FIRST_ANNUITY_TOTAL, abs=5e-8)
     assert sum(p.pols_entry(0, g) for g in range(1, 6)) == pytest.approx(
         p.pols_care(1), rel=1e-12)
 
@@ -504,8 +502,8 @@ def test_male_twin_row(pflegerentenversicherung, t):
     assert p.pols_care(t) == pytest.approx(care, abs=SIX_DP)
     assert p.pols_prem(t) == pytest.approx(prem_pols, abs=SIX_DP)
     assert p.premiums(t) == pytest.approx(prem, abs=CENT)
-    assert p.claims(t, Kind.ANNUITY) == pytest.approx(ann, abs=CENT)
-    assert p.claims(t, Kind.LAPSE) == pytest.approx(lapse, abs=CENT)
+    assert p.claims(t, "ANNUITY") == pytest.approx(ann, abs=CENT)
+    assert p.claims(t, "LAPSE") == pytest.approx(lapse, abs=CENT)
     assert p.expenses(t) == pytest.approx(exp, abs=CENT)
     assert p.claim_expenses(t) == pytest.approx(cexp, abs=CENT)
     assert p.net_cf(t) == pytest.approx(net, abs=CENT)
@@ -604,12 +602,12 @@ def test_pitfall_01_the_annuity_is_a_grade_by_grade_sum(de_pflege_anchor):
     for t in (1, 120, 360, 480):
         rebuilt = p.rente_mth() * sum(
             p.benefit_pct(g) * p.esc_pg(t, g) for g in range(1, 6))
-        assert p.claims(t, Kind.ANNUITY) == pytest.approx(rebuilt, rel=1e-12)
+        assert p.claims(t, "ANNUITY") == pytest.approx(rebuilt, rel=1e-12)
     entry_mean = sum(p.benefit_pct(g) * p.inc_share(g) for g in range(1, 6))
     assert entry_mean == pytest.approx(ENTRY_MIX_MEAN_PCT, abs=5e-7)
     # Exact at t = 1, because the stock there is the entry mix.
     assert entry_mean * p.rente_mth() * p.pols_care(1) == pytest.approx(
-        p.claims(1, Kind.ANNUITY), rel=1e-12)
+        p.claims(1, "ANNUITY"), rel=1e-12)
     exposure = sum(p.pols_care(t) for t in range(n))
     assert exposure == pytest.approx(TOTALS["pols_care"], abs=SIX_DP)
     naive = entry_mean * p.rente_mth() * exposure
@@ -726,7 +724,7 @@ def test_pitfall_04_grade_one_pays_nothing_on_the_delib_std_grid(de_pflege_ancho
         assert p.pols_pg(t, 1) > 0.0
         without_grade_one = p.rente_mth() * sum(
             p.benefit_pct(g) * p.esc_pg(t, g) for g in range(2, 6))
-        assert p.claims(t, Kind.ANNUITY) == pytest.approx(without_grade_one, rel=1e-12)
+        assert p.claims(t, "ANNUITY") == pytest.approx(without_grade_one, rel=1e-12)
         assert p.claim_expenses(t) == pytest.approx(
             1.5 * p.expense_infl_factor(t)
             * sum(p.pols_pg(t, g) for g in range(2, 6)), rel=1e-12)
@@ -952,7 +950,7 @@ def test_pitfall_11_the_beitragsrueckgewaehr_is_paid_gross(pflegerentenversicher
         9.7, abs=0.05)
     for t in (0, 120, 300, 600):
         assert brg.brg_pp(t) == pytest.approx(brg.cum_prem_max_pp(t), rel=1e-15)
-        assert brg.claims(t, Kind.DEATH) == pytest.approx(
+        assert brg.claims(t, "DEATH") == pytest.approx(
             brg.cum_prem_max_pp(t) * brg.pols_death(t), rel=1e-12)
     # The Beitragssumme is capped at the premium term, so cum_prem stops at age 65.
     assert brg.cum_prem_max_pp(300) == pytest.approx(brg.cum_prem_max_pp(600), rel=1e-15)
@@ -983,8 +981,8 @@ def test_pitfall_12_nothing_in_care_lapses(pflegerentenversicherung, de_pflege_a
     assert in_claim.pols_act(336) == 0.0
     assert in_claim.pols_pg(336, 3) == 1.0
     assert in_claim.pols_lapse(336) == 0.0
-    assert in_claim.claims(336, Kind.LAPSE) == 0.0
-    assert in_claim.claims(336, Kind.ANNUITY) == pytest.approx(500.0, abs=CENT)
+    assert in_claim.claims(336, "LAPSE") == 0.0
+    assert in_claim.claims(336, "ANNUITY") == pytest.approx(500.0, abs=CENT)
     assert in_claim.premiums(336) == 0.0
     assert in_claim.pols_waived(336) == 1.0
     paid_up = pflegerentenversicherung.Projection[4]
@@ -994,7 +992,7 @@ def test_pitfall_12_nothing_in_care_lapses(pflegerentenversicherung, de_pflege_a
     assert paid_up.lapse_rate(first_paid_up - 1) > 0.0
     assert paid_up.lapse_rate(first_paid_up) == 0.0
     assert paid_up.pols_lapse(first_paid_up) == 0.0
-    assert paid_up.claims(first_paid_up, Kind.LAPSE) == 0.0
+    assert paid_up.claims(first_paid_up, "LAPSE") == 0.0
     assert paid_up.premiums(first_paid_up) == 0.0
     assert paid_up.pols_in_term(first_paid_up) == 0.0
     assert paid_up.pols_if(first_paid_up) > 0.0      # the cover runs on
@@ -1240,8 +1238,8 @@ def test_check_net_cf_is_delib_ruling_one(de_pflege_anchor):
                - df["claims_death"] - df["expenses"] - df["claim_expenses"])
     assert (rebuilt - df["net_cf"]).abs().max() == pytest.approx(0.0, abs=1e-12)
     for t in (0, 240, 480):
-        assert p.claims(t, Kind.ALL) == pytest.approx(
-            p.claims(t, Kind.ANNUITY) + p.claims(t, Kind.LAPSE) + p.claims(t, Kind.DEATH),
+        assert p.claims(t) == pytest.approx(
+            p.claims(t, "ANNUITY") + p.claims(t, "LAPSE") + p.claims(t, "DEATH"),
             rel=1e-15)
 
 
@@ -1320,8 +1318,8 @@ def test_result_cf_shape_and_both_signs_of_the_net_flow(de_pflege_anchor):
     assert df["pols_if"].iloc[0] == de_pflege_anchor.pols_if_init()
     # pols_if is a start-of-period count; end-of-period state lives in pols_if_at.
     for t in (0, 120, 480):
-        assert de_pflege_anchor.pols_if_at(t, Timing.BEG) == de_pflege_anchor.pols_if(t)
-        assert de_pflege_anchor.pols_if_at(t, Timing.END) == de_pflege_anchor.pols_if(t + 1)
+        assert de_pflege_anchor.pols_if_at(t, "BEG") == de_pflege_anchor.pols_if(t)
+        assert de_pflege_anchor.pols_if_at(t, "END") == de_pflege_anchor.pols_if(t + 1)
 
 
 def test_invalid_enum_values_raise(de_pflege_anchor):
@@ -1536,7 +1534,7 @@ def test_round_trip_is_stable(tmp_path):
         for t, row in WORKED_EXAMPLE.items():
             assert p.pols_if(t) == pytest.approx(row[1], abs=SIX_DP)
             assert p.premiums(t) == pytest.approx(row[4], abs=CENT)
-            assert p.claims(t, Kind.ANNUITY) == pytest.approx(row[5], abs=CENT)
+            assert p.claims(t, "ANNUITY") == pytest.approx(row[5], abs=CENT)
             assert p.net_cf(t) == pytest.approx(row[9], abs=CENT)
         assert "Notes symbol" in reread.Projection.doc
         assert p.check_net_cf() is True

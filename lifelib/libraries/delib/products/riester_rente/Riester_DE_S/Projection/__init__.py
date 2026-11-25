@@ -1727,7 +1727,7 @@ def exit_charge_pp(t):
             + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total over all six kinds when kind is omitted.
 
     Every kind is paid in the **month** it falls; the per-policy amounts behind three of
@@ -1763,7 +1763,7 @@ def claims(t, kind):
         opening count, which paid a life that died in the first month of a year for the whole
         of it; that approximation is gone.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.TRANSFER,
                                           Kind.LUMPSUM, Kind.COMMUTATION, Kind.ANNUITY))
     k = proj_year(t)

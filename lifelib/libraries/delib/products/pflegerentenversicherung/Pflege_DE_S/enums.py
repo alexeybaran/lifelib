@@ -1,15 +1,17 @@
-"""IntEnum families passed as cell arguments in Pflege_DE_S, stored with the model."""
+"""Label families passed as cell arguments in Pflege_DE_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Timing(IntEnum):
-    BEG = 0
-    END = 1
+from enum import StrEnum
 
 
-class Kind(IntEnum):
-    ANNUITY = 0
-    LAPSE = 1
-    DEATH = 2
-    ALL = 3
+class Timing(StrEnum):
+    BEG = "BEG"
+    END = "END"
+
+
+class Kind(StrEnum):
+    ANNUITY = "ANNUITY"
+    LAPSE = "LAPSE"
+    DEATH = "DEATH"

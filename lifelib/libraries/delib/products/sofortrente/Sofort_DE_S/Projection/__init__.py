@@ -586,7 +586,7 @@ def mort_rate_at_age(x, table_sex, basis):
     tab = data.mort_table()                                          # noqa: F821
     ages = tab.index.get_level_values("age")
     xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis.name, table_sex.name, xx), "mort_rate"])
+    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
 
 
 def improve_rate_at_age(x, basis):
@@ -601,7 +601,7 @@ def improve_rate_at_age(x, basis):
     tab = data.improvement_table()                                   # noqa: F821
     ages = tab.index.get_level_values("age")
     xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis.name, xx), "improve_rate"])
+    return float(tab.loc[(basis, xx), "improve_rate"])
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
@@ -1078,7 +1078,7 @@ def premiums(t):
     return 0.0
 
 
-def annuity_payments(t, kind):
+def annuity_payments(t, kind=None):
     """Instalments paid to a living payee in month ``t``, by kind; the total when omitted.
 
     ``"ANNUITANT"``
@@ -1097,7 +1097,7 @@ def annuity_payments(t, kind):
     additive certain floor and the survivor paid on top of the guarantee — in a column
     rather than in a total.
     """
-    if kind == AnnuityKind.ALL:
+    if kind is None:
         return sum(annuity_payments(t, k) for k in (AnnuityKind.ANNUITANT, AnnuityKind.SURVIVOR))
     if not is_payment_mth(t):
         return 0.0
@@ -1110,7 +1110,7 @@ def annuity_payments(t, kind):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Death outgo in month ``t``, by kind; the total when ``kind`` is omitted.
 
     ``"GUARANTEE"``
@@ -1128,7 +1128,7 @@ def claims(t, kind):
     surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
     """
-    if kind == ClaimKind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (ClaimKind.GUARANTEE, ClaimKind.REFUND))
     if kind == ClaimKind.GUARANTEE:
         if not is_payment_mth(t):
@@ -1190,7 +1190,7 @@ def liability_cf(t):
     beside :func:`net_cf` so the sign convention is verifiable in the frame rather than
     only in prose.
     """
-    return annuity_payments(t, AnnuityKind.ALL) + claims(t, ClaimKind.ALL) + expenses(t) - premiums(t)
+    return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
 
 
 def net_cf(t):
@@ -1376,7 +1376,7 @@ def check_payment_factor_resid(t):
     guarantee beneficiary — partition the instalment exactly, with nothing double-counted
     and nothing dropped.
     """
-    lhs = annuity_payments(t, AnnuityKind.ALL) + claims(t, ClaimKind.GUARANTEE)
+    lhs = annuity_payments(t) + claims(t, ClaimKind.GUARANTEE)
     if is_payment_mth(t):
         rhs = pols_if_init() * annuity_pp(t) * payment_factor(t)
     else:
@@ -1500,7 +1500,7 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "annuity_payments": [annuity_payments(t, AnnuityKind.ALL) for t in ts],
+            "annuity_payments": [annuity_payments(t) for t in ts],
             "claims_guarantee": [claims(t, ClaimKind.GUARANTEE) for t in ts],
             "claims_refund": [claims(t, ClaimKind.REFUND) for t in ts],
             "expenses": [expenses(t) for t in ts],

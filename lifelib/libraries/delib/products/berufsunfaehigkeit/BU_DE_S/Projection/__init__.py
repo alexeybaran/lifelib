@@ -765,7 +765,7 @@ def recov_rates():
     them.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return [float(tbl.loc[y, "recov_rate"]) for y in range(1, 12)]
+    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
 
 
 def mort_dis_sel_factors():
@@ -775,7 +775,7 @@ def mort_dis_sel_factors():
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return [float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12)]
+    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
 
 
 # --- the best-estimate rates as composed ---
@@ -861,8 +861,8 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return [1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors()]
+    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
+                 for s in mort_dis_sel_factors())
 
 
 def recov_rate(z):
@@ -894,7 +894,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return [1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates()]
+    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
 
 
 def lapse_rate(t):
@@ -955,8 +955,8 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return [1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates()]
+    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
+                 for r in recov_rates())
 
 
 def mort_rate_first_mth(s):
@@ -986,8 +986,8 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return [1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors()]
+    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
+                 for f in mort_dis_sel_factors())
 
 
 def disc_first(s):
@@ -1754,7 +1754,7 @@ def surplus_credit(t):
     return surplus_credit_pp(t) * pols_prem(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the start of month t, by kind; the total when kind is omitted.
 
     ``"BU_RENTE"``
@@ -1777,7 +1777,7 @@ def claims(t, kind):
         deliberately does not compute.  The kind exists so that the zero is a
         published scope statement rather than a missing column.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.BU_RENTE, Kind.REINTEGRATION, Kind.LAPSE))
     if kind == Kind.BU_RENTE:
         if age(t) >= benefit_end_age():
@@ -1862,7 +1862,7 @@ def net_cf(t):
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
     """
-    return (premiums(t) - surplus_credit(t) - claims(t, Kind.ALL)
+    return (premiums(t) - surplus_credit(t) - claims(t)
             - expenses(t) - claim_expenses(t))
 
 

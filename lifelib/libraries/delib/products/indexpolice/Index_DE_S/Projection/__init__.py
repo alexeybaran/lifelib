@@ -1484,7 +1484,7 @@ def mat_pp(k):
     return max(av_pp(proj_len_y()), guar_cap_pp(proj_len_y()))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in **month** t, by kind; the total when kind is omitted.
 
     The **counts are monthly and the amounts are annual**, which is the shape of this
@@ -1508,7 +1508,7 @@ def claims(t, kind):
     different amounts — the maturity includes the year's *Indexjahr* and the other two do
     not — and that is the product's own rule.
     """
-    if kind == ClaimKind.ALL:
+    if kind is None:
         return sum(claims(t, j) for j in (ClaimKind.DEATH, ClaimKind.LAPSE, ClaimKind.MATURITY))
     if kind == ClaimKind.DEATH:
         return db_pp(duration(t)) * pols_death(t)
@@ -1642,7 +1642,7 @@ def check_net_cf_resid(t):
     delib requires this cells of every model in the library: no model's headline number may
     be reconciled only in prose.
     """
-    return net_cf(t) - (premiums(t) - claims(t, ClaimKind.ALL) - expenses(t))
+    return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
 
 
 def check_net_cf():
@@ -1652,7 +1652,7 @@ def check_net_cf():
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
     return bool(all(abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
-                    * max(abs(premiums(t)), abs(claims(t, ClaimKind.ALL)),
+                    * max(abs(premiums(t)), abs(claims(t)),
                           abs(expenses(t)), 1.0)
                     for t in range(t_start(), proj_len())))
 

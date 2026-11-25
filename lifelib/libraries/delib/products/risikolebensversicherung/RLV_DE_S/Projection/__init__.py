@@ -723,7 +723,7 @@ def mort_rate_at_age(sex_code, smoker_code, x):
     the ``Data`` docstring for the anchors a replacement must preserve.
     """
     return float(data.mort_table().at[                               # noqa: F821
-        (mort_table_id(), sex_code.name, smoker_code.name, int(x)), "mort_rate"])
+        (mort_table_id(), sex_code, smoker_code, int(x)), "mort_rate"])
 
 
 def mort_rate_base(t):
@@ -1618,7 +1618,7 @@ def prem_rebate(t):
     return prem_rebate_inst_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1644,7 +1644,7 @@ def claims(t, kind):
     a model with cash surrender values will wire one in, and every total in the frame will
     still look plausible.
     """
-    if kind == ClaimKind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (ClaimKind.DEATH, ClaimKind.LAPSE, ClaimKind.MATURITY))
     if kind == ClaimKind.DEATH:
         return benefit_paid_pp(t) * pols_death(t)
@@ -1777,7 +1777,7 @@ def net_cf(t):
     liability cash flows and leaves discounting, the *Deckungsrückstellung*, Solvency II
     technical provisions and the SCR to a layer that consumes them.
     """
-    return premiums(t) - claims(t, ClaimKind.ALL) - expenses(t) - commissions(t)
+    return premiums(t) - claims(t) - expenses(t) - commissions(t)
 
 
 def liability_cf(t):
