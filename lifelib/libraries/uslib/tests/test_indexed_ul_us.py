@@ -27,8 +27,6 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from us_registry import model_enums
-Timing, Claim = model_enums("IUL_US_S", "Timing", "Claim")
 
 def model_files(folder):
     """The model's own file names, ignoring interpreter caches.
@@ -166,15 +164,15 @@ def test_anchor_account_value_row(anchor, t):
     """The account value roll-forward at the notes' own parameters, to the cent."""
     (av0, np_, credit, av_fee, db, naar, coi, md, av_inv, interest,
      av) = ANCHOR[t]
-    assert anchor.av_pp_at(t, Timing.BEF_PREM) == pytest.approx(av0, abs=CENT)
+    assert anchor.av_pp_at(t, "BEF_PREM") == pytest.approx(av0, abs=CENT)
     assert anchor.prem_to_av_pp(t) == pytest.approx(np_, abs=CENT)
     assert anchor.index_credit_pp(t) == pytest.approx(credit, abs=CENT)
-    assert anchor.av_pp_at(t, Timing.BEF_FEE) == pytest.approx(av_fee, abs=CENT)
+    assert anchor.av_pp_at(t, "BEF_FEE") == pytest.approx(av_fee, abs=CENT)
     assert anchor.db_pp(t) == pytest.approx(db, abs=CENT)
     assert anchor.net_amt_at_risk(t) == pytest.approx(naar, abs=CENT)
     assert anchor.coi_pp(t) == pytest.approx(coi, abs=CENT)
     assert anchor.mth_deduction_pp(t) == pytest.approx(md, abs=CENT)
-    assert anchor.av_pp_at(t, Timing.BEF_INV) == pytest.approx(av_inv, abs=CENT)
+    assert anchor.av_pp_at(t, "BEF_INV") == pytest.approx(av_inv, abs=CENT)
     assert anchor.inv_income_pp(t) == pytest.approx(interest, abs=CENT)
     assert anchor.av_pp(t) == pytest.approx(av, abs=CENT)
 
@@ -191,7 +189,7 @@ def test_anchor_month_0_trace(anchor):
     interest is credited.
     """
     assert anchor.duration_mth(0) == 0 and anchor.policy_year(0) == 1
-    assert anchor.av_pp_at(0, Timing.BEF_PREM) == anchor.av_pp_init() == 0.0
+    assert anchor.av_pp_at(0, "BEF_PREM") == anchor.av_pp_init() == 0.0
     assert anchor.premium_pp(0) == 10000.0
     assert anchor.load_prem_rate() == 0.05
     assert anchor.prem_to_av_pp(0) == pytest.approx(9500.0, abs=1e-9)
@@ -273,7 +271,7 @@ def test_pitfall_segment_bookkeeping_no_segment_when_nothing_is_allocated(indexe
     # the fixed account earns one month's interest at (1 + 4.50%)^(1/12) - 1
     assert p.inv_return_mth(0) == pytest.approx(1.045 ** (1 / 12) - 1, rel=1e-12)
     assert p.inv_income_pp(0) == pytest.approx(
-        p.fa_pp_at(0, Timing.BEF_INV) * p.inv_return_mth(0), rel=1e-12)
+        p.fa_pp_at(0, "BEF_INV") * p.inv_return_mth(0), rel=1e-12)
 
 
 def test_pitfall_deduction_sourcing_matches_the_credit_base(anchor):
@@ -335,7 +333,7 @@ def test_the_two_draws_on_the_segment_pool_cannot_together_overdraw_it(indexed_u
     assert (p.mth_deduction_from_fa_pp(t)
             + p.mth_deduction_from_seg_pp(t)) == pytest.approx(
         p.mth_deduction_pp(t), rel=1e-12)
-    assert p.fa_pp_at(t, Timing.BEF_SWEEP) < 0.0
+    assert p.fa_pp_at(t, "BEF_SWEEP") < 0.0
 
     # and check_seg_ladder() now carries the two bounds, so it fails on the old
     # behaviour instead of closing its accounting identity over a negative balance
@@ -357,8 +355,8 @@ def test_pitfall_floor_is_not_an_in_segment_guarantee(anchor):
     # accounts only, never from a segment
     for t in (2, 6, 10):
         assert anchor.inv_income_pp(t) == pytest.approx(
-            anchor.fa_pp_at(t, Timing.BEF_INV) * anchor.inv_return_mth(t)
-            + anchor.lca_pp_at(t, Timing.BEF_INV) * anchor.loan_credit_rate_mth(t),
+            anchor.fa_pp_at(t, "BEF_INV") * anchor.inv_return_mth(t)
+            + anchor.lca_pp_at(t, "BEF_INV") * anchor.loan_credit_rate_mth(t),
             rel=1e-12)
     # and there is no shadow accumulation account: the retrospective 2% cumulative
     # guarantee is a documented variation, not the baseline.
@@ -398,7 +396,7 @@ def test_pitfall_corridor_interplay(indexed_ul):
     p.result_cf()
     assert p.db_option() == "B"
     assert p.db_pp(0) == pytest.approx(
-        p.sum_assured() + p.av_pp_at(0, Timing.BEF_FEE), abs=CENT)
+        p.sum_assured() + p.av_pp_at(0, "BEF_FEE"), abs=CENT)
     # Option B keeps the net amount at risk near the face amount as the fund grows,
     # where Option A lets it run off.
     a = indexed_ul.Projection[1]
@@ -444,7 +442,7 @@ def test_naar_uses_the_guaranteed_rate_and_the_pre_deduction_account_value(ancho
     for t in (0, 12, 199):
         assert anchor.net_amt_at_risk(t) == pytest.approx(
             max(0.0, anchor.db_pp(t) / anchor.naar_factor()
-                - anchor.av_pp_at(t, Timing.BEF_FEE)), rel=1e-12)
+                - anchor.av_pp_at(t, "BEF_FEE")), rel=1e-12)
     # the discount is not at the fixed-account rate
     assert anchor.naar_factor() != pytest.approx(1.045 ** (1 / 12), rel=1e-6)
 
@@ -459,9 +457,9 @@ def test_interest_is_credited_after_the_deduction(indexed_ul):
     p = indexed_ul.Projection[3]
     p.result_cf()
     for t in (0, 1, 49):
-        correct = (p.av_pp_at(t, Timing.BEF_FEE) - p.mth_deduction_pp(t)) * (
+        correct = (p.av_pp_at(t, "BEF_FEE") - p.mth_deduction_pp(t)) * (
             1 + p.inv_return_mth(t))
-        wrong = p.av_pp_at(t, Timing.BEF_FEE) * (1 + p.inv_return_mth(t)) - p.mth_deduction_pp(t)
+        wrong = p.av_pp_at(t, "BEF_FEE") * (1 + p.inv_return_mth(t)) - p.mth_deduction_pp(t)
         assert p.av_pp(t) == pytest.approx(correct, rel=1e-12)
         assert p.av_pp(t) < wrong
 
@@ -589,10 +587,10 @@ def test_standard_loan_moves_collateral_without_reducing_the_account_value(index
     p = indexed_ul.Projection[5]
     p.result_cf()
     t = 240                                    # first month of policy year 21
-    assert p.lca_pp(t - 1) == 0.0 == p.lca_pp_at(t, Timing.BEF_PREM)
+    assert p.lca_pp(t - 1) == 0.0 == p.lca_pp_at(t, "BEF_PREM")
     assert p.loan_new_pp(t) == 6000.0
-    assert p.av_pp_at(t, Timing.BEF_FEE) == pytest.approx(
-        p.av_pp_at(t, Timing.BEF_WD) - p.wd_pp(t), rel=1e-12)   # the loan is not subtracted
+    assert p.av_pp_at(t, "BEF_FEE") == pytest.approx(
+        p.av_pp_at(t, "BEF_WD") - p.wd_pp(t), rel=1e-12)   # the loan is not subtracted
     assert p.lca_pp(t) > 6000.0                             # collateral plus interest
     assert p.loan_bal_pp(t) > 6000.0
     assert p.net_loan_cf(t) == pytest.approx(-6000.0 * p.pols_if(t), rel=1e-12)
@@ -656,7 +654,7 @@ def test_point_5_account_value_runs_away_after_month_604(indexed_ul):
     assert math.isfinite(df["net_cf"].sum())
     assert df["net_cf"].abs().max() < 1e5
     assert p.db_pp(last) == pytest.approx(70000.0, abs=CENT)
-    assert p.claim_pp(last, Claim.DEATH) == 0.0
+    assert p.claim_pp(last, "DEATH") == 0.0
     assert p.ncsv_pp(last) == 0.0
 
     # points 1-4 never get near it
@@ -853,7 +851,7 @@ def test_result_cf_shape(anchor):
     assert df.loc[0, "pols_if"] == 1.0
     assert df.loc[0, "premiums"] == pytest.approx(10000.0, abs=CENT)
     assert df.loc[0, "net_cf"] == pytest.approx(
-        10000.0 - anchor.claims(0, Claim.ALL) - anchor.withdrawals(0) - anchor.expenses(0)
+        10000.0 - anchor.claims(0) - anchor.withdrawals(0) - anchor.expenses(0)
         - anchor.premium_taxes(0),
         abs=CENT)
 
@@ -893,14 +891,14 @@ def test_a_withdrawal_is_not_a_claim(indexed_ul):
     t = 12                                       # first month of policy year 2
 
     with pytest.raises(Exception):
-        p.claims(t, Claim.WITHDRAWAL)
-    assert p.claims(t, Claim.ALL) == pytest.approx(
-        p.claims(t, Claim.DEATH) + p.claims(t, Claim.LAPSE), rel=1e-12)
+        p.claims(t, "WITHDRAWAL")
+    assert p.claims(t) == pytest.approx(
+        p.claims(t, "DEATH") + p.claims(t, "LAPSE"), rel=1e-12)
 
     # the payment is W_t less the fee the insurer keeps, weighted by the in-force at
     # BOM -- a withdrawal is not a decrement
     assert p.wd_pp(t) == 200.0 and p.wd_fee_pp(t) == 25.0
-    assert p.claim_pp(t, Claim.WITHDRAWAL) == pytest.approx(175.0, abs=CENT)
+    assert p.claim_pp(t, "WITHDRAWAL") == pytest.approx(175.0, abs=CENT)
     assert p.withdrawals(t) == pytest.approx(175.0 * p.pols_if(t), rel=1e-12)
     assert p.result_cf().loc[t, "withdrawals"] == pytest.approx(
         p.withdrawals(t), rel=1e-12)

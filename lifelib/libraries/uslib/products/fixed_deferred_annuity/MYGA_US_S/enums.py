@@ -1,29 +1,31 @@
-"""IntEnum families passed as cell arguments in MYGA_US_S, stored with the model."""
+"""Label families passed as cell arguments in MYGA_US_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class AvTiming(IntEnum):
-    BEF_WD = 0
-    BEF_INV = 1
-    EOM = 2
+from enum import StrEnum
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_MORT = 1
-    BEF_LAPSE = 2
-    AFT_DECR = 3
+class AvTiming(StrEnum):
+    BEF_WD = "BEF_WD"
+    BEF_INV = "BEF_INV"
+    EOM = "EOM"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    ANNUITIZATION = 2
-    MATURITY = 3
-    ALL = 4
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_MORT = "BEF_MORT"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
 
 
-class RateColumn(IntEnum):
-    mva_ref_yield = 0
-    market_rate = 1
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    ANNUITIZATION = "ANNUITIZATION"
+    MATURITY = "MATURITY"
+
+
+class RateColumn(StrEnum):
+    mva_ref_yield = "mva_ref_yield"
+    market_rate = "market_rate"

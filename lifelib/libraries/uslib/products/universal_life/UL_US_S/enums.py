@@ -1,24 +1,26 @@
-"""IntEnum families passed as cell arguments in UL_US_S, stored with the model."""
+"""Label families passed as cell arguments in UL_US_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Claim(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    MATURITY = 2
-    ALL = 3
+from enum import StrEnum
 
 
-class Timing(IntEnum):
-    BEF_PREM = 0
-    BEF_WD = 1
-    BEF_FEE = 2
-    BEF_INV = 3
-    EOM = 4
+class Claim(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"
 
 
-class PolTiming(IntEnum):
-    BEF_MAT = 0
-    BEF_NB = 1
-    BEF_DECR = 2
+class Timing(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    BEF_WD = "BEF_WD"
+    BEF_FEE = "BEF_FEE"
+    BEF_INV = "BEF_INV"
+    EOM = "EOM"
+
+
+class PolTiming(StrEnum):
+    BEF_MAT = "BEF_MAT"
+    BEF_NB = "BEF_NB"
+    BEF_DECR = "BEF_DECR"

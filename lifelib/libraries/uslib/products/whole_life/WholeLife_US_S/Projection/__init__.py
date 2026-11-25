@@ -1366,9 +1366,9 @@ def expenses(t):
             * pols_if_at(t, PolTiming.BEF_DECR))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted."""
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
     elif kind == Kind.DEATH:
         return claim_pp(t, Kind.DEATH) * pols_death(t)
@@ -1413,7 +1413,7 @@ def liability_cf(t):
     """
     return (-premiums(t) - rider_premiums(t)
             + expenses(t) + premium_taxes(t)
-            + claims(t, Kind.ALL) + div_cash_paid(t) + loan_draws(t))
+            + claims(t) + div_cash_paid(t) + loan_draws(t))
 
 
 def net_cf(t):

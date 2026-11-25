@@ -1,17 +1,19 @@
-"""IntEnum families passed as cell arguments in WholeLife_US_S, stored with the model."""
+"""Label families passed as cell arguments in WholeLife_US_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_SURR = 1
-    BEF_MAT = 2
-    AFT_DECR = 3
+from enum import StrEnum
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    MATURITY = 2
-    ALL = 3
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_SURR = "BEF_SURR"
+    BEF_MAT = "BEF_MAT"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"

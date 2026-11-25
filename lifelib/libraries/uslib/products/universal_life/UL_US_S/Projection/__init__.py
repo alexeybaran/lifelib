@@ -1319,7 +1319,7 @@ def claims_over_av(t):
     return (claim_pp(t, Claim.DEATH) - av_pp(t)) * pols_death(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Claim outgo in policy month t, optionally by ``kind``.
 
     ``kind`` is ``"DEATH"`` or ``"LAPSE"``, or ``None`` for the total.  Death claims
@@ -1335,7 +1335,7 @@ def claims(t, kind):
         return claim_pp(t, Claim.DEATH) * pols_death(t)
     elif kind == Claim.LAPSE:
         return claim_pp(t, Claim.LAPSE) * pols_lapse(t)
-    elif kind == Claim.ALL:
+    elif kind is None:
         return sum(claims(t, k) for k in (Claim.DEATH, Claim.LAPSE))
     else:
         raise ValueError("invalid kind")
@@ -1432,7 +1432,7 @@ def net_cf(t):
     not an insurer cash flow, so it does not appear either -- see :func:`check_margin`
     for how it reconciles.
     """
-    return (premiums(t) - claims(t, Claim.ALL) - withdrawals(t)
+    return (premiums(t) - claims(t) - withdrawals(t)
             - expenses(t) - premium_taxes(t))
 
 

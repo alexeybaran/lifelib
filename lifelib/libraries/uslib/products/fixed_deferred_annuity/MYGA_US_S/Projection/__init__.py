@@ -547,7 +547,7 @@ def scenario_rate(t, name):
     """
     sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
     months = [i for i in sub.index if i <= t]
-    return float(sub.loc[max(months), name.name])
+    return float(sub.loc[max(months), name])
 
 
 def market_rate(t):
@@ -1403,9 +1403,9 @@ def withdrawals(t):
     return wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all four."""
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
                 + claims(t, Kind.ANNUITIZATION) + claims(t, Kind.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
@@ -1416,7 +1416,7 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind):
+def claims_over_av(t, kind=None):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed, and normally **negative** on this chassis: a surrender pays out less than the
@@ -1426,7 +1426,7 @@ def claims_over_av(t, kind):
     SB(t), it does not add a separate top-up line, and the charge and the MVA are
     internal accounting entries rather than ledger lines.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims_over_av(t, Kind.DEATH) + claims_over_av(t, Kind.LAPSE)
                 + claims_over_av(t, Kind.ANNUITIZATION) + claims_over_av(t, Kind.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
@@ -1474,7 +1474,7 @@ def net_cf(t):
     the benefit *amount* but are never cash flows of their own. Only amounts paid to or
     received from the contract holder, and the insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t, Kind.ALL)
+    return (premiums(t) - withdrawals(t) - claims(t)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 

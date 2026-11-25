@@ -781,7 +781,7 @@ def scenario_rate(t, name):
     """
     sub = data.rate_scenario().loc[scenario_id()]                     # noqa: F821
     months = [m for m in sub.index if m <= max(duration_mth(t), 0)]
-    return float(sub.loc[max(months), name.name])
+    return float(sub.loc[max(months), name])
 
 
 def vix_sq(k):
@@ -2156,9 +2156,9 @@ def glwb_payments(t):
     return 0.0 if t < 0 else glwb_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE)
                 + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
@@ -2169,14 +2169,14 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind):
+def claims_over_av(t, kind=None):
     """Benefit paid less the contract value released, ``claims - claims_from_av``.
 
     On death this is exactly the GMDB guarantee claim — the general-account strain. On a
     surrender it is negative by the withdrawal charge, which the separate account keeps.
     A reconciliation quantity, never a ledger line of its own.
     """
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
                 + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
@@ -2235,7 +2235,7 @@ def net_cf(t):
     account-value identity.
     """
     return (premiums(t) + charge_income(t)
-            - withdrawals(t) - glwb_payments(t) - claims(t, Claim.ALL)
+            - withdrawals(t) - glwb_payments(t) - claims(t)
             - expenses(t) - commissions(t) - premium_taxes(t))
 
 

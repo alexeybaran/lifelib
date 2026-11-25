@@ -1067,7 +1067,7 @@ def claim_pp(t, kind):
     return max(0.0, premium_pp() - cum_annuity_pp(paid_to))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Expected claim outgo in month t; ``kind=None`` totals every kind.
 
     The only kind on this product is ``"REFUND"``.  It is weighted by
@@ -1075,7 +1075,7 @@ def claims(t, kind):
     stream, which is the primary's on a single-life contract and the last death on a
     joint one (a cash refund on a joint contract is offered only at delta = 100% [S5]).
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return claims(t, Kind.REFUND)
     return pols_if_init() * lives_death_last(t) * claim_pp(t, kind)
 
@@ -1114,7 +1114,7 @@ def liability_cf(t):
     survives verbatim under the name the notes give it while the library-wide
     income-positive convention is available under the name every other model uses.
     """
-    return annuity_payments(t) + claims(t, Kind.ALL) + commutations(t) + expenses(t)
+    return annuity_payments(t) + claims(t) + commutations(t) + expenses(t)
 
 
 def net_cf(t):
@@ -1218,7 +1218,7 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims": [claims(t, Kind.ALL) for t in ts],
+            "claims": [claims(t) for t in ts],
             "commutations": [commutations(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],

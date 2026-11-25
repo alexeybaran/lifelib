@@ -409,17 +409,3 @@ def projection(model, key):
     if key not in table.index:
         raise KeyError(f"{model.name}: no model point labelled {key!r}")
     return model.Projection[key]
-
-
-def model_enums(name, *families):
-    """The IntEnum families stored in model ``name``'s folder, in the order asked.
-
-    The lean conversion keeps a model's label families in ``<model>/enums.py``, a module
-    stored with the model; tests load that file rather than import it from lifelib.
-    """
-    import importlib.util
-    path = model_path(name) / "enums.py"
-    spec = importlib.util.spec_from_file_location("_enums_" + name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return tuple(getattr(module, f) for f in families)

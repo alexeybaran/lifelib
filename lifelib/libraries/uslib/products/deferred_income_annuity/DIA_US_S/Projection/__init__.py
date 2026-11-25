@@ -1608,7 +1608,7 @@ def claim_pp(t, kind):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Expected claim outgo in month t; ``kind=None`` totals every kind.
 
     Weighted by :func:`lives_death_last`, the death that ends the contract: on a joint
@@ -1617,7 +1617,7 @@ def claims(t, kind):
     The two kinds are mutually exclusive by construction - ``"DEATH"`` is zero from the
     income start month and ``"REFUND"`` is zero before it.
     """
-    if kind == Claim.ALL:
+    if kind is None:
         return claims(t, Claim.DEATH) + claims(t, Claim.REFUND)
     return pols_if_init() * lives_death_last(t) * claim_pp(t, kind)
 
@@ -1660,7 +1660,7 @@ def liability_outgo(t):
     contract has no cash surrender value at any time before the income start date and
     none after [S1][S2][R13 SS3.P].
     """
-    return annuity_payments(t) + claims(t, Claim.ALL) + commutations(t) + expenses(t)
+    return annuity_payments(t) + claims(t) + commutations(t) + expenses(t)
 
 
 def liability_cf(t):
@@ -1874,7 +1874,7 @@ def lives_if_ann(y):
     return lives_if_last(12 * y)
 
 
-def claims_ann(y, kind):
+def claims_ann(y, kind=None):
     """Expected claim outgo over policy year y; the notes' ``E[DB]`` when kind="DEATH".
 
     The monthly cash flows summed over the twelve months of the year.  Because ``CP`` is
@@ -1909,7 +1909,7 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims": [claims(t, Claim.ALL) for t in ts],
+            "claims": [claims(t) for t in ts],
             "commutations": [commutations(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],

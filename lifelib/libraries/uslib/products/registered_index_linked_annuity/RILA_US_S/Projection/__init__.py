@@ -647,7 +647,7 @@ def market_state(k, name):
     """
     sub = data.market_scenario().loc[scenario_id()]                  # noqa: F821
     months = [i for i in sub.index if i <= k]
-    return float(sub.loc[max(months), name.name])
+    return float(sub.loc[max(months), name])
 
 
 def index_level(t):
@@ -1232,7 +1232,7 @@ def iv_notional_pp(t, timing):
         raise ValueError("invalid timing")
 
 
-def opt_component_pp(t, leg, timing):
+def opt_component_pp(t, leg, timing="BEF_ROLL"):
     """The currency value of one replicating-portfolio leg, per contract.
 
     The notional at ``timing`` times the per-unit leg value at the current market state.
@@ -1242,22 +1242,22 @@ def opt_component_pp(t, leg, timing):
         t, leg, index_level(t), tau(t), MarketQuote.CURRENT)
 
 
-def fixed_proxy_pp(t, timing):
+def fixed_proxy_pp(t, timing="BEF_ROLL"):
     """F_k(t): the Fixed Income Asset Proxy in currency, per contract."""
     return iv_notional_pp(t, timing) * fixed_proxy_factor(t)
 
 
-def budget_amort_pp(t, timing):
+def budget_amort_pp(t, timing="BEF_ROLL"):
     """B_k(t): the amortized initial option budget in currency, per contract."""
     return iv_notional_pp(t, timing) * budget_amort_factor(t)
 
 
-def deriv_proxy_pp(t, timing):
+def deriv_proxy_pp(t, timing="BEF_ROLL"):
     """D_k(t): the Derivative Asset Proxy in currency, per contract."""
     return iv_notional_pp(t, timing) * deriv_proxy_factor(t)
 
 
-def trading_cost_pp(t, timing):
+def trading_cost_pp(t, timing="BEF_ROLL"):
     """TC_k(t): the trading cost provision in currency, per contract."""
     return iv_notional_pp(t, timing) * trading_cost_factor(t)
 
@@ -1948,9 +1948,9 @@ def withdrawals(t):
     return wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
@@ -1960,7 +1960,7 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind):
+def claims_over_av(t, kind=None):
     """Benefit paid less the Account Value released, ``claims - claims_from_av``.
 
     Signed. Negative on a surrender inside the charge period, where the contract pays out
@@ -1968,7 +1968,7 @@ def claims_over_av(t, kind):
     return-of-premium guarantee bites. A reconciliation quantity, not a cash flow of its
     own.
     """
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
                 + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
@@ -2024,7 +2024,7 @@ def net_cf(t):
     declared cap. Only amounts paid to or received from the contract holder, and the
     insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t, Claim.ALL)
+    return (premiums(t) - withdrawals(t) - claims(t)
             - expenses(t) - premium_taxes(t))
 
 
@@ -2244,12 +2244,12 @@ def result_iv():
         "index_level": [index_level(t) for t in ts],
         "index_perf": [index_perf(t) for t in ts],
         "tau": [tau(t) for t in ts],
-        "fixed_proxy_pp": [fixed_proxy_pp(t, Timing.BEF_ROLL) for t in ts],
+        "fixed_proxy_pp": [fixed_proxy_pp(t) for t in ts],
     }
     for leg in opt_legs():
-        out[leg.name.lower()] = [opt_component_pp(t, leg, Timing.BEF_ROLL) for t in ts]
-    out["deriv_proxy_pp"] = [deriv_proxy_pp(t, Timing.BEF_ROLL) for t in ts]
-    out["trading_cost_pp"] = [trading_cost_pp(t, Timing.BEF_ROLL) for t in ts]
+        out[leg.lower()] = [opt_component_pp(t, leg) for t in ts]
+    out["deriv_proxy_pp"] = [deriv_proxy_pp(t) for t in ts]
+    out["trading_cost_pp"] = [trading_cost_pp(t) for t in ts]
     out["interim_value_pp"] = [interim_value_pp_at(t, Timing.BEF_ROLL) for t in ts]
     out["inv_amt_pp"] = [inv_amt_pp_at(t, Timing.BEF_ROLL) for t in ts]
     return pd.DataFrame(out, index=pd.Index(ts, name="t"))           # noqa: F821

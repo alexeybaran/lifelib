@@ -1787,7 +1787,7 @@ def claims_over_av(t):
     return (claim_pp(t, Claim.DEATH) - av_pp(t)) * pols_death(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Claim outgo in policy month t, optionally by ``kind``.
 
     ``kind`` is ``"DEATH"``, ``"LAPSE"``, ``"REFUND"``, ``"GRACE"``, or ``None`` for
@@ -1808,7 +1808,7 @@ def claims(t, kind):
         return claim_pp(t, Claim.REFUND) * pols_rop(t)
     elif kind == Claim.GRACE:
         return 0.0
-    elif kind == Claim.ALL:
+    elif kind is None:
         return sum(claims(t, k) for k in
                    (Claim.DEATH, Claim.LAPSE, Claim.REFUND, Claim.GRACE))
     else:
@@ -1924,7 +1924,7 @@ def net_cf(t):
     credits and every shadow-account entry are internal transfers and do not appear --
     see :func:`check_margin` for how they reconcile.
     """
-    return (premiums(t) - claims(t, Claim.ALL) - withdrawals(t)
+    return (premiums(t) - claims(t) - withdrawals(t)
             - expenses(t) - premium_taxes(t))
 
 

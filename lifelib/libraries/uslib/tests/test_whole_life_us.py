@@ -29,8 +29,6 @@ import modelx as mx
 import pytest
 
 from us_registry import LIB
-from us_registry import model_enums
-PolTiming, Kind = model_enums("WholeLife_US_S", "PolTiming", "Kind")
 
 MODEL_PATH = LIB / "products/whole_life/WholeLife_US_S"
 
@@ -120,8 +118,8 @@ def _worked_example_values(a):
         11: a.pua_face_purch(anniv(9)),
         12: a.pua_face(anniv(9)),
         13: a.pua_cv(anniv(9)),
-        14: a.claim_pp(boy(10), Kind.DEATH),
-        15: a.claim_pp(anniv(9), Kind.LAPSE),
+        14: a.claim_pp(boy(10), "DEATH"),
+        15: a.claim_pp(anniv(9), "LAPSE"),
     }
 
 
@@ -327,8 +325,8 @@ def test_the_two_interpolations_are_exact_at_the_anniversary(newbiz, whole_life)
     assert newbiz.cv_pp_anniv(-1) == 0.0
     # a mid-year surrender is valued between the two anniversary figures
     mid = boy(9) + 5
-    assert (newbiz.cv_pp(anniv(8)) < newbiz.claim_pp(mid, Kind.LAPSE)
-            < newbiz.claim_pp(anniv(9), Kind.LAPSE))
+    assert (newbiz.cv_pp(anniv(8)) < newbiz.claim_pp(mid, "LAPSE")
+            < newbiz.claim_pp(anniv(9), "LAPSE"))
 
 
 def test_monthly_mode_collects_twelve_instalments(whole_life):
@@ -413,8 +411,8 @@ def test_pols_if_is_the_start_of_month_count_the_row_is_weighted_by(newbiz, anch
         T = proj.proj_len()
         assert proj.pols_if(proj.proj_start()) == proj.pols_if_init()
         for t in range(proj.proj_start(), T):
-            assert proj.pols_if(t) == proj.pols_if_at(t, PolTiming.BEF_DECR)
-            assert proj.pols_if_at(t, PolTiming.AFT_DECR) == pytest.approx(
+            assert proj.pols_if(t) == proj.pols_if_at(t, "BEF_DECR")
+            assert proj.pols_if_at(t, "AFT_DECR") == pytest.approx(
                 proj.pols_if(t + 1), abs=1e-15)
             # the printed in-force column reconciles with the row it sits on
             if proj.premium_net_pp(t):
@@ -423,7 +421,7 @@ def test_pols_if_is_the_start_of_month_count_the_row_is_weighted_by(newbiz, anch
             assert proj.pols_death(t) == pytest.approx(
                 proj.pols_if(t) * proj.mort_rate_mth(t), rel=1e-12)
         # everything left matures in the final month, t = T - 1
-        assert proj.pols_if_at(T - 1, PolTiming.AFT_DECR) == 0.0
+        assert proj.pols_if_at(T - 1, "AFT_DECR") == 0.0
         assert proj.pols_if(T) == 0.0
 
     df = newbiz.result_cf()
@@ -459,11 +457,11 @@ def test_the_roll_forward_checks_are_no_arg_booleans(newbiz):
 def test_maturity_is_confined_to_the_final_month(newbiz):
     for t in range(newbiz.proj_start(), newbiz.proj_len() - 1):
         assert newbiz.pols_maturity(t) == 0.0
-        assert newbiz.claim_pp(t, Kind.MATURITY) == 0.0
+        assert newbiz.claim_pp(t, "MATURITY") == 0.0
     last = newbiz.proj_len() - 1
     assert newbiz.pols_maturity(last) > 0.0
-    assert newbiz.pols_maturity(last) == newbiz.pols_if_at(last, PolTiming.BEF_MAT)
-    assert newbiz.pols_if_at(last, PolTiming.AFT_DECR) == 0.0   # the notes' l_T after maturity
+    assert newbiz.pols_maturity(last) == newbiz.pols_if_at(last, "BEF_MAT")
+    assert newbiz.pols_if_at(last, "AFT_DECR") == 0.0   # the notes' l_T after maturity
 
 
 def test_inforce_is_a_decreasing_probability(newbiz):
@@ -488,8 +486,8 @@ def test_pitfall_cv_table_and_nsp_endow_together(newbiz, whole_life):
     assert newbiz.nsp(100) == 1.0
     assert newbiz.cv_pp(last) == pytest.approx(newbiz.sum_assured(), abs=CENT)
     assert newbiz.pua_cv(last) == pytest.approx(newbiz.pua_face(last), rel=1e-12)
-    assert newbiz.claim_pp(last, Kind.MATURITY) == pytest.approx(
-        newbiz.claim_pp(last, Kind.LAPSE), abs=CENT)
+    assert newbiz.claim_pp(last, "MATURITY") == pytest.approx(
+        newbiz.claim_pp(last, "LAPSE"), abs=CENT)
     tbl = whole_life.Data.nsp_table()
     assert (tbl.xs(100, level="age")["nsp"] == 1.0).all()
     cv = whole_life.Data.cv_table()["cv_per_1000"]
@@ -660,9 +658,9 @@ def test_pitfall_truncation_at_age_100(newbiz):
     last = T - 1                                # the final projected month
     assert newbiz.age_anniv(last) == 100
     assert newbiz.lapse_rate(last) == 0.0       # "0 within 1 year of maturity"
-    assert newbiz.claims(last, Kind.MATURITY) > 0.0
-    assert newbiz.claims(last, Kind.LAPSE) == 0.0
-    assert newbiz.pols_if_at(last, PolTiming.AFT_DECR) == 0.0
+    assert newbiz.claims(last, "MATURITY") > 0.0
+    assert newbiz.claims(last, "LAPSE") == 0.0
+    assert newbiz.pols_if_at(last, "AFT_DECR") == 0.0
     assert newbiz.pols_if(T) == 0.0
 
 
@@ -677,11 +675,11 @@ def test_deaths_are_valued_before_the_dividend_and_surrenders_after(anchor):
     same month carries the ones the dividend has just bought.
     """
     a9 = anniv(9)
-    assert anchor.claim_pp(a9, Kind.DEATH) == pytest.approx(
+    assert anchor.claim_pp(a9, "DEATH") == pytest.approx(
         anchor.sum_assured() + anchor.pua_face(a9 - 1), rel=1e-12)
-    assert anchor.claim_pp(boy(10), Kind.DEATH) == pytest.approx(
+    assert anchor.claim_pp(boy(10), "DEATH") == pytest.approx(
         anchor.sum_assured() + anchor.pua_face(a9), rel=1e-12)
-    assert anchor.claim_pp(a9, Kind.LAPSE) == pytest.approx(
+    assert anchor.claim_pp(a9, "LAPSE") == pytest.approx(
         anchor.cv_pp(a9) + anchor.pua_cv(a9), rel=1e-12)
     # the surrender value includes the anniversary dividend; the death benefit does not
     assert anchor.pua_face(a9) > anchor.pua_face(a9 - 1)
@@ -694,7 +692,7 @@ def test_liability_cf_is_the_notes_outgo_positive_stream(newbiz):
     assert newbiz.liability_cf(t) == pytest.approx(
         -newbiz.premiums(t) - newbiz.rider_premiums(t)
         + newbiz.expenses(t) + newbiz.premium_taxes(t)
-        + newbiz.claims(t, Kind.ALL) + newbiz.div_cash_paid(t) + newbiz.loan_draws(t),
+        + newbiz.claims(t) + newbiz.div_cash_paid(t) + newbiz.loan_draws(t),
         rel=1e-12)
     # a premium month in an early duration is premium-dominated, so outgo-positive
     # liability_cf is negative there; the months with no premium in them are not
@@ -790,7 +788,7 @@ def test_dividend_options(whole_life):
     assert pua.pua_face(a9) > 0.0 and pua.div_accum(a9) == 0.0
     assert cash.pua_face(a9) == 0.0 and cash.div_cash(a9) == pytest.approx(d, abs=CENT)
     assert cash.div_cash_paid(a9) == pytest.approx(
-        d * cash.pols_if_at(a9, PolTiming.BEF_SURR), rel=1e-12)
+        d * cash.pols_if_at(a9, "BEF_SURR"), rel=1e-12)
     # the accumulation balance accrues monthly and takes the dividend at the anniversary
     assert accum.div_accum(a9) == pytest.approx(
         accum.div_accum(a9 - 1) * 1.06 ** (1 / 12) + accum.div_credited(a9), rel=1e-12)
@@ -850,7 +848,7 @@ def test_every_credited_dividend_is_delivered(whole_life):
     assert accum.div_accum(last) == pytest.approx(
         sum(accum.div_credited(t) * (1 + accum.int_rate_div) ** ((last - t) / 12)
             for t in ts), rel=1e-9)
-    assert accum.claim_pp(last, Kind.MATURITY) == pytest.approx(
+    assert accum.claim_pp(last, "MATURITY") == pytest.approx(
         accum.sum_assured() + accum.div_accum(last), rel=1e-12)
 
     # REDUCE_PREM: premium offsets, plus the excess, plus the final year.  The offset is
@@ -871,7 +869,7 @@ def test_every_credited_dividend_is_delivered(whole_life):
     assert rpd.pua_face(last) == pytest.approx(     # the prior excess, then the last D
         rpd.pua_face(last - 1) + rpd.pua_face_offset(last) + rpd.div_credited(last),
         rel=1e-12)
-    assert rpd.claim_pp(last, Kind.MATURITY) == pytest.approx(
+    assert rpd.claim_pp(last, "MATURITY") == pytest.approx(
         rpd.sum_assured() + rpd.pua_face(last), rel=1e-12)
 
 
@@ -895,7 +893,7 @@ def test_term_blend_caps_the_term_layer_and_crosses_over(whole_life):
         assert blend.oyt_cost(t) <= blend.div_credited(t) + 1e-9
         assert blend.div_to_pua(t) >= 0.0
         # the death benefit is base + additions + whatever term is actually funded
-        assert blend.claim_pp(t, Kind.DEATH) == pytest.approx(
+        assert blend.claim_pp(t, "DEATH") == pytest.approx(
             blend.sum_assured() + _puaf_bef(blend, t) + blend.oyt_face(t), rel=1e-12)
     crossover = [y for y in range(1, blend.proj_len() // 12)
                  if blend.oyt_face(anniv(y)) == 0.0]
@@ -984,7 +982,7 @@ def test_term_blend_cap_binds_only_where_the_dividend_falls_short(whole_life):
         unfunded.div_credited(t) * (1 + unfunded.int_rate_guar) / q, rel=1e-12)
     assert unfunded.oyt_cost(t) == pytest.approx(unfunded.div_credited(t), rel=1e-12)
     assert unfunded.div_to_pua(t) == pytest.approx(0.0, abs=1e-9)
-    assert unfunded.claim_pp(t, Kind.DEATH) == pytest.approx(
+    assert unfunded.claim_pp(t, "DEATH") == pytest.approx(
         unfunded.sum_assured() + _puaf_bef(unfunded, t) + unfunded.oyt_face(t),
         rel=1e-12)
 
@@ -1010,9 +1008,9 @@ def test_the_loan_reduces_every_benefit(whole_life):
     last = loaned.proj_len() - 1
     a9, a8 = anniv(9), anniv(8)
     for kind, t in (("DEATH", a9), ("LAPSE", a9), ("MATURITY", last)):
-        assert loaned.claim_pp(t, Kind[kind]) < plain.claim_pp(t, Kind[kind])
-    assert loaned.claim_pp(last, Kind.MATURITY) == pytest.approx(
-        plain.claim_pp(last, Kind.MATURITY) - loaned.loan_bal(last), abs=CENT)
+        assert loaned.claim_pp(t, kind) < plain.claim_pp(t, kind)
+    assert loaned.claim_pp(last, "MATURITY") == pytest.approx(
+        plain.claim_pp(last, "MATURITY") - loaned.loan_bal(last), abs=CENT)
     assert loaned.loan_draw(0) == pytest.approx(loaned.loan_bal(0), rel=1e-12)
     # interest capitalizes once, at the anniversary, while the advances spread over the
     # year with the cash value - so a policy year's draws sum to the annual grid's one
@@ -1052,11 +1050,11 @@ def test_fe_graded_death_benefit(whole_life):
     assert g.prem_cum(11) == pytest.approx(G)          # no instalment mid-year
     assert g.prem_cum(boy(1)) == pytest.approx(2 * G)
     for t in (0, 11, boy(1), 23):
-        assert g.claim_pp(t, Kind.DEATH) == pytest.approx(
+        assert g.claim_pp(t, "DEATH") == pytest.approx(
             0.97 * 1.10 * g.prem_cum(t) + 0.03 * F, abs=CENT)
-        assert g.claim_pp(t, Kind.DEATH) < F
-    assert g.claim_pp(boy(2), Kind.DEATH) == pytest.approx(F, abs=CENT)
-    assert whole_life.Projection[11].claim_pp(0, Kind.DEATH) == pytest.approx(F, abs=CENT)
+        assert g.claim_pp(t, "DEATH") < F
+    assert g.claim_pp(boy(2), "DEATH") == pytest.approx(F, abs=CENT)
+    assert whole_life.Projection[11].claim_pp(0, "DEATH") == pytest.approx(F, abs=CENT)
 
 
 def test_fe_lapse_schedule_and_maturity(whole_life):
@@ -1070,7 +1068,7 @@ def test_fe_lapse_schedule_and_maturity(whole_life):
     assert fe.lapse_rate(boy(19)) == pytest.approx(0.06)
     T = fe.proj_len()
     assert T == 12 * 35
-    assert fe.claim_pp(T - 1, Kind.MATURITY) == pytest.approx(fe.sum_assured(), abs=CENT)
+    assert fe.claim_pp(T - 1, "MATURITY") == pytest.approx(fe.sum_assured(), abs=CENT)
 
 
 # ---------------------------------------------------------------------------
@@ -1116,7 +1114,7 @@ def test_result_cf_annual_is_the_monthly_frame_summed(anchor, newbiz):
 
 
 def test_timing_and_kind_reject_unknown_values(newbiz):
-    for timing in (PolTiming.BEF_DECR, PolTiming.BEF_SURR, PolTiming.BEF_MAT, PolTiming.AFT_DECR):
+    for timing in ("BEF_DECR", "BEF_SURR", "BEF_MAT", "AFT_DECR"):
         assert newbiz.pols_if_at(anniv(9), timing) >= 0.0
     with pytest.raises(Exception, match="invalid timing"):
         newbiz.pols_if_at(anniv(9), "BEF_LUNCH")

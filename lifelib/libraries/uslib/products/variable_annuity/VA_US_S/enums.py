@@ -1,30 +1,32 @@
-"""IntEnum families passed as cell arguments in VA_US_S, stored with the model."""
+"""Label families passed as cell arguments in VA_US_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class RateColumn(IntEnum):
-    vix_sq = 0
-    cmt10 = 1
+from enum import StrEnum
 
 
-class Timing(IntEnum):
-    BEF_PREM = 0
-    BEF_WD = 1
-    BEF_INV = 2
-    BEF_FEE = 3
-    BEF_ANNIV = 4
-    EOM = 5
+class RateColumn(StrEnum):
+    vix_sq = "vix_sq"
+    cmt10 = "cmt10"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class Timing(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    BEF_WD = "BEF_WD"
+    BEF_INV = "BEF_INV"
+    BEF_FEE = "BEF_FEE"
+    BEF_ANNIV = "BEF_ANNIV"
+    EOM = "EOM"
 
 
-class Claim(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    MATURITY = 2
-    ALL = 3
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Claim(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"
