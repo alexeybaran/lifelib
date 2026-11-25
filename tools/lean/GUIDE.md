@@ -113,7 +113,8 @@ list stays an ordinary Python object (correct, but about nine times slower). And
 caches the returned object itself: a caller that changes a returned list changes the
 cached value every later formula reads, silently; a tuple cannot be changed. So never
 write into a returned sequence; build a new one. (Lists of text, such as messages, may
-stay lists.)
+stay lists.) If a test or a caller needs a list, it converts the value itself:
+`list(dis_cohorts(t)[0])`.
 
 ## 5. Where text from data becomes a member
 
@@ -158,3 +159,31 @@ What a lint cannot see is a label that arrives from data and is passed on withou
 `Family[...]` conversion: the value is still right (a member is its text), only the
 compiler loses the type. A test that runs each attribute cell feeding a family argument
 on the shipped book and asserts it returns a member covers that.
+
+## 7. Tests changed against upstream
+
+Every upstream test runs unchanged, except these generated edits:
+
+* **The two hot cells made tuples.** A cell's value is immutable, and a tuple is the
+  vector form the compiler accelerates. So each test line that needed a list now takes
+  a tuple, or builds a new value. What it asserts is unchanged.
+  * `frlib/tests/test_assurance_emprunteur_fr.py`, in
+    `test_the_cohort_vector_is_rebuilt_not_mutated`: `snapshot = list(a)` becomes
+    `snapshot = tuple(a)` (`itt_cohorts`).
+  * `frlib/tests/test_dependance_fr.py`: `p.dep_cohorts(30)[0][0] = 999.0` becomes
+    `held = list(p.dep_cohorts(30)[0]); held[0] = 999.0`. The test still asserts that
+    the cached `pols_part(30)` is unchanged.
+* **The model folder holds more files.** The six `test_model_conventions*` modules allow
+  `enums.py` and `_data/` there. Seven product tests list the folder and now expect those
+  files:
+  * Pflegerentenversicherung (DE);
+  * Assurance Emprunteur, Assurance Vie Euro, Dépendance, PER and Rente Viagère (FR);
+  * Variable Annuity (KR).
+* **SEC comparisons.** Three uslib SEC tests compare the SEC model's References with the
+  S model's. They leave the family classes and `enums` out of that comparison:
+  `test_variable_annuity_us_sec`, `test_indexed_ul_us_sec` and
+  `test_guaranteed_ul_us_sec`.
+
+Four other list-returning cells stay lists, because a test compares them with a list or
+they hold text: CI_KR_S `ci_cohort_ids`, Medical_KR_S `sev_points`, VA_US_S `sub_ids` and
+DIA_US_S `qlac_flags`.

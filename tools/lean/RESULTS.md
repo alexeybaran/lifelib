@@ -32,19 +32,23 @@ passes, and VA_US_S's values and product tests are unchanged.
 
 ## Changed lines against upstream
 
-Model text: Projection +2,459/−2,072, new `enums.py` +1,690, `_data` spec +597; 6,818
+Model text: Projection +2,466/−2,079, new `enums.py` +1,690, `_data` spec +597; 6,832
 lines in all.
 
 Of the Projection change:
 
 * 2,031 line pairs are pure renaming, a label replaced by its member (4,062 lines);
 * 378 lines are the family References;
-* 48 lines are something else:
+* 55 lines are something else:
   * 25 `Family[...]` conversions;
   * the FIA/Dep check-then-convert;
-  * the 14 `tuple(...)` returns.
+  * the 21 tuple returns.
 
 ## Tests still changed against upstream (all generated)
+
+* 2 lines in frlib, for the hot cells made tuples:
+  * `test_assurance_emprunteur_fr`: a tuple snapshot;
+  * `test_dependance_fr`: builds a new value instead of writing into the cell's.
 
 * The 6 convention tests (`test_model_conventions*`) allow `enums.py` and `_data/` in a
   model folder.
@@ -64,19 +68,21 @@ wrote them.
 Converted (`tuple_cells`):
 
 * BU_DE_S `dis_cohorts_first`, `runoff_cohorts_first`, `dis_cohorts`, `runoff_cohorts`;
-* ADE_FR_S `itt_rate_vectors`;
+* ADE_FR_S `itt_rate_vectors`, `itt_cohorts_raw`, `itt_cohorts`;
+* Dep_FR_S `dep_cohorts`;
 * Obseques_FR_S `surr_scale_anchors`;
 * Annuity_JP_S `mort_anchor_ages`;
 * Child_KR_S `inc_pivots`;
 * Medical_KR_S `shape_buckets`;
 * VUL_US_S `subaccount_ids`.
 
+ADE_FR_S's and Dep_FR_S's cells are hot. On the coordinator's decision, each one's
+single blocking test line was edited; the lines are listed in `GUIDE.md` section 7.
+
 Left as lists (`tuple_left`), because a reader needs a list:
 
 | cell | reader |
 |---|---|
-| ADE_FR_S `itt_cohorts_raw`, `itt_cohorts` | a test compares them with the list `list(a)` |
-| Dep_FR_S `dep_cohorts` | a test writes into it: `dep_cohorts(30)[0][0] = 999.0` |
 | CI_KR_S `ci_cohort_ids` | tests compare it with lists |
 | Medical_KR_S `sev_points` | a test compares it with a list of pairs |
 | VA_US_S `sub_ids` | SEC tests compare it with `[1, 2]` and `[9, 1, 4]` |
