@@ -483,7 +483,7 @@ def sub_ids():
     unit accounting. Real contracts offer far more; one carrier's build-your-own menu
     lists 76 options across 12 asset classes [S4].
     """
-    return tuple(data.fund_table().loc[fund_set()].index)              # noqa: F821
+    return list(data.fund_table().loc[fund_set()].index)              # noqa: F821
 
 
 def alloc(i):

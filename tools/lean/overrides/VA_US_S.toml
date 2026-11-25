@@ -6,8 +6,8 @@ choices = [
     "Projection.scenario_rate: the reference renamed parameter name to field; the lean text keeps upstream's name and types it by position",
 ]
 
-# Convention: a cell that returns a sequence of numbers returns a tuple (the compiler
-# accelerates tuples only, and a cached tuple cannot be changed by its caller).  Upstream
-# returns a list here; no reader in the model or its tests mutates it or needs a list.
-[tuple_cells]
-Projection = ["sub_ids"]
+# Convention "sequences of numbers are tuples": left as upstream's list (recorded; the
+# generator does not read this key).
+tuple_left = [
+    "sub_ids: test_variable_annuity_us_sec asserts sub_ids() == [1, 2] and == [9, 1, 4]",
+]
