@@ -19,7 +19,7 @@ Checks:
 
 | check | result |
 |---|---|
-| values (57 models) | 8,015,512 compared, 0 mismatches |
+| values (57 models) | 8,015,632 compared, 0 mismatches |
 | `run.py` (57) | 57 print the same as upstream, exit 0 |
 | product and convention tests (6 libraries) | 6,626 passed, 97 skipped; upstream the same |
 | uslib SEC tests | upstream 3,375 passed, 919 skipped; lean the same (see below) |
@@ -114,8 +114,8 @@ Left as lists (`tuple_left`), because a reader needs a list:
 | RILA_US_S | +130/-116 | 59 | 10 | 116 | 14 | 0 | 110102 | 0 |
 | Term_US_S | +0/-0 | 0 | 10 | 0 | 0 | 0 | 12819 | 0 |
 | UL_US_S | +41/-35 | 26 | 7 | 35 | 6 | 0 | 81469 | 0 |
-| VA_US_S | +80/-72 | 32 | 12 | 72 | 8 | 0 | 272416 | 9 |
-| VUL_US_S | +95/-89 | 28 | 10 | 88 | 6 | 1 | 174146 | 4 |
+| VA_US_S | +80/-72 | 32 | 12 | 72 | 8 | 0 | 272416 | 0 |
+| VUL_US_S | +95/-89 | 28 | 10 | 88 | 6 | 1 | 174146 | 0 |
 | WholeLife_US_S | +35/-31 | 19 | 6 | 31 | 4 | 0 | 274951 | 0 |
 | CI_UK_S | +43/-31 | 40 | 10 | 27 | 12 | 4 | 39216 | 0 |
 | IP_UK_S | +13/-9 | 17 | 11 | 9 | 4 | 0 | 44422 | 0 |
@@ -134,12 +134,12 @@ Left as lists (`tuple_left`), because a reader needs a list:
 | Riester_DE_S | +36/-30 | 26 | 17 | 30 | 6 | 0 | 163603 | 0 |
 | RLV_DE_S | +39/-29 | 33 | 12 | 24 | 10 | 5 | 121118 | 0 |
 | Sofort_DE_S | +24/-16 | 27 | 15 | 15 | 8 | 1 | 163311 | 0 |
-| ADE_FR_S | +22/-18 | 20 | 10 | 17 | 4 | 1 | 85241 | 12 |
+| ADE_FR_S | +27/-23 | 20 | 10 | 17 | 4 | 6 | 85241 | 0 |
 | Euro_FR_S | +30/-24 | 24 | 12 | 24 | 6 | 0 | 65317 | 0 |
 | UC_FR_S | +36/-30 | 25 | 7 | 30 | 6 | 0 | 39515 | 0 |
-| Dep_FR_S | +35/-22 | 34 | 10 | 21 | 10 | 4 | 161445 | 0 |
+| Dep_FR_S | +37/-24 | 34 | 10 | 21 | 10 | 6 | 161445 | 0 |
 | EC_FR_S | +110/-104 | 29 | 9 | 104 | 6 | 0 | 45129 | 0 |
-| Obseques_FR_S | +33/-25 | 30 | 7 | 24 | 8 | 1 | 178359 | 12 |
+| Obseques_FR_S | +33/-25 | 30 | 7 | 24 | 8 | 1 | 178479 | 0 |
 | PER_FR_S | +69/-63 | 27 | 7 | 63 | 6 | 0 | 46780 | 0 |
 | Rente_FR_S | +19/-13 | 21 | 14 | 12 | 6 | 1 | 149490 | 0 |
 | TD_FR_S | +19/-15 | 18 | 8 | 15 | 4 | 0 | 70117 | 0 |
@@ -156,7 +156,7 @@ Left as lists (`tuple_left`), because a reader needs a list:
 | Child_KR_S | +94/-80 | 74 | 10 | 76 | 14 | 4 | 374539 | 0 |
 | CI_KR_S | +29/-23 | 28 | 11 | 23 | 6 | 0 | 257872 | 0 |
 | Immediate_KR_S | +14/-12 | 12 | 11 | 12 | 2 | 0 | 84155 | 0 |
-| Medical_KR_S | +61/-53 | 43 | 8 | 52 | 8 | 1 | 25882 | 10 |
+| Medical_KR_S | +61/-53 | 43 | 8 | 52 | 8 | 1 | 25882 | 0 |
 | LTC_KR_S | +54/-42 | 62 | 8 | 41 | 12 | 1 | 152464 | 0 |
 | Pension_KR_S | +97/-81 | 98 | 11 | 81 | 16 | 0 | 216545 | 0 |
 | Term_KR_S | +33/-29 | 21 | 12 | 29 | 4 | 0 | 75943 | 0 |
