@@ -35,8 +35,8 @@ def norm(v):
     return v
 
 
-def same(a, b):
-    """(equal, number of values compared)"""
+def same(a, b, loose=False):
+    """(equal, number of values compared); ``loose``: a tuple may stand for a list"""
     if isinstance(a, pd.DataFrame) or isinstance(b, pd.DataFrame):
         a2 = a.map(norm) if isinstance(b, pd.DataFrame) else a
         try:
@@ -52,11 +52,11 @@ def same(a, b):
             return False, getattr(a, "size", 1)
         return True, a.size
     if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
-        if type(a) is not type(b) or len(a) != len(b):     # a tuple stays a tuple
+        if (type(a) is not type(b) and not loose) or len(a) != len(b):  # a tuple stays a tuple
             return False, len(a)
         n, ok = 0, True
         for x, y in zip(a, b):
-            e, k = same(x, y)
+            e, k = same(x, y, loose)
             ok &= e
             n += k
         return ok, n
@@ -105,6 +105,16 @@ def zero_arg_cells(space):
     return sorted(out)
 
 
+def tuple_cells(name):
+    """The cells the lean text returns as a tuple where upstream returns a list."""
+    import tomllib
+    path = HERE / "overrides" / (name + ".toml")
+    if not path.exists():
+        return set()
+    with path.open("rb") as f:
+        return set(tomllib.load(f).get("tuple_cells", {}).get("Projection", []))
+
+
 def compare(up_dir, lean_dir, name):
     up = mx.read_model(up_dir, name=name + "_up")
     lean = mx.read_model(lean_dir, name=name + "_lean")
@@ -127,6 +137,7 @@ def compare(up_dir, lean_dir, name):
                         bad.append((sname, c, None, "differs", ""))
         keys = list(up.Data.model_point_table().index)
         names = zero_arg_cells(up.Projection)
+        loose = tuple_cells(name)
         for key in keys:
             pu, pl = up.Projection[key], lean.Projection[key]
             for c in names:
@@ -138,7 +149,9 @@ def compare(up_dir, lean_dir, name):
                 if a[0] == "err":
                     total += 1
                     continue
-                ok, n = same(a[1], b[1])
+                ok, n = same(a[1], b[1], c in loose)
+                if ok and c in loose and not isinstance(a[1], tuple):
+                    ok = False                  # a tuple_cells cell must return a tuple
                 total += n
                 if not ok:
                     bad.append(("Projection", c, str(key), "differs", ""))
