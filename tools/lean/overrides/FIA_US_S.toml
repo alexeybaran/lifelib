@@ -6,3 +6,26 @@ choices = [
     "Projection.scenario_value: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
     "Projection.scenario_value: the reference renamed parameter name to field; the lean text keeps upstream's name and types it by position",
 ]
+
+# Coordinator decision: an invalid label raises upstream's own error.  Upstream checks the
+# text later (credit_rate_on / payout_rate_locked: `raise ValueError("invalid ...")`); the
+# lean attribute converts it to a member first, which would raise KeyError.  The
+# converting cell checks first with upstream's labels and message, then converts.  The
+# error moves to the attribute cell (accepted).
+[[replace]]
+space = "Projection"
+why = "upstream's ValueError ahead of the conversion"
+old = '''    return model_point()["glwb_basis"]'''
+new = '''    v = model_point()["glwb_basis"]
+    if v not in ("single", "joint"):
+        raise ValueError("invalid glwb_basis")
+    return v'''
+
+[[replace]]
+space = "Projection"
+why = "upstream's ValueError ahead of the conversion"
+old = '''    return model_point()["credit_method"]'''
+new = '''    v = model_point()["credit_method"]
+    if v not in ("cap", "par", "par_cap", "spread", "trigger"):
+        raise ValueError("invalid credit_method")
+    return v'''

@@ -23,3 +23,19 @@ file = "test_dependance_fr.py"
 why = "K1 in formula text a test installs"
 old = '''    num = (severity_share("total") * prev_slope(t)'''
 new = '''    num = (severity_share(Severity.total) * prev_slope(t)'''
+
+# Coordinator decision: an invalid label raises upstream's own error.  Upstream checks each
+# cause of the cause table in carence_months (`raise ValueError("invalid cause")`); the
+# lean carence_factor converts the table's text first (Cause[c]), which would raise
+# KeyError.  The converting cell checks the causes first with upstream's labels and
+# message, then converts.
+[[replace]]
+space = "Projection"
+why = "upstream's ValueError ahead of the conversion"
+old = """    tbl = data.cause_mix_table()                                     # noqa: F821
+    return float(sum(tbl.loc[c, "share"] for c in tbl.index"""
+new = """    tbl = data.cause_mix_table()                                     # noqa: F821
+    for c in tbl.index:
+        if c not in ("accident", "illness", "neuro"):
+            raise ValueError("invalid cause")
+    return float(sum(tbl.loc[c, "share"] for c in tbl.index"""

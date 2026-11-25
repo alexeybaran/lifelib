@@ -64,43 +64,13 @@ def data_pickle(entries):
     return buf.getvalue()
 
 
-BY_TEXT = '''
-class Text(str):
-    """A label that is not a member: upstream's text, which also reads as ``.name``."""
-
-    @property
-    def name(self):
-        return str(self)
-
-
-class ByText(EnumType):
-    """``Family[text]`` of a text that is not a member gives the text itself.
-
-    A family the formulas look up by text (a label read from data or built from text)
-    uses this: an unknown label then takes upstream's path, to upstream's own check
-    (``raise ValueError("invalid credit_method")``) or upstream's failed table lookup.
-    """
-
-    def __getitem__(cls, text):
-        member = cls._member_map_.get(text)
-        if member is not None:
-            return member
-        return Text(text) if isinstance(text, str) else text
-'''
-
-
-def enums_module(model, families, keep, by_text=()):
-    """The model's ``enums.py``; the families in ``by_text`` take the ``ByText`` lookup."""
-    by_text = [F for F in families if F in keep and F in by_text]
+def enums_module(model, families, keep):
     lines = ['"""IntEnum families passed as cell arguments in %s, stored with the model."""'
-             % model, "", ("from enum import EnumType, IntEnum" if by_text else
-                           "from enum import IntEnum"), ""]
-    if by_text:
-        lines += BY_TEXT.split("\n")
+             % model, "", "from enum import IntEnum", ""]
     for F, members in families.items():
         if F not in keep:
             continue
-        lines += ["", "class %s(IntEnum%s):" % (F, ", metaclass=ByText" if F in by_text else "")]
+        lines += ["", "class %s(IntEnum):" % F]
         lines += ["    %s = %d" % (m, v) for m, v in members]
         lines.append("")
     return "\n".join(lines)
