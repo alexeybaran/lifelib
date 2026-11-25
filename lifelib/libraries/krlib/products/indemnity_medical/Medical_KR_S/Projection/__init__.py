@@ -1395,7 +1395,7 @@ def claims_np_rated_pp(y):
 
 def shape_buckets():
     """The bucket ids of the annual rated 비급여 claim distribution."""
-    return list(data.claim_shape_table().index)                      # noqa: F821
+    return tuple(data.claim_shape_table().index)                      # noqa: F821
 
 
 def shape_share(bucket):

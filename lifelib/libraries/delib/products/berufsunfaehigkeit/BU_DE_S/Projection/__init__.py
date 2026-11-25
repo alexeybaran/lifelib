@@ -1199,7 +1199,7 @@ def dis_cohorts_first(s):
     pols = [0.0] * n
     val = [0.0] * n
     if s <= 0:
-        return pols, val
+        return tuple(pols), tuple(val)
     ppols, pval = dis_cohorts_first(s - 1)
     qy = mort_rate_dis_first_mth_year(s - 1)
     ry = recov_rate_first_mth_year()
@@ -1214,7 +1214,7 @@ def dis_cohorts_first(s):
         val[i + 1] = pval[i] * keep * step
     pols[0] = pols_inception_first(s - 1)
     val[0] = pols[0] * bu_rente_pp_first(s - 1)
-    return pols, val
+    return tuple(pols), tuple(val)
 
 
 def dis_exits_first(s):
@@ -1252,7 +1252,7 @@ def runoff_cohorts_first(s):
     pols = [0.0] * n
     val = [0.0] * n
     if s <= 0:
-        return pols, val
+        return tuple(pols), tuple(val)
     ppols, pval = runoff_cohorts_first(s - 1)
     surv = 1.0 - mort_rate_first_mth(s - 1)
     exits = dis_exits_first(s - 1)
@@ -1261,7 +1261,7 @@ def runoff_cohorts_first(s):
     for k in range(1, n):
         pols[k] = ppols[k - 1] * surv
         val[k] = pval[k - 1] * surv
-    return pols, val
+    return tuple(pols), tuple(val)
 
 
 def pols_dis_dur_first(s, z):
@@ -1478,7 +1478,7 @@ def dis_cohorts(t):
         if z0 and z0 <= n:
             pols[z0 - 1] = pols_if_init()
             val[z0 - 1] = pols_if_init() * rente_pay_pp(t, z0)
-        return pols, val
+        return tuple(pols), tuple(val)
     ppols, pval = dis_cohorts(t - 1)
     qy = mort_rate_dis_mth_year(t - 1)
     ry = recov_rate_mth_year()
@@ -1493,7 +1493,7 @@ def dis_cohorts(t):
         val[i + 1] = pval[i] * keep * step
     pols[0] = pols_inception(t - 1)
     val[0] = pols[0] * bu_rente_pp(t - 1)
-    return pols, val
+    return tuple(pols), tuple(val)
 
 
 def dis_exits(t):
@@ -1544,7 +1544,7 @@ def runoff_cohorts(t):
     pols = [0.0] * n
     val = [0.0] * n
     if t <= 0:
-        return pols, val
+        return tuple(pols), tuple(val)
     ppols, pval = runoff_cohorts(t - 1)
     surv = 1.0 - mort_rate_mth(t - 1)
     exits = dis_exits(t - 1)
@@ -1553,7 +1553,7 @@ def runoff_cohorts(t):
     for k in range(1, n):
         pols[k] = ppols[k - 1] * surv
         val[k] = pval[k - 1] * surv
-    return pols, val
+    return tuple(pols), tuple(val)
 
 
 def pols_dis_dur(t, z):

@@ -784,7 +784,7 @@ def inc_pivots(cause):
     age.
     """
     s = data.incidence_table().loc[(cause, sex())]["rate"]           # noqa: F821
-    return [(int(a), float(r)) for a, r in s.items()]
+    return tuple((int(a), float(r)) for a, r in s.items())
 
 
 def inc_rate_at(x, cause):

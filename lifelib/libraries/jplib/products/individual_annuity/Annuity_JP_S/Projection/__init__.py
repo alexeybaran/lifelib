@@ -1661,7 +1661,7 @@ def mort_anchor_ages(table):
     construction is fitted to.
     """
     rows = data.mort_anchor_table().loc[(table, sex())]               # noqa: F821
-    return [int(a) for a in sorted(rows["age"])]
+    return tuple(int(a) for a in sorted(rows["age"]))
 
 
 def makeham_coeff(table):

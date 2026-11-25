@@ -889,7 +889,7 @@ def itt_rate_vectors():
     tau = [itt_to_ipt_rate_mth(z) for z in zs]
     qs = [itt_mort_rate_mth(z) for z in zs]
     surv = [(1.0 - r) * (1.0 - x) * (1.0 - d) for r, x, d in zip(rho, tau, qs)]
-    return rho, tau, qs, surv
+    return tuple(rho), tuple(tau), tuple(qs), tuple(surv)
 
 
 def itt_surv(z):

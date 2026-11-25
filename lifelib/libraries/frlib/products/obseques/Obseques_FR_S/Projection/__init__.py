@@ -733,7 +733,7 @@ def surr_scale_anchors():
     hundred projected months.
     """
     tbl = data.surr_scale_table().loc[surr_scale()]                  # noqa: F821
-    return [(int(m), float(v)) for m, v in zip(tbl.index, tbl["surr_value"])]
+    return tuple((int(m), float(v)) for m, v in zip(tbl.index, tbl["surr_value"]))
 
 
 def surr_scale_pp(t):

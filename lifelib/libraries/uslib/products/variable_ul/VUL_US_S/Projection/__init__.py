@@ -373,7 +373,7 @@ def subaccount_ids():
     Extending the lineup means adding a row here *and* the matching ``sa_pp_init_*``
     and ``alloc_*`` columns to the model point table.
     """
-    return list(data.subaccount_table().index)                       # noqa: F821
+    return tuple(data.subaccount_table().index)                       # noqa: F821
 
 
 def alloc(i):
