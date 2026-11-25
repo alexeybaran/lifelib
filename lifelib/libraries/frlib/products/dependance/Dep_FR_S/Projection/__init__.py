@@ -1050,6 +1050,9 @@ def carence_factor(t):
     a covered one does, and takes :func:`refunds_carence` with it.
     """
     tbl = data.cause_mix_table()                                     # noqa: F821
+    for c in tbl.index:
+        if c not in ("accident", "illness", "neuro"):
+            raise ValueError("invalid cause")
     return float(sum(tbl.loc[c, "share"] for c in tbl.index
                      if carence_months(Cause[c]) <= t))
 
