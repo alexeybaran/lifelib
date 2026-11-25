@@ -25,10 +25,11 @@ Checks:
 | uslib SEC tests | upstream 3,375 passed, 919 skipped; lean the same (see below) |
 | reviewer reproductions (wrong family, int, old calls, `None`, text labels, Reference changes, mutation of a returned tuple) | same outcome as upstream, except the intended tuple change |
 
-SEC: the full lean run gave 3,374 passed and 1 failed. The failure was VA_US_S
-`sub_ids`, converted to a tuple, which two SEC tests compare with a list. It was moved
-to `tuple_left`, which brings back upstream's text for that line. The failing test now
-passes, and VA_US_S's values and product tests are unchanged.
+SEC: a first lean run gave 3,374 passed and 1 failed. The failure was VA_US_S `sub_ids`,
+converted to a tuple, which two SEC tests compare with a list. It was moved to
+`tuple_left`, which brings back upstream's text for that line. After that, and after
+the ADE/Dep tuple change, the full lean SEC run gives 3,375 passed and 919 skipped, the
+same as upstream.
 
 ## Changed lines against upstream
 
