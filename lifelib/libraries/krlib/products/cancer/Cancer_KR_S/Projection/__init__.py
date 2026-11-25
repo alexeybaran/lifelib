@@ -601,7 +601,7 @@ def tier_wait_months(tier):
     product's two start dates come from -- 「유사암의 보장개시일은 계약일임」 [S1], the
     면책기간 table marking 유사암 진단비 with a cross [S1] [S2].
     """
-    return min(wait_months(), int(data.tier_table().loc[tier.name, "wait_months"]))  # noqa: F821
+    return min(wait_months(), int(data.tier_table().loc[tier, "wait_months"]))  # noqa: F821
 
 
 def cover(t):
@@ -675,7 +675,7 @@ def excess_hazard(tier, k):
     for the 특정소액암 tier; the front-loading and the ultimate level are **[std]**.
     """
     return float(data.survival_table().loc[                          # noqa: F821
-        (sex(), tier.name, k), "excess_hazard"])
+        (sex(), tier, k), "excess_hazard"])
 
 
 def mort_rate_waived_mth(t, k):
@@ -797,10 +797,10 @@ def tier_share(col, t):
     a = min(max(age(t), ages[0]), ages[-1])
     lo = max(g for g in ages if g <= a)
     hi = min(g for g in ages if g >= a)
-    v_lo = float(tbl.loc[lo, col.name])
+    v_lo = float(tbl.loc[lo, col])
     if hi == lo:
         return v_lo
-    v_hi = float(tbl.loc[hi, col.name])
+    v_hi = float(tbl.loc[hi, col])
     return v_lo + (v_hi - v_lo) * (a - lo) / (hi - lo)
 
 
@@ -1337,7 +1337,7 @@ def benefit_ratio(tier):
     """
     if tier == Tier.similar:
         return similar_ratio()
-    return float(data.tier_table().loc[tier.name, "benefit_ratio"])       # noqa: F821
+    return float(data.tier_table().loc[tier, "benefit_ratio"])       # noqa: F821
 
 
 def hosp_daily():
@@ -1458,7 +1458,7 @@ def premiums(t):
             * prem_payable(t) * in_force(t))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DIAG_GEN"``
@@ -1517,7 +1517,7 @@ def claims(t, kind):
     reduced tier. Real contracts also do **not** grade uniformly, and the composite's single
     20% relativity is itself the simplification flagged in the specification.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (
             Kind.DIAG_GEN, Kind.DIAG_HIGH, Kind.DIAG_MINOR, Kind.DIAG_SIMILAR, Kind.HOSP,
             Kind.SURGERY, Kind.TREAT, Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
@@ -1659,7 +1659,7 @@ def net_cf(t):
     weighted by :func:`pols_payer` and the care benefits by :func:`pols_cancer`, and the two are
     disjoint, so every error in the incidence basis hits both sides of the cash flow at once.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 

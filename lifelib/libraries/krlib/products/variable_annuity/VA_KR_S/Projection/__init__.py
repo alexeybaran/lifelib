@@ -452,8 +452,8 @@ def yrs_completed(t):
 
 def fund_ids():
     """The 특별계정 fund identifiers of this contract's allocation set, in order."""
-    return [int(i) for i in
-                 data.fund_table().loc[fund_set()].index]            # noqa: F821
+    return tuple(int(i) for i in
+                 data.fund_table().loc[fund_set()].index)            # noqa: F821
 
 
 def fund_alloc(j):
@@ -530,7 +530,7 @@ def charge_rate(line):
     연금수령기간 중 비용 — plus the commission scale and the insurer's own unit expenses
     [R2].
     """
-    return float(data.charge_table().at[line.name, "value"])              # noqa: F821
+    return float(data.charge_table().at[line, "value"])              # noqa: F821
 
 
 def loading_rate():
@@ -1401,7 +1401,7 @@ def pols_decr(t, kind):
     raise ValueError("unknown kind %r" % kind)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month ``t``, for one ``kind`` or, with ``kind=None``, all four.
 
     ``DEATH`` is the 사망보험금 including its GMDB top-up; ``LAPSE`` the 해약환급금;
@@ -1410,7 +1410,7 @@ def claims(t, kind):
     is deliberately absent from :func:`result_cf`, which publishes the split lines so that
     they sum to :func:`net_cf`.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
                 + claims(t, Kind.ANNUITY) + claims(t, Kind.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
@@ -1598,7 +1598,7 @@ def net_cf(t):
     them. :func:`net_cf_gen` and :func:`net_cf_sep` decompose this line by account and
     :func:`check_net_cf` asserts that they add back to it.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - withdrawals(t) - fund_expenses(t)
+    return (premiums(t) - claims(t) - withdrawals(t) - fund_expenses(t)
             - expenses(t) - commissions(t))
 
 

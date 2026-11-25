@@ -1470,7 +1470,7 @@ def premiums(t):
     return premium_mth_pp(t) * pols_payer(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1504,7 +1504,7 @@ def claims(t, kind):
         this chassis deliberately does not compute, the 계약자적립액 belonging to
         ``WholeLife_KR_S``.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.DEATH, Kind.ACC_DEATH, Kind.ACCEL, Kind.MATURITY, Kind.LAPSE))
     if kind == Kind.DEATH:
@@ -1653,7 +1653,7 @@ def net_cf(t):
     point a saw-tooth: a negative period immediately before each renewal and a jump back
     into surplus the period after, as the premium resets to attained age.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 

@@ -434,7 +434,7 @@ def sum_assured(cover):
     ``fracture`` ₩400,000, ``burn`` ₩200,000, ``liability`` ₩100,000,000 per occurrence and
     ``neonatal`` ₩10,000,000 as the 태아 module's own 가입금액.
     """
-    return float(model_point()["sa_" + cover.name])
+    return float(model_point()["sa_" + cover])
 
 
 def hosp_daily():
@@ -648,7 +648,7 @@ def runoff(t):
 
 def basis_param(name):
     """One scalar [std] parameter of the benefit basis, from *basis_table.csv*."""
-    return float(data.basis_table().loc[name.name, "value"])              # noqa: F821
+    return float(data.basis_table().loc[name, "value"])              # noqa: F821
 
 
 # --- mortality, on two lives ---
@@ -658,7 +658,7 @@ def mort_series(s):
 
     Held as a cells so the frame is sliced once per sex rather than once per lookup.
     """
-    return data.mort_table().loc[s.name]["mort_rate"]                     # noqa: F821
+    return data.mort_table().loc[s]["mort_rate"]                     # noqa: F821
 
 
 def mort_rate_at_age(x, s):
@@ -707,7 +707,7 @@ def mort_rate_payer(t):
 
 def lapse_param(name):
     """One parameter of the selected lapse basis, from *lapse_table.csv*."""
-    return float(data.lapse_table().loc[lapse_basis(), name.name])        # noqa: F821
+    return float(data.lapse_table().loc[lapse_basis(), name])        # noqa: F821
 
 
 def lapse_rate(t):
@@ -783,7 +783,7 @@ def inc_pivots(cause):
     Held as a cells so *incidence_table.csv* is sliced once per cause rather than once per
     age.
     """
-    s = data.incidence_table().loc[(cause.name, sex().name)]["rate"]           # noqa: F821
+    s = data.incidence_table().loc[(cause, sex())]["rate"]           # noqa: F821
     return [(int(a), float(r)) for a, r in s.items()]
 
 
@@ -1139,7 +1139,7 @@ def neonatal_cost_pp(timing):
     total = 0.0
     for item in tab.index:
         row = tab.loc[item]
-        if str(row["timing"]) != timing.name:
+        if str(row["timing"]) != timing:
             continue
         amount = (float(row["amount"])
                   + float(row["amount_ratio"]) * sum_assured(Cover.neonatal))
@@ -1223,7 +1223,7 @@ def benefit_pp(t, kind):
     if kind == Kind.SURGERY:
         total = 0.0
         for cause in (Cover.cancer, Cover.cerebral, Cover.cardiac):
-            total += (basis_param(BasisParam["surgery_rate_" + cause.name])
+            total += (basis_param(BasisParam["surgery_rate_" + cause])
                       * inc_rate_mth(t, cause) * frac_open(t, cause)
                       * cover_open(t, cause))
         return sum_assured(Cover.surgery) * total
@@ -1638,7 +1638,7 @@ def premiums(t):
     return premium_mth_pp(t) * prem_discount_factor(t) * pols_pay(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     The seven morbidity kinds of :func:`benefit_pp`, weighted by :func:`pols_if`, and four
@@ -1673,7 +1673,7 @@ def claims(t, kind):
         so the cash flow is a refund of premiums already collected and belongs in a validity
         adjustment rather than in the lapse column.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.DISABILITY, Kind.DIAGNOSIS, Kind.SURGERY, Kind.HOSPITAL, Kind.EVENT,
                     Kind.LIABILITY, Kind.NEONATAL, Kind.DEATH, Kind.LAPSE, Kind.MATURITY,
@@ -1782,7 +1782,7 @@ def net_cf(t):
     premium term looks like before discounting.  :func:`equiv_premium_mth_pp` is where the
     two sides are made to balance.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 
@@ -1811,7 +1811,7 @@ def epv_outgo_pp():
 
     Benefits, claim handling expense, acquisition and maintenance expense and commission.
     """
-    return sum(pv_factor(t) * (claims(t, Kind.ALL) + claim_expenses(t) + expenses(t)
+    return sum(pv_factor(t) * (claims(t) + claim_expenses(t) + expenses(t)
                                + commissions(t))
                for t in range(0, proj_len()))
 
@@ -2234,7 +2234,7 @@ avg_decl_rate = 0.025
 
 ref_age = 40
 
-ref_sex = ("Pickle", 9)
+ref_sex = "M"
 
 surr_chg_prem_rate = 0.05
 

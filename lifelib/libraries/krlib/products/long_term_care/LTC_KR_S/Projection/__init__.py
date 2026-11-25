@@ -547,7 +547,7 @@ def mort_rate_dem_mth(t):
 
 def lapse_param(name):
     """One parameter of the lapse vector, from *lapse_table.csv*."""
-    return float(data.lapse_table().loc[name.name, "value"])              # noqa: F821
+    return float(data.lapse_table().loc[name, "value"])              # noqa: F821
 
 
 def lapse_rate(t):
@@ -598,7 +598,7 @@ def prev_param(name):
     three-parameter logistic fitted to the five sourced 연령별 인정률 of the 2024
     노인장기요양보험 통계연보; the file also carries the five anchors themselves.
     """
-    return float(data.prevalence_table().loc[(sex(), name.name), "value"])  # noqa: F821
+    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
 
 
 def prev_rate_at(x):
@@ -645,7 +645,7 @@ def share_ge_at(grade, x):
     at 85 and over, and a model applying a single vector at all ages mis-prices this benefit
     by up to a factor of two.
     """
-    tbl = data.grade_share_table().loc[grade.name]                        # noqa: F821
+    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
     ages = sorted(float(a) for a in tbl.index)
     if x <= ages[0]:
         return float(tbl.loc[ages[0], "share_ge"])
@@ -667,7 +667,7 @@ def share_slope_at(grade, x):
     product rule, and it is **negative** over most of the range for a severe threshold, which
     is the U-shape doing its work.
     """
-    tbl = data.grade_share_table().loc[grade.name]                        # noqa: F821
+    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
     ages = sorted(float(a) for a in tbl.index)
     if x < ages[0] or x >= ages[-1]:
         return 0.0
@@ -946,7 +946,7 @@ def prog_rate_mth(t):
 
 def dem_param(name):
     """One parameter of the dementia-prevalence logistic, from *dementia_table.csv*."""
-    return float(data.dementia_table().loc[name.name, "value"])           # noqa: F821
+    return float(data.dementia_table().loc[name, "value"])           # noqa: F821
 
 
 def dem_prev_at(x):
@@ -1600,7 +1600,7 @@ def premiums(t):
     return premium_mth_pp() * pols_act(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of month t, by ``kind``.
 
     ``"LUMP"``
@@ -1642,7 +1642,7 @@ def claims(t, kind):
 
     With no ``kind``, the total of all seven.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.LUMP) + claims(t, Kind.ANNUITY) + claims(t, Kind.DEMENTIA)
                 + claims(t, Kind.DEATH) + claims(t, Kind.LAPSE) + claims(t, Kind.VOID)
                 + claims(t, Kind.MATURITY))
@@ -1762,7 +1762,7 @@ def net_cf(t):
     — and it is why 2024's supervisory attention on 무·저해지 lapse was aimed at exactly this
     kind of product.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 

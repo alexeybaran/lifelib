@@ -1,60 +1,62 @@
-"""IntEnum families passed as cell arguments in LTC_KR_S, stored with the model."""
+"""Label families passed as cell arguments in LTC_KR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Grade(IntEnum):
-    g1 = 0
-    g2 = 1
-    g3 = 2
-    g4 = 3
-    g5 = 4
-    g6 = 5
+from enum import StrEnum
 
 
-class LapseParam(IntEnum):
-    lapse_year1 = 0
-    lapse_completion = 1
-    lapse_ultimate = 2
-    lapse_level_std = 3
+class Grade(StrEnum):
+    g1 = "g1"
+    g2 = "g2"
+    g3 = "g3"
+    g4 = "g4"
+    g5 = "g5"
+    g6 = "g6"
 
 
-class PrevParam(IntEnum):
-    prev_ceil = 0
-    prev_beta = 1
-    prev_x_mid = 2
-    prev_obs_67 = 3
-    prev_obs_72 = 4
-    prev_obs_77 = 5
-    prev_obs_82 = 6
-    prev_obs_88 = 7
+class LapseParam(StrEnum):
+    lapse_year1 = "lapse_year1"
+    lapse_completion = "lapse_completion"
+    lapse_ultimate = "lapse_ultimate"
+    lapse_level_std = "lapse_level_std"
 
 
-class DemParam(IntEnum):
-    dem_ceil = 0
-    dem_beta = 1
-    dem_x_mid = 2
-    dem_factor_m = 3
-    dem_factor_f = 4
-    dem_obs_67 = 5
-    dem_obs_72 = 6
-    dem_obs_77 = 7
-    dem_obs_82 = 8
-    dem_obs_88 = 9
+class PrevParam(StrEnum):
+    prev_ceil = "prev_ceil"
+    prev_beta = "prev_beta"
+    prev_x_mid = "prev_x_mid"
+    prev_obs_67 = "prev_obs_67"
+    prev_obs_72 = "prev_obs_72"
+    prev_obs_77 = "prev_obs_77"
+    prev_obs_82 = "prev_obs_82"
+    prev_obs_88 = "prev_obs_88"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class DemParam(StrEnum):
+    dem_ceil = "dem_ceil"
+    dem_beta = "dem_beta"
+    dem_x_mid = "dem_x_mid"
+    dem_factor_m = "dem_factor_m"
+    dem_factor_f = "dem_factor_f"
+    dem_obs_67 = "dem_obs_67"
+    dem_obs_72 = "dem_obs_72"
+    dem_obs_77 = "dem_obs_77"
+    dem_obs_82 = "dem_obs_82"
+    dem_obs_88 = "dem_obs_88"
 
 
-class Kind(IntEnum):
-    LUMP = 0
-    ANNUITY = 1
-    DEMENTIA = 2
-    DEATH = 3
-    LAPSE = 4
-    VOID = 5
-    MATURITY = 6
-    ALL = 7
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    LUMP = "LUMP"
+    ANNUITY = "ANNUITY"
+    DEMENTIA = "DEMENTIA"
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    VOID = "VOID"
+    MATURITY = "MATURITY"

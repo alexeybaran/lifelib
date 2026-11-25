@@ -1,72 +1,74 @@
-"""IntEnum families passed as cell arguments in Child_KR_S, stored with the model."""
+"""Label families passed as cell arguments in Child_KR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Sex(IntEnum):
-    M = 0
-    F = 1
+from enum import StrEnum
 
 
-class LapseColumn(IntEnum):
-    first_year_rate = 0
-    completion_rate = 1
-    ultimate_rate = 2
+class Sex(StrEnum):
+    M = "M"
+    F = "F"
 
 
-class Cover(IntEnum):
-    disability = 0
-    disease_disab = 1
-    cancer = 2
-    minor_cancer = 3
-    cerebral = 4
-    cardiac = 5
-    surgery = 6
-    fracture = 7
-    burn = 8
-    hosp_acc = 9
-    hosp_dis = 10
-    liability = 11
-    neonatal = 12
+class LapseColumn(StrEnum):
+    first_year_rate = "first_year_rate"
+    completion_rate = "completion_rate"
+    ultimate_rate = "ultimate_rate"
 
 
-class Kind(IntEnum):
-    DISABILITY = 0
-    DIAGNOSIS = 1
-    SURGERY = 2
-    HOSPITAL = 3
-    EVENT = 4
-    LIABILITY = 5
-    NEONATAL = 6
-    DEATH = 7
-    LAPSE = 8
-    MATURITY = 9
-    VOID = 10
-    ALL = 11
+class Cover(StrEnum):
+    disability = "disability"
+    disease_disab = "disease_disab"
+    cancer = "cancer"
+    minor_cancer = "minor_cancer"
+    cerebral = "cerebral"
+    cardiac = "cardiac"
+    surgery = "surgery"
+    fracture = "fracture"
+    burn = "burn"
+    hosp_acc = "hosp_acc"
+    hosp_dis = "hosp_dis"
+    liability = "liability"
+    neonatal = "neonatal"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class Kind(StrEnum):
+    DISABILITY = "DISABILITY"
+    DIAGNOSIS = "DIAGNOSIS"
+    SURGERY = "SURGERY"
+    HOSPITAL = "HOSPITAL"
+    EVENT = "EVENT"
+    LIABILITY = "LIABILITY"
+    NEONATAL = "NEONATAL"
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"
+    VOID = "VOID"
 
 
-class NeoTiming(IntEnum):
-    birth = 0
-    block = 1
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
 
 
-class BasisParam(IntEnum):
-    disab_severity = 0
-    disease_disab_severity = 1
-    surgery_rate_cancer = 2
-    surgery_rate_cerebral = 3
-    surgery_rate_cardiac = 4
-    liability_severity = 5
-    hosp_cap_factor = 6
-    waiver_disab_share = 7
-    payer_disab_ratio = 8
-    leak_share = 9
-    void_rate_ann = 10
-    broad_def_factor = 11
-    net_prem_ratio = 12
+class NeoTiming(StrEnum):
+    birth = "birth"
+    block = "block"
+
+
+class BasisParam(StrEnum):
+    disab_severity = "disab_severity"
+    disease_disab_severity = "disease_disab_severity"
+    surgery_rate_cancer = "surgery_rate_cancer"
+    surgery_rate_cerebral = "surgery_rate_cerebral"
+    surgery_rate_cardiac = "surgery_rate_cardiac"
+    liability_severity = "liability_severity"
+    hosp_cap_factor = "hosp_cap_factor"
+    waiver_disab_share = "waiver_disab_share"
+    payer_disab_ratio = "payer_disab_ratio"
+    leak_share = "leak_share"
+    void_rate_ann = "void_rate_ann"
+    broad_def_factor = "broad_def_factor"
+    net_prem_ratio = "net_prem_ratio"

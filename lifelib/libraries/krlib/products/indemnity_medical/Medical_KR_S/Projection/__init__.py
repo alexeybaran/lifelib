@@ -846,7 +846,7 @@ def util_value(y, column):
     is applied against the stay length itself.
     """
     v = float(data.utilisation_table().loc[                          # noqa: F821
-        (sex(), util_band(y)), column.name])
+        (sex(), util_band(y)), column])
     if column == UtilColumn.los_days:
         return v
     return v * util_mult()
@@ -986,7 +986,7 @@ def sev_points(stream):
     cap truncates the top: the payment is a kinked function of cost, and applying the
     rule to a mean removes both kinks.
     """
-    sub = data.severity_table().loc[stream.name]                          # noqa: F821
+    sub = data.severity_table().loc[stream]                          # noqa: F821
     return list(zip(sub["cost"].tolist(), sub["prob"].tolist()))
 
 
@@ -1315,7 +1315,7 @@ def claims_np_pp(y):
     return claims_np_main_pp(y) + claims_np_three_pp(y)
 
 
-def claims_ann_pp(y, kind):
+def claims_ann_pp(y, kind=None):
     """The claim per policy in policy year y, by kind, after every limit.
 
     ``"GE_IN"``, ``"GE_OUT"``, ``"NP_IN"``, ``"NP_OUT"``, ``"NP_THREE"``.  The 급여 and
@@ -1323,7 +1323,7 @@ def claims_ann_pp(y, kind):
     still add to the limited total; the 3대비급여 limb is already at its own sub-limits.
     With no ``kind`` the sum over all five.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims_ann_pp(y, k) for k in
                    (Kind.GE_IN, Kind.GE_OUT, Kind.NP_IN, Kind.NP_OUT, Kind.NP_THREE))
     if kind == Kind.GE_IN:
@@ -1691,7 +1691,7 @@ def premiums(t):
     return prem_gross_mth(policy_year(t)) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of policy month t, by kind.
 
     ``"GE_IN"`` 급여 입원, ``"GE_OUT"`` 급여 통원, ``"NP_IN"`` 비급여 입원 including the
@@ -1704,7 +1704,7 @@ def claims(t, kind):
     relativity window — runs on the policy year, so the month is a presentation grid for
     an annual quantity rather than a unit of account.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.GE_IN, Kind.GE_OUT, Kind.NP_IN, Kind.NP_OUT, Kind.NP_THREE))
     return pols_if(t) * claims_ann_pp(policy_year(t), kind) / 12.0
@@ -1742,7 +1742,7 @@ def claim_expenses(t):
     in 2025 [R7].  Making it proportional to claims is the **[std]** choice because that is
     what drives it.
     """
-    return expense_claim_rate * claims(t, Kind.ALL)                            # noqa: F821
+    return expense_claim_rate * claims(t)                            # noqa: F821
 
 
 def commissions(t):
@@ -1773,7 +1773,7 @@ def net_cf(t):
     adds to the premium.  Year-1 claims on the anchor cell are 82.8% of year-1 premium,
     which reproduces the published 4세대 2022 combined loss ratio exactly.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t)
+    return (premiums(t) - claims(t) - expenses(t)
             - claim_expenses(t) - commissions(t))
 
 
@@ -1814,7 +1814,7 @@ def check_net_cf_resid(t):
     the printed statement, or counted twice, shows up here; so does a claim expense
     folded back into :func:`expenses` instead of standing on its own line.
     """
-    return net_cf(t) - (premiums(t) - claims(t, Kind.ALL) - expenses(t)
+    return net_cf(t) - (premiums(t) - claims(t) - expenses(t)
                         - claim_expenses(t) - commissions(t))
 
 
@@ -1966,7 +1966,7 @@ def check_indemnity_resid(y):
     retention, a deductible subtracted twice, or a per-visit cap applied to the wrong
     side of the deduction would all show here.
     """
-    return max(0.0, claims_ann_pp(y, Kind.ALL) - loss_incurred_pp(y) - 1e-6)
+    return max(0.0, claims_ann_pp(y) - loss_incurred_pp(y) - 1e-6)
 
 
 def check_indemnity():

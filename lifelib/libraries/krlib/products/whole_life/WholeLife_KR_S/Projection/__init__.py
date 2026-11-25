@@ -1569,7 +1569,7 @@ def premiums(t):
     return premium_mth_at_pp(t) * pols_pay_exp(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     Every kind is settled net of the 보험계약대출 balance opening the period, ``loan_pp(t)``,
@@ -1601,7 +1601,7 @@ def claims(t, kind):
     Every one of these is floored at zero: a loan can outgrow both the surrender value and,
     given long enough, the sum assured, and none of them may produce a negative payment.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.REDUCTION))
     if kind == Kind.DEATH:
         return max(0.0, sum_assured_at(t) - loan_pp(t)) * pols_death(t)
@@ -1695,7 +1695,7 @@ def net_cf(t):
     basis and the cliff produces a visible one-year hole instead — which is the whole
     reason the two bases are shipped side by side [REG-R27].
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 

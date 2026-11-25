@@ -907,7 +907,7 @@ def ci_rate_at_age(y, cause):
     if y > ci_cover_end_age:                                         # noqa: F821
         return 0.0
     return float(data.ci_incidence_table().loc[                      # noqa: F821
-        (sex(), y, cause.name), "ci_rate"])
+        (sex(), y, cause), "ci_rate"])
 
 
 def ci_wait_factor():
@@ -2020,7 +2020,7 @@ def premiums(t):
     return premium_mth_pp() * pols_if_pay(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Every payment here falls at the **end** of month ``t``, which is the month-end
@@ -2053,7 +2053,7 @@ def claims(t, kind):
     Every one of these is floored at zero: a loan can outgrow the surrender value and,
     given long enough, the residual, and none of them may produce a negative payment.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.CI) + claims(t, Kind.DEATH) + claims(t, Kind.DEATH_CI)
                 + claims(t, Kind.LAPSE) + claims(t, Kind.LAPSE_CI))
     if kind == Kind.CI:
@@ -2167,7 +2167,7 @@ def net_cf(t):
     front-loads that outgo**: on the anchor cell the CI benefit is paid a decade or more
     before the death benefit it accelerates.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 

@@ -1,41 +1,43 @@
-"""IntEnum families passed as cell arguments in Medical_KR_S, stored with the model."""
+"""Label families passed as cell arguments in Medical_KR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Stream(IntEnum):
-    ge_in = 0
-    ge_out = 1
-    np_in = 2
-    np_room = 3
-    np_out = 4
-    physio = 5
-    inject = 6
-    mri = 7
+from enum import StrEnum
 
 
-class UtilColumn(IntEnum):
-    adm_rate = 0
-    los_days = 1
-    visit_rate_ge = 2
-    visit_rate_np = 3
-    act_rate_physio = 4
-    act_rate_inject = 5
-    act_rate_mri = 6
+class Stream(StrEnum):
+    ge_in = "ge_in"
+    ge_out = "ge_out"
+    np_in = "np_in"
+    np_room = "np_room"
+    np_out = "np_out"
+    physio = "physio"
+    inject = "inject"
+    mri = "mri"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    BEF_SUSPEND = 2
-    BEF_RENEWAL = 3
-    AFT_DECR = 4
+class UtilColumn(StrEnum):
+    adm_rate = "adm_rate"
+    los_days = "los_days"
+    visit_rate_ge = "visit_rate_ge"
+    visit_rate_np = "visit_rate_np"
+    act_rate_physio = "act_rate_physio"
+    act_rate_inject = "act_rate_inject"
+    act_rate_mri = "act_rate_mri"
 
 
-class Kind(IntEnum):
-    GE_IN = 0
-    GE_OUT = 1
-    NP_IN = 2
-    NP_OUT = 3
-    NP_THREE = 4
-    ALL = 5
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    BEF_SUSPEND = "BEF_SUSPEND"
+    BEF_RENEWAL = "BEF_RENEWAL"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    GE_IN = "GE_IN"
+    GE_OUT = "GE_OUT"
+    NP_IN = "NP_IN"
+    NP_OUT = "NP_OUT"
+    NP_THREE = "NP_THREE"

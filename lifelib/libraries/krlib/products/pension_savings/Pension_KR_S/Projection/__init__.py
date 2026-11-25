@@ -641,12 +641,12 @@ def pricing_basis(item):
     carries a ``provenance`` tag in the CSV rather than sitting as an untagged constant in a
     formula.
     """
-    return float(data.pricing_table().loc[item.name, "value"])            # noqa: F821
+    return float(data.pricing_table().loc[item, "value"])            # noqa: F821
 
 
 def expense_basis(item):
     """One row of the best-estimate cash expense and commission table, as a float."""
-    return float(data.expense_table().loc[item.name, "value"])            # noqa: F821
+    return float(data.expense_table().loc[item, "value"])            # noqa: F821
 
 
 def tax_basis(item):
@@ -655,7 +655,7 @@ def tax_basis(item):
     Nothing read through here is an insurer cash flow.  The tax layer drives the behavioural
     assumptions on this product; it does not appear in :func:`net_cf`.
     """
-    return float(data.tax_table().loc[item.name, "value"])                # noqa: F821
+    return float(data.tax_table().loc[item, "value"])                # noqa: F821
 
 
 def prem_freq():
@@ -813,7 +813,7 @@ def omega_age(table):
     published at all.  ``q`` is truncated to 1 there.
     """
     return int(data.mort_anchor_table().loc[                         # noqa: F821
-        (table.name, sex(), "omega_age"), "value"])
+        (table, sex(), "omega_age"), "value"])
 
 
 def mort_anchor(table, item):
@@ -824,7 +824,7 @@ def mort_anchor(table, item):
     ``pub_q_*`` rows the published anchor rates the law was fitted to.
     """
     return float(data.mort_anchor_table().loc[                       # noqa: F821
-        (table.name, sex(), item.name), "value"])
+        (table, sex(), item), "value"])
 
 
 def mort_rate_law(table, x):
@@ -851,7 +851,7 @@ def mort_rate_at_age(table, x):
     """
     if x >= omega_age(table):
         return 1.0
-    return float(data.mort_table().loc[(table.name, sex(), x), "mort_rate"])  # noqa: F821
+    return float(data.mort_table().loc[(table, sex(), x), "mort_rate"])  # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1522,7 +1522,7 @@ def premiums(t):
     return (prem_mth_pp() + addl_prem_mth_pp()) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"ANNUITY"``
@@ -1541,7 +1541,7 @@ def claims(t, kind):
         surrender charge is nil: **the two decrements differ in their rate, not in their
         payment**.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.ANNUITY, Kind.DEATH, Kind.LAPSE))
     if kind == Kind.ANNUITY:
         return annuity_pp(t) * pols_if(t)
@@ -1637,7 +1637,7 @@ def net_cf(t):
     through the insurer's account, and folding either into this line would misstate the
     liability in a way no reconciliation would catch.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t) - policy_loans(t))
 
 

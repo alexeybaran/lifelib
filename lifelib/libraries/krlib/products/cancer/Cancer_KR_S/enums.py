@@ -1,36 +1,38 @@
-"""IntEnum families passed as cell arguments in Cancer_KR_S, stored with the model."""
+"""Label families passed as cell arguments in Cancer_KR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Tier(IntEnum):
-    high = 0
-    general = 1
-    minor = 2
-    similar = 3
+from enum import StrEnum
 
 
-class ShareColumn(IntEnum):
-    minor_share = 0
-    high_share = 1
-    similar_share = 2
+class Tier(StrEnum):
+    high = "high"
+    general = "general"
+    minor = "minor"
+    similar = "similar"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    AFT_DECR = 1
-    BEF_LAPSE = 2
+class ShareColumn(StrEnum):
+    minor_share = "minor_share"
+    high_share = "high_share"
+    similar_share = "similar_share"
 
 
-class Kind(IntEnum):
-    DIAG_GEN = 0
-    DIAG_HIGH = 1
-    DIAG_MINOR = 2
-    DIAG_SIMILAR = 3
-    HOSP = 4
-    SURGERY = 5
-    TREAT = 6
-    DEATH = 7
-    LAPSE = 8
-    MATURITY = 9
-    ALL = 10
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    AFT_DECR = "AFT_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+
+
+class Kind(StrEnum):
+    DIAG_GEN = "DIAG_GEN"
+    DIAG_HIGH = "DIAG_HIGH"
+    DIAG_MINOR = "DIAG_MINOR"
+    DIAG_SIMILAR = "DIAG_SIMILAR"
+    HOSP = "HOSP"
+    SURGERY = "SURGERY"
+    TREAT = "TREAT"
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    MATURITY = "MATURITY"

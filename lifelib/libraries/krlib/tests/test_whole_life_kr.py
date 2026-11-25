@@ -84,8 +84,6 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from kr_registry import model_path
-from kr_registry import model_enums
-PolTiming, Kind = model_enums("WholeLife_KR_S", "PolTiming", "Kind")
 
 MODEL_DIR = model_path("WholeLife_KR_S")
 
@@ -568,9 +566,9 @@ def test_worked_example_cash_flow_row(kr_whole_life_anchor, t):
     a = kr_whole_life_anchor
     assert a.pols_if(t) == pytest.approx(pols, abs=INFORCE)
     assert a.premiums(t) == pytest.approx(prem, abs=WON)
-    assert a.claims(t, Kind.DEATH) == pytest.approx(death, abs=WON)
-    assert a.claims(t, Kind.LAPSE) == pytest.approx(lapse, abs=WON)
-    assert a.claims(t, Kind.REDUCTION) == 0.0
+    assert a.claims(t, "DEATH") == pytest.approx(death, abs=WON)
+    assert a.claims(t, "LAPSE") == pytest.approx(lapse, abs=WON)
+    assert a.claims(t, "REDUCTION") == 0.0
     assert a.claim_expenses(t) == pytest.approx(claim_exp, abs=WON)
     assert a.expenses(t) == pytest.approx(exp, abs=WON)
     assert a.commissions(t) == pytest.approx(comm, abs=WON)
@@ -623,7 +621,7 @@ def test_worked_example_month_one_trace(kr_whole_life_anchor):
     assert a.mort_rate_mth(0) == pytest.approx(
         1.0 - (1.0 - 0.00085) ** (1.0 / 12.0), rel=1e-15)
     assert a.pols_death(0) == pytest.approx(a.mort_rate_mth(0), rel=1e-14)
-    assert a.claims(0, Kind.DEATH) == pytest.approx(1e8 * a.mort_rate_mth(0), abs=WON)
+    assert a.claims(0, "DEATH") == pytest.approx(1e8 * a.mort_rate_mth(0), abs=WON)
     assert a.claim_expenses(0) == pytest.approx(300000.0 * a.mort_rate_mth(0), abs=WON)
 
     j = a.acc_int_rate_mth()
@@ -635,9 +633,9 @@ def test_worked_example_month_one_trace(kr_whole_life_anchor):
     assert a.pol_val_pp(1) - a.surr_chg_pp(1) == pytest.approx(-2896642.47, abs=WON)
     assert a.cv_std_pp(1) == 0.0
     assert a.cv_pp(1) == 0.0 and a.cv_susp_pp(1) == 0.0
-    assert a.claims(0, Kind.LAPSE) == 0.0            # a nil value costs nothing to lapse
+    assert a.claims(0, "LAPSE") == 0.0            # a nil value costs nothing to lapse
 
-    assert a.pols_if_at(0, PolTiming.BEF_LAPSE) == pytest.approx(
+    assert a.pols_if_at(0, "BEF_LAPSE") == pytest.approx(
         1.0 - a.mort_rate_mth(0), rel=1e-14)
     assert a.pols_lapse(0) == pytest.approx(0.0087409915, abs=PROB)
     assert a.expenses(0) == pytest.approx(
@@ -665,13 +663,13 @@ def test_worked_example_second_month_and_the_turn_of_the_policy_year(
     a = kr_whole_life_anchor
     assert a.premiums(1) == pytest.approx(G_GROSS_MTH * 0.9911881475, abs=WON)
     assert a.pols_death(1) == pytest.approx(0.0000702365276, abs=PROB)
-    assert a.claims(1, Kind.DEATH) == pytest.approx(7023.65, abs=WON)
+    assert a.claims(1, "DEATH") == pytest.approx(7023.65, abs=WON)
     assert a.inflation_factor(1) == 1.0
     assert a.expenses(1) == pytest.approx(
         5000.0 * 0.9911881475 + 0.02 * a.premiums(1), abs=TRACE)
     assert a.commissions(1) == 0.0
     assert all(a.commissions(t) == 0.0 for t in range(1, 12))
-    assert a.pols_if_at(1, PolTiming.BEF_LAPSE) == pytest.approx(0.9911179110126589, rel=1e-12)
+    assert a.pols_if_at(1, "BEF_LAPSE") == pytest.approx(0.9911179110126589, rel=1e-12)
     assert a.pols_lapse(1) == pytest.approx(0.0086639672, abs=PROB)
     assert a.pols_if(2) == pytest.approx(0.9824539438243545, rel=1e-13)
     assert a.pol_val_pp(2) == pytest.approx(346515.871886832, abs=TRACE)
@@ -737,7 +735,7 @@ def test_worked_example_cliff_trace(kr_whole_life_anchor):
     assert a.pols_if(239) == pytest.approx(0.5948434384, abs=PROB)
     assert a.lapse_rate(239) == pytest.approx(0.001, abs=PROB)
     assert a.lapse_rate_mth(239) == pytest.approx(0.0000833716, abs=PROB)
-    assert a.pols_if_at(239, PolTiming.BEF_LAPSE) == pytest.approx(0.5946128794462873, rel=1e-13)
+    assert a.pols_if_at(239, "BEF_LAPSE") == pytest.approx(0.5946128794462873, rel=1e-13)
     assert a.pols_lapse(239) == pytest.approx(0.0000495738, abs=PROB)
     assert a.pol_val_pp(240) == pytest.approx(52023973.58836918, abs=TRACE)
     assert a.surr_chg_pp(240) == 0.0
@@ -745,9 +743,9 @@ def test_worked_example_cliff_trace(kr_whole_life_anchor):
     assert a.cv_mult(240) == 1.0 and a.cv_mult(239) == 0.5
     assert a.cv_pp(240) == pytest.approx(52023973.58836918, abs=TRACE)
     assert a.cv_susp_pp(240) == pytest.approx(26011986.79418459, abs=TRACE)
-    assert a.claims(239, Kind.LAPSE) == pytest.approx(
+    assert a.claims(239, "LAPSE") == pytest.approx(
         a.cv_pp(240) * a.pols_lapse(239), rel=1e-12)
-    assert a.claims(239, Kind.LAPSE) == pytest.approx(2579.03, abs=WON)
+    assert a.claims(239, "LAPSE") == pytest.approx(2579.03, abs=WON)
     assert a.expenses(239) == pytest.approx(
         5000.0 * 1.02 ** 19 * 0.5948434384 + 0.02 * a.premiums(239), abs=1e-3)
     assert a.commissions(239) == pytest.approx(0.03 * a.premiums(239), rel=1e-12)
@@ -769,21 +767,21 @@ def test_worked_example_first_premium_free_month_trace(kr_whole_life_anchor):
     assert a.premiums(240) == 0.0
     assert a.commissions(240) == 0.0
     assert a.pols_death(240) == pytest.approx(0.0002520375, abs=PROB)
-    assert a.claims(240, Kind.DEATH) == pytest.approx(25203.75, abs=WON)
+    assert a.claims(240, "DEATH") == pytest.approx(25203.75, abs=WON)
     assert a.pol_val_pp(241) == pytest.approx(52110834.06671206, abs=TRACE)
     assert a.pol_val_pp(241) == pytest.approx(
         (52023973.58836918 * (1 + a.acc_int_rate_mth())
          - a.mort_rate_mth(240) * 1e8) / (1 - a.mort_rate_mth(240)), rel=1e-12)
     assert a.cv_pp(241) == pytest.approx(a.cv_std_pp(241), rel=1e-14)
-    assert a.pols_if_at(240, PolTiming.BEF_LAPSE) == pytest.approx(0.5943112681278924, rel=1e-13)
+    assert a.pols_if_at(240, "BEF_LAPSE") == pytest.approx(0.5943112681278924, rel=1e-13)
     assert a.pols_lapse(240) == pytest.approx(0.0003976677, abs=PROB)
-    assert a.claims(240, Kind.LAPSE) == pytest.approx(20722.80, abs=WON)
+    assert a.claims(240, "LAPSE") == pytest.approx(20722.80, abs=WON)
     # Maintenance only: no premium, so no premium-related component.
     assert a.expenses(240) == pytest.approx(
         5000.0 * 1.02 ** 20 * 0.5945633056, abs=1e-3)
     assert a.net_cf(240) == pytest.approx(-50419.61, abs=WON)
     assert a.net_cf(239) - a.net_cf(240) == pytest.approx(CLIFF_SWING, abs=WON)
-    assert a.claims(240, Kind.LAPSE) / a.claims(239, Kind.LAPSE) == pytest.approx(
+    assert a.claims(240, "LAPSE") / a.claims(239, "LAPSE") == pytest.approx(
         8.0351, abs=5e-5)
 
 
@@ -933,7 +931,7 @@ def test_the_flat_basis_run_is_the_disclosure_the_guidance_obliges(tmp_path):
         assert p.lapse_basis() == "flat"
         for t in (228, 239, 240):
             assert p.lapse_rate(t) == FLAT_BASIS[f"lapse_rate_{t}"]
-            assert p.claims(t, Kind.LAPSE) == pytest.approx(
+            assert p.claims(t, "LAPSE") == pytest.approx(
                 FLAT_BASIS[f"claims_lapse_{t}"], abs=WON)
         assert p.net_cf(239) == pytest.approx(FLAT_BASIS["net_cf_239"], abs=WON)
         assert p.pols_if(239) == pytest.approx(FLAT_BASIS["pols_if_239"], abs=INFORCE)
@@ -983,7 +981,7 @@ def test_the_ten_shipped_model_points_reach_their_signature_numbers(whole_life):
     assert p[8].refund_ratio(84) == pytest.approx(POINT_8_REFUND_7, abs=RATIO)
     assert p[9].pol_val_pp(240) / p[9].prosp_val_pp(240) - 1.0 == pytest.approx(
         POINT_9_PROSP_GAP, abs=5e-6)
-    assert p[10].claims(179, Kind.REDUCTION) == pytest.approx(POINT_10_REDUCTION, abs=WON)
+    assert p[10].claims(179, "REDUCTION") == pytest.approx(POINT_10_REDUCTION, abs=WON)
     assert p[10].net_cf(179) == pytest.approx(POINT_10_NET_CF_179, abs=WON)
 
 
@@ -1060,13 +1058,13 @@ def test_pitfall_off_by_one_at_the_boundary(kr_whole_life_anchor):
     """
     a = kr_whole_life_anchor
     m = a.prem_period_mths()
-    assert a.claims(m - 1, Kind.LAPSE) == pytest.approx(
+    assert a.claims(m - 1, "LAPSE") == pytest.approx(
         a.cv_pp(m) * a.pols_lapse(m - 1), rel=1e-12)
     suppressed = a.cv_susp_pp(m) * a.pols_lapse(m - 1)
-    assert a.claims(m - 1, Kind.LAPSE) - suppressed == pytest.approx(1289.51, abs=WON)
-    assert a.claims(m - 1, Kind.LAPSE) == pytest.approx(2.0 * suppressed, rel=1e-12)
+    assert a.claims(m - 1, "LAPSE") - suppressed == pytest.approx(1289.51, abs=WON)
+    assert a.claims(m - 1, "LAPSE") == pytest.approx(2.0 * suppressed, rel=1e-12)
     # The month before is on the suppressed value, and both cells publish their own.
-    assert a.claims(m - 2, Kind.LAPSE) == pytest.approx(
+    assert a.claims(m - 2, "LAPSE") == pytest.approx(
         a.cv_susp_pp(m - 1) * a.pols_lapse(m - 2), rel=1e-12)
     assert a.cv_pp(m - 1) == pytest.approx(a.cv_susp_pp(m - 1), rel=1e-14)
     assert a.cv_pp(m) != pytest.approx(a.cv_susp_pp(m), rel=1e-6)
@@ -1212,10 +1210,10 @@ def test_pitfall_premiums_stop_at_m_and_nothing_else_does(kr_whole_life_anchor):
     for t in (m, 360, 600, a.proj_len() - 1):
         assert a.premiums(t) == 0.0
         assert a.commissions(t) == 0.0
-        assert a.claims(t, Kind.DEATH) > 0.0
+        assert a.claims(t, "DEATH") > 0.0
     for t in (m, 360, 600):
         assert a.expenses(t) > 0.0
-    assert a.claims(m, Kind.LAPSE) > 0.0
+    assert a.claims(m, "LAPSE") > 0.0
     assert a.cum_prem_pp(m) == a.cum_prem_pp(a.proj_len()) == 55522800.0
     # The premium-related expense goes with the premium; the per-policy one does not.
     assert a.expenses(240) == pytest.approx(
@@ -1240,7 +1238,7 @@ def test_pitfall_the_policy_loan_does_not_exist_on_a_muhaeji_contract(whole_life
     assert nil.cv_floor_ratio() == 0.0
     assert nil.loan_util() == 1.0 and nil.loan_year() == 10
     assert all(nil.cv_pp(d) == 0.0 for d in range(1, 240))
-    assert all(nil.claims(t, Kind.LAPSE) == 0.0 for t in range(239))
+    assert all(nil.claims(t, "LAPSE") == 0.0 for t in range(239))
     assert nil.cv_std_pp(108) > 10000000.0      # there is a value; it is not payable
     assert nil.loan_draw(108) == 0.0            # policy year 10 opens at the month t = 108
     assert all(nil.loan_pp(d) == 0.0 for d in range(nil.proj_len() + 1))
@@ -1282,13 +1280,13 @@ def test_pitfall_everything_is_floored_at_zero(whole_life):
     assert p.loan_pp(871) > p.cv_pp(872)
     assert p.pols_if(871) > 0.0                 # the floor bites on a live cohort
     for t in (871, 872, 900):
-        assert p.claims(t, Kind.DEATH) == 0.0
-        assert p.claims(t, Kind.LAPSE) == 0.0
-    assert p.claims(870, Kind.DEATH) > 0.0
+        assert p.claims(t, "DEATH") == 0.0
+        assert p.claims(t, "LAPSE") == 0.0
+    assert p.claims(870, "DEATH") > 0.0
     for t in range(p.proj_len()):
-        assert p.claims(t, Kind.DEATH) >= 0.0
-        assert p.claims(t, Kind.LAPSE) >= 0.0
-        assert p.claims(t, Kind.REDUCTION) >= 0.0
+        assert p.claims(t, "DEATH") >= 0.0
+        assert p.claims(t, "LAPSE") >= 0.0
+        assert p.claims(t, "REDUCTION") >= 0.0
     assert all(p.cv_pp(d) >= 0.0 for d in range(p.proj_len() + 1))
     # Korea has no loan-excess lapse: the balance absorbs the payout, it does not
     # terminate the contract, so the policy is still in force with a zero benefit.
@@ -1474,7 +1472,7 @@ def test_pitfall_there_is_no_paid_up_or_extended_term_option(whole_life):
         assert not [n for n in names if stem in n], f"{stem}: not a Korean feature"
     assert {"reduce_year", "reduce_frac", "sa_factor", "sum_assured_at"} <= names
     p = whole_life.Projection[10]
-    assert p.claims(179, Kind.REDUCTION) == pytest.approx(POINT_10_REDUCTION, abs=WON)
+    assert p.claims(179, "REDUCTION") == pytest.approx(POINT_10_REDUCTION, abs=WON)
     assert p.premium_mth_at_pp(180) == pytest.approx(
         0.5 * p.premium_mth_pp(), rel=1e-14)
     assert p.premiums(180) == 0.0               # 10년납: the premium had already stopped
@@ -1494,8 +1492,8 @@ def test_pitfall_a_refused_claim_is_not_a_zero_payment(whole_life):
     for stem in ("exclusion", "suicide", "myeonchaek", "forfeit", "contest"):
         names = set(whole_life.Projection.cells) | set(whole_life.Projection.refs)
         assert not [n for n in names if stem in n], f"{stem}: an unmodelled exclusion"
-    assert a.claims(9, Kind.ALL) == pytest.approx(
-        a.claims(9, Kind.DEATH) + a.claims(9, Kind.LAPSE) + a.claims(9, Kind.REDUCTION),
+    assert a.claims(9) == pytest.approx(
+        a.claims(9, "DEATH") + a.claims(9, "LAPSE") + a.claims(9, "REDUCTION"),
         rel=1e-12)
     with pytest.raises(FormulaError):
         a.claims(9, "EXCLUDED")
@@ -1637,12 +1635,12 @@ def test_death_is_decremented_before_lapse(kr_whole_life_anchor):
     a = kr_whole_life_anchor
     ts = range(a.proj_len())
     for t in (0, 4, 239, 240, 468):
-        assert a.pols_if_at(t, PolTiming.BEF_DECR) == a.pols_if(t)
-        assert a.pols_if_at(t, PolTiming.BEF_LAPSE) == pytest.approx(
+        assert a.pols_if_at(t, "BEF_DECR") == a.pols_if(t)
+        assert a.pols_if_at(t, "BEF_LAPSE") == pytest.approx(
             a.pols_if(t) * (1 - a.mort_rate_mth(t)), rel=1e-14)
         assert a.pols_lapse(t) == pytest.approx(
-            a.pols_if_at(t, PolTiming.BEF_LAPSE) * a.lapse_rate_mth(t), rel=1e-14)
-        assert a.pols_if_at(t, PolTiming.AFT_DECR) == pytest.approx(a.pols_if(t + 1), abs=1e-14)
+            a.pols_if_at(t, "BEF_LAPSE") * a.lapse_rate_mth(t), rel=1e-14)
+        assert a.pols_if_at(t, "AFT_DECR") == pytest.approx(a.pols_if(t + 1), abs=1e-14)
         assert a.pols_lapse(t) < a.pols_if(t) * a.lapse_rate_mth(t)
 
     reversed_lapses = sum(a.pols_if(t) * a.lapse_rate_mth(t) for t in ts)
@@ -1693,13 +1691,13 @@ def test_the_reduction_is_taken_after_both_decrements(whole_life):
     assert p.reduce_year() == 15
     # Policy year 15 closes at the 계약해당일 d = 180, so the 감액 falls in the month
     # t = 179 and in no other: a monthly grid can put it on its date.
-    assert p.claims(179, Kind.REDUCTION) == pytest.approx(
-        0.5 * max(0.0, p.cv_pp(180) - p.loan_pp(179)) * p.pols_if_at(179, PolTiming.AFT_DECR),
+    assert p.claims(179, "REDUCTION") == pytest.approx(
+        0.5 * max(0.0, p.cv_pp(180) - p.loan_pp(179)) * p.pols_if_at(179, "AFT_DECR"),
         rel=1e-12)
-    assert p.pols_if_at(179, PolTiming.AFT_DECR) < p.pols_if(179)
+    assert p.pols_if_at(179, "AFT_DECR") < p.pols_if(179)
     naive = 0.5 * p.cv_pp(180) * p.pols_if(179)
-    assert naive - p.claims(179, Kind.REDUCTION) == pytest.approx(653191.38, abs=WON)
-    assert all(p.claims(t, Kind.REDUCTION) == 0.0
+    assert naive - p.claims(179, "REDUCTION") == pytest.approx(653191.38, abs=WON)
+    assert all(p.claims(t, "REDUCTION") == 0.0
                for t in range(p.proj_len()) if t != 179)
     assert p.check_net_cf() is True
 
@@ -1762,7 +1760,7 @@ def test_the_loan_balance_accumulates_at_the_vintage_loan_rate(whole_life):
     # The advance is not income and not outgo: the draw month is identical to the anchor's.
     assert p.net_cf(107) == pytest.approx(base.net_cf(107), rel=1e-14)
     assert p.net_cf(109) > base.net_cf(109)     # it shows up in reduced benefits
-    assert p.claims(109, Kind.DEATH) == pytest.approx(
+    assert p.claims(109, "DEATH") == pytest.approx(
         (p.sum_assured() - p.loan_pp(109)) * p.pols_death(109), rel=1e-12)
 
 
@@ -1843,7 +1841,7 @@ def test_net_cf_carries_the_notes_own_sign(whole_life):
     assert all(a.net_cf(t) > 0.0 for t in range(1, 240))
     assert all(a.net_cf(t) < 0.0 for t in range(240, a.proj_len()))
     assert a.net_cf(0) == pytest.approx(
-        a.premiums(0) - a.claims(0, Kind.ALL) - a.claim_expenses(0) - a.expenses(0)
+        a.premiums(0) - a.claims(0) - a.claim_expenses(0) - a.expenses(0)
         - a.commissions(0), rel=1e-12)
 
 
@@ -1861,7 +1859,7 @@ def test_there_is_no_maturity_benefit_and_no_tail_states(whole_life):
                    "benefit_maturity_pp"):
         assert absent not in names, f"{absent}: this contract does not mature"
     t_end = a.proj_len() - 1
-    assert a.claims(t_end, Kind.ALL) == pytest.approx(a.claims(t_end, Kind.DEATH), rel=1e-12)
+    assert a.claims(t_end) == pytest.approx(a.claims(t_end, "DEATH"), rel=1e-12)
     assert a.pols_lapse(t_end) == 0.0
     assert a.pols_if(t_end + 1) == 0.0
     with pytest.raises(FormulaError):
@@ -2184,7 +2182,7 @@ def test_an_input_can_be_swapped_without_touching_formulas(tmp_path):
         alt = "mort_table_doubled.csv"
         doubled.to_csv(model.Data.input_dir() / alt)
 
-        base = model.Projection[1].claims(0, Kind.DEATH)
+        base = model.Projection[1].claims(0, "DEATH")
         assert base == pytest.approx(7086.09, abs=WON)
         model.Data.mort_table_file = alt
         model.Data.clear_all()
@@ -2195,7 +2193,7 @@ def test_an_input_can_be_swapped_without_touching_formulas(tmp_path):
         assert p.mort_rate(0) == pytest.approx(2 * 0.00085, rel=1e-12)
         assert p.mort_rate_mth(0) == pytest.approx(
             1.0 - (1.0 - 2 * 0.00085) ** (1.0 / 12.0), rel=1e-12)
-        claim = p.claims(0, Kind.DEATH)
+        claim = p.claims(0, "DEATH")
         assert claim == pytest.approx(2 * base, rel=1e-3)
         assert claim > 2 * base
     finally:

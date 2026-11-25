@@ -1,45 +1,47 @@
-"""IntEnum families passed as cell arguments in VA_KR_S, stored with the model."""
+"""Label families passed as cell arguments in VA_KR_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class FundTiming(IntEnum):
-    BEF_PREM = 0
-    BEF_DEDUCT = 1
-    AFT_DEDUCT = 2
-    AFT_DERISK = 3
+from enum import StrEnum
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class FundTiming(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    BEF_DEDUCT = "BEF_DEDUCT"
+    AFT_DEDUCT = "AFT_DEDUCT"
+    AFT_DERISK = "AFT_DERISK"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    LAPSE = 1
-    ANNUITY = 2
-    MATURITY = 3
-    ALL = 4
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
 
 
-class ChargeLine(IntEnum):
-    acq_charge = 0
-    maint_charge_in = 1
-    maint_charge_after = 2
-    other_charge = 3
-    gmdb_charge = 4
-    gmab_charge_asset = 5
-    gmab_charge_prem = 6
-    surr_charge = 7
-    surr_charge_cap = 8
-    annuity_charge = 9
-    fund_expense = 10
-    comm_yr1 = 11
-    comm_yr2 = 12
-    comm_yr3 = 13
-    comm_yr4 = 14
-    comm_yr5 = 15
-    expense_acq = 16
-    expense_maint = 17
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    LAPSE = "LAPSE"
+    ANNUITY = "ANNUITY"
+    MATURITY = "MATURITY"
+
+
+class ChargeLine(StrEnum):
+    acq_charge = "acq_charge"
+    maint_charge_in = "maint_charge_in"
+    maint_charge_after = "maint_charge_after"
+    other_charge = "other_charge"
+    gmdb_charge = "gmdb_charge"
+    gmab_charge_asset = "gmab_charge_asset"
+    gmab_charge_prem = "gmab_charge_prem"
+    surr_charge = "surr_charge"
+    surr_charge_cap = "surr_charge_cap"
+    annuity_charge = "annuity_charge"
+    fund_expense = "fund_expense"
+    comm_yr1 = "comm_yr1"
+    comm_yr2 = "comm_yr2"
+    comm_yr3 = "comm_yr3"
+    comm_yr4 = "comm_yr4"
+    comm_yr5 = "comm_yr5"
+    expense_acq = "expense_acq"
+    expense_maint = "expense_maint"
