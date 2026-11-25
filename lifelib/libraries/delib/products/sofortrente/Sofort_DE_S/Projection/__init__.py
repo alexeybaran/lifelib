@@ -302,7 +302,7 @@ def sex(life=1):
         raise ValueError("invalid life")
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
-    return v
+    return Sex[v]
 
 
 def entry_year():
@@ -580,13 +580,13 @@ def mort_rate_at_age(x, table_sex, basis):
     matters: on a joint-life point the frame runs to the *second* life's horizon, so the
     annuitant's attained age passes the closing row while their survival is already zero.
     """
-    if table_sex == "U":
-        return (mix_male * mort_rate_at_age(x, "M", basis)           # noqa: F821
-                + (1.0 - mix_male) * mort_rate_at_age(x, "F", basis))   # noqa: F821
+    if table_sex == Sex.U:
+        return (mix_male * mort_rate_at_age(x, Sex.M, basis)           # noqa: F821
+                + (1.0 - mix_male) * mort_rate_at_age(x, Sex.F, basis))   # noqa: F821
     tab = data.mort_table()                                          # noqa: F821
     ages = tab.index.get_level_values("age")
     xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+    return float(tab.loc[(basis.name, table_sex.name, xx), "mort_rate"])
 
 
 def improve_rate_at_age(x, basis):
@@ -601,7 +601,7 @@ def improve_rate_at_age(x, basis):
     tab = data.improvement_table()                                   # noqa: F821
     ages = tab.index.get_level_values("age")
     xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, xx), "improve_rate"])
+    return float(tab.loc[(basis.name, xx), "improve_rate"])
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
@@ -639,7 +639,7 @@ def mort_rate(t, life=1):
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
-    return mort_rate_gen(age(t, life), sex(life), birth_year(life), "SECOND")
+    return mort_rate_gen(age(t, life), sex(life), birth_year(life), Basis.SECOND)
 
 
 def mort_rate_mth(t, life=1):
@@ -665,7 +665,7 @@ def mort_rate_tariff(t, life=1):
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
-    return mort_rate_gen(age(t, life), "U", birth_year(life), "FIRST")
+    return mort_rate_gen(age(t, life), Sex.U, birth_year(life), Basis.FIRST)
 
 
 def mort_rate_tariff_mth(t, life=1):
@@ -1078,7 +1078,7 @@ def premiums(t):
     return 0.0
 
 
-def annuity_payments(t, kind=None):
+def annuity_payments(t, kind):
     """Instalments paid to a living payee in month ``t``, by kind; the total when omitted.
 
     ``"ANNUITANT"``
@@ -1097,20 +1097,20 @@ def annuity_payments(t, kind=None):
     additive certain floor and the survivor paid on top of the guarantee — in a column
     rather than in a total.
     """
-    if kind is None:
-        return sum(annuity_payments(t, k) for k in ("ANNUITANT", "SURVIVOR"))
+    if kind == AnnuityKind.ALL:
+        return sum(annuity_payments(t, k) for k in (AnnuityKind.ANNUITANT, AnnuityKind.SURVIVOR))
     if not is_payment_mth(t):
         return 0.0
-    if kind == "ANNUITANT":
+    if kind == AnnuityKind.ANNUITANT:
         return pols_if_init() * annuity_pp(t) * lives_if(t, 1)
-    if kind == "SURVIVOR":
+    if kind == AnnuityKind.SURVIVOR:
         return (pols_if_init() * annuity_pp(t) * surv_pct()
                 * (1.0 - lives_if(t, 1)) * lives_if(t, 2)
                 * (1.0 - certain_floor(t)))
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Death outgo in month ``t``, by kind; the total when ``kind`` is omitted.
 
     ``"GUARANTEE"``
@@ -1128,14 +1128,14 @@ def claims(t, kind=None):
     surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("GUARANTEE", "REFUND"))
-    if kind == "GUARANTEE":
+    if kind == ClaimKind.ALL:
+        return sum(claims(t, k) for k in (ClaimKind.GUARANTEE, ClaimKind.REFUND))
+    if kind == ClaimKind.GUARANTEE:
         if not is_payment_mth(t):
             return 0.0
         return (pols_if_init() * annuity_pp(t) * certain_floor(t)
                 * (1.0 - lives_if(t, 1)))
-    if kind == "REFUND":
+    if kind == ClaimKind.REFUND:
         return pols_if_init() * refund_pp(t) * lives_death(t, 1)
     raise ValueError("invalid kind")
 
@@ -1190,7 +1190,7 @@ def liability_cf(t):
     beside :func:`net_cf` so the sign convention is verifiable in the frame rather than
     only in prose.
     """
-    return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
+    return annuity_payments(t, AnnuityKind.ALL) + claims(t, ClaimKind.ALL) + expenses(t) - premiums(t)
 
 
 def net_cf(t):
@@ -1223,7 +1223,7 @@ def check_net_cf_resid(t):
         paid = pols_if_init() * annuity_pp(t) * payment_factor(t)
     else:
         paid = 0.0
-    return net_cf(t) - (premiums(t) - paid - claims(t, "REFUND") - expenses(t))
+    return net_cf(t) - (premiums(t) - paid - claims(t, ClaimKind.REFUND) - expenses(t))
 
 
 def check_net_cf():
@@ -1376,7 +1376,7 @@ def check_payment_factor_resid(t):
     guarantee beneficiary — partition the instalment exactly, with nothing double-counted
     and nothing dropped.
     """
-    lhs = annuity_payments(t) + claims(t, "GUARANTEE")
+    lhs = annuity_payments(t, AnnuityKind.ALL) + claims(t, ClaimKind.GUARANTEE)
     if is_payment_mth(t):
         rhs = pols_if_init() * annuity_pp(t) * payment_factor(t)
     else:
@@ -1500,9 +1500,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_guarantee": [claims(t, "GUARANTEE") for t in ts],
-            "claims_refund": [claims(t, "REFUND") for t in ts],
+            "annuity_payments": [annuity_payments(t, AnnuityKind.ALL) for t in ts],
+            "claims_guarantee": [claims(t, ClaimKind.GUARANTEE) for t in ts],
+            "claims_refund": [claims(t, ClaimKind.REFUND) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1571,3 +1571,11 @@ solve_tol = 1e-10
 solve_max_iter = 200
 
 pd = ("Module", "pandas")
+
+Sex = ("Pickle", 2)
+
+Basis = ("Pickle", 3)
+
+AnnuityKind = ("Pickle", 4)
+
+ClaimKind = ("Pickle", 5)

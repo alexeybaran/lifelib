@@ -1272,16 +1272,16 @@ def res_pp_at(k, timing):
         :func:`res_pp` computes the same quantity prospectively - which is what gives
         :func:`check_res_roll_fwd` its teeth.
     """
-    if timing == "BEF_PREM":
+    if timing == ResTiming.BEF_PREM:
         return res_pp(k)
-    if timing == "AFT_PREM":
+    if timing == ResTiming.AFT_PREM:
         prem = (prem_zill_pp()
                 if (k < prem_term() and not is_paid_up(k)) else 0.0)
         return res_pp(k) + prem + bfz_uplift_pp(k)
-    if timing == "AFT_INT":
+    if timing == ResTiming.AFT_INT:
         q = mort_rate_at_age(age_y(k))
         si = bfz_si_pp() if is_paid_up(k) else sum_assured()
-        return ((res_pp_at(k, "AFT_PREM") * (1.0 + rechnungszins())
+        return ((res_pp_at(k, ResTiming.AFT_PREM) * (1.0 + rechnungszins())
                  - rating_factor() * q * si * death_ratio()) / (1.0 - q))
     raise ValueError("invalid timing")
 
@@ -1443,7 +1443,7 @@ def surplus_base_pp(k):
     inert at the pre-2015 40 ‰ ceiling, and it is the kind of guard whose absence is invisible
     until the parameter that needs it arrives.
     """
-    return max(res_pp_at(k, "AFT_INT"), 0.0)
+    return max(res_pp_at(k, ResTiming.AFT_INT), 0.0)
 
 
 def surplus_credit_pp(k):
@@ -1494,7 +1494,7 @@ def av_sur_pp(k):
     """
     if k <= k_start():
         return av_sur_pp_init()
-    return av_sur_pp_at(k - 1, "AFT_CREDIT")
+    return av_sur_pp_at(k - 1, SurTiming.AFT_CREDIT)
 
 
 def av_sur_pp_at(k, timing):
@@ -1513,14 +1513,14 @@ def av_sur_pp_at(k, timing):
         death, maturity or surrender at the end of year k is paid on top of the
         guaranteed benefit.
     """
-    if timing == "BEF_INT":
+    if timing == SurTiming.BEF_INT:
         return av_sur_pp(k)
-    if timing == "AFT_INT":
+    if timing == SurTiming.AFT_INT:
         return av_sur_pp(k) * (1.0 + ans_rate(k))
-    if timing == "AFT_CREDIT":
+    if timing == SurTiming.AFT_CREDIT:
         credit = (surplus_credit_pp(k)
                   if surplus_use() == "ansammlung" else 0.0)
-        return av_sur_pp_at(k, "AFT_INT") + credit
+        return av_sur_pp_at(k, SurTiming.AFT_INT) + credit
     raise ValueError("invalid timing")
 
 
@@ -1793,7 +1793,7 @@ def pols_if(t):
         return 0.0
     if t == t_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_LAPSE")
+    return pols_if_at(t - 1, PolsTiming.AFT_LAPSE)
 
 
 def pols_if_at(t, timing):
@@ -1813,14 +1813,14 @@ def pols_if_at(t, timing):
         l(t+1), the end-of-month state.  Through the final policy year :func:`lapse_rate` is
         zero, so in the last month this equals :func:`pols_maturity`.
     """
-    if timing == "BEF_DECR":
+    if timing == PolsTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_MORT":
+    if timing == PolsTiming.AFT_MORT:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_LAPSE":
+    if timing == PolsTiming.AFT_LAPSE:
         if t < t_start() or t > proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "AFT_MORT") * (1.0 - lapse_rate_mth(t))
+        return pols_if_at(t, PolsTiming.AFT_MORT) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1843,7 +1843,7 @@ def pols_lapse(t):
     lapse pays nothing.  Zero through the final policy year, where the survivors leave as a
     maturity instead.
     """
-    return pols_if_at(t, "AFT_MORT") * lapse_rate_mth(t)
+    return pols_if_at(t, PolsTiming.AFT_MORT) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1855,7 +1855,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "AFT_MORT")
+    return pols_if_at(t, PolsTiming.AFT_MORT)
 
 
 # --- benefits --------------------------------------------------------------
@@ -2024,7 +2024,7 @@ def surr_value_pp(t):
             + term_surr_share * term_bonus_close_pp(t))               # noqa: F821
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -2043,13 +2043,13 @@ def claims(t, kind=None):
         often large outflow, and in the last month the distinction between it and a
         maturity decides a payment rather than only a label.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "MATURITY", "LAPSE"))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.MATURITY, Kind.LAPSE))
+    if kind == Kind.DEATH:
         return pols_death(t) * benefit_death_pp(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return pols_maturity(t) * benefit_maturity_pp(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * surr_value_pp(t)
     raise ValueError("invalid kind")
 
@@ -2160,8 +2160,8 @@ def net_cf(t):
     *Ablauf*, -28 172,76 €.  The new-business strain of this product sits in the **reserve**,
     which opens at -1 252,53 €, and not in the cash flow.
     """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "MATURITY")
-            - claims(t, "LAPSE") - expenses(t) - commissions(t))
+    return (premiums(t) - claims(t, Kind.DEATH) - claims(t, Kind.MATURITY)
+            - claims(t, Kind.LAPSE) - expenses(t) - commissions(t))
 
 
 def liability_cf(t):
@@ -2219,7 +2219,7 @@ def check_pols_roll_fwd_resid(t):
     """
     r = (pols_if(t) - pols_if(t + 1) - pols_death(t) - pols_lapse(t))
     if t == proj_len() - 1:
-        r += pols_maturity(t) - pols_if_at(t, "AFT_MORT")
+        r += pols_maturity(t) - pols_if_at(t, PolsTiming.AFT_MORT)
     return r
 
 
@@ -2283,7 +2283,7 @@ def check_res_roll_fwd_resid(k):
     It is a **policy-year** identity and stays one on the monthly grid: an annual Fackler
     recursion at an annual *Rechnungszins*, which is what the tariff defines.
     """
-    return res_pp_at(k, "AFT_INT") - res_pp(k + 1)
+    return res_pp_at(k, ResTiming.AFT_INT) - res_pp(k + 1)
 
 
 def check_res_roll_fwd():
@@ -2493,9 +2493,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -2595,3 +2595,11 @@ unisex_share = 0.5
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+ResTiming = ("Pickle", 2)
+
+SurTiming = ("Pickle", 3)
+
+PolsTiming = ("Pickle", 4)
+
+Kind = ("Pickle", 5)

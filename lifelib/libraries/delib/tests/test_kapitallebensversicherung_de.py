@@ -77,6 +77,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from de_registry import MODELS, LIB
+from de_registry import model_enums
+ResTiming, SurTiming, PolsTiming, Kind = model_enums("KLV_DE_S", "ResTiming", "SurTiming", "PolsTiming", "Kind")
 
 CENT = 0.005          # money displayed to 2 d.p.
 SIX_DP = 0.0000005    # pols_if displayed to 6 d.p.
@@ -300,9 +302,9 @@ def test_the_twelve_months_of_policy_year_one(de_klv_anchor, t):
     assert p.is_anniv(t) == (t == 11)
     assert p.pols_if(t) == pytest.approx(pols_if, abs=SIX_DP)
     assert p.premiums(t) == pytest.approx(prem, abs=CENT)
-    assert p.claims(t, "DEATH") == pytest.approx(cd, abs=CENT)
-    assert p.claims(t, "MATURITY") == pytest.approx(cm, abs=CENT)
-    assert p.claims(t, "LAPSE") == pytest.approx(cl, abs=CENT)
+    assert p.claims(t, Kind.DEATH) == pytest.approx(cd, abs=CENT)
+    assert p.claims(t, Kind.MATURITY) == pytest.approx(cm, abs=CENT)
+    assert p.claims(t, Kind.LAPSE) == pytest.approx(cl, abs=CENT)
     assert p.expenses(t) == pytest.approx(exp, abs=CENT)
     assert p.commissions(t) == pytest.approx(comm, abs=CENT)
     assert p.net_cf(t) == pytest.approx(net, abs=CENT)
@@ -430,7 +432,7 @@ def test_the_two_rows_that_carry_the_product(de_klv_anchor):
     assert p.res_pp(0) == pytest.approx(-1252.5263, abs=CENT)
     assert p.res_net_pp(0) == pytest.approx(0.0, abs=1e-9)  # the equivalence, as a reserve
     assert p.surplus_base_pp(0) == pytest.approx(570.75, abs=CENT)
-    assert p.res_pp_at(24, "AFT_INT") == pytest.approx(50000.00, abs=CENT)
+    assert p.res_pp_at(24, ResTiming.AFT_INT) == pytest.approx(50000.00, abs=CENT)
     assert p.res_pp(25) == pytest.approx(p.sum_assured(), abs=1e-6)
 
 
@@ -484,7 +486,7 @@ def test_the_first_anniversary_reserve_by_fackler(de_klv_anchor):
     assert q1 * 50000.0 == pytest.approx(52.4072, abs=5e-5)
     assert (rolled - q1 * 50000.0) / (1.0 - q1) == pytest.approx(570.7495, abs=5e-4)
     assert p.res_pp(1) == pytest.approx(570.7495, abs=5e-4)
-    assert p.res_pp_at(0, "AFT_INT") == pytest.approx(p.res_pp(1), rel=1e-12)
+    assert p.res_pp_at(0, ResTiming.AFT_INT) == pytest.approx(p.res_pp(1), rel=1e-12)
     assert p.check_res_roll_fwd() is True
 
 
@@ -540,7 +542,7 @@ def test_the_year_twelve_surrender_payment_from_its_three_parts(de_klv_anchor):
     assert p.res_min_pp(12) - p.res_zill_pp(12) == pytest.approx(691.06, abs=CENT)
     assert p.res_guar_pp(k) == pytest.approx(22413.4564, abs=CENT)
     assert 22413.4564 * 0.95 == pytest.approx(21292.7836, abs=CENT)
-    assert p.av_sur_pp_at(k, "AFT_CREDIT") == pytest.approx(2462.4255, abs=CENT)
+    assert p.av_sur_pp_at(k, SurTiming.AFT_CREDIT) == pytest.approx(2462.4255, abs=CENT)
     assert p.surr_value_pp(t_anniv) == pytest.approx(21292.7836 + 2462.4255, abs=CENT)
     assert p.surr_value_pp(t_anniv) == pytest.approx(23755.2091, abs=CENT)
     # The eleven other months are paid the previous anniversary's value.
@@ -692,7 +694,7 @@ def test_the_surplus_base_is_the_reserve_at_the_allocation_date(de_klv_anchor):
     p = de_klv_anchor
     for t in range(25):
         assert p.surplus_base_pp(t) == pytest.approx(
-            max(p.res_pp_at(t, "AFT_INT"), 0.0), rel=1e-12)
+            max(p.res_pp_at(t, ResTiming.AFT_INT), 0.0), rel=1e-12)
         assert p.surplus_credit_pp(t) == pytest.approx(
             p.zins_ueberschuss_rate(t) * p.surplus_base_pp(t), rel=1e-12)
     assert p.surplus_credit_pp(0) == pytest.approx(9.7027, abs=5e-5)
@@ -714,8 +716,8 @@ def test_the_negative_reserve_guard(de_klv_anchor, tmp_path):
     """
     p = de_klv_anchor
     assert all(p.surplus_base_pp(k) >= 0.0 for k in range(25))
-    assert [k for k in range(25) if p.res_pp_at(k, "AFT_INT") < 0.0] == []
-    assert p.res_pp(0) < 0.0 < p.res_pp_at(0, "AFT_INT")
+    assert [k for k in range(25) if p.res_pp_at(k, ResTiming.AFT_INT) < 0.0] == []
+    assert p.res_pp(0) < 0.0 < p.res_pp_at(0, ResTiming.AFT_INT)
     model = variant_model(tmp_path, "KLV_DE_S_zill40", [
         ("cost_table.csv", "std_2026,0.0250,", "std_2026,0.0400,"),
         ("model_point_table.csv",
@@ -724,10 +726,10 @@ def test_the_negative_reserve_guard(de_klv_anchor, tmp_path):
     try:
         q = model.Projection[1]
         assert q.zillmer_max() == 0.040 and q.alpha_rate() == 0.040
-        assert q.res_pp_at(0, "AFT_INT") == pytest.approx(-190.22, abs=CENT)
+        assert q.res_pp_at(0, ResTiming.AFT_INT) == pytest.approx(-190.22, abs=CENT)
         assert q.surplus_base_pp(0) == 0.0 and q.surplus_credit_pp(0) == 0.0
         assert q.zins_ueberschuss_rate(0) > 0.0    # the rate is positive; the base is not
-        assert [k for k in range(25) if q.res_pp_at(k, "AFT_INT") < 0.0] == [0]
+        assert [k for k in range(25) if q.res_pp_at(k, ResTiming.AFT_INT) < 0.0] == [0]
         assert q.check_res_roll_fwd() is True
         assert q.check_zillmer_cap() is True
         assert q.check_surplus_roll_fwd() is True
@@ -820,11 +822,11 @@ def test_the_stornoabzug_spares_the_ueberschussguthaben(de_klv_anchor):
     # The band steps on the anniversary and nowhere else.
     assert p.storno_rate(p.duration(59)) == 0.10 and p.storno_rate(p.duration(60)) == 0.075
     t_anniv = 12 * 11 + 11
-    whole = (p.res_guar_pp(11) + p.av_sur_pp_at(11, "AFT_CREDIT")) * (1.0 - 0.05)
+    whole = (p.res_guar_pp(11) + p.av_sur_pp_at(11, SurTiming.AFT_CREDIT)) * (1.0 - 0.05)
     assert p.surr_value_pp(t_anniv) - whole == pytest.approx(0.05 * 2462.4255, abs=CENT)
     assert p.surr_value_pp(t_anniv) > whole and p.term_bonus_pp(12) > 0.0
     assert p.surr_value_pp(t_anniv) == pytest.approx(
-        p.res_guar_pp(11) * 0.95 + p.av_sur_pp_at(11, "AFT_CREDIT"), rel=1e-12)
+        p.res_guar_pp(11) * 0.95 + p.av_sur_pp_at(11, SurTiming.AFT_CREDIT), rel=1e-12)
 
 
 # --- Pitfall 7: § 161 VVG substitutes, it does not forfeit --------------------
@@ -1047,12 +1049,12 @@ def test_the_risikozuschlag_reaches_the_price_and_not_the_benefit(
         assert rated.pols_death(0) == pytest.approx(std.pols_death(0), rel=1e-15)
         assert rated.benefit_full_pp(59) == pytest.approx(
             std.benefit_full_pp(59), rel=1e-12)
-        assert rated.claims(59, "DEATH") == pytest.approx(
-            std.claims(59, "DEATH"), rel=1e-12)
+        assert rated.claims(59, Kind.DEATH) == pytest.approx(
+            std.claims(59, Kind.DEATH), rel=1e-12)
         # Inside the § 161 window the claim does move -- through the Rückkaufswert, whose
         # reserve carries the loading.  Month 11 is the first month that has one.
-        assert rated.claims(11, "DEATH") != pytest.approx(
-            std.claims(11, "DEATH"), rel=1e-9)
+        assert rated.claims(11, Kind.DEATH) != pytest.approx(
+            std.claims(11, Kind.DEATH), rel=1e-9)
         assert rated.benefit_full_pp(11) == pytest.approx(
             std.benefit_full_pp(11), rel=1e-12)
         assert rated.check_res_roll_fwd() is True and std.check_res_roll_fwd() is True
@@ -1263,7 +1265,7 @@ def test_nothing_runs_past_the_ablauf_and_the_last_year_has_no_surrender(
     assert p.pols_maturity(last) == pytest.approx(
         p.pols_if(last) * (1.0 - p.mort_rate_mth(last)), rel=1e-12)
     assert p.pols_maturity(last) == pytest.approx(
-        p.pols_if_at(last, "AFT_MORT"), rel=1e-12)
+        p.pols_if_at(last, PolsTiming.AFT_MORT), rel=1e-12)
     assert p.pols_if(n) == pytest.approx(p.pols_maturity(last), rel=1e-12)
     assert p.pols_if(n + 1) == 0.0
     assert p.surr_value_pp(last) == pytest.approx(61549.01, abs=CENT)
@@ -1332,7 +1334,7 @@ def test_the_reserve_roll_forward_is_the_strongest_check(de_klv_anchor):
         left = (p.res_pp(k) + p.prem_zill_pp()) * (1.0 + p.rechnungszins())
         right = q1 * p.sum_death() + (1.0 - q1) * p.res_pp(k + 1)
         assert left == pytest.approx(right, abs=1e-6), k
-        assert p.res_pp_at(k, "AFT_INT") == pytest.approx(p.res_pp(k + 1), abs=1e-6), k
+        assert p.res_pp_at(k, ResTiming.AFT_INT) == pytest.approx(p.res_pp(k + 1), abs=1e-6), k
     assert p.check_res_roll_fwd() is True
 
 
@@ -1625,7 +1627,7 @@ def test_the_behaviour_modules_are_off_and_reachable(kapitallebensversicherung,
     # term_surr_share off: the accrued terminal share is not paid on surrender, at the
     # anniversary of policy year 24 or in any month of it.
     assert p.surr_value_pp(12 * 23 + 11) == pytest.approx(
-        p.res_guar_pp(23) * (1.0 - p.storno_rate(23)) + p.av_sur_pp_at(23, "AFT_CREDIT"),
+        p.res_guar_pp(23) * (1.0 - p.storno_rate(23)) + p.av_sur_pp_at(23, SurTiming.AFT_CREDIT),
         rel=1e-12)
     assert p.surr_value_pp(12 * 23) == pytest.approx(
         p.res_guar_pp(22) * (1.0 - p.storno_rate(23)) + p.av_sur_pp(23), rel=1e-12)

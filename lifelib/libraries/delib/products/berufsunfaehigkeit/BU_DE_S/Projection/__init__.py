@@ -765,7 +765,7 @@ def recov_rates():
     them.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
+    return [float(tbl.loc[y, "recov_rate"]) for y in range(1, 12)]
 
 
 def mort_dis_sel_factors():
@@ -775,7 +775,7 @@ def mort_dis_sel_factors():
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
     tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
+    return [float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12)]
 
 
 # --- the best-estimate rates as composed ---
@@ -861,8 +861,8 @@ def mort_rate_dis_mth_year(t):
     addressable view of the same numbers and the two agree by construction.
     """
     q = mort_rate_dis_at_age(age(t))
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return [1.0 - (1.0 - q * s) ** (1.0 / 12.0)
+                 for s in mort_dis_sel_factors()]
 
 
 def recov_rate(z):
@@ -894,7 +894,7 @@ def recov_rate_mth_year():
     dimension — DAV 1997 RI does, and that absence is named rather than hidden.  The
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
-    return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
+    return [1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates()]
 
 
 def lapse_rate(t):
@@ -955,8 +955,8 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
-                 for r in recov_rates())
+    return [1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
+                 for r in recov_rates()]
 
 
 def mort_rate_first_mth(s):
@@ -986,8 +986,8 @@ def mort_rate_dis_first_mth(s, z):
 def mort_rate_dis_first_mth_year(s):
     """The eleven monthly first-order disabled-mortality rates at month s, by claim year."""
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return [1.0 - (1.0 - q * f) ** (1.0 / 12.0)
+                 for f in mort_dis_sel_factors()]
 
 
 def disc_first(s):
@@ -1703,9 +1703,9 @@ def pols_if_at(t, timing):
         At ``t = proj_len() - 1`` it is the population whose cover simply runs
         out, and nothing is payable to it.
     """
-    if timing == "BEG":
+    if timing == Timing.BEG:
         return pols_if(t)
-    if timing == "END":
+    if timing == Timing.END:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1754,7 +1754,7 @@ def surplus_credit(t):
     return surplus_credit_pp(t) * pols_prem(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the start of month t, by kind; the total when kind is omitted.
 
     ``"BU_RENTE"``
@@ -1777,20 +1777,20 @@ def claims(t, kind=None):
         deliberately does not compute.  The kind exists so that the zero is a
         published scope statement rather than a missing column.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE"))
-    if kind == "BU_RENTE":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.BU_RENTE, Kind.REINTEGRATION, Kind.LAPSE))
+    if kind == Kind.BU_RENTE:
         if age(t) >= benefit_end_age():
             return 0.0
         val = dis_cohorts(t)[1]
         return sum(val[karenz_months():]) + sum(runoff_cohorts(t)[1])
-    if kind == "REINTEGRATION":
+    if kind == Kind.REINTEGRATION:
         if wiedereingliederung_months() == 0:
             return 0.0
         return (wiedereingliederung_months()
                 * runoff_val(t, runoff_months)                       # noqa: F821
                 * (1.0 - mort_rate_mth(t)))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1862,7 +1862,7 @@ def net_cf(t):
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
     """
-    return (premiums(t) - surplus_credit(t) - claims(t)
+    return (premiums(t) - surplus_credit(t) - claims(t, Kind.ALL)
             - expenses(t) - claim_expenses(t))
 
 
@@ -1899,9 +1899,9 @@ def check_net_cf_resid(t):
     plausible.
     """
     return net_cf(t) - (prem_zahl_pp(t) * pols_prem(t)
-                        - claims(t, "BU_RENTE")
-                        - claims(t, "REINTEGRATION")
-                        - claims(t, "LAPSE")
+                        - claims(t, Kind.BU_RENTE)
+                        - claims(t, Kind.REINTEGRATION)
+                        - claims(t, Kind.LAPSE)
                         - expenses(t) - claim_expenses(t))
 
 
@@ -2044,7 +2044,7 @@ def check_cover_end_resid(t):
     """
     resid = 0.0
     if age(t) >= benefit_end_age():
-        resid += claims(t, "BU_RENTE")
+        resid += claims(t, Kind.BU_RENTE)
     if age(t) >= cover_end_age():
         resid += premiums(t)
     return resid
@@ -2088,9 +2088,9 @@ def result_cf():
             "pols_prem": [pols_prem(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "surplus_credit": [surplus_credit(t) for t in ts],
-            "claims_bu_rente": [claims(t, "BU_RENTE") for t in ts],
-            "claims_reintegration": [claims(t, "REINTEGRATION") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_bu_rente": [claims(t, Kind.BU_RENTE) for t in ts],
+            "claims_reintegration": [claims(t, Kind.REINTEGRATION) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -2167,3 +2167,7 @@ runoff_months = 3
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+Timing = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

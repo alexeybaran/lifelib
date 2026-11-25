@@ -909,7 +909,7 @@ def av_pp(k):
         return 0.0
     if int(mp["pup_year"]) > 0 and k == int(mp["pup_year"]) - 1 and not pup_cashout():
         return pup_value_pp()
-    return av_pp_at(k - 1, "AFT_INT")
+    return av_pp_at(k - 1, AvTiming.AFT_INT)
 
 
 def av_pp_at(k, timing):
@@ -932,12 +932,12 @@ def av_pp_at(k, timing):
     no document in this product's corpus fixes it, and it is the most consequential such
     choice in the model.
     """
-    if timing == "BEF_PREM":
+    if timing == AvTiming.BEF_PREM:
         return av_pp(k)
-    if timing == "AFT_PREM":
+    if timing == AvTiming.AFT_PREM:
         return av_pp(k) + prem_to_av_pp(k) - charge_from_av_pp(k)
-    if timing == "AFT_INT":
-        return av_pp_at(k, "AFT_PREM") + int_credited_pp(k)
+    if timing == AvTiming.AFT_INT:
+        return av_pp_at(k, AvTiming.AFT_PREM) + int_credited_pp(k)
     raise ValueError("invalid timing")
 
 
@@ -948,7 +948,7 @@ def int_credited_pp(k):
     this plus :func:`bonus_credited_pp`'s interest-surplus component, never this plus the
     whole declared rate.
     """
-    return int_rate_guar() * av_pp_at(k, "AFT_PREM")
+    return int_rate_guar() * av_pp_at(k, AvTiming.AFT_PREM)
 
 
 def int_credited(k):
@@ -991,8 +991,8 @@ def av_release(k):
     if k >= n:
         return 0.0
     if k == n - 1:
-        return av_pp_at(k, "AFT_INT") * pols_if(12 * k)
-    return av_pp_at(k, "AFT_INT") * (pols_if(12 * k) - pols_if(12 * (k + 1)))
+        return av_pp_at(k, AvTiming.AFT_INT) * pols_if(12 * k)
+    return av_pp_at(k, AvTiming.AFT_INT) * (pols_if(12 * k) - pols_if(12 * (k + 1)))
 
 
 # ----------------------------------------
@@ -1012,7 +1012,7 @@ def av_sur_pp(k):
         return float(mp["av_sur_pp_init"])
     if k >= int(mp["aufschub_y"]):
         return 0.0
-    return av_sur_pp_at(k - 1, "AFT_INT")
+    return av_sur_pp_at(k - 1, AvTiming.AFT_INT)
 
 
 def av_sur_pp_at(k, timing):
@@ -1022,9 +1022,9 @@ def av_sur_pp_at(k, timing):
     to this account — and ``"AFT_INT"`` is the balance after the year's surplus credit, which
     is what a death claim including surplus, a surrender and the conversion all read.
     """
-    if timing in ("BEF_PREM", "AFT_PREM"):
+    if timing in (AvTiming.BEF_PREM, AvTiming.AFT_PREM):
         return av_sur_pp(k)
-    if timing == "AFT_INT":
+    if timing == AvTiming.AFT_INT:
         return av_sur_pp(k) + bonus_credited_pp(k)
     raise ValueError("invalid timing")
 
@@ -1044,7 +1044,7 @@ def bonus_credited_pp(k):
     """
     if k >= int(model_point()["aufschub_y"]):
         return 0.0
-    return bonus_rate(k) * av_pp_at(k, "AFT_PREM") + decl_rate(k) * av_sur_pp(k)
+    return bonus_rate(k) * av_pp_at(k, AvTiming.AFT_PREM) + decl_rate(k) * av_sur_pp(k)
 
 
 def bonus_credited(k):
@@ -1072,8 +1072,8 @@ def av_sur_release(k):
     if k >= n:
         return 0.0
     if k == n - 1:
-        return av_sur_pp_at(k, "AFT_INT") * pols_if(12 * k)
-    return av_sur_pp_at(k, "AFT_INT") * (pols_if(12 * k) - pols_if(12 * (k + 1)))
+        return av_sur_pp_at(k, AvTiming.AFT_INT) * pols_if(12 * k)
+    return av_sur_pp_at(k, AvTiming.AFT_INT) * (pols_if(12 * k) - pols_if(12 * (k + 1)))
 
 
 # ----------------------------------------
@@ -1101,7 +1101,7 @@ def spread_diff_pp(k):
         return 0.0
     if int(mp["pup_year"]) > 0 and k == int(mp["pup_year"]) - 1 and not pup_cashout():
         return 0.0
-    return spread_diff_pp_at(k - 1, "AFT_INT")
+    return spread_diff_pp_at(k - 1, AvTiming.AFT_INT)
 
 
 def spread_diff_pp_at(k, timing):
@@ -1116,9 +1116,9 @@ def spread_diff_pp_at(k, timing):
     taken in the first year against one fifth of it — and it **never returns to zero**,
     because the spread account earns interest on what has not yet been deducted.
     """
-    if timing in ("BEF_PREM", "AFT_PREM"):
+    if timing in (AvTiming.BEF_PREM, AvTiming.AFT_PREM):
         return spread_diff_pp(k)
-    if timing == "AFT_INT":
+    if timing == AvTiming.AFT_INT:
         return ((spread_diff_pp(k) + charge_acq_pp(k) - charge_acq_spread_pp(k))
                 * (1.0 + int_rate_guar()))
     raise ValueError("invalid timing")
@@ -1347,13 +1347,13 @@ def db_pp(k):
     if form == "prem_refund":
         base = paid
     elif form == "deckungskapital":
-        base = av_pp_at(k, "AFT_INT")
+        base = av_pp_at(k, AvTiming.AFT_INT)
     elif form == "max":
-        base = max(paid, av_pp_at(k, "AFT_INT"))
+        base = max(paid, av_pp_at(k, AvTiming.AFT_INT))
     else:
         raise ValueError("invalid death_benefit_form")
     if int(mp["db_incl_surplus"]):
-        base = base + av_sur_pp_at(k, "AFT_INT")
+        base = base + av_sur_pp_at(k, AvTiming.AFT_INT)
     return base
 
 
@@ -1369,12 +1369,12 @@ def surr_charge_pp(k):
     """
     return (float(data.charge_table().at[                            # noqa: F821
         (model_point()["charge_id"], "stornoabzug_rate"), "value"])
-        * (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")))
+        * (av_pp_at(k, AvTiming.AFT_INT) + av_sur_pp_at(k, AvTiming.AFT_INT)))
 
 
 def cv_tariff_pp(k):
     """Rbar(k): the tariff surrender value, both accounts net of the *Stornoabzug*."""
-    return (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")
+    return (av_pp_at(k, AvTiming.AFT_INT) + av_sur_pp_at(k, AvTiming.AFT_INT)
             - surr_charge_pp(k))
 
 
@@ -1387,7 +1387,7 @@ def cv_floor_pp(k):
     shares" supports.  The alternative reading, in which the floor also carries the
     *Ansammlungsguthaben*, is not implemented and would make the floor bind at every duration.
     """
-    return av_spread_pp_at(k, "AFT_INT")
+    return av_spread_pp_at(k, AvTiming.AFT_INT)
 
 
 def cv_pp(k):
@@ -1430,7 +1430,7 @@ def pup_value_pp():
     pup = int(model_point()["pup_year"])
     if pup <= 0:
         return 0.0
-    return max(av_pp_at(pup - 2, "AFT_INT"), av_spread_pp_at(pup - 2, "AFT_INT"))
+    return max(av_pp_at(pup - 2, AvTiming.AFT_INT), av_spread_pp_at(pup - 2, AvTiming.AFT_INT))
 
 
 def pup_cashout():
@@ -1468,7 +1468,7 @@ def pup_uplift(k):
     pup = int(model_point()["pup_year"])
     if pup <= 0 or k != pup - 2 or pup_cashout():
         return 0.0
-    return (pup_value_pp() - av_pp_at(k, "AFT_INT")) * pols_if(12 * (k + 1))
+    return (pup_value_pp() - av_pp_at(k, AvTiming.AFT_INT)) * pols_if(12 * (k + 1))
 
 
 # ----------------------------------------
@@ -1500,7 +1500,7 @@ def pols_if(t):
         return 0.0
     if t == t_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolsTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1519,11 +1519,11 @@ def pols_if_at(t, timing):
         l(t+1), the end-of-month state, after deaths, surrenders and — at the last
         accumulation month ``t = 12n - 1`` — the commutation split.
     """
-    if timing == "BEF_DECR":
+    if timing == PolsTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolsTiming.BEF_LAPSE:
         return pols_if(t) - pols_death(t)
-    if timing == "AFT_DECR":
+    if timing == PolsTiming.AFT_DECR:
         return (pols_if(t) - pols_death(t) - pols_lapse(t)
                 - pols_commutation(t))
     raise ValueError("invalid timing")
@@ -1549,7 +1549,7 @@ def pols_lapse(t):
     The one place the two meet is the § 165 cash-out branch, where the whole surviving cohort
     leaves through this decrement at the surrender value, in the anniversary month.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolsTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_surv_rb():
@@ -1625,7 +1625,7 @@ def capital_gross_pp():
     are annual constructions struck there.
     """
     k_rb = int(model_point()["aufschub_y"]) - 1
-    return av_pp_at(k_rb, "AFT_INT") + av_sur_pp_at(k_rb, "AFT_INT")
+    return av_pp_at(k_rb, AvTiming.AFT_INT) + av_sur_pp_at(k_rb, AvTiming.AFT_INT)
 
 
 def val_reserve_pp():
@@ -1821,7 +1821,7 @@ def annuity_due_factor():
 # Claims, expenses and the cash flow statement
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in **month** t, by kind; the total when kind is omitted.
 
     The **counts are monthly and the amounts are annual**, which is the whole shape of this
@@ -1847,13 +1847,13 @@ def claims(t, kind=None):
     The annuity itself is **not** a claim kind: it is a recurring benefit with its own
     weighting rule and is published as :func:`annuity_payments`.
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION"))
-    if kind == "DEATH":
+    if kind == ClaimKind.ALL:
+        return sum(claims(t, j) for j in (ClaimKind.DEATH, ClaimKind.LAPSE, ClaimKind.COMMUTATION))
+    if kind == ClaimKind.DEATH:
         return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
+    if kind == ClaimKind.LAPSE:
         return cv_pp(duration(t)) * pols_lapse(t)
-    if kind == "COMMUTATION":
+    if kind == ClaimKind.COMMUTATION:
         return capital_conv_pp() * pols_commutation(t)
     raise ValueError("invalid kind")
 
@@ -1941,8 +1941,8 @@ def net_cf(t):
     accumulation year and mildly negative in the other eleven, a large negative spike at
     ``t = 203`` where the *Kapitalabfindung* falls, and a long negative annuity tail thereafter.
     """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "COMMUTATION") - annuity_payments(t) - expenses(t))
+    return (premiums(t) - claims(t, ClaimKind.DEATH) - claims(t, ClaimKind.LAPSE)
+            - claims(t, ClaimKind.COMMUTATION) - annuity_payments(t) - expenses(t))
 
 
 def liability_cf(t):
@@ -1985,7 +1985,7 @@ def check_net_cf():
     exactly, which is the library-wide sign convention.
     """
     for t in result_cf().index:
-        scale = max(1.0, abs(premiums(t)) + abs(claims(t))
+        scale = max(1.0, abs(premiums(t)) + abs(claims(t, ClaimKind.ALL))
                     + abs(annuity_payments(t)) + abs(expenses(t)))
         if abs(check_net_cf_resid(t)) > roll_fwd_tol() * scale:
             return False
@@ -2232,9 +2232,9 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "pols_annuity": [pols_annuity(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_commutation": [claims(t, "COMMUTATION") for t in ts],
+            "claims_death": [claims(t, ClaimKind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, ClaimKind.LAPSE) for t in ts],
+            "claims_commutation": [claims(t, ClaimKind.COMMUTATION) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -2313,3 +2313,9 @@ data = ("Interface", ("..", "Data"), "auto")
 point_id = 1
 
 pd = ("Module", "pandas")
+
+AvTiming = ("Pickle", 2)
+
+PolsTiming = ("Pickle", 3)
+
+ClaimKind = ("Pickle", 4)

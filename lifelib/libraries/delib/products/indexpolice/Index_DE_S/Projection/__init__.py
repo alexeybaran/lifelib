@@ -808,7 +808,7 @@ def pols_surv_year_end(k):
     What the monthly grid adds is that the lives which forfeited the year's credit are now
     dated — and the forfeiture is a month's event rather than a year-end lump.
     """
-    return pols_if_at(12 * k + 11, "AFT_LAPSE")
+    return pols_if_at(12 * k + 11, PolsTiming.AFT_LAPSE)
 
 
 def pols_death_year(k):
@@ -1025,7 +1025,7 @@ def av_pp(k):
         return 0.0
     if k == k_start():
         return av_pp_init()
-    return av_pp_at(k - 1, "AFT_CREDIT")
+    return av_pp_at(k - 1, AvTiming.AFT_CREDIT)
 
 
 def av_pp_at(k, timing):
@@ -1052,16 +1052,16 @@ def av_pp_at(k, timing):
         The maturity benefit is struck here and the two other exits are not,
         which is the product's own asymmetry and not a rounding of it.
     """
-    if timing == "BEF_PREM":
+    if timing == AvTiming.BEF_PREM:
         return av_pp(k)
-    if timing == "AFT_PREM":
+    if timing == AvTiming.AFT_PREM:
         return av_pp(k) + prem_to_av_pp(k)
-    if timing == "AFT_CHARGE":
-        return av_pp_at(k, "AFT_PREM") - av_charge_pp(k)
-    if timing == "AFT_GUAR":
-        return av_pp_at(k, "AFT_CHARGE") + guar_int_pp(k)
-    if timing == "AFT_CREDIT":
-        return (av_pp_at(k, "AFT_GUAR")
+    if timing == AvTiming.AFT_CHARGE:
+        return av_pp_at(k, AvTiming.AFT_PREM) - av_charge_pp(k)
+    if timing == AvTiming.AFT_GUAR:
+        return av_pp_at(k, AvTiming.AFT_CHARGE) + guar_int_pp(k)
+    if timing == AvTiming.AFT_CREDIT:
+        return (av_pp_at(k, AvTiming.AFT_GUAR)
                 + index_credit_pp(k) + surplus_credit_pp(k))
     raise ValueError("invalid timing")
 
@@ -1073,7 +1073,7 @@ def av_charge_pp(k):
     from the account rather than from the premium.  A **charge**, not an expense: it
     reduces the policyholder's *Deckungskapital* and does not appear in ``net_cf``.
     """
-    return exp_av_rate * av_pp_at(k, "AFT_PREM")                     # noqa: F821
+    return exp_av_rate * av_pp_at(k, AvTiming.AFT_PREM)                     # noqa: F821
 
 
 def av_charge(k):
@@ -1089,7 +1089,7 @@ def guar_int_pp(k):
     it is spent.  A model that credits the guarantee *and* the declared rate *and* the
     index payoff has spent the same money three times.
     """
-    return guar_rate() * av_pp_at(k, "AFT_CHARGE")
+    return guar_rate() * av_pp_at(k, AvTiming.AFT_CHARGE)
 
 
 def guar_int(k):
@@ -1144,7 +1144,7 @@ def av_released(k):
     ``net_cf``, not in the account roll-forward — which is exactly what makes
     :func:`check_av_roll_fwd` an exact identity rather than an approximate one.
     """
-    return (av_pp_at(k, "AFT_GUAR") * (pols_death_year(k) + pols_lapse_year(k))
+    return (av_pp_at(k, AvTiming.AFT_GUAR) * (pols_death_year(k) + pols_lapse_year(k))
             + av_pp(k + 1) * pols_maturity(12 * (k + 1) - 1))
 
 
@@ -1167,7 +1167,7 @@ def av_min_pp(k):
         return 0.0
     if k == k_start():
         return av_pp_init()
-    return av_min_pp_at(k - 1, "AFT_CREDIT")
+    return av_min_pp_at(k - 1, AvTiming.AFT_CREDIT)
 
 
 def av_min_pp_at(k, timing):
@@ -1176,17 +1176,17 @@ def av_min_pp_at(k, timing):
     Identical in structure, so that a reader comparing the two accounts is comparing one
     number — the acquisition charge — and not two recursions.
     """
-    if timing == "BEF_PREM":
+    if timing == AvTiming.BEF_PREM:
         return av_min_pp(k)
-    if timing == "AFT_PREM":
+    if timing == AvTiming.AFT_PREM:
         return (av_min_pp(k) + prem_gross_pp(k) - prem_charge_acq_min_pp(k)
                 - prem_charge_adm_pp(k))
-    if timing == "AFT_CHARGE":
-        return av_min_pp_at(k, "AFT_PREM") * (1.0 - exp_av_rate)     # noqa: F821
-    if timing == "AFT_GUAR":
-        return av_min_pp_at(k, "AFT_CHARGE") * (1.0 + guar_rate())
-    if timing == "AFT_CREDIT":
-        return (av_min_pp_at(k, "AFT_GUAR")
+    if timing == AvTiming.AFT_CHARGE:
+        return av_min_pp_at(k, AvTiming.AFT_PREM) * (1.0 - exp_av_rate)     # noqa: F821
+    if timing == AvTiming.AFT_GUAR:
+        return av_min_pp_at(k, AvTiming.AFT_CHARGE) * (1.0 + guar_rate())
+    if timing == AvTiming.AFT_CREDIT:
+        return (av_min_pp_at(k, AvTiming.AFT_GUAR)
                 + index_credit_pp(k) + surplus_credit_pp(k))
     raise ValueError("invalid timing")
 
@@ -1344,7 +1344,7 @@ def pols_if(t):
         return pols_if_init()
     if t == proj_len():
         return 0.0
-    return pols_if_at(t - 1, "AFT_LAPSE")
+    return pols_if_at(t - 1, PolsTiming.AFT_LAPSE)
 
 
 def pols_if_at(t, timing):
@@ -1366,12 +1366,12 @@ def pols_if_at(t, timing):
         population the *Indexjahr* credit is given to; in the final policy
         year the surrender rate is zero, so that is the maturing cohort.
     """
-    if timing == "BEF_DECR":
+    if timing == PolsTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DEATH":
+    if timing == PolsTiming.AFT_DEATH:
         return pols_if(t) - pols_death(t)
-    if timing == "AFT_LAPSE":
-        return pols_if_at(t, "AFT_DEATH") - pols_lapse(t)
+    if timing == PolsTiming.AFT_LAPSE:
+        return pols_if_at(t, PolsTiming.AFT_DEATH) - pols_lapse(t)
     raise ValueError("invalid timing")
 
 
@@ -1388,7 +1388,7 @@ def pols_lapse(t):
     year's *Indexgutschrift* — the payoff exists only at the *Indexjahr* end — which is the
     behavioural asymmetry the annual grid could state but not date.
     """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
+    return pols_if_at(t, PolsTiming.AFT_DEATH) * lapse_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1400,7 +1400,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "AFT_LAPSE")
+    return pols_if_at(t, PolsTiming.AFT_LAPSE)
 
 
 # --- benefits ----------------------------------------------------------------
@@ -1419,7 +1419,7 @@ def db_pp(k):
     index credit**: the payoff exists only at the *Indexjahr* end **[std]**, so a death in
     month 7 forfeits it.
     """
-    return max(av_pp_at(k, "AFT_GUAR"), death_min_rate() * prem_sum())
+    return max(av_pp_at(k, AvTiming.AFT_GUAR), death_min_rate() * prem_sum())
 
 
 def min_surr_pp(k):
@@ -1434,7 +1434,7 @@ def min_surr_pp(k):
     conflating the two is a numbered pitfall.  With ``zill_years = 5`` they coincide and
     this floor is a no-op.
     """
-    return av_min_pp_at(k, "AFT_GUAR")
+    return av_min_pp_at(k, AvTiming.AFT_GUAR)
 
 
 def surr_charge_pp(k):
@@ -1447,7 +1447,7 @@ def surr_charge_pp(k):
     observed band runs from 0 % to 20 %, so 2 % is a deliberately mild **[std]**.
     """
     return (storno_rate * surr_charge_on()                           # noqa: F821
-            * max(av_pp_at(k, "AFT_GUAR"), min_surr_pp(k)))
+            * max(av_pp_at(k, AvTiming.AFT_GUAR), min_surr_pp(k)))
 
 
 def cv_pp(k):
@@ -1463,7 +1463,7 @@ def cv_pp(k):
     penalises surrendering just before one, and an annual grid with exits at the year end
     silently gives every surrender the favourable date.
     """
-    return max(av_pp_at(k, "AFT_GUAR"), min_surr_pp(k)) - surr_charge_pp(k)
+    return max(av_pp_at(k, AvTiming.AFT_GUAR), min_surr_pp(k)) - surr_charge_pp(k)
 
 
 def mat_pp(k):
@@ -1484,7 +1484,7 @@ def mat_pp(k):
     return max(av_pp(proj_len_y()), guar_cap_pp(proj_len_y()))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in **month** t, by kind; the total when kind is omitted.
 
     The **counts are monthly and the amounts are annual**, which is the shape of this
@@ -1508,13 +1508,13 @@ def claims(t, kind=None):
     different amounts — the maturity includes the year's *Indexjahr* and the other two do
     not — and that is the product's own rule.
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
+    if kind == ClaimKind.ALL:
+        return sum(claims(t, j) for j in (ClaimKind.DEATH, ClaimKind.LAPSE, ClaimKind.MATURITY))
+    if kind == ClaimKind.DEATH:
         return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
+    if kind == ClaimKind.LAPSE:
         return cv_pp(duration(t)) * pols_lapse(t)
-    if kind == "MATURITY":
+    if kind == ClaimKind.MATURITY:
         return mat_pp(duration(t)) * pols_maturity(t)
     raise ValueError("invalid kind")
 
@@ -1607,8 +1607,8 @@ def net_cf(t):
     reported beside it and are **not** in it: they are movements of the policyholder's
     account, and they reach the insurer's cash flow only later, through a benefit.
     """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "MATURITY") - expenses(t))
+    return (premiums(t) - claims(t, ClaimKind.DEATH) - claims(t, ClaimKind.LAPSE)
+            - claims(t, ClaimKind.MATURITY) - expenses(t))
 
 
 def liability_cf(t):
@@ -1642,7 +1642,7 @@ def check_net_cf_resid(t):
     delib requires this cells of every model in the library: no model's headline number may
     be reconciled only in prose.
     """
-    return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
+    return net_cf(t) - (premiums(t) - claims(t, ClaimKind.ALL) - expenses(t))
 
 
 def check_net_cf():
@@ -1652,7 +1652,7 @@ def check_net_cf():
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
     return bool(all(abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
-                    * max(abs(premiums(t)), abs(claims(t)),
+                    * max(abs(premiums(t)), abs(claims(t, ClaimKind.ALL)),
                           abs(expenses(t)), 1.0)
                     for t in range(t_start(), proj_len())))
 
@@ -1837,9 +1837,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, ClaimKind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, ClaimKind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, ClaimKind.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1936,3 +1936,9 @@ rentenfaktor_curr = 25.0
 roll_fwd_tol = 1e-08
 
 pd = ("Module", "pandas")
+
+AvTiming = ("Pickle", 2)
+
+PolsTiming = ("Pickle", 3)
+
+ClaimKind = ("Pickle", 4)

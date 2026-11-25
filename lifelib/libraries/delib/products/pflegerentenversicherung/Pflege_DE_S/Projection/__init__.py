@@ -1095,9 +1095,9 @@ def pols_if_at(t, timing):
     :func:`pols_if`, whose meaning is fixed to the start of the period across the whole
     library.
     """
-    if timing == "BEG":
+    if timing == Timing.BEG:
         return pols_if(t)
-    elif timing == "END":
+    elif timing == Timing.END:
         return pols_if(t + 1)
     else:
         raise ValueError("invalid timing")
@@ -1293,7 +1293,7 @@ def brg_pp(t):
     return cum_prem_max_pp(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month ``t`` by ``kind``; the total when ``kind`` is omitted.
 
     ``"ANNUITY"`` is the *Pflegerente*, ``R sum_g pi_g E_g(t)``, paid **in advance** on the
@@ -1308,19 +1308,19 @@ def claims(t, kind=None):
     ``"LAPSE"`` is the *Rückkaufswert* and ``"DEATH"`` the *Beitragsrückgewähr*, both at the
     **end** of the month on the lives that left during it.
     """
-    if kind is None:
-        return (claims(t, "ANNUITY") + claims(t, "LAPSE")
-                + claims(t, "DEATH"))
-    elif kind == "ANNUITY":
+    if kind == Kind.ALL:
+        return (claims(t, Kind.ANNUITY) + claims(t, Kind.LAPSE)
+                + claims(t, Kind.DEATH))
+    elif kind == Kind.ANNUITY:
         total = 0.0
         for g in range(1, 6):
             pct = benefit_pct(g)
             if pct > 0.0:
                 total += pct * esc_pg(t, g)
         return rente_mth() * total
-    elif kind == "LAPSE":
+    elif kind == Kind.LAPSE:
         return rkw_pp(t) * pols_lapse(t)
-    elif kind == "DEATH":
+    elif kind == Kind.DEATH:
         return brg_pp(t) * pols_death(t)
     else:
         raise ValueError("invalid kind")
@@ -1431,7 +1431,7 @@ def net_cf(t):
     where the *Deckungskapital* peaks, and it is the whole economic content of an ageing
     reserve carried on a life-assurance chassis.
     """
-    return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
 
 
 def liability_cf(t):
@@ -1564,7 +1564,7 @@ def tar_p_act(t):
         mu_i = -math.log(1.0 - min(tar_inc_rate(t), 1.0 - 1e-12))    # noqa: F821
     total = mu_a + mu_i
     stay = math.exp(-total / 12.0)                                   # noqa: F821
-    return (stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay))
+    return [stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay)]
 
 
 def tar_p_pg(t, g):
@@ -1586,7 +1586,7 @@ def tar_p_pg(t, g):
     total = mu_g + mu_d + mu_r
     stay = math.exp(-total / 12.0)                                   # noqa: F821
     rest = 1.0 - stay
-    return (stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest)
+    return [stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest]
 
 
 def tar_pols_act(t):
@@ -1886,9 +1886,9 @@ def check_net_cf_resid(t):
     quantity nothing checks.
     """
     return net_cf(t) - (premiums(t)
-                        - claims(t, "ANNUITY")
-                        - claims(t, "LAPSE")
-                        - claims(t, "DEATH")
+                        - claims(t, Kind.ANNUITY)
+                        - claims(t, Kind.LAPSE)
+                        - claims(t, Kind.DEATH)
                         - expenses(t)
                         - claim_expenses(t))
 
@@ -2116,9 +2116,9 @@ def result_cf():
             "pols_care": [pols_care(t) for t in ts],
             "pols_prem": [pols_prem(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
+            "claims_annuity": [claims(t, Kind.ANNUITY) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -2174,3 +2174,7 @@ point_id = 1
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Timing = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

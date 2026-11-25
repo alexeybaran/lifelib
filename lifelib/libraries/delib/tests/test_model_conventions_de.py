@@ -265,11 +265,19 @@ def test_model_folder_holds_formulas_only(name):
     which stores its inputs inside the model.
     """
     folder = model_path(name)
-    assert not (folder / "_data").exists()
-    for pattern in ("*.pickle", "*.csv", "*.xlsx", "*.xls"):
+    # lean conversion: the label families are a module stored with the model
+    stored = {"enums.py"} if (folder / "enums.py").exists() else set()
+    if stored:
+        assert sorted(p.name for p in (folder / "_data").iterdir()) == [
+            "data.pickle", "iospecs.py"]
+    else:
+        assert not (folder / "_data").exists()
+    assert [p.relative_to(folder).as_posix() for p in folder.rglob("*.pickle")] == (
+        ["_data/data.pickle"] if stored else [])
+    for pattern in ("*.csv", "*.xlsx", "*.xls"):
         assert not list(folder.rglob(pattern)), f"{name}: data inside the model folder"
     assert {p.name for p in folder.iterdir() if p.is_file()} == {
-        "__init__.py", "_system.json"}
+        "__init__.py", "_system.json"} | stored
 
 
 def test_the_model_ships_with_its_inputs_and_a_runner(name):
