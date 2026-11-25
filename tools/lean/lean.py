@@ -149,7 +149,9 @@ def generate_model(upstream, out, lib, prod, model, tests=True):
     if data_dir.exists():
         shutil.rmtree(data_dir)
     if keep:
-        (dst / "enums.py").write_text(enums_module(model, refmap["families"], keep), encoding="utf-8")
+        by_text = looked_up_by_text(new.values(), keep)
+        (dst / "enums.py").write_text(enums_module(model, refmap["families"], keep, by_text),
+                                      encoding="utf-8")
         data_dir.mkdir()
         (data_dir / "iospecs.py").write_text(IOSPECS, encoding="utf-8")
         (data_dir / "data.pickle").write_bytes(data_pickle(entries))
@@ -244,6 +246,17 @@ def ensure_registry_helper(upstream, out, lib):
     if "def model_enums" not in text:
         text = text.rstrip("\n") + "\n" + testedit.REGISTRY_HELPER
     dst.write_text(text, encoding="utf-8")
+
+
+def looked_up_by_text(texts, families):
+    """The families a space's text looks up by text, ``Family[expr]``."""
+    found = set()
+    for text in texts:
+        for node in ast.walk(ast.parse(text)):
+            if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) \
+                    and node.value.id in families:
+                found.add(node.value.id)
+    return found
 
 
 def library_test_edits(upstream, out, libs):

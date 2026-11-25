@@ -47,7 +47,9 @@ failed.
 every public no-argument cell of `Data` and of `Projection[p]` for every point `p` of the
 shipped `model_point_table`: frames and series with `check_exact=True` (index, columns and
 dtypes included), floats bit for bit, a member equal to the label it stands for, and the
-same exception type and message where upstream raises.
+same exception where upstream raises (for an error inside a formula this compares
+modelx's `FormulaError`, not the inner message; the invalid-label checks in RESULTS.md
+compare the inner error line).
 
 ## The rules, in the generator's terms
 
@@ -75,7 +77,7 @@ conversion's, never invented.
 | K2 | the cells listed (`list_cells`: those whose upstream returns a tuple where the full conversion returns a list, plus overrides) build lists: `tuple(g)` → `[g]`, `(a, b)` → `[a, b]`, `(x,) * n` → `[x] * n`, and the same in the locals they return. `return a, b, c` stays a tuple of vectors. |
 | K3 | the product's `spec.py` of the full conversion is written unchanged, with a two-line note that its line numbers refer to that text. |
 | K4 | nothing to apply: the approved fixes (US mortality caps `min(q, 1.0)`, VA `rb_pp` `ratchet`, the Obseques and DIA validation fixes) are in upstream text since v0.17.3. |
-| enums | `enums.py` in the model folder holds only the families the lean text spells. It is stored with the model as a modelx `ModuleData` (spec id 1, `enums = ("IOSpec", 1)` in the model `__init__.py`); each space that spells a family gets `Family = ("Pickle", n)`, and `_data/data.pickle` maps `n` to the persistent id `("ModuleAttr", 1, "Family")`, which modelx (S4) resolves against the module loaded from the folder. No lifelib import is involved. |
+| enums | `enums.py` in the model folder holds only the families the lean text spells. It is stored with the model as a modelx `ModuleData` (spec id 1, `enums = ("IOSpec", 1)` in the model `__init__.py`); each space that spells a family gets `Family = ("Pickle", n)`, and `_data/data.pickle` maps `n` to the persistent id `("ModuleAttr", 1, "Family")`, which modelx (S4) resolves against the module loaded from the folder. No lifelib import is involved. A family the lean text looks up by text (`Family[expr]`: an attribute passed on, a label computed from text or read from a table) is declared `metaclass=ByText` in `enums.py`: a text that is not a member comes back as itself (a `str` whose `.name` is the same text), so an invalid label takes upstream's path to upstream's own `raise ValueError(...)` or upstream's failed table lookup, with upstream's error, instead of failing at the conversion. The formula text is unchanged by this. |
 | not generated | `uslib/tests/_released`, the full conversion's `sample.py` (a compiler-harness file identical in all 57 products that calls `collect_outputs()`, which no `*_S` model defines, and imports the compiler's `exported` package), the DV01 example. |
 
 Docstrings and comments are never edited, so a docstring may still name a label as a
