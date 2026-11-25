@@ -76,16 +76,76 @@ Pflege_DE_S: `test_every_csv_beside_the_model_is_actually_read` failed on the up
 tree in that run and passes on the lean tree; it depends on test order (module-scoped
 model shared by tests), not on the model text.
 
-## Open: uslib SEC modules
+## uslib SEC modules
 
-`tools/lean/secsuite.sh` (the `*_sec.py` modules, which test the SEC models and read
-their S twins): upstream 3375 passed, 0 failed; lean 2917 passed, 139 failed, 328
-errors. The T1 twin identity in the convention module passes after the `sec_support`
-edit in `overrides/_libraries.toml`; the SEC modules' own splice, decode and
-negative-zero tests still call the lean S models with string labels (and with omitted
-`kind`) through `sec_support` helpers whose receivers are S or SEC by context, and one
-FIA test expects S's own error text for an invalid crediting method (the lean
-`credit_method()` now raises `KeyError` from `CreditMethod[...]` first). Not edited:
-the fix is either the same label mapping at every S read in `sec_support` and the SEC
-modules, or reading the SEC assertions' S twins from upstream text (what the full
-conversion did with `uslib/tests/_released`, which is not part of the lean text).
+`tools/lean/secsuite.sh` (the `*_sec.py` modules and `test_sec_support.py`, which test
+the SEC models against their S twins). The SEC models and the generated S model text
+are not touched; the fix is in the test support code only, generated from
+`overrides/_libraries.toml` into `uslib/tests/sec_support.py`: when SEC test code
+(`test_*_us_sec` or `sec_support` itself) calls a lean S cell, the label arguments are
+mapped to the members of that model's own stored `enums` module (so it works on a
+copy), an omitted or `None` `kind` becomes `ALL`, members in results are read back as
+their labels (`ALL` as `None`), and the family classes and the `enums` module are left
+out of the References those tests compare. Which parameters are typed is read from the
+S formulas, for the whole space at once.
+
+| run | passed | failed | errors | skipped |
+|---|---|---|---|---|
+| upstream | 3375 | 0 | 0 | 919 |
+| lean, before | 2917 | 139 | 328 | 910 |
+| lean, after | 3359 | 16 | 0 | 919 |
+
+The 16 left are all `test_fixed_indexed_annuity_us_sec::test_a_text_value_no_decode_knows_raises_s_message`
+(`credit_method` and `glwb_basis` cases): with an invalid text in the model point
+table, the lean `credit_method()` and `glwb_basis()` raise `KeyError` from
+`CreditMethod[...]`/`GlwbBasis[...]` before upstream's `ValueError("invalid ...")`
+check, and the test compares S's error text. This is the lean S text, not the support
+code, so it is left for the coordinator: either spell those two attributes back as
+upstream strings (they are passed on as cell arguments, which is why they return
+members), or accept the different exception.
+
+Product and convention tests after this change: uslib 1524 passed, 61 skipped, every
+outcome the same as before and as upstream; the other five libraries' test files are
+unchanged, so the 6,157 total is unchanged.
+
+## The approved formula fixes (K4): where they are in upstream
+
+Found with `git log -S '<line>' -- <file>` on upstream main (oldest commit listed); line
+numbers are upstream 20d4dae, the same text as v0.17.3. All came in **b629db2**
+(2026-11-15, "ENH: Update the country libraries to the lifelib-products merge point"),
+an ancestor of v0.17.3 (d44068e) and of this branch. The generator applies none of them;
+the lean text carries them because it is upstream text.
+
+| fix | upstream commit | upstream line |
+|---|---|---|
+| DIA_US_S `mort_rate` cap | b629db2 | `deferred_income_annuity/DIA_US_S/Projection/__init__.py:781` `return min(mort_ae_factor * q, 1.0)` |
+| FIA_US_S `mort_rate` cap | b629db2 | `fixed_indexed_annuity/FIA_US_S/Projection/__init__.py:2144` `return min(mort_ae_factor * base, 1.0)` |
+| IUL_US_S `mort_rate` cap | b629db2 | `indexed_ul/IUL_US_S/Projection/__init__.py:1743` `return min(q, 1.0)` |
+| RILA_US_S `mort_rate` cap | b629db2 | `registered_index_linked_annuity/RILA_US_S/Projection/__init__.py:1694` `return min(rate * mort_ae_factor, 1.0)` |
+| SPIA_US_S `mort_rate` caps (A/E, rating) | b629db2 | `immediate_annuity/SPIA_US_S/Projection/__init__.py:716-717` `q_be = min(mort_ae_factor * q_base, 1.0)`, `return min(rating_factor() * q_be, 1.0)` |
+| Term_US_S `mort_rate` cap | b629db2 | `term_life/Term_US_S/Projection/__init__.py:407-408` `return min(mort_rate_base(t) * class_factor() * (plt_mort_factor(d) if d >= 1 else 1.0), 1.0)` |
+| UL_US_S `mort_rate` cap | b629db2 | `universal_life/UL_US_S/Projection/__init__.py:1135` `return min(q, 1.0)` |
+| ULSG_US_S `mort_rate` cap | b629db2 | `guaranteed_ul/ULSG_US_S/Projection/__init__.py:1528-1529` `return min(... * mort_ae_factor * mort_improve_factor(t), 1.0)` |
+| VUL_US_S `mort_rate` cap | b629db2 | `variable_ul/VUL_US_S/Projection/__init__.py:1679` `return min(q, 1.0)` |
+| WholeLife_US_S `mort_rate` cap | b629db2 | `whole_life/WholeLife_US_S/Projection/__init__.py:851` `return min(ae_best_est * mort_rate_guar(t), 1.0)` |
+| VA_US_S `rb_pp` (`"HQAV"` -> `"ratchet"`) | b629db2 | `variable_annuity/VA_US_S/Projection/__init__.py:1807` `elif option == "ratchet":` |
+
+Between the project base (7668467) and v0.17.3 these eleven cells are the only formula
+changes in the twelve US `*_S` models (an AST comparison of every cell, docstrings
+excluded). Ten caps are listed because DIA's is one of them; the brief's "nine US
+mortality formulas" plus "DIA" are read here as these ten.
+
+**Not identified in upstream, for the coordinator:**
+
+* *Obseques validation fix.* No Obseques_FR_S formula changed between the project base
+  and v0.17.3 or main. The only upstream change to the product is b629db2's renaming of
+  the surrender-scale keys in `model_point_table.csv` and `surr_scale_table.csv`
+  (`axa_50_viager` -> `s14_50_viager`, ...), which is input data, not a formula. The full
+  conversion's Obseques formulas differ from v0.17.3 only by its own enum, hoist and
+  table-read edits (a live run of the full conversion against v0.17.3 gives the same
+  Projection values on all 12 points). If the owner meant a formula fix, it is not in
+  upstream and it is not applied here.
+* *DIA validation fix.* Apart from the `mort_rate` cap above (whose docstring states its
+  purpose: a missing input, a NaN, stays NaN), no DIA_US_S formula changed between the
+  project base and v0.17.3. If the owner meant something else, it is not in upstream and
+  it is not applied here.
