@@ -101,6 +101,14 @@ The test edits are mechanical and generated (`testedit.py`):
 * `overrides/_libraries.toml`: uslib's S-vs-SEC twin identity (`sec_support._twin_lines`)
   passes a lean S model's members to the SEC twin, which is upstream text, as their labels
   (the `ALL` members as `None`), and compares the S results the same way.
+* `overrides/_libraries.toml`: uslib's SEC test modules (`*_sec.py`) call the S twins
+  with upstream's string labels. `sec_support` gains a view, active only when the
+  caller is SEC test code: label arguments of a lean S cell become members of that
+  model's own stored `enums` module (an omitted or `None` `kind` becomes `ALL`),
+  members in results read back as labels (`ALL` as `None`), and the family classes and
+  `enums` module are left out of the References those tests compare. The typed
+  parameters are read from the S formulas, for the whole space at once. SEC models and
+  S model text are not touched.
 * the families come from the model folder: `tests/<cc>_registry.py` gains `model_enums(name,
   *families)`, which loads `<model>/enums.py` from the model folder; each edited test
   module gains `from <cc>_registry import model_enums` and one assignment.
