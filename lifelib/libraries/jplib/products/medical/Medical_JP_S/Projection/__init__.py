@@ -783,7 +783,7 @@ def los_days(band):
     mode and the 160-day band for the psychiatric and neurological tail that drives the
     sourced national mean [REG-R27].
     """
-    return tuple(int(d) for d in data.los_table().loc[band].index)   # noqa: F821
+    return [int(d) for d in data.los_table().loc[band].index]   # noqa: F821
 
 
 def los_probs(band):
@@ -797,7 +797,7 @@ def los_probs(band):
     distribution with the same mean and a fatter tail changes the capped expectation
     without changing the calibration target at all.
     """
-    return tuple(float(p) for p in data.los_table().loc[band]["prob"])  # noqa: F821
+    return [float(p) for p in data.los_table().loc[band]["prob"]]  # noqa: F821
 
 
 def min_days_floor():
@@ -1130,7 +1130,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1149,14 +1149,14 @@ def pols_if_at(t, timing):
         benefit-driven termination are taken, and zero in the final projected month
         because the cover ends there.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
-        return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
                 * (1.0 - term_rate(t)))
     raise ValueError("invalid timing")
 
@@ -1177,7 +1177,7 @@ def pols_lapse(t):
     Pays nothing on the 終身払 anchor — see :func:`cv_pp` — so on that model point this
     moves :func:`pols_if` and nothing else.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_term(t):
@@ -1186,7 +1186,7 @@ def pols_term(t):
     Cover ceases when **both** 通算 limbs are exhausted [S9].  Zero on every shipped
     model point's expectation; see :func:`term_rate`.
     """
-    return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
             * term_rate(t))
 
 
@@ -1203,7 +1203,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return (pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    return (pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
             * (1.0 - term_rate(t)))
 
 
@@ -1274,7 +1274,7 @@ def surg_ih_eff(t):
     return surg_ih_per_hosp * d_pay_capped(t) / raw                  # noqa: F821
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the **end** of policy month t, by kind; the total when omitted.
 
     ``"HOSP"``
@@ -1302,21 +1302,21 @@ def claims(t, kind=None):
         rather than left to inference: it is the product fact, and a non-zero lapse row
         imported from a cash-value model is one of the notes' pitfalls.
     """
-    if kind is None:
+    if kind == Kind.ALL:
         return sum(claims(t, k)
-                   for k in ("HOSP", "SURGERY", "ADVANCED", "LUMP", "LAPSE"))
-    if kind == "HOSP":
+                   for k in (Kind.HOSP, Kind.SURGERY, Kind.ADVANCED, Kind.LUMP, Kind.LAPSE))
+    if kind == Kind.HOSP:
         return (pols_if(t) * daily_amount() * inc_rate_mth(t)
                 * (s_dis * d_ben_dis(t) + s_acc * d_ben_acc(t)))     # noqa: F821
-    if kind == "SURGERY":
+    if kind == Kind.SURGERY:
         return (pols_if(t) * inc_rate_mth(t) * daily_amount()
                 * (surg_ih_eff(t) * surg_mult_ih()
                    + surg_op_per_hosp * surg_mult_op()))             # noqa: F821
-    if kind == "ADVANCED":
+    if kind == Kind.ADVANCED:
         return pols_if(t) * adv_claim_pp(t)
-    if kind == "LUMP":
+    if kind == Kind.LUMP:
         return pols_if(t) * lump_amount * lump_claims_pp(t)          # noqa: F821
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * cv_pp(t)
     raise ValueError("invalid kind")
 
@@ -1393,8 +1393,8 @@ def net_cf(t):
     claims on the anchor cell are 21.5% of year-1 premium.
     """
     return (premiums(t)
-            - claims(t, "HOSP") - claims(t, "SURGERY")
-            - claims(t, "ADVANCED") - claims(t, "LUMP") - claims(t, "LAPSE")
+            - claims(t, Kind.HOSP) - claims(t, Kind.SURGERY)
+            - claims(t, Kind.ADVANCED) - claims(t, Kind.LUMP) - claims(t, Kind.LAPSE)
             - expenses(t) - claim_expenses(t) - commissions(t))
 
 
@@ -1541,7 +1541,7 @@ def check_net_cf_resid(t):
     but missing from the printed statement, or counted twice, shows up here; so does a
     claim expense folded back into :func:`expenses` instead of standing on its own line.
     """
-    return net_cf(t) - (premiums(t) - claims(t) - expenses(t)
+    return net_cf(t) - (premiums(t) - claims(t, Kind.ALL) - expenses(t)
                         - claim_expenses(t) - commissions(t))
 
 
@@ -1573,11 +1573,11 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_hosp": [claims(t, "HOSP") for t in ts],
-            "claims_surgery": [claims(t, "SURGERY") for t in ts],
-            "claims_advanced": [claims(t, "ADVANCED") for t in ts],
-            "claims_lump": [claims(t, "LUMP") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_hosp": [claims(t, Kind.HOSP) for t in ts],
+            "claims_surgery": [claims(t, Kind.SURGERY) for t in ts],
+            "claims_advanced": [claims(t, Kind.ADVANCED) for t in ts],
+            "claims_lump": [claims(t, Kind.LUMP) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1702,3 +1702,7 @@ roll_fwd_tol = 1e-10
 cash_tol = 1e-06
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

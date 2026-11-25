@@ -357,7 +357,7 @@ def grade_lump():
     要介護2以上 on the composite, the modal single threshold across the seven carriers
     and the one whose public base rate is best evidenced **[std]**.
     """
-    return str(model_point()["grade_lump"])
+    return Grade[str(model_point()["grade_lump"])]
 
 
 def grade_annuity():
@@ -366,7 +366,7 @@ def grade_annuity():
     要介護3以上 on the composite, one grade above the lump sum, which is the tiering
     three carriers use **[std]**.
     """
-    return str(model_point()["grade_annuity"])
+    return Grade[str(model_point()["grade_annuity"])]
 
 
 def grade_waiver():
@@ -377,7 +377,7 @@ def grade_waiver():
     model has to get right: it creates a band of lives paying nothing and receiving
     nothing.
     """
-    return str(model_point()["grade_waiver"])
+    return Grade[str(model_point()["grade_waiver"])]
 
 
 def annuity_max():
@@ -713,7 +713,7 @@ def prev_param(name):
     parameters; the file also carries the two sourced 認定率 anchors they were pinned to,
     4.3% at ages 65-74 and 31.1% at 75 and over [R4] [R5] [REG-R30].
     """
-    return float(data.prevalence_table().loc[name, "value"])         # noqa: F821
+    return float(data.prevalence_table().loc[name.name, "value"])         # noqa: F821
 
 
 def grade_share(grade):
@@ -726,7 +726,7 @@ def grade_share(grade):
     at young ones.  The published composition is a single all-ages figure, so no
     observed range exists **[std]**.
     """
-    return float(data.grade_share_table().loc[grade, "share_ge"])    # noqa: F821
+    return float(data.grade_share_table().loc[grade.name, "share_ge"])    # noqa: F821
 
 
 def prev_rate(t):
@@ -751,9 +751,9 @@ def prev_rate(t):
     a detail of the fit; ``technical-notes.md`` carries the sensitivity and the shipped
     tests pin both rates.
     """
-    ceil = prev_param("prev_ceil")
-    beta = prev_param("prev_beta")
-    x_mid = prev_param("prev_x_mid")
+    ceil = prev_param(PrevParam.prev_ceil)
+    beta = prev_param(PrevParam.prev_beta)
+    x_mid = prev_param(PrevParam.prev_x_mid)
     return ceil / (1.0 + math.exp(-beta * (age(t) - x_mid)))         # noqa: F821
 
 
@@ -765,8 +765,8 @@ def prev_slope(t):
     two terms of the incidence identity and a numerical derivative would put noise
     straight into the claim rate.
     """
-    ceil = prev_param("prev_ceil")
-    beta = prev_param("prev_beta")
+    ceil = prev_param(PrevParam.prev_ceil)
+    beta = prev_param(PrevParam.prev_beta)
     p = prev_rate(t)
     return beta * p * (1.0 - p / ceil)
 
@@ -979,12 +979,12 @@ def pols_if_at(t, timing):
         l(t+1), the end-of-month state, after lapse and after the benefit-driven
         termination.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return ((pols_act(t) - pols_entry_w(t)) * (1.0 - mort_rate_mth(t))
                 + (care_w(t) + pols_entry_w(t)) * (1.0 - mort_rate_care_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1150,7 +1150,7 @@ def premiums(t):
     return premium_mth_pp() * pols_act(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the end of month t, by ``kind``.
 
     ``"LUMP"``
@@ -1180,16 +1180,16 @@ def claims(t, kind=None):
 
     With no ``kind`` the total of the three benefit limbs.
     """
-    if kind is None:
-        return (claims(t, "LUMP") + claims(t, "ANNUITY")
-                + claims(t, "DEMENTIA"))
-    if kind == "LUMP":
+    if kind == Kind.ALL:
+        return (claims(t, Kind.LUMP) + claims(t, Kind.ANNUITY)
+                + claims(t, Kind.DEMENTIA))
+    if kind == Kind.LUMP:
         return lump_amount() * pols_entry_l(t)
-    if kind == "ANNUITY":
+    if kind == Kind.ANNUITY:
         return annuity_amount() * ann_count(t)
-    if kind == "DEMENTIA":
+    if kind == Kind.DEMENTIA:
         return (1.0 + mci_fraction()) * dementia_amount() * pols_entry_dem(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1274,7 +1274,7 @@ def net_cf(t):
     essentially does not arise until the block is old, which is what makes the **lapse
     assumption, not the incidence basis, the dominant lever**.
     """
-    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 
@@ -1367,8 +1367,8 @@ def check_net_cf_resid(t):
     into ``expenses`` and then deducted twice.
     """
     return net_cf(t) - (premiums(t)
-                        - claims(t, "LUMP") - claims(t, "ANNUITY")
-                        - claims(t, "DEMENTIA") - claims(t, "LAPSE")
+                        - claims(t, Kind.LUMP) - claims(t, Kind.ANNUITY)
+                        - claims(t, Kind.DEMENTIA) - claims(t, Kind.LAPSE)
                         - expenses(t) - claim_expenses(t) - commissions(t))
 
 
@@ -1409,10 +1409,10 @@ def result_cf():
             "care_l": [care_l(t) for t in ts],
             "care_n": [care_n(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_lump": [claims(t, "LUMP") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_dementia": [claims(t, "DEMENTIA") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_lump": [claims(t, Kind.LUMP) for t in ts],
+            "claims_annuity": [claims(t, Kind.ANNUITY) for t in ts],
+            "claims_dementia": [claims(t, Kind.DEMENTIA) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1487,3 +1487,11 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Grade = ("Pickle", 2)
+
+PrevParam = ("Pickle", 3)
+
+PolTiming = ("Pickle", 4)
+
+Kind = ("Pickle", 5)

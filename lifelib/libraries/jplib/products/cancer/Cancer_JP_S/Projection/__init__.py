@@ -1043,13 +1043,13 @@ def pols_if_at(t, timing):
     :func:`result_pols` — for the state movement; ``pols_if_at`` answers only how many
     lives are left, never which state they are in.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return ((pols_healthy(t) - diag_first(t)) * (1.0 - mort_rate_mth(t))
                 + (pols_cancer(t) + diag_first(t))
                 * (1.0 - mort_rate_canc_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1324,7 +1324,7 @@ def premiums(t):
     return premium_mth_pp() * premium_factor(t) * pols_payer(t) * prem_payable(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DIAG"``
@@ -1375,35 +1375,35 @@ def claims(t, kind=None):
     check: ¥3,000.00 inpatient, ¥1,458.33 surgery, ¥10,000.00 treatment, ¥916.67
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
-    if kind is None:
+    if kind == Kind.ALL:
         return sum(claims(t, k) for k in (
-            "DIAG", "INSITU", "HOSP", "SURGERY", "TREAT", "OUTPATIENT",
-            "ADVANCED", "DISCHARGE", "LAPSE"))
-    if kind == "DIAG":
+            Kind.DIAG, Kind.INSITU, Kind.HOSP, Kind.SURGERY, Kind.TREAT, Kind.OUTPATIENT,
+            Kind.ADVANCED, Kind.DISCHARGE, Kind.LAPSE))
+    if kind == Kind.DIAG:
         return diag_benefit() * trig(t)
-    if kind == "INSITU":
+    if kind == Kind.INSITU:
         return insitu_pct() * diag_benefit() * insitu_ev(t)
-    if kind == "HOSP":
+    if kind == Kind.HOSP:
         return (daily_amount() * hosp_stay_days(t) * hosp_rate_mth(t)
                 * pols_cancer(t))
-    if kind == "SURGERY":
+    if kind == Kind.SURGERY:
         return surg_mult() * base_amount() * (
             surg_per_hosp * hosp_rate_mth(t) * pols_cancer(t)        # noqa: F821
             + surg_per_insitu * insitu_ev(t))                        # noqa: F821
-    if kind == "TREAT":
+    if kind == Kind.TREAT:
         return treat_benefit() * paid_months(t) * pols_cancer(t)
-    if kind == "OUTPATIENT":
+    if kind == Kind.OUTPATIENT:
         return outp_daily() * (outp_days / 12.0) * pols_cancer(t)    # noqa: F821
-    if kind == "ADVANCED":
+    if kind == Kind.ADVANCED:
         pay = adv_pay(t)
         top_up = min(adv_topup_rate * pay, adv_topup_cap)            # noqa: F821
         return adv_freq_mth() * (pay + top_up) * pols_cancer(t)
-    if kind == "DISCHARGE":
+    if kind == Kind.DISCHARGE:
         if not disch_rider():
             return 0.0
         return (disch_mult * base_amount() * disch_qual_share        # noqa: F821
                 * hosp_rate_mth(t) * pols_cancer(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1489,7 +1489,7 @@ def net_cf(t):
     disjoint.  Every error in incidence therefore hits both sides of the cash flow at once,
     roughly doubling its effect here.
     """
-    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 
@@ -1694,15 +1694,15 @@ def result_cf():
             "pols_healthy": [pols_healthy(t) for t in ts],
             "pols_cancer": [pols_cancer(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_diag": [claims(t, "DIAG") for t in ts],
-            "claims_insitu": [claims(t, "INSITU") for t in ts],
-            "claims_hosp": [claims(t, "HOSP") for t in ts],
-            "claims_surgery": [claims(t, "SURGERY") for t in ts],
-            "claims_treat": [claims(t, "TREAT") for t in ts],
-            "claims_outpatient": [claims(t, "OUTPATIENT") for t in ts],
-            "claims_advanced": [claims(t, "ADVANCED") for t in ts],
-            "claims_discharge": [claims(t, "DISCHARGE") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_diag": [claims(t, Kind.DIAG) for t in ts],
+            "claims_insitu": [claims(t, Kind.INSITU) for t in ts],
+            "claims_hosp": [claims(t, Kind.HOSP) for t in ts],
+            "claims_surgery": [claims(t, Kind.SURGERY) for t in ts],
+            "claims_treat": [claims(t, Kind.TREAT) for t in ts],
+            "claims_outpatient": [claims(t, Kind.OUTPATIENT) for t in ts],
+            "claims_advanced": [claims(t, Kind.ADVANCED) for t in ts],
+            "claims_discharge": [claims(t, Kind.DISCHARGE) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -1824,3 +1824,7 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)
