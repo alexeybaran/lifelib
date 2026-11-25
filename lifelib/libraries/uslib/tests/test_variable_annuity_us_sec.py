@@ -194,6 +194,7 @@ import dataclasses
 import errno
 import gc
 import importlib.machinery
+import enum
 import inspect
 import io
 import itertools
@@ -7148,7 +7149,10 @@ def _values(refs):
     """The values of ``refs``, a Space's References, each as it compares: a module by its
     name; the Interface to the other Space left out."""
     return {name: value.__name__ if inspect.ismodule(value) else value
-            for name, value in refs.items() if name != "data"}
+            for name, value in refs.items() if name != "data"
+            # lean conversion: S's label families and its stored enums module
+            and not (inspect.isclass(value) and issubclass(value, enum.Enum))
+            and not (name == "enums" and inspect.ismodule(value))}
 
 
 # The References this model adds to VA_US_S's: on Projection, the three tolerances its

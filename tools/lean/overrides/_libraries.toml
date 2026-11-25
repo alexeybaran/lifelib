@@ -29,3 +29,31 @@ new = """    folder = model_path(name)
     assert {p.name for p in folder.iterdir() if p.is_file()} == {
         "__init__.py", "_system.json"} | stored
 """
+
+# The SEC twins of VA_US_S, IUL_US_S and ULSG_US_S compare every Reference of S's spaces
+# with their own (test_the_sec_model_reads_the_s_tables_in_place).  A lean S space also
+# holds its label families (Claim = ("Pickle", n), ...) and the model its stored enums
+# module; neither is an assumption the SEC model copies, so the comparison leaves them out.
+[[replace]]
+files = ["uslib/tests/test_variable_annuity_us_sec.py", "uslib/tests/test_indexed_ul_us_sec.py",
+         "uslib/tests/test_guaranteed_ul_us_sec.py"]
+why = "a lean S space's family References and enums module are not SEC assumptions"
+old = """    return {name: value.__name__ if inspect.ismodule(value) else value
+            for name, value in refs.items() if name != "data"}
+"""
+new = """    return {name: value.__name__ if inspect.ismodule(value) else value
+            for name, value in refs.items() if name != "data"
+            # lean conversion: S's label families and its stored enums module
+            and not (inspect.isclass(value) and issubclass(value, enum.Enum))
+            and not (name == "enums" and inspect.ismodule(value))}
+"""
+
+[[replace]]
+files = ["uslib/tests/test_variable_annuity_us_sec.py", "uslib/tests/test_indexed_ul_us_sec.py",
+         "uslib/tests/test_guaranteed_ul_us_sec.py"]
+why = "the edit above names enum.Enum"
+old = """import inspect
+"""
+new = """import enum
+import inspect
+"""
