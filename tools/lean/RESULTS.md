@@ -14,7 +14,7 @@ except IP_UK_S, whose upstream text differs (see `overrides/IP_UK_S.toml`).
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | DIA_US_S | generated | 1 | +12/-10 | 9 | 9 | +91/-76 | 206816 | 0 | 77/0/1 | 77/0/1 | yes |
 | MYGA_US_S | generated | 4 | +66/-58 | 29 | 8 | +135/-92 | 91680 | 0 | 90/0/1 | 90/0/1 | yes |
-| FIA_US_S | generated | 6 | +98/-86 | 68 | 10 | +215/-169 | 295629 | 0 | 121/0/1 | 121/0/1 | yes |
+| FIA_US_S | generated | 6 | +104/-86 | 45 | 10 | +215/-169 | 295629 | 0 | 121/0/1 | 121/0/1 | yes |
 | ULSG_US_S | generated | 4 | +81/-73 | 32 | 7 | +139/-97 | 98438 | 0 | 85/0/1 | 85/0/1 | yes |
 | SPIA_US_S | generated | 1 | +8/-6 | 8 | 11 | +43/-42 | 154627 | 0 | 69/0/1 | 69/0/1 | yes |
 | IUL_US_S | generated | 3 | +70/-64 | 27 | 8 | +174/-125 | 170182 | 0 | 97/0/1 | 97/0/1 | yes |
@@ -24,7 +24,7 @@ except IP_UK_S, whose upstream text differs (see `overrides/IP_UK_S.toml`).
 | VA_US_S | generated | 4 | +86/-78 | 30 | 12 | +184/-127 | 272416 | 0 | 101/0/1 | 101/0/1 | yes |
 | VUL_US_S | generated | 3 | +99/-93 | 26 | 10 | +178/-121 | 174146 | 0 | 84/0/1 | 84/0/1 | yes |
 | WholeLife_US_S | generated | 2 | +40/-36 | 17 | 6 | +95/-65 | 274951 | 0 | 88/0/0 | 88/0/0 | yes |
-| CI_UK_S | generated | 6 | +49/-37 | 61 | 10 | +81/-65 | 39216 | 0 | 70/0/1 | 70/0/1 | yes |
+| CI_UK_S | generated | 6 | +49/-37 | 38 | 10 | +81/-65 | 39216 | 0 | 70/0/1 | 70/0/1 | yes |
 | IP_UK_S | generated | 2 | +23/-19 | 15 | 11 | +60/-49 | 44422 | 0 | 77/0/1 | 77/0/1 | yes |
 | PA_UK_S | generated | 2 | +16/-12 | 14 | 13 | +43/-41 | 101593 | 0 | 81/0/1 | 81/0/1 | yes |
 | Term_UK_S | generated | 2 | +22/-18 | 16 | 11 | +48/-43 | 39977 | 0 | 89/0/1 | 89/0/1 | yes |
@@ -39,35 +39,35 @@ except IP_UK_S, whose upstream text differs (see `overrides/IP_UK_S.toml`).
 | RV_DE_S | generated | 3 | +49/-43 | 22 | 12 | +148/-90 | 153469 | 0 | 120/0/0 | 120/0/0 | yes |
 | Pflege_DE_S | generated | 2 | +22/-18 | 15 | 8 | +92/-75 | 280493 | 0 | 101/0/0 | 100/1/0 | NO |
 | Riester_DE_S | generated | 3 | +38/-32 | 24 | 17 | +48/-45 | 163603 | 0 | 120/0/0 | 120/0/0 | yes |
-| RLV_DE_S | generated | 5 | +43/-33 | 54 | 12 | +78/-58 | 121118 | 0 | 122/0/0 | 122/0/0 | yes |
-| Sofort_DE_S | generated | 4 | +32/-24 | 49 | 15 | +75/-52 | 163311 | 0 | 102/0/2 | 102/0/2 | yes |
+| RLV_DE_S | generated | 5 | +43/-33 | 31 | 12 | +78/-58 | 121118 | 0 | 122/0/0 | 122/0/0 | yes |
+| Sofort_DE_S | generated | 4 | +32/-24 | 26 | 15 | +75/-52 | 163311 | 0 | 102/0/2 | 102/0/2 | yes |
 | ADE_FR_S | generated | 2 | +26/-22 | 18 | 10 | +83/-76 | 85241 | 0 | 98/0/0 | 98/0/0 | yes |
 | Euro_FR_S | generated | 3 | +32/-26 | 22 | 12 | +56/-43 | 65317 | 0 | 91/0/0 | 91/0/0 | yes |
 | UC_FR_S | generated | 3 | +41/-35 | 23 | 7 | +84/-71 | 39515 | 0 | 83/0/1 | 83/0/1 | yes |
-| Dep_FR_S | generated | 5 | +37/-27 | 55 | 10 | +105/-80 | 161445 | 0 | 89/0/1 | 89/0/1 | yes |
+| Dep_FR_S | generated | 5 | +40/-27 | 32 | 10 | +105/-80 | 161445 | 0 | 89/0/1 | 89/0/1 | yes |
 | EC_FR_S | generated | 3 | +115/-109 | 27 | 9 | +165/-137 | 45129 | 0 | 96/0/0 | 96/0/0 | yes |
 | Obseques_FR_S | generated | 4 | +34/-26 | 28 | 7 | +60/-45 | 178479 | 0 | 71/0/0 | 71/0/0 | yes |
 | PER_FR_S | generated | 3 | +72/-66 | 25 | 7 | +113/-96 | 46780 | 0 | 97/0/1 | 97/0/1 | yes |
-| Rente_FR_S | generated | 3 | +24/-18 | 42 | 14 | +52/-48 | 149490 | 0 | 84/0/2 | 84/0/2 | yes |
+| Rente_FR_S | generated | 3 | +24/-18 | 19 | 14 | +52/-48 | 149490 | 0 | 84/0/2 | 84/0/2 | yes |
 | TD_FR_S | generated | 2 | +22/-18 | 16 | 8 | +51/-42 | 70117 | 0 | 103/0/0 | 103/0/0 | yes |
 | Cancer_JP_S | generated | 2 | +30/-26 | 22 | 7 | +65/-53 | 223683 | 0 | 92/0/1 | 92/0/1 | yes |
-| Endowment_JP_S | generated | 3 | +38/-32 | 46 | 14 | +54/-49 | 80429 | 0 | 107/0/1 | 107/0/1 | yes |
-| FXWholeLife_JP_S | generated | 4 | +50/-42 | 66 | 8 | +95/-80 | 188631 | 0 | 138/0/1 | 138/0/1 | yes |
+| Endowment_JP_S | generated | 3 | +38/-32 | 23 | 14 | +54/-49 | 80429 | 0 | 107/0/1 | 107/0/1 | yes |
+| FXWholeLife_JP_S | generated | 4 | +50/-42 | 43 | 8 | +95/-80 | 188631 | 0 | 138/0/1 | 138/0/1 | yes |
 | IncomeTerm_JP_S | generated | 2 | +25/-21 | 17 | 11 | +37/-36 | 72255 | 0 | 84/0/1 | 84/0/1 | yes |
 | Annuity_JP_S | generated | 7 | +85/-71 | 63 | 10 | +108/-95 | 123769 | 0 | 114/0/1 | 114/0/1 | yes |
 | Medical_JP_S | generated | 2 | +30/-26 | 18 | 9 | +60/-51 | 210711 | 0 | 77/0/1 | 77/0/1 | yes |
-| LTC_JP_S | generated | 4 | +36/-28 | 58 | 8 | +66/-53 | 146947 | 0 | 79/0/1 | 79/0/1 | yes |
+| LTC_JP_S | generated | 4 | +36/-28 | 35 | 8 | +66/-53 | 146947 | 0 | 79/0/1 | 79/0/1 | yes |
 | Term_JP_S | generated | 2 | +31/-27 | 17 | 14 | +63/-53 | 87214 | 0 | 96/0/1 | 96/0/1 | yes |
 | WholeLife_JP_S | generated | 2 | +22/-18 | 16 | 15 | +32/-30 | 190874 | 0 | 111/0/1 | 111/0/1 | yes |
 | Cancer_KR_S | generated | 4 | +58/-50 | 36 | 7 | +139/-81 | 268417 | 0 | 274/0/1 | 274/0/1 | yes |
-| Child_KR_S | generated | 7 | +104/-90 | 95 | 10 | +241/-141 | 374539 | 0 | 168/0/1 | 168/0/1 | yes |
+| Child_KR_S | generated | 7 | +104/-90 | 72 | 10 | +241/-141 | 374539 | 0 | 168/0/1 | 168/0/1 | yes |
 | CI_KR_S | generated | 3 | +33/-27 | 26 | 11 | +71/-57 | 257872 | 0 | 189/0/1 | 189/0/1 | yes |
 | Immediate_KR_S | generated | 1 | +14/-12 | 9 | 11 | +72/-68 | 84155 | 0 | 129/0/1 | 129/0/1 | yes |
 | Medical_KR_S | generated | 4 | +70/-62 | 41 | 8 | +125/-75 | 25882 | 0 | 173/0/1 | 173/0/1 | yes |
-| LTC_KR_S | generated | 6 | +62/-50 | 83 | 8 | +156/-103 | 152464 | 0 | 135/0/1 | 135/0/1 | yes |
+| LTC_KR_S | generated | 6 | +62/-50 | 60 | 8 | +156/-103 | 152464 | 0 | 135/0/1 | 135/0/1 | yes |
 | Pension_KR_S | generated | 8 | +106/-90 | 96 | 11 | +158/-126 | 216545 | 0 | 171/0/1 | 171/0/1 | yes |
 | Term_KR_S | generated | 2 | +36/-32 | 19 | 12 | +93/-70 | 75943 | 0 | 148/0/1 | 148/0/1 | yes |
-| VA_KR_S | generated | 4 | +79/-71 | 68 | 15 | +113/-86 | 360111 | 0 | 142/0/1 | 142/0/1 | yes |
+| VA_KR_S | generated | 4 | +79/-71 | 45 | 15 | +113/-86 | 360111 | 0 | 142/0/1 | 142/0/1 | yes |
 | WholeLife_KR_S | generated | 2 | +22/-18 | 16 | 14 | +52/-47 | 244903 | 0 | 172/0/1 | 172/0/1 | yes |
 
 Totals: 8015632 values compared, 0 mismatches; lean tests 6157 passed, 0 failed; models whose test outcomes differ from upstream: 1.
@@ -94,13 +94,13 @@ S formulas, for the whole space at once.
 | upstream | 3375 | 0 | 0 | 919 |
 | lean, before | 2917 | 139 | 328 | 910 |
 | lean, after the support fix | 3359 | 16 | 0 | 919 |
-| lean, after the invalid-label rule | 3375 | 0 | 0 | 919 |
+| lean, after the invalid-label checks | 3375 | 0 | 0 | 919 |
 
 The 16 left after the support fix were all
 `test_fixed_indexed_annuity_us_sec::test_a_text_value_no_decode_knows_raises_s_message`
 (`credit_method` and `glwb_basis`): the lean `credit_method()` and `glwb_basis()`
 raised `KeyError` from `CreditMethod[...]`/`GlwbBasis[...]` before upstream's
-`ValueError("invalid ...")`. The invalid-label rule below fixes them in the generator.
+`ValueError("invalid ...")`. The check-then-convert overrides below (FIA_US_S) fix them.
 
 Product and convention tests after both changes, all six libraries: every outcome the
 same as before (and as upstream, Pflege_DE_S's order-dependent test aside); the 6,157
@@ -108,36 +108,40 @@ model tests are unchanged.
 
 ## Invalid labels: upstream's error (coordinator decision)
 
-Rule (generator, `emit.py`/`lean.py`, no override): a family the lean text looks up by
-text, `Family[expr]`, is declared `metaclass=ByText` in the model's `enums.py`; a text
-that is not a member comes back as itself (`Text`, a `str` whose `.name` is the same
-text), so the label takes upstream's path to upstream's own check or upstream's failed
-table lookup. No formula line changed; the 12 `enums.py` files that hold such a family
-changed by +304/-28 lines (lean total, `diffsize.py`: 7,234 -> 7,510 lines; the
-Projection count is unchanged at 5,060). The per-model table above is rebuilt from a fresh `diffsize.py` run;
-its earlier Projection counts for EC_FR_S, Endowment_JP_S, FXWholeLife_JP_S,
-Immediate_KR_S and VA_KR_S came from a generation before the last generator fix, which
-is why the total reported before was 7,284 and not the committed tree's 7,234.
+`enums.py` holds plain IntEnum classes in every model. Where upstream checks a label's
+text later with its own `raise ValueError(...)` and the lean text converts it first, the
+converting cell checks first, with upstream's labels and message, then converts
+(`overrides/FIA_US_S.toml`, `overrides/Dep_FR_S.toml`): FIA_US_S `credit_method()` and
+`glwb_basis()`, Dep_FR_S `carence_factor` over the cause table. That is +11/-2 lines of
+model text; the lean total is 7,243 lines (`diffsize.py`; it was 7,234; the 7,284
+reported earlier was stale: five Projection counts in the previous table came from a
+generation before the last generator fix).
 
-The lean text has 25 `Family[...]` lookups in 12 models. Checked live: for every policy
-attribute or table label column the lookups read (22 columns of 11 models), the shipped
-table with the column's value replaced (every model point; the first row of Dep_FR's
-cause table) by `ZZ`, by the value with a leading space and by
-its case swapped (66 runs), upstream vs lean on every no-argument cell of every point,
-comparing the inner error line of a formula error:
+The lean text has 25 `Family[...]` lookups in 12 models. Checked live: each of the 22
+label columns those lookups read (11 models; Dep_FR's cause table) with the value
+replaced (every model point; the first row of the cause table) by `ZZ`, by the value
+with a leading space and by its case swapped: 66 runs, upstream vs lean on every
+no-argument cell of every point, comparing the inner error line of a formula error.
 
-| | runs differing from upstream | models |
-|---|---|---|
-| before | 30 of 66 | FIA_US_S, Dep_FR_S (conversion ahead of upstream's `raise ValueError`); CI_UK_S, Endowment_JP_S, LTC_JP_S (another `KeyError` text or cell) |
-| after | 0 errors differ | the 21 runs still flagged are the attribute cells themselves (`credit_method`, `glwb_basis`, Endowment `sex`/`ph_sex`, LTC_JP `grade_*`), which return `Text("ZZ")` where upstream returns `"ZZ"`: equal value, `str` subclass; with that compared as `str`, 0 |
+| outcome per cell | where |
+|---|---|
+| same value or same error | all other cells of all 66 runs; every cell of RLV_DE_S, Sofort_DE_S, Rente_FR_S, Child_KR_S, LTC_KR_S, Dep_FR_S |
+| upstream's own error, raised earlier, in the converting cell | FIA_US_S `credit_method`, `glwb_basis` (`ValueError: invalid ...`); LTC_JP_S `grade_*` (upstream's `KeyError` line) |
+| same error type, another message (accepted) | CI_UK_S (`sex`, `joint_sex`: `KeyError: 'ZZ'` for upstream's `KeyError: 'NS'`), Endowment_JP_S (`KeyError: 'ZZ'` for `KeyError: ('ZZ', 31)`; `sex`/`ph_sex` raise it themselves) |
+| anything else | none |
 
-So two models had the brief's shape (a conversion ahead of an upstream validation):
-FIA_US_S (`credit_method`, `glwb_basis`) and Dep_FR_S (`Cause[c]` over the cause table's
-index, ahead of `carence_months`' `raise ValueError("invalid cause")`). RLV_DE_S,
-Sofort_DE_S, Rente_FR_S, Child_KR_S and LTC_KR_S convert after upstream's own check and
-were already equal. The other lookups (`low_cv_%d`, `comm_yr%d`, `surgery_rate_` +
-member name, `Smoker[smoker2()]`) take labels built in code from validated values.
-Copy route rerun on the 12 models: exact.
+Before this change (as at 957373d0) 30 of the 66 runs differed: FIA_US_S and Dep_FR_S
+raised `KeyError` where upstream raises its `ValueError` (the brief's shape: two
+models), CI_UK_S, Endowment_JP_S and LTC_JP_S as in the table. RLV_DE_S, Sofort_DE_S,
+Rente_FR_S, Child_KR_S and LTC_KR_S convert after upstream's own check. The other
+lookups (`low_cv_%d`, `comm_yr%d`, `surgery_rate_` + member name, `Smoker[smoker2()]`)
+take labels built in code from validated values. Copy route on FIA_US_S and Dep_FR_S:
+exact.
+
+**Known differences (accepted):** an invalid label in CI_UK_S (`sex`, `joint_sex`),
+Endowment_JP_S (`sex`, `ph_sex`) and LTC_JP_S (`grade_lump`, `grade_annuity`,
+`grade_waiver`) raises upstream's error type (`KeyError`) with another message or in an
+earlier cell; FIA_US_S and Dep_FR_S raise upstream's `ValueError` in the converting cell.
 
 `check.py` compares modelx's `FormulaError` of a failing cell, not its inner message, so
 its exception checks in the table above are weaker than stated before; the runs here
