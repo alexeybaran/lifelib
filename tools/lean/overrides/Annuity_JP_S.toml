@@ -1,0 +1,7 @@
+# Annuity_JP_S: overrides of the lean conversion.
+
+# Convention: a cell that returns a sequence of numbers returns a tuple (the compiler
+# accelerates tuples only, and a cached tuple cannot be changed by its caller).  Upstream
+# returns a list here; no reader in the model or its tests mutates it or needs a list.
+[tuple_cells]
+Projection = ["mort_anchor_ages"]

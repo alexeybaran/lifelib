@@ -7,6 +7,12 @@
 # argument; upstream passes an integer, not a string label, so K1 does not apply.  The
 # lean text keeps upstream's integer argument: the second parameter is untyped here.
 
+# Convention "sequences of numbers are tuples": left as upstream's list (recorded; the
+# generator does not read this key).
+tuple_left = [
+    "ci_cohort_ids: two tests in test_ci_insurance_kr compare the result with a list (== [-s for s ...] + list(range(...)))",
+]
+
 [params.Projection.pols_ci_in]
 "1" = ""
 [params.Projection.pols_if_ci_at]

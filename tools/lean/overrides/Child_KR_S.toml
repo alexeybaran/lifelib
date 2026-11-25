@@ -5,3 +5,9 @@
 choices = [
     "Projection.benefit_pp: 'surgery_rate_' + cause is a label computed or read as text, passed to typed Projection.basis_param; looked up by name as BasisParam[...] rather than re-spelled",
 ]
+
+# Convention: a cell that returns a sequence of numbers returns a tuple (the compiler
+# accelerates tuples only, and a cached tuple cannot be changed by its caller).  Upstream
+# returns a list here; no reader in the model or its tests mutates it or needs a list.
+[tuple_cells]
+Projection = ["inc_pivots"]

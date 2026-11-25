@@ -257,5 +257,47 @@ class Rewriter:
                                           % (key[0], key[1], names[pos], ast.unparse(d)))
         self.none_member = {F: m for F, m in none_member.items()
                             if m is not None and m not in spelled.get(F, set())}
+        self.tuples(edits)
         return {s: edits[s].apply() for s in edits}
+
+    # -- sequences of numbers are tuples ---------------------------------------------
+
+    def tuples(self, edits):
+        """``tuple_cells``: cells upstream returns a list from, made to return a tuple.
+
+        Each returned list becomes a tuple of the same values: ``[f(z) for z in zs]`` ->
+        ``tuple(f(z) for z in zs)``, ``list(x)`` -> ``tuple(x)``, ``[0.0] * n`` ->
+        ``(0.0,) * n``, a list display -> a tuple display, any other expression (a local
+        list) -> ``tuple(x)``; ``return a, b`` converts each element.
+        """
+        for s, names in self.ov.get("tuple_cells", {}).items():
+            sp = self.model.spaces[s]
+            for c in names:
+                if c not in sp.cells:
+                    raise GenerationError("tuple_cells: %s.%s is not in upstream" % (s, c))
+                fn = self.typing.fns[(s, c)]
+                for r in fn.returns():
+                    v = r.value
+                    for e in (v.elts if isinstance(v, ast.Tuple) else [v]):
+                        self._tuplify(e, edits[s])
+
+    def _tuplify(self, node, src):
+        text = src.segment(node)
+        if isinstance(node, ast.ListComp):
+            src.replace(node, "tuple(" + text[1:-1] + ")")
+        elif isinstance(node, ast.List):
+            inner = text[1:-1].rstrip()
+            if len(node.elts) == 1 and not inner.endswith(","):
+                inner += ","
+            src.replace(node, "(" + inner + ")")
+        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult) \
+                and isinstance(node.left, ast.List):
+            self._tuplify(node.left, src)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                and node.func.id == "list":
+            src.replace(node.func, "tuple")
+        elif isinstance(node, ast.Tuple):
+            raise GenerationError("tuple_cells: a nested tuple %s" % text[:40])
+        else:
+            src.replace(node, "tuple(%s)" % text)
 

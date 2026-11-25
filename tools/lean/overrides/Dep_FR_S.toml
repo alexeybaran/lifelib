@@ -6,6 +6,12 @@ choices = [
     "Projection.carence_factor: c is a label computed or read as text, passed to typed Projection.carence_months; looked up by name as Cause[...] rather than re-spelled",
 ]
 
+# Convention "sequences of numbers are tuples": left as upstream's list (recorded; the
+# generator does not read this key).
+tuple_left = [
+    "dep_cohorts: a test assigns into the returned vector (dep_cohorts(30)[0][0] = 999.0) to show the cache is not corrupted",
+]
+
 # Coordinator decision: an invalid label raises upstream's own error.  Upstream checks each
 # cause of the cause table in carence_months (`raise ValueError("invalid cause")`); the
 # lean carence_factor converts the table's text first (Cause[c]), which would raise

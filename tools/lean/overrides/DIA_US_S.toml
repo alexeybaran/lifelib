@@ -1,0 +1,7 @@
+# DIA_US_S: overrides of the lean conversion.
+
+# Convention "sequences of numbers are tuples": left as upstream's list (recorded; the
+# generator does not read this key).
+tuple_left = [
+    "qlac_flags: a list of text messages, not numbers; test_deferred_income_annuity_us asserts qlac_flags() == []",
+]
