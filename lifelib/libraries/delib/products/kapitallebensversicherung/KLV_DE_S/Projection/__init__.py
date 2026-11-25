@@ -2024,7 +2024,7 @@ def surr_value_pp(t):
             + term_surr_share * term_bonus_close_pp(t))               # noqa: F821
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -2043,7 +2043,7 @@ def claims(t, kind):
         often large outflow, and in the last month the distinction between it and a
         maturity decides a payment rather than only a label.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.MATURITY, Kind.LAPSE))
     if kind == Kind.DEATH:
         return pols_death(t) * benefit_death_pp(t)

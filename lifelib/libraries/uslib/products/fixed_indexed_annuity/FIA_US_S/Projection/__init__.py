@@ -867,7 +867,7 @@ def scenario_value(y, name):
     sub = data.rate_scenario().loc[scenario_id()]                    # noqa: F821
     keys = [i for i in sub.index if i <= y]
     key = max(keys) if keys else min(sub.index)
-    return float(sub.loc[key, name.name])
+    return float(sub.loc[key, name])
 
 
 def index_level(y):
@@ -2473,9 +2473,9 @@ def withdrawals(t):
     return 0.0 if t < entry_mth() else wd_payment_pp(t) * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, for one ``kind`` or, with ``kind=None``, all three."""
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims(t, Claim.DEATH) + claims(t, Claim.LAPSE) + claims(t, Claim.MATURITY))
     return claim_pp(t, kind) * pols_decr(t, kind)
 
@@ -2485,14 +2485,14 @@ def claims_from_av(t, kind):
     return claim_from_av_pp(t, kind) * pols_decr(t, kind)
 
 
-def claims_over_av(t, kind):
+def claims_over_av(t, kind=None):
     """Benefit paid less the account value released, ``claims - claims_from_av``.
 
     Signed and a reconciliation quantity only: positive exactly when the Model #805 floor
     binds, negative when the surrender charge, the clawback and a negative MVA bite.  A
     binding floor does not add a top-up cash flow — it raises the benefit.
     """
-    if kind == Claim.ALL:
+    if kind is None:
         return (claims_over_av(t, Claim.DEATH) + claims_over_av(t, Claim.LAPSE)
                 + claims_over_av(t, Claim.MATURITY))
     return claims(t, kind) - claims_from_av(t, kind)
@@ -2550,7 +2550,7 @@ def net_cf(t):
     of their own.  Only amounts paid to or received from the contract holder, and the
     insurer's own expenses, appear here.
     """
-    return (premiums(t) - withdrawals(t) - claims(t, Claim.ALL)
+    return (premiums(t) - withdrawals(t) - claims(t)
             - commissions(t) - expenses(t) - premium_taxes(t))
 
 

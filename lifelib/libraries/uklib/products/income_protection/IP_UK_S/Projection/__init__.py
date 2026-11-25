@@ -610,9 +610,9 @@ def claim_rate_vectors():
     definition of each rate.
     """
     zs = range(1, max_dur() + 1)
-    rec = [rec_rate_mth(z) for z in zs]
-    dth = [mort_rate_sick_mth(z) for z in zs]
-    return rec, dth, [(1.0 - r) * (1.0 - d) for r, d in zip(rec, dth)]
+    rec = tuple(rec_rate_mth(z) for z in zs)
+    dth = tuple(mort_rate_sick_mth(z) for z in zs)
+    return rec, dth, tuple((1.0 - r) * (1.0 - d) for r, d in zip(rec, dth))
 
 
 def esc_rate():
@@ -749,15 +749,15 @@ def sick_cohorts(t):
     """
     n = max_dur()
     if t < 0 or t >= proj_len():
-        return [0.0] * n
+        return (0.0,) * n
     if t == 0:
         seed = pols_if_init() if status() == "in_claim" else 0.0
         z0 = claim_duration_months() + 1
-        return [seed if z == z0 else 0.0 for z in range(1, n + 1)]
+        return tuple(seed if z == z0 else 0.0 for z in range(1, n + 1))
     prev = sick_cohorts(t - 1)
     surv = claim_rate_vectors()[2]
-    return [pols_inception(t - 1)] + [
-        prev[z - 1] * surv[z - 1] for z in range(1, n)]
+    return (pols_inception(t - 1),) + tuple(
+        prev[z - 1] * surv[z - 1] for z in range(1, n))
 
 
 def pols_sick_dur(t, z):
@@ -964,7 +964,7 @@ def premiums(t):
     return premium_pp(t) * pols_active(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"BENEFIT"``
@@ -984,7 +984,7 @@ def claims(t, kind):
     The two zero kinds are published rather than omitted so that the product facts are
     stated instead of inferred from a missing column.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.BENEFIT, Kind.DEATH, Kind.LAPSE))
     if kind == Kind.BENEFIT:
         return claim_severity * amount_payable_pp(t) * pols_sick_surv(t)  # noqa: F821
@@ -1013,7 +1013,7 @@ def net_cf(t):
     ``liability_cf`` companion.  Death and lapse generate no payment at all on this
     product.
     """
-    return premiums(t) - claims(t, Kind.ALL) - expenses(t)
+    return premiums(t) - claims(t) - expenses(t)
 
 
 def disc_factor(t):

@@ -1,28 +1,30 @@
-"""IntEnum families passed as cell arguments in KLV_DE_S, stored with the model."""
+"""Label families passed as cell arguments in KLV_DE_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class ResTiming(IntEnum):
-    BEF_PREM = 0
-    AFT_PREM = 1
-    AFT_INT = 2
+from enum import StrEnum
 
 
-class SurTiming(IntEnum):
-    BEF_INT = 0
-    AFT_INT = 1
-    AFT_CREDIT = 2
+class ResTiming(StrEnum):
+    BEF_PREM = "BEF_PREM"
+    AFT_PREM = "AFT_PREM"
+    AFT_INT = "AFT_INT"
 
 
-class PolsTiming(IntEnum):
-    BEF_DECR = 0
-    AFT_MORT = 1
-    AFT_LAPSE = 2
+class SurTiming(StrEnum):
+    BEF_INT = "BEF_INT"
+    AFT_INT = "AFT_INT"
+    AFT_CREDIT = "AFT_CREDIT"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    MATURITY = 1
-    LAPSE = 2
-    ALL = 3
+class PolsTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    AFT_MORT = "AFT_MORT"
+    AFT_LAPSE = "AFT_LAPSE"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    MATURITY = "MATURITY"
+    LAPSE = "LAPSE"
