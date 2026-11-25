@@ -27,12 +27,9 @@ from emit import IOSPECS, MODEL_REF, append_refs, data_pickle, enums_module  # n
 from engine import GenerationError  # noqa: E402
 from modeltext import ModelText  # noqa: E402
 from rewrite import Rewriter  # noqa: E402
-import testedit  # noqa: E402
 
 REFERENCE = HERE / "reference"
 OVERRIDES = HERE / "overrides"
-REGISTRY = {"uslib": "us_registry", "uklib": "uk_registry", "delib": "de_registry",
-            "frlib": "fr_registry", "jplib": "jp_registry", "krlib": "kr_registry"}
 SUFFIX = {"uslib": "us", "uklib": "uk", "delib": "de", "frlib": "fr", "jplib": "jp", "krlib": "kr"}
 SPEC_NOTE = ("# Range declarations of the full conversion (K3), unchanged; the line numbers in\n"
              "# the comments below refer to that conversion's text at 04d69db.\n")
@@ -101,39 +98,15 @@ def generate_model(upstream, out, lib, prod, model, tests=True):
     rw = Rewriter(m, refmap["families"], refmap, ov)
     new = rw.run()
 
-    # References: classes spelled in each space, then member References
+    # References: the classes spelled in each space.  A Reference that holds a label
+    # (``tariff_table_sex = "F"``) keeps upstream's text, which equals the member.
     used = {s: set(fs) for s, fs in rw.used.items()}
-    member_refs = {}
-    for s, d in refmap.get("member_refs", {}).items():
-        for name, F in d.items():
-            member_refs[(s, name)] = F
-            used.setdefault(s, set())
     keep = set().union(*used.values()) if used else set()
-    keep |= set(member_refs.values())
     order = [F for F in refmap["families"] if F in keep]
-    ids = {}
-    nxt = 2
-    for F in order:
-        ids[F] = nxt
-        nxt += 1
-    entries = {ids[F]: ("class", F) for F in order}
+    ids = {F: n for n, F in enumerate(order, start=2)}
+    entries = {ids[F]: F for F in order}
     for s in m.spaces:
         refs = [(F, ids[F]) for F in order if F in used.get(s, set())]
-        for (rs, name), F in sorted(member_refs.items()):
-            if rs != s:
-                continue
-            node = m.spaces[s].refs[name]
-            label = ast.literal_eval(node.value)
-            members = dict(refmap["families"][F])
-            if label not in members:
-                raise GenerationError("%s: Reference %s = %r is not a %s member" % (model, name, label, F))
-            entries[nxt] = ("member", F, members[label])
-            seg_old = m.spaces[s].src.segment(node)
-            seg_new = '%s = ("Pickle", %d)' % (name, nxt)
-            if new[s].count(seg_old) != 1:
-                raise GenerationError("%s: cannot place Reference %s" % (model, name))
-            new[s] = new[s].replace(seg_old, seg_new)
-            nxt += 1
         new[s] = append_refs(new[s], refs)
 
     dst = model_dir(out, lib, prod, model)
@@ -149,7 +122,9 @@ def generate_model(upstream, out, lib, prod, model, tests=True):
     if data_dir.exists():
         shutil.rmtree(data_dir)
     if keep:
-        (dst / "enums.py").write_text(enums_module(model, refmap["families"], keep), encoding="utf-8")
+        (dst / "enums.py").write_text(
+            enums_module(model, refmap["families"], keep, ov.get("labels", {}), rw.none_member),
+            encoding="utf-8")
         data_dir.mkdir()
         (data_dir / "iospecs.py").write_text(IOSPECS, encoding="utf-8")
         (data_dir / "data.pickle").write_bytes(data_pickle(entries))
@@ -163,32 +138,17 @@ def generate_model(upstream, out, lib, prod, model, tests=True):
     report = {"model": model, "families": order, "notes": rw.notes,
               "none_member": rw.none_member, "tests": {}}
     if tests:
-        report["tests"] = edit_tests(upstream, out, lib, prod, model, rw, refmap, ov, order)
+        report["tests"] = edit_tests(upstream, out, lib, prod, model, ov, order)
     return report
 
 
-def edit_tests(upstream, out, lib, prod, model, rw, refmap, ov, order):
-    """Apply the mechanical test edits to the model's own test module(s)."""
-    T = rw.typing
-    typed, pnames = {}, {}
-    for (s, c), d in T.P.items():
-        if s == "Projection" and d:
-            typed[c] = dict(d)
-            pnames[c] = m_params(rw.model, (s, c))
-    returns = {c: F for (s, c), F in T.R.items() if s == "Projection"}
-    none_member = {}
-    for (s, c), d in T.P.items():
-        if s != "Projection" or (s, c) not in T.fns:
-            continue
-        defaults = rw.model.defaults((s, c))
-        names = rw.model.params((s, c))
-        for pos, F in d.items():
-            dflt = defaults.get(names[pos])
-            if isinstance(dflt, ast.Constant) and dflt.value is None:
-                none_member.setdefault(c, {})[pos] = rw.default_member[((s, c), pos)]
-            elif ((s, c), pos) in rw.default_member:
-                none_member.setdefault(c, {})[pos] = rw.default_member[((s, c), pos)]
-    fams = {F: [m for m, _ in ms] for F, ms in refmap["families"].items()}
+def edit_tests(upstream, out, lib, prod, model, ov, order):
+    """The model's own test module(s): upstream's, with the edits the stored module needs.
+
+    Members equal their labels, so upstream's calls, comparisons and defaults stay.  What
+    changes is only what lists the model folder (``enums.py`` and the two ``_data``
+    files) and the ``tests.replace`` entries of the model's overrides.
+    """
     tests_dir = pathlib.Path(out) / "lifelib" / "libraries" / lib / "tests"
     up_tests = pathlib.Path(upstream) / "lifelib" / "libraries" / lib / "tests"
     out_report = {}
@@ -199,11 +159,7 @@ def edit_tests(upstream, out, lib, prod, model, rw, refmap, ov, order):
             out_report[name] = "missing"
             continue
         text = src.read_text(encoding="utf-8")
-        mrefs = {n: F for (s, n), F in T.MR.items() if s == "Projection"}
-        ed = testedit.TestEditor(text, typed, returns, fams, none_member, mrefs)
-        ed.pnames = pnames
-        ed.seq_returns = {c: F for (s, c), F in T.seq_returns.items() if s == "Projection"}
-        text = ed.run()
+        count = 0
         for r in ov.get("tests", {}).get("replace", []):
             if r.get("file", name) != name:
                 continue
@@ -212,38 +168,18 @@ def edit_tests(upstream, out, lib, prod, model, rw, refmap, ov, order):
                     continue
                 raise GenerationError("%s: test replacement not found exactly once: %r" % (name, r["old"][:60]))
             text = text.replace(r["old"], r["new"])
-            ed.count += 1
-            for F in r.get("families", []):
-                ed.used.add(F)
+            count += 1
         if order and FILE_SET_RGLOB in text:
             # model_files() walks the folder recursively: the two IOSpec files appear too
             text = text.replace(FILE_SET_RGLOB, FILE_SET_RGLOB_LEAN)
-            ed.count += 1
+            count += 1
         if order and FILE_SET in text:
             # the model folder now also holds enums.py (S4 recipe)
+            count += text.count(FILE_SET)
             text = text.replace(FILE_SET, FILE_SET_LEAN)
-            ed.count += text.count(FILE_SET_LEAN)
-        if ed.used:
-            fam_list = [F for F in order if F in ed.used]
-            text = testedit.add_import(text, REGISTRY[lib], model, fam_list)
         (tests_dir / name).write_text(text, encoding="utf-8")
-        out_report[name] = {"edits": ed.count, "families": sorted(ed.used), "unhandled": ed.unhandled,
-                           "kept_invalid": ed.kept}
+        out_report[name] = {"edits": count}
     return out_report
-
-
-def m_params(model, key):
-    return model.params(key)
-
-
-def ensure_registry_helper(upstream, out, lib):
-    reg = REGISTRY[lib] + ".py"
-    src = pathlib.Path(upstream) / "lifelib" / "libraries" / lib / "tests" / reg
-    dst = pathlib.Path(out) / "lifelib" / "libraries" / lib / "tests" / reg
-    text = src.read_text(encoding="utf-8")
-    if "def model_enums" not in text:
-        text = text.rstrip("\n") + "\n" + testedit.REGISTRY_HELPER
-    dst.write_text(text, encoding="utf-8")
 
 
 def library_test_edits(upstream, out, libs):
@@ -287,8 +223,6 @@ def cmd_generate(args):
         reports.append(r)
         print(model, r["status"], r.get("error", ""), r.get("families", ""))
     if not args.no_tests:
-        for lib in sorted(libs):
-            ensure_registry_helper(args.upstream, args.out, lib)
         library_test_edits(args.upstream, args.out, libs)
     if args.report:
         pathlib.Path(args.report).write_text(json.dumps(reports, indent=1), encoding="utf-8")

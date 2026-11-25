@@ -2,9 +2,10 @@
 
 The enums travel with the model (modelx ``new_module``, stored as ``ModuleData``):
 
-``<Model>/enums.py``            the argument families, members and values of the reference
+``<Model>/enums.py``            the argument families and members of the reference, as
+                                StrEnum classes whose values are upstream's label text
 ``<Model>/_data/iospecs.py``    ``(1, 'ModuleData', 1, 'enums.py', {}, {})``
-``<Model>/_data/data.pickle``   ``{n: <class or member>}``, each class pickled as the
+``<Model>/_data/data.pickle``   ``{n: <class>}``, each class pickled as the
                                 persistent id ``("ModuleAttr", 1, "<Family>")`` that modelx
                                 resolves against the module loaded from the folder
 ``<Model>/__init__.py``         gains ``enums = ("IOSpec", 1)``
@@ -30,17 +31,6 @@ class _Attr:
         raise TypeError("placeholder")
 
 
-class _Member:
-    """A member, pickled as ``Family(value)`` with the class by persistent id."""
-
-    def __init__(self, cls, value):
-        self.cls = cls
-        self.value = value
-
-    def __reduce__(self):
-        return (self.cls, (self.value,))
-
-
 class _Pickler(pickle.Pickler):
     def persistent_id(self, obj):
         if isinstance(obj, _Attr):
@@ -49,29 +39,37 @@ class _Pickler(pickle.Pickler):
 
 
 def data_pickle(entries):
-    """``entries``: {id: ("class", F) | ("member", F, value)} -> bytes."""
-    attrs = {}
-
-    def cls(F):
-        return attrs.setdefault(F, _Attr(F))
-
-    obj = {}
-    for n in sorted(entries):
-        e = entries[n]
-        obj[n] = cls(e[1]) if e[0] == "class" else _Member(cls(e[1]), e[2])
+    """``entries``: {id: family name} -> bytes."""
+    obj = {n: _Attr(entries[n]) for n in sorted(entries)}
     buf = io.BytesIO()
     _Pickler(buf, protocol=4).dump(obj)
     return buf.getvalue()
 
 
-def enums_module(model, families, keep):
-    lines = ['"""IntEnum families passed as cell arguments in %s, stored with the model."""'
-             % model, "", "from enum import IntEnum", ""]
+def enums_module(model, families, keep, labels=None, drop=None):
+    """The text of ``enums.py``: one StrEnum per family, each member's value its label.
+
+    ``labels``: {F: {label: member}} where a label is not spelled like its member;
+    ``drop``: {F: member} members not emitted (the reference's stand-in for ``None``).
+    """
+    labels = labels or {}
+    drop = drop or {}
+    lines = ['"""Label families passed as cell arguments in %s, stored with the model.' % model,
+             "",
+             "Each member's value is upstream's label text: a member equals, hashes and prints",
+             'as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""',
+             "", "from enum import StrEnum", ""]
     for F, members in families.items():
         if F not in keep:
             continue
-        lines += ["", "class %s(IntEnum):" % F]
-        lines += ["    %s = %d" % (m, v) for m, v in members]
+        text = {m: lab for lab, m in labels.get(F, {}).items()}
+        lines += ["", "class %s(StrEnum):" % F]
+        for m, _ in members:
+            if m == drop.get(F):
+                continue
+            label = text.get(m, m)
+            assert '"' not in label and "\\" not in label, label
+            lines.append('    %s = "%s"' % (m, label))
         lines.append("")
     return "\n".join(lines)
 

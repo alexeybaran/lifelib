@@ -4,25 +4,7 @@
 # (recorded for review; the generator does not read this key).
 choices = [
     "Projection.carence_factor: c is a label computed or read as text, passed to typed Projection.carence_months; looked up by name as Cause[...] rather than re-spelled",
-    "Projection.prev_param: name is a typed label used as a value (table key, column label or text), spelled name.name, the upstream string",
-    "Projection.severity_share: kind is a typed label used as a value (table key, column label or text), spelled kind.name, the upstream string",
 ]
-
-# The test of aggravation bolted onto the identity replaces two formulas with text held in
-# string constants; the replacement text passes severity labels to severity_share, whose
-# argument the lean text types (Severity).  The same K1 edit as in the model, applied to
-# that text.
-[[tests.replace]]
-file = "test_dependance_fr.py"
-why = "K1 in formula text a test installs"
-old = '''    num = (severity_share("partial") * prev_slope(t)'''
-new = '''    num = (severity_share(Severity.partial) * prev_slope(t)'''
-
-[[tests.replace]]
-file = "test_dependance_fr.py"
-why = "K1 in formula text a test installs"
-old = '''    num = (severity_share("total") * prev_slope(t)'''
-new = '''    num = (severity_share(Severity.total) * prev_slope(t)'''
 
 # Coordinator decision: an invalid label raises upstream's own error.  Upstream checks each
 # cause of the cause table in carence_months (`raise ValueError("invalid cause")`); the

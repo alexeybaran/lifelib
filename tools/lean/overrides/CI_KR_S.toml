@@ -7,12 +7,6 @@
 # argument; upstream passes an integer, not a string label, so K1 does not apply.  The
 # lean text keeps upstream's integer argument: the second parameter is untyped here.
 
-# Readings the generator's general rules gave where the lean rules leave a choice
-# (recorded for review; the generator does not read this key).
-choices = [
-    "Projection.ci_rate_at_age: cause is a typed label used as a value (table key, column label or text), spelled cause.name, the upstream string",
-]
-
 [params.Projection.pols_ci_in]
 "1" = ""
 [params.Projection.pols_if_ci_at]

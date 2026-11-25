@@ -4,8 +4,6 @@
 # (recorded for review; the generator does not read this key).
 choices = [
     "smoker2() is a policy attribute passed on as an argument, but it returns the placeholder '-' on a one-life point, which no Smoker member stands for (the reference kept it a string there). Closest to upstream: smoker2 stays a string cell and its two call sites look the member up, Smoker[smoker2()], which is reached only on two-life points",
-    "Projection.mort_rate_at_age: sex_code is a typed label used as a value (table key, column label or text), spelled sex_code.name, the upstream string",
-    "Projection.mort_rate_at_age: smoker_code is a typed label used as a value (table key, column label or text), spelled smoker_code.name, the upstream string",
     "Projection.mort_rate_base: smoker2() is a label computed or read as text, passed to typed Projection.mort_rate_at_age; looked up by name as Smoker[...] rather than re-spelled",
     "Projection.mort_rate_blend: smoker2() is a label computed or read as text, passed to typed Projection.mort_rate_at_age; looked up by name as Smoker[...] rather than re-spelled",
 ]

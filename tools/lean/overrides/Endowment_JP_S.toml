@@ -1,7 +1,0 @@
-# Endowment_JP_S: overrides of the lean conversion.
-
-# Readings the generator's general rules gave where the lean rules leave a choice
-# (recorded for review; the generator does not read this key).
-choices = [
-    "Projection.mort_rate_at_age: sx is a typed label used as a value (table key, column label or text), spelled sx.name, the upstream string",
-]

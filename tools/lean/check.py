@@ -7,7 +7,7 @@ Both models are read with modelx in one process.  For every model point of the s
 no argument, the lean value must equal the upstream value exactly: frames and series by
 ``pandas.testing.assert_*_equal(check_exact=True)`` (index, columns and dtypes included),
 floats bit for bit (NaN equal to NaN), and a member equal to the upstream label it stands
-for (``Sex.F`` for ``"F"``).  A cell that raises must raise the same exception type with
+for (``Sex.F``, whose value is ``"F"``).  A cell that raises must raise the same exception type with
 the same message in both.  Prints one JSON line per model: values compared, cells, points,
 mismatches.
 """
@@ -31,7 +31,7 @@ from catalog import discover, model_dir  # noqa: E402
 
 def norm(v):
     if isinstance(v, enum.Enum):
-        return v.name
+        return v.value          # a StrEnum member: upstream's label text
     return v
 
 
@@ -52,7 +52,7 @@ def same(a, b):
             return False, getattr(a, "size", 1)
         return True, a.size
     if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
-        if len(a) != len(b):
+        if type(a) is not type(b) or len(a) != len(b):     # a tuple stays a tuple
             return False, len(a)
         n, ok = 0, True
         for x, y in zip(a, b):

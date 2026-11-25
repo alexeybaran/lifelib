@@ -2,27 +2,20 @@
 
 Rules (see GENERATOR.md for the owner's wording):
 
-K1  label sites of a typed position become ``Family.MEMBER``; ``kind=None`` defaults whose
-    family has a member that upstream never spells (``ALL``) lose the default, ``kind is
-    None`` becomes ``kind == Family.ALL`` and a call that omits the argument passes
-    ``Family.ALL``; value uses of a typed value are spelled ``x.name``; a cell whose result
-    is passed on as an argument returns ``Family[...]`` of its upstream value.
-K2  the listed vector cells build lists where upstream builds tuples.
+K1  label sites of a typed position become ``Family.MEMBER``.  Families are StrEnum
+    classes whose member values are upstream's label text, so a member equals, hashes and
+    prints as its label: every other use of a typed value (a table key, a column label,
+    an f-string, a comparison with text from data) stays as upstream writes it, and so do
+    defaults (``kind=None``, ``kind is None``, calls that omit the argument), tuples and
+    References.  A label computed from text at a typed position, and the result of a
+    policy-attribute cell that is passed on as a cell argument, is converted once by
+    name, ``Family[...]`` (an unknown label raises ``KeyError``).
 Everything else is upstream text, byte for byte.
 """
 
 import ast
 
-from engine import OPAQUE, GenerationError, Typing, is_label
-
-
-def in_raise(fn, node):
-    cur = node
-    while cur in fn.parent:
-        cur = fn.parent[cur]
-        if isinstance(cur, ast.Raise):
-            return True
-    return False
+from engine import GenerationError, Typing, is_label
 
 
 class Rewriter:
@@ -96,11 +89,9 @@ class Rewriter:
     def run(self):
         T = self.typing
         conv = []          # (space, node, F, label, where)  label sites
-        vals = []          # (space, node)  value uses -> .name
         wraps = []         # (space, node, F)  return wrapped F[...]
         nones = []         # (space, cmp node, F, key, pos)
         none_args = []     # (space, call, key, pos)
-        missing = []       # (space, call, key, pos)
         for fn in T.fns.values():
             sp = fn.space
             where = "%s.%s" % (sp, fn.name)
@@ -129,7 +120,6 @@ class Rewriter:
                     if key is None:
                         continue
                     typed = T.P.get(key, {})
-                    given = {pos for pos, _ in args}
                     for pos, a in args:
                         F = typed.get(pos)
                         if F is None:
@@ -145,9 +135,6 @@ class Rewriter:
                                 allowed.add(id(b))
                                 self.notes.append("%s: %s passed to %s.%s is looked up as %s[...]"
                                                   % (where, ast.unparse(b), key[0], key[1], F))
-                    for pos, F in typed.items():
-                        if pos not in given and not any(isinstance(a, ast.Starred) for a in node.args):
-                            missing.append((sp, node, key, pos, F))
                 elif isinstance(node, ast.Compare):
                     for a, op, b in T.other_sides(node):
                         for x, y in ((a, b), (b, a)):
@@ -169,9 +156,9 @@ class Rewriter:
                                 allowed.add(id(x))
                                 site(y, Fx)
                             elif isinstance(op, (ast.Eq, ast.NotEq, ast.In, ast.NotIn)) and Fy is None:
-                                # compared with a string from data: compare the label
-                                self.notes.append("%s: %s compared with %s -> %s.name" % (
-                                    where, ast.unparse(x), ast.unparse(y), ast.unparse(x)))
+                                # compared with a string from data: a member is its label
+                                self.notes.append("%s: %s compared with text %s" % (
+                                    where, ast.unparse(x), ast.unparse(y)))
                             else:
                                 raise GenerationError("%s: %s (%s) used with %s %s" % (
                                     where, ast.unparse(x), Fx, type(op).__name__, ast.unparse(y)))
@@ -217,27 +204,11 @@ class Rewriter:
                             for b in Typing._branches(a):
                                 allowed.add(id(b))
                             allowed.add(id(a))
-            # value uses: typed expressions anywhere else
-            for node in ast.walk(fn.node):
-                if id(node) in allowed:
-                    continue
-                if isinstance(node, (ast.Name, ast.Call)) and T.fam(fn, node):
-                    if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
-                        continue
-                    par = fn.parent.get(node)
-                    if isinstance(par, ast.IfExp) and id(par) in allowed:
-                        continue
-                    if in_raise(fn, node):
-                        continue        # upstream's raise ValueError(...) stays as upstream
-                    if isinstance(par, ast.Return) and T.R.get(fn.key):
-                        continue
-                    vals.append((sp, node))
-                    self.notes.append("%s: value use %s -> %s.name" % (
-                        where, ast.unparse(node), ast.unparse(node)))
             for _, (b, F) in label_ctx.items():
                 conv.append((sp, b, F, b.value, where))
 
-        # members that upstream never spells stand for a None default (``Kind.ALL``)
+        # A member that upstream never spells and that the reference used for a None
+        # default (``Kind.ALL``) is not emitted: upstream's ``kind=None`` stays as it is.
         spelled = {}
         for sp, b, F, label, where in conv:
             spelled.setdefault(F, set()).add(self.ov.get("labels", {}).get(F, {}).get(label, label))
@@ -247,11 +218,10 @@ class Rewriter:
             if F in none_member:
                 return none_member[F]
             extra = [m for m in self.families[F] if m not in spelled.get(F, set())]
-            if len(extra) != 1:
-                raise GenerationError("%s: cannot tell which %s member stands for None "
-                                      "(unspelled: %s)" % (where, F, extra))
-            none_member[F] = extra[0]
-            return extra[0]
+            if len(extra) == 1:
+                none_member[F] = extra[0]
+                return extra[0]
+            return None
 
         edits = {}           # space -> Source
         for s, spc in self.model.spaces.items():
@@ -259,115 +229,33 @@ class Rewriter:
         for sp, b, F, label, where in conv:
             edits[sp].replace(b, "%s.%s" % (F, self.member(F, label, where)))
             self.used.setdefault(sp, set()).add(F)
-        for sp, node in vals:
-            edits[sp].insert_after(node, ".name")
         for sp, node, F in wraps:
             edits[sp].insert_before(node, F + "[")
             edits[sp].insert_after(node, "]")
             self.used.setdefault(sp, set()).add(F)
         for sp, cmp, F, fn, x, op in nones:
-            m = nm(F, "%s.%s" % (sp, fn.name))
-            text = "%s %s %s.%s" % (edits[sp].segment(x), "==" if isinstance(op, ast.Is) else "!=", F, m)
-            if len(cmp.ops) != 1:
-                raise GenerationError("chained None comparison in %s" % fn.name)
-            edits[sp].replace(cmp, text)
-            self.used.setdefault(sp, set()).add(F)
+            nm(F, "%s.%s" % (sp, fn.name))
         for sp, a, key, pos, F in none_args:
-            edits[sp].replace(a, "%s.%s" % (F, nm(F, "%s.%s" % key)))
-            self.used.setdefault(sp, set()).add(F)
-        # defaults: ``kind=None`` of a typed parameter is dropped
-        dropped = set()
-        self.default_member = {}
+            nm(F, "%s.%s" % key)
+        # defaults stay as upstream writes them (``kind=None``, ``weighting="count"``);
+        # a text default must still be a label of the family
         for key, typed in T.P.items():
             if key not in T.fns:
                 continue
             defaults = self.model.defaults(key)
             names = self.model.params(key)
-            fnode = T.fns[key].node
             for pos, F in typed.items():
                 d = defaults.get(names[pos])
                 if d is None:
                     continue
                 if isinstance(d, ast.Constant) and d.value is None:
-                    self.default_member[(key, pos)] = nm(F, "%s.%s" % key)
+                    nm(F, "%s.%s" % key)
                 elif is_label(d):
-                    self.default_member[(key, pos)] = self.member(F, d.value, "%s.%s" % key)
+                    self.member(F, d.value, "%s.%s" % key)
                 else:
                     raise GenerationError("%s.%s: typed parameter %s has default %s"
                                           % (key[0], key[1], names[pos], ast.unparse(d)))
-                arg = (fnode.args.posonlyargs + fnode.args.args)[pos]
-                src = edits[key[0]]
-                start, _ = src.span(arg)
-                _, end = src.span(d)
-                src.replace_span(start, end, names[pos])
-                dropped.add((key, pos))
-        for sp, call, key, pos, F in missing:
-            if (key, pos) not in dropped:
-                raise GenerationError("%s: call to %s.%s omits typed argument %d"
-                                      % (sp, key[0], key[1], pos))
-            n = len(call.args) + len(call.keywords)
-            if pos != n:
-                raise GenerationError("call to %s.%s omits argument %d out of order" % (key + (pos,)))
-            m = self.default_member[(key, pos)]
-            last = (call.args + [k.value for k in call.keywords])[-1] if n else None
-            if last is None:
-                src = edits[sp]
-                _, end = src.span(call.func)
-                paren = src.text.index("(", end)
-                src.replace_span(paren + 1, paren + 1, "%s.%s" % (F, m))
-            else:
-                edits[sp].insert_after(last, ", %s.%s" % (F, m))
-            self.used.setdefault(sp, set()).add(F)
-        self.none_member = none_member
-        self.k2(edits)
+        self.none_member = {F: m for F, m in none_member.items()
+                            if m is not None and m not in spelled.get(F, set())}
         return {s: edits[s].apply() for s in edits}
 
-    # -- K2 ---------------------------------------------------------------------------
-
-    def k2(self, edits):
-        cells = {}
-        for s, cs in self.refmap.get("list_cells", {}).items():
-            cells.setdefault(s, set()).update(cs)
-        for s, cs in self.ov.get("list_cells", {}).items():
-            cells.setdefault(s, set()).update(cs)
-        for s, names in cells.items():
-            sp = self.model.spaces[s]
-            for c in sorted(names):
-                if c not in sp.cells:
-                    self.notes.append("K2: %s.%s is not in upstream" % (s, c))
-                    continue
-                fn = self.typing.fns[(s, c)]
-                done = set()
-                for r in fn.returns():
-                    self._listify(fn, r.value, edits[s], done, top=True)
-
-    def _listify(self, fn, node, src, done, top=False):
-        if id(node) in done:
-            return
-        done.add(id(node))
-        text = src.segment(node)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "tuple":
-            if len(node.args) == 1 and isinstance(node.args[0], ast.GeneratorExp):
-                assert text.startswith("tuple(") and text.endswith(")"), text
-                src.replace(node, "[" + text[len("tuple("):-1] + "]")
-            else:
-                src.replace(node, "list" + text[len("tuple"):])
-        elif isinstance(node, ast.Tuple):
-            if text.startswith("(") and text.endswith(")"):
-                inner = text[1:-1]
-                if len(node.elts) == 1 and inner.rstrip().endswith(","):
-                    inner = inner.rstrip()[:-1]
-                src.replace(node, "[" + inner + "]")
-            elif top:
-                for e in node.elts:          # ``return a, b, c``: several vectors
-                    self._listify(fn, e, src, done)
-        elif isinstance(node, ast.BinOp):
-            self._listify(fn, node.left, src, done)
-            self._listify(fn, node.right, src, done)
-        elif isinstance(node, ast.IfExp):
-            self._listify(fn, node.body, src, done, top)
-            self._listify(fn, node.orelse, src, done, top)
-        elif isinstance(node, ast.Name):
-            for s in fn.bindings.get(fn.key_of(node), []):
-                if isinstance(s, ast.AST):
-                    self._listify(fn, s, src, done)
