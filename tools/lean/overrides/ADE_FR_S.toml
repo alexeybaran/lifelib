@@ -1,13 +1,17 @@
 # ADE_FR_S: overrides of the lean conversion.
 
-# Convention "sequences of numbers are tuples": left as upstream's list (recorded; the
-# generator does not read this key).
-tuple_left = [
-    "itt_cohorts_raw, itt_cohorts: test_the_cohort_vector_is_rebuilt_not_mutated compares itt_cohorts(29) with a list snapshot (== list(a)), which a tuple never equals",
-]
-
 # Convention: a cell that returns a sequence of numbers returns a tuple (the compiler
 # accelerates tuples only, and a cached tuple cannot be changed by its caller).  Upstream
 # returns a list here; no reader in the model or its tests mutates it or needs a list.
 [tuple_cells]
-Projection = ["itt_rate_vectors"]
+Projection = ["itt_rate_vectors", "itt_cohorts_raw", "itt_cohorts"]
+
+# Coordinator decision (hot cells): itt_cohorts_raw/itt_cohorts are tuples; the one test
+# line that took a list snapshot takes a tuple snapshot.  What it asserts is unchanged.
+[[tests.replace]]
+file = "test_assurance_emprunteur_fr.py"
+why = "a cell's value is immutable; tuple is the accelerated vector form"
+old = '''    snapshot = list(a)
+'''
+new = '''    snapshot = tuple(a)
+'''

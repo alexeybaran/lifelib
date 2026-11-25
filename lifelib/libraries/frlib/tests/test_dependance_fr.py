@@ -731,7 +731,7 @@ def test_the_duration_index_runs_from_first_recognition(fr_dep_anchor):
     assert p.pols_part_dur(5, 0) == 0.0 == p.pols_part_dur(5, 10 ** 6)
     # Holding a returned list cannot corrupt the cache.
     before = p.pols_part(30)
-    p.dep_cohorts(30)[0][0] = 999.0
+    held = list(p.dep_cohorts(30)[0]); held[0] = 999.0
     assert p.pols_part(30) == pytest.approx(before, rel=1e-14)
 
 

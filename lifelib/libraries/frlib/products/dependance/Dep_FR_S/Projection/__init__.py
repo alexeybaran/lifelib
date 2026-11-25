@@ -1475,7 +1475,7 @@ def dep_cohorts(t):
                 part[z0 - 1] = pols_if_init()
             else:
                 tot[z0 - 1] = pols_if_init()
-        return part, tot, totr, val
+        return tuple(part), tuple(tot), tuple(totr), tuple(val)
     prev_p, prev_t, prev_tr, prev_v = dep_cohorts(t - 1)
     surv_p = (1.0 - mort_rate_partial_mth(t - 1)) * (1.0 - recovery_rate_mth())
     surv_t = (1.0 - mort_rate_total_mth(t - 1)) * (1.0 - recovery_rate_mth())
@@ -1502,7 +1502,7 @@ def dep_cohorts(t):
     if t % 12 == 0:
         g = 1.0 + reval_rente                                        # noqa: F821
         val = [v * g for v in val]
-    return part, tot, totr, val
+    return tuple(part), tuple(tot), tuple(totr), tuple(val)
 
 
 def pols_part_dur(t, z):

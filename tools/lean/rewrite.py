@@ -268,7 +268,8 @@ class Rewriter:
         Each returned list becomes a tuple of the same values: ``[f(z) for z in zs]`` ->
         ``tuple(f(z) for z in zs)``, ``list(x)`` -> ``tuple(x)``, ``[0.0] * n`` ->
         ``(0.0,) * n``, a list display -> a tuple display, any other expression (a local
-        list) -> ``tuple(x)``; ``return a, b`` converts each element.
+        list) -> ``tuple(x)``; ``return a, b`` converts each element.  A call to another
+        cell of the same list, which already returns a tuple, is left as it is.
         """
         for s, names in self.ov.get("tuple_cells", {}).items():
             sp = self.model.spaces[s]
@@ -279,6 +280,9 @@ class Rewriter:
                 for r in fn.returns():
                     v = r.value
                     for e in (v.elts if isinstance(v, ast.Tuple) else [v]):
+                        if isinstance(e, ast.Call) and isinstance(e.func, ast.Name) \
+                                and e.func.id in names:
+                            continue
                         self._tuplify(e, edits[s])
 
     def _tuplify(self, node, src):

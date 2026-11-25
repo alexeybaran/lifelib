@@ -409,7 +409,7 @@ def test_the_cohort_vector_is_rebuilt_not_mutated(fr_ade_anchor):
     a = p.itt_cohorts(29)
     b = p.itt_cohorts(30)
     assert a is not b
-    snapshot = list(a)
+    snapshot = tuple(a)
     p.itt_cohorts(39)                             # force five more steps
     assert p.itt_cohorts(29) == snapshot          # month 29 was not rewritten
     surv = p.itt_rate_vectors()[3]

@@ -1014,18 +1014,18 @@ def itt_cohorts_raw(t):
     """
     n = itt_max_months()
     if t < 0 or t > proj_len():
-        return [0.0] * n
+        return (0.0,) * n
     if t == 0:
         if status() != "itt":
-            return [0.0] * n
+            return (0.0,) * n
         seed = min(claim_duration_months(), n - 1)
-        return [pols_if_init() if z == seed else 0.0 for z in range(n)]
+        return tuple(pols_if_init() if z == seed else 0.0 for z in range(n))
     prev = itt_cohorts(t - 1)
     surv = itt_rate_vectors()[3]
     out = [pols_itt_inception(t - 1)]
     for z in range(1, n):
         out.append(prev[z - 1] * surv[z - 1])
-    return out
+    return tuple(out)
 
 
 def itt_cohorts(t):
@@ -1039,7 +1039,7 @@ def itt_cohorts(t):
     """
     n = itt_max_months()
     if t < 0 or t >= proj_len() or not cover_itt(t):
-        return [0.0] * n
+        return (0.0,) * n
     return itt_cohorts_raw(t)
 
 
