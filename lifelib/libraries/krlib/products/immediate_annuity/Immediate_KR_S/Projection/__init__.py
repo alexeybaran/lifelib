@@ -1088,15 +1088,15 @@ def claims(t, kind):
     publish its own subtotal beside its parts, so ``result_cf()`` carries the three kinds
     split out and they sum, with the annuity and the outgo above, to ``net_cf``.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         if shape() == "life":
             return 0.0
         if shape() == "inheritance":
             return pols_death(t) * (db_rate() * prem_pp() + av_pp(t + 1))
         return pols_death(t) * db_rate() * prem_pp()
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * cv_pp(t + 1)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         if shape() == "inheritance" and t == proj_len() - 1:
             return pols_if(t + 1) * maturity_benefit()
         return 0.0
@@ -1105,7 +1105,7 @@ def claims(t, kind):
 
 def claims_death(t):
     """E[DTH(t)]: :func:`claims` on the ``DEATH`` kind, as a statement column."""
-    return claims(t, "DEATH")
+    return claims(t, Kind.DEATH)
 
 
 def claims_lapse(t):
@@ -1115,12 +1115,12 @@ def claims_lapse(t):
     retired across the library in favour of the name matching the ``kind`` argument that
     produces it.
     """
-    return claims(t, "LAPSE")
+    return claims(t, Kind.LAPSE)
 
 
 def claims_maturity(t):
     """E[MAT(t)]: :func:`claims` on the ``MATURITY`` kind, as a statement column."""
-    return claims(t, "MATURITY")
+    return claims(t, Kind.MATURITY)
 
 
 def commissions(t):
@@ -1165,9 +1165,9 @@ def net_cf(t):
     """
     return (premiums(t)
             - annuity_payments(t)
-            - claims(t, "DEATH")
-            - claims(t, "LAPSE")
-            - claims(t, "MATURITY")
+            - claims(t, Kind.DEATH)
+            - claims(t, Kind.LAPSE)
+            - claims(t, Kind.MATURITY)
             - commissions(t)
             - expenses(t))
 
@@ -1462,9 +1462,9 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1515,3 +1515,5 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-12
 
 pd = ("Module", "pandas")
+
+Kind = ("Pickle", 2)

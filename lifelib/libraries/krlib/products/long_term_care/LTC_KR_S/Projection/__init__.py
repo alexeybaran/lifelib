@@ -244,7 +244,7 @@ def benefit_grade():
     v = str(model_point()["benefit_grade"])
     if v not in ("g1", "g2", "g3", "g4", "g5", "g6"):
         raise ValueError("invalid benefit_grade")
-    return v
+    return Grade[v]
 
 
 def lump_amount():
@@ -547,7 +547,7 @@ def mort_rate_dem_mth(t):
 
 def lapse_param(name):
     """One parameter of the lapse vector, from *lapse_table.csv*."""
-    return float(data.lapse_table().loc[name, "value"])              # noqa: F821
+    return float(data.lapse_table().loc[name.name, "value"])              # noqa: F821
 
 
 def lapse_rate(t):
@@ -566,13 +566,13 @@ def lapse_rate(t):
     납입완료.
     """
     if lapse_form() == "pyojun":
-        return lapse_param("lapse_level_std")
+        return lapse_param(LapseParam.lapse_level_std)
     y = policy_year(t)
     n = prem_period_years()
     if y > n:
-        return lapse_param("lapse_ultimate")
-    first = lapse_param("lapse_year1")
-    last = lapse_param("lapse_completion")
+        return lapse_param(LapseParam.lapse_ultimate)
+    first = lapse_param(LapseParam.lapse_year1)
+    last = lapse_param(LapseParam.lapse_completion)
     if n <= 1:
         return last
     return first * (last / first) ** ((y - 1) / (n - 1))
@@ -598,7 +598,7 @@ def prev_param(name):
     three-parameter logistic fitted to the five sourced 연령별 인정률 of the 2024
     노인장기요양보험 통계연보; the file also carries the five anchors themselves.
     """
-    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
+    return float(data.prevalence_table().loc[(sex(), name.name), "value"])  # noqa: F821
 
 
 def prev_rate_at(x):
@@ -616,9 +616,9 @@ def prev_rate_at(x):
     is the parameter the tail is most sensitive to and the fit has one degree of freedom more
     than the data identifies; the technical notes carry the sensitivity.
     """
-    ceil = prev_param("prev_ceil")
-    beta = prev_param("prev_beta")
-    x_mid = prev_param("prev_x_mid")
+    ceil = prev_param(PrevParam.prev_ceil)
+    beta = prev_param(PrevParam.prev_beta)
+    x_mid = prev_param(PrevParam.prev_x_mid)
     return ceil / (1.0 + math.exp(-beta * (x - x_mid)))              # noqa: F821
 
 
@@ -629,8 +629,8 @@ def prev_slope_at(x):
     quotient: it is the leading term of the incidence identity and a numerical derivative
     would put noise straight into the claim rate.
     """
-    ceil = prev_param("prev_ceil")
-    beta = prev_param("prev_beta")
+    ceil = prev_param(PrevParam.prev_ceil)
+    beta = prev_param(PrevParam.prev_beta)
     p = prev_rate_at(x)
     return beta * p * (1.0 - p / ceil)
 
@@ -645,7 +645,7 @@ def share_ge_at(grade, x):
     at 85 and over, and a model applying a single vector at all ages mis-prices this benefit
     by up to a factor of two.
     """
-    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
+    tbl = data.grade_share_table().loc[grade.name]                        # noqa: F821
     ages = sorted(float(a) for a in tbl.index)
     if x <= ages[0]:
         return float(tbl.loc[ages[0], "share_ge"])
@@ -667,7 +667,7 @@ def share_slope_at(grade, x):
     product rule, and it is **negative** over most of the range for a severe threshold, which
     is the U-shape doing its work.
     """
-    tbl = data.grade_share_table().loc[grade]                        # noqa: F821
+    tbl = data.grade_share_table().loc[grade.name]                        # noqa: F821
     ages = sorted(float(a) for a in tbl.index)
     if x < ages[0] or x >= ages[-1]:
         return 0.0
@@ -946,7 +946,7 @@ def prog_rate_mth(t):
 
 def dem_param(name):
     """One parameter of the dementia-prevalence logistic, from *dementia_table.csv*."""
-    return float(data.dementia_table().loc[name, "value"])           # noqa: F821
+    return float(data.dementia_table().loc[name.name, "value"])           # noqa: F821
 
 
 def dem_prev_at(x):
@@ -966,18 +966,18 @@ def dem_prev_at(x):
     the market fact that 치매 covers are priced *cheaper* for women while 장기요양 covers are
     priced dearer.
     """
-    ceil = dem_param("dem_ceil")
-    beta = dem_param("dem_beta")
-    x_mid = dem_param("dem_x_mid")
-    factor = dem_param("dem_factor_m" if sex() == "M" else "dem_factor_f")
+    ceil = dem_param(DemParam.dem_ceil)
+    beta = dem_param(DemParam.dem_beta)
+    x_mid = dem_param(DemParam.dem_x_mid)
+    factor = dem_param(DemParam.dem_factor_m if sex() == "M" else DemParam.dem_factor_f)
     return factor * ceil / (1.0 + math.exp(-beta * (x - x_mid)))     # noqa: F821
 
 
 def dem_prev_slope_at(x):
     """The analytic derivative of :func:`dem_prev_at` in age."""
-    ceil = dem_param("dem_ceil")
-    beta = dem_param("dem_beta")
-    factor = dem_param("dem_factor_m" if sex() == "M" else "dem_factor_f")
+    ceil = dem_param(DemParam.dem_ceil)
+    beta = dem_param(DemParam.dem_beta)
+    factor = dem_param(DemParam.dem_factor_m if sex() == "M" else DemParam.dem_factor_f)
     p = dem_prev_at(x) / factor
     return factor * beta * p * (1.0 - p / ceil)
 
@@ -1141,13 +1141,13 @@ def pols_if_at(t, timing):
     ``"AFT_DECR"``
         l(t+1), the end-of-month state.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return (pols_healthy_mid(t) * (1.0 - mort_rate_mth(t))
                 + pols_light_mid(t) * (1.0 - mort_rate_light_mth(t))
                 + pols_care_mid(t) * (1.0 - mort_rate_care_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -1358,7 +1358,7 @@ def ann_amount_at(s):
     if not annuity_on():
         return 0.0
     x = max(float(age(s)), float(sub65_age))                         # noqa: F821
-    s_g1 = share_ge_at("g1", x)
+    s_g1 = share_ge_at(Grade.g1, x)
     s_gb = share_ge_at(benefit_grade(), x)
     blended = (s_g1 * annuity_high() + (s_gb - s_g1) * annuity_low()) / s_gb
     return blended * red_factor(s)
@@ -1600,7 +1600,7 @@ def premiums(t):
     return premium_mth_pp() * pols_act(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the end of month t, by ``kind``.
 
     ``"LUMP"``
@@ -1642,23 +1642,23 @@ def claims(t, kind=None):
 
     With no ``kind``, the total of all seven.
     """
-    if kind is None:
-        return (claims(t, "LUMP") + claims(t, "ANNUITY") + claims(t, "DEMENTIA")
-                + claims(t, "DEATH") + claims(t, "LAPSE") + claims(t, "VOID")
-                + claims(t, "MATURITY"))
-    if kind == "LUMP":
+    if kind == Kind.ALL:
+        return (claims(t, Kind.LUMP) + claims(t, Kind.ANNUITY) + claims(t, Kind.DEMENTIA)
+                + claims(t, Kind.DEATH) + claims(t, Kind.LAPSE) + claims(t, Kind.VOID)
+                + claims(t, Kind.MATURITY))
+    if kind == Kind.LUMP:
         return lump_amount() * red_factor(t) * pols_entry_care(t)
-    if kind == "ANNUITY":
+    if kind == Kind.ANNUITY:
         return ann_pay(t)
-    if kind == "DEMENTIA":
+    if kind == Kind.DEMENTIA:
         return dementia_amount() * pols_entry_dem(t)
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return av_pp(t) * pols_death_act(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return cv_pp(t) * pols_lapse(t)
-    if kind == "VOID":
+    if kind == Kind.VOID:
         return cum_prem_pp(t + 1) * pols_void(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1762,7 +1762,7 @@ def net_cf(t):
     — and it is why 2024's supervisory attention on 무·저해지 lapse was aimed at exactly this
     kind of product.
     """
-    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 
@@ -1887,10 +1887,10 @@ def check_net_cf_resid(t):
     exists in ``net_cf`` but not in the statement, or the reverse, shows up here.
     """
     return net_cf(t) - (premiums(t)
-                        - claims(t, "LUMP") - claims(t, "ANNUITY")
-                        - claims(t, "DEMENTIA") - claims(t, "DEATH")
-                        - claims(t, "LAPSE") - claims(t, "VOID")
-                        - claims(t, "MATURITY")
+                        - claims(t, Kind.LUMP) - claims(t, Kind.ANNUITY)
+                        - claims(t, Kind.DEMENTIA) - claims(t, Kind.DEATH)
+                        - claims(t, Kind.LAPSE) - claims(t, Kind.VOID)
+                        - claims(t, Kind.MATURITY)
                         - expenses(t) - claim_expenses(t) - commissions(t))
 
 
@@ -1930,13 +1930,13 @@ def result_cf():
             "pols_light": [pols_light(t) for t in ts],
             "pols_care": [pols_care(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_lump": [claims(t, "LUMP") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_dementia": [claims(t, "DEMENTIA") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_void": [claims(t, "VOID") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_lump": [claims(t, Kind.LUMP) for t in ts],
+            "claims_annuity": [claims(t, Kind.ANNUITY) for t in ts],
+            "claims_dementia": [claims(t, Kind.DEMENTIA) for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_void": [claims(t, Kind.VOID) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -2023,3 +2023,15 @@ val_tol = 1e-06
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Grade = ("Pickle", 2)
+
+LapseParam = ("Pickle", 3)
+
+PrevParam = ("Pickle", 4)
+
+DemParam = ("Pickle", 5)
+
+PolTiming = ("Pickle", 6)
+
+Kind = ("Pickle", 7)

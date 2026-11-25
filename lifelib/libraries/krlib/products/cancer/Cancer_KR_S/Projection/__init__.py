@@ -601,7 +601,7 @@ def tier_wait_months(tier):
     product's two start dates come from -- 「유사암의 보장개시일은 계약일임」 [S1], the
     면책기간 table marking 유사암 진단비 with a cross [S1] [S2].
     """
-    return min(wait_months(), int(data.tier_table().loc[tier, "wait_months"]))  # noqa: F821
+    return min(wait_months(), int(data.tier_table().loc[tier.name, "wait_months"]))  # noqa: F821
 
 
 def cover(t):
@@ -614,7 +614,7 @@ def cover(t):
     returns the premium for the affected cover if a diagnosis does fall inside the window [S1]
     [S2] [S3]. It also closes at expiry.
     """
-    return 1.0 if tier_wait_months("general") <= t < proj_len() - 1 else 0.0
+    return 1.0 if tier_wait_months(Tier.general) <= t < proj_len() - 1 else 0.0
 
 
 def cover_similar(t):
@@ -626,7 +626,7 @@ def cover_similar(t):
     life carrier does apply the wait to 갑상선암 [S3] [S4] and the composite follows the
     majority.
     """
-    return 1.0 if tier_wait_months("similar") <= t < proj_len() - 1 else 0.0
+    return 1.0 if tier_wait_months(Tier.similar) <= t < proj_len() - 1 else 0.0
 
 
 def reduction_factor(t):
@@ -675,7 +675,7 @@ def excess_hazard(tier, k):
     for the 특정소액암 tier; the front-loading and the ultimate level are **[std]**.
     """
     return float(data.survival_table().loc[                          # noqa: F821
-        (sex(), tier, k), "excess_hazard"])
+        (sex(), tier.name, k), "excess_hazard"])
 
 
 def mort_rate_waived_mth(t, k):
@@ -687,7 +687,7 @@ def mort_rate_waived_mth(t, k):
     is what every post-diagnosis limb is integrated over.
     """
     return 1.0 - (1.0 - mort_rate_mth(t)) * math.exp(                # noqa: F821
-        -excess_hazard("general", k) / 12.0)
+        -excess_hazard(Tier.general, k) / 12.0)
 
 
 def mort_rate_minor_mth(t, k):
@@ -700,7 +700,7 @@ def mort_rate_minor_mth(t, k):
     of the tier that does.
     """
     return 1.0 - (1.0 - mort_rate_mth(t)) * math.exp(                # noqa: F821
-        -excess_hazard("minor", k) / 12.0)
+        -excess_hazard(Tier.minor, k) / 12.0)
 
 
 def lapse_rate(t):
@@ -797,10 +797,10 @@ def tier_share(col, t):
     a = min(max(age(t), ages[0]), ages[-1])
     lo = max(g for g in ages if g <= a)
     hi = min(g for g in ages if g >= a)
-    v_lo = float(tbl.loc[lo, col])
+    v_lo = float(tbl.loc[lo, col.name])
     if hi == lo:
         return v_lo
-    v_hi = float(tbl.loc[hi, col])
+    v_hi = float(tbl.loc[hi, col.name])
     return v_lo + (v_hi - v_lo) * (a - lo) / (hi - lo)
 
 
@@ -815,7 +815,7 @@ def minor_share(t):
     the 일반암 tier, which is why :func:`check_tier_shares` asserts the two sum to the base
     rate.
     """
-    return tier_share("minor_share", t)
+    return tier_share(ShareColumn.minor_share, t)
 
 
 def high_share(t):
@@ -832,7 +832,7 @@ def high_share(t):
     the 일반암 amount rather than replacing it [S3], so a leukaemia diagnosis pays 200% of the
     보험가입금액 and a stomach cancer 100%.
     """
-    return tier_share("high_share", t)
+    return tier_share(ShareColumn.high_share, t)
 
 
 def similar_share(t):
@@ -852,7 +852,7 @@ def similar_share(t):
     carried separately: the in-situ age-standardised rate rose by a factor of **7.9** between
     1999 and 2023 while the invasive one rose by 1.30 [R1].
     """
-    return tier_share("similar_share", t)
+    return tier_share(ShareColumn.similar_share, t)
 
 
 def inc_rate_gen_mth(t):
@@ -1186,11 +1186,11 @@ def pols_if_at(t, timing):
     :func:`pols_healthy`, :func:`pols_minor`, :func:`pols_waived` and :func:`diag_gen` for the
     state movement; ``pols_if_at`` answers only how many lives are left.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         total = (pols_healthy(t) - diag_first(t)) * (1.0 - mort_rate_mth(t))
         for k in range(1, 7):
             total = total + pols_waived_exp(t, k) * (
@@ -1335,9 +1335,9 @@ def benefit_ratio(tier):
     moved -- 10% [S6] [S7], 20% [S3] [S4] and 70% [S8] are all observed -- and
     *tier_table.csv*'s own 0.20 row is the composite default.
     """
-    if tier == "similar":
+    if tier == Tier.similar:
         return similar_ratio()
-    return float(data.tier_table().loc[tier, "benefit_ratio"])       # noqa: F821
+    return float(data.tier_table().loc[tier.name, "benefit_ratio"])       # noqa: F821
 
 
 def hosp_daily():
@@ -1458,7 +1458,7 @@ def premiums(t):
             * prem_payable(t) * in_force(t))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DIAG_GEN"``
@@ -1517,23 +1517,23 @@ def claims(t, kind=None):
     reduced tier. Real contracts also do **not** grade uniformly, and the composite's single
     20% relativity is itself the simplification flagged in the specification.
     """
-    if kind is None:
+    if kind == Kind.ALL:
         return sum(claims(t, k) for k in (
-            "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-            "SURGERY", "TREAT", "DEATH", "LAPSE", "MATURITY"))
-    if kind == "DIAG_GEN":
-        return (benefit_ratio("general") * sum_assured() * reduction_factor(t)
+            Kind.DIAG_GEN, Kind.DIAG_HIGH, Kind.DIAG_MINOR, Kind.DIAG_SIMILAR, Kind.HOSP,
+            Kind.SURGERY, Kind.TREAT, Kind.DEATH, Kind.LAPSE, Kind.MATURITY))
+    if kind == Kind.DIAG_GEN:
+        return (benefit_ratio(Tier.general) * sum_assured() * reduction_factor(t)
                 * diag_gen(t) * diag_module())
-    if kind == "DIAG_HIGH":
-        return (benefit_ratio("high") * sum_assured() * reduction_factor(t)
+    if kind == Kind.DIAG_HIGH:
+        return (benefit_ratio(Tier.high) * sum_assured() * reduction_factor(t)
                 * diag_high(t) * diag_module())
-    if kind == "DIAG_MINOR":
-        return (benefit_ratio("minor") * sum_assured() * reduction_factor(t)
+    if kind == Kind.DIAG_MINOR:
+        return (benefit_ratio(Tier.minor) * sum_assured() * reduction_factor(t)
                 * diag_minor(t) * diag_module())
-    if kind == "DIAG_SIMILAR":
-        return (benefit_ratio("similar") * sum_assured() * reduction_factor(t)
+    if kind == Kind.DIAG_SIMILAR:
+        return (benefit_ratio(Tier.similar) * sum_assured() * reduction_factor(t)
                 * diag_similar(t))
-    if kind == "HOSP":
+    if kind == Kind.HOSP:
         if not hosp_module():
             return 0.0
         tbl = data.care_table()                                      # noqa: F821
@@ -1543,7 +1543,7 @@ def claims(t, kind=None):
             total = total + (float(tbl.loc[k, "hosp_adm_yr"]) / 12.0 * days
                              * pols_diag_dur(t, k))
         return hosp_daily() * total * in_force(t)
-    if kind == "SURGERY":
+    if kind == Kind.SURGERY:
         if not surg_module():
             return 0.0
         tbl = data.care_table()                                      # noqa: F821
@@ -1554,7 +1554,7 @@ def claims(t, kind=None):
                 + surg_closed_amt() * float(tbl.loc[k, "surg_closed_yr"]) / 12.0
             ) * pols_diag_dur(t, k)
         return total * in_force(t)
-    if kind == "TREAT":
+    if kind == Kind.TREAT:
         if not treat_module():
             return 0.0
         tbl = data.care_table()                                      # noqa: F821
@@ -1563,11 +1563,11 @@ def claims(t, kind=None):
             total = total + (float(tbl.loc[k, "treat_hazard_yr"]) / 12.0
                              * treat_avail(k) * pols_diag_dur(t, k))
         return treat_benefit() * total * in_force(t)
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return av_pp(t) * pols_death(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return cv_pp(t) * pols_lapse(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1659,7 +1659,7 @@ def net_cf(t):
     weighted by :func:`pols_payer` and the care benefits by :func:`pols_cancer`, and the two are
     disjoint, so every error in the incidence basis hits both sides of the cash flow at once.
     """
-    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 
@@ -1693,8 +1693,8 @@ def risk_prem_pp(t):
     if lives <= 0.0:
         return 0.0
     total = sum(claims(t, k) for k in (
-        "DIAG_GEN", "DIAG_HIGH", "DIAG_MINOR", "DIAG_SIMILAR", "HOSP",
-        "SURGERY", "TREAT"))
+        Kind.DIAG_GEN, Kind.DIAG_HIGH, Kind.DIAG_MINOR, Kind.DIAG_SIMILAR, Kind.HOSP,
+        Kind.SURGERY, Kind.TREAT))
     return total / lives
 
 
@@ -1963,10 +1963,10 @@ def check_waiting_period_resid(t):
     at all [S1] [S2] [S7], and a check that asserted a zero there would be asserting the wrong
     product.
     """
-    if t >= tier_wait_months("general"):
+    if t >= tier_wait_months(Tier.general):
         return 0.0
-    return (claims(t, "DIAG_GEN") + claims(t, "DIAG_HIGH")
-            + claims(t, "DIAG_MINOR") + diag_first(t))
+    return (claims(t, Kind.DIAG_GEN) + claims(t, Kind.DIAG_HIGH)
+            + claims(t, Kind.DIAG_MINOR) + diag_first(t))
 
 
 def check_waiting_period():
@@ -2077,16 +2077,16 @@ def result_cf():
             "pols_minor": [pols_minor(t) for t in ts],
             "pols_waived": [pols_waived(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_diag_gen": [claims(t, "DIAG_GEN") for t in ts],
-            "claims_diag_high": [claims(t, "DIAG_HIGH") for t in ts],
-            "claims_diag_minor": [claims(t, "DIAG_MINOR") for t in ts],
-            "claims_diag_similar": [claims(t, "DIAG_SIMILAR") for t in ts],
-            "claims_hosp": [claims(t, "HOSP") for t in ts],
-            "claims_surgery": [claims(t, "SURGERY") for t in ts],
-            "claims_treat": [claims(t, "TREAT") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_diag_gen": [claims(t, Kind.DIAG_GEN) for t in ts],
+            "claims_diag_high": [claims(t, Kind.DIAG_HIGH) for t in ts],
+            "claims_diag_minor": [claims(t, Kind.DIAG_MINOR) for t in ts],
+            "claims_diag_similar": [claims(t, Kind.DIAG_SIMILAR) for t in ts],
+            "claims_hosp": [claims(t, Kind.HOSP) for t in ts],
+            "claims_surgery": [claims(t, Kind.SURGERY) for t in ts],
+            "claims_treat": [claims(t, Kind.TREAT) for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -2195,3 +2195,11 @@ roll_fwd_tol = 1e-10
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Tier = ("Pickle", 2)
+
+ShareColumn = ("Pickle", 3)
+
+PolTiming = ("Pickle", 4)
+
+Kind = ("Pickle", 5)

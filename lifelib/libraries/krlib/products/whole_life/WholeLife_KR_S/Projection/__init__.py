@@ -1503,12 +1503,12 @@ def pols_if_at(t, timing):
         l(t+1) before any 부활, and zero in the last period ``proj_len() - 1`` because the
         table's terminal rate is 1 and nobody survives it.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1528,7 +1528,7 @@ def pols_lapse(t):
     The gross count.  Those that return under 부활 a year later are :func:`pols_reinstate`
     and are **not** paid a surrender value; the rest are :func:`pols_surr`.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def pols_reinstate(t):
@@ -1569,7 +1569,7 @@ def premiums(t):
     return premium_mth_at_pp(t) * pols_pay_exp(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     Every kind is settled net of the 보험계약대출 balance opening the period, ``loan_pp(t)``,
@@ -1601,17 +1601,17 @@ def claims(t, kind=None):
     Every one of these is floored at zero: a loan can outgrow both the surrender value and,
     given long enough, the sum assured, and none of them may produce a negative payment.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "REDUCTION"))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE, Kind.REDUCTION))
+    if kind == Kind.DEATH:
         return max(0.0, sum_assured_at(t) - loan_pp(t)) * pols_death(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_surr(t)
-    if kind == "REDUCTION":
+    if kind == Kind.REDUCTION:
         if reduce_year() <= 0 or t != 12 * reduce_year() - 1:
             return 0.0
         return (reduce_frac() * max(0.0, cv_pp(t + 1) - loan_pp(t))
-                * pols_if_at(t, "AFT_DECR"))
+                * pols_if_at(t, PolTiming.AFT_DECR))
     raise ValueError("invalid kind")
 
 
@@ -1695,7 +1695,7 @@ def net_cf(t):
     basis and the cliff produces a visible one-year hole instead — which is the whole
     reason the two bases are shipped side by side [REG-R27].
     """
-    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 
@@ -1919,8 +1919,8 @@ def check_net_cf_resid(t):
     fourth kind added to :func:`claims` and left out of the statement shows up here rather
     than silently vanishing from it.
     """
-    return (net_cf(t) - premiums(t) + claims(t, "DEATH") + claims(t, "LAPSE")
-            + claims(t, "REDUCTION") + claim_expenses(t) + expenses(t)
+    return (net_cf(t) - premiums(t) + claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
+            + claims(t, Kind.REDUCTION) + claim_expenses(t) + expenses(t)
             + commissions(t))
 
 
@@ -1949,9 +1949,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_reduction": [claims(t, "REDUCTION") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_reduction": [claims(t, Kind.REDUCTION) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -2064,3 +2064,7 @@ roll_fwd_tol = 1e-10
 val_tol = 1e-07
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

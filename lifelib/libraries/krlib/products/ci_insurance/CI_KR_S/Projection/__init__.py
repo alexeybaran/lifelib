@@ -907,7 +907,7 @@ def ci_rate_at_age(y, cause):
     if y > ci_cover_end_age:                                         # noqa: F821
         return 0.0
     return float(data.ci_incidence_table().loc[                      # noqa: F821
-        (sex(), y, cause), "ci_rate"])
+        (sex(), y, cause.name), "ci_rate"])
 
 
 def ci_wait_factor():
@@ -973,11 +973,11 @@ def ci_wait_share(t):
         return 0.0
     y = age(t)
     total = 0.0
-    for cause in ("cancer", "ami", "stroke", "other", "ltc"):
+    for cause in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc):
         total = total + ci_rate_at_age(y, cause)
     if total <= 0.0:
         return 0.0
-    return (ci_rate_at_age(y, "cancer") + ci_rate_at_age(y, "ltc")) / total
+    return (ci_rate_at_age(y, Cause.cancer) + ci_rate_at_age(y, Cause.ltc)) / total
 
 
 def ci_rate_base(t):
@@ -1000,7 +1000,7 @@ def ci_rate_base(t):
         return 0.0
     y = age(t)
     total = 0.0
-    for cause in ("cancer", "ami", "stroke", "other", "ltc"):
+    for cause in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc):
         total = total + ci_rate_at_age(y, cause)
     return min(1.0, total)
 
@@ -1084,12 +1084,12 @@ def ci_reduced_share(t):
         return 0.0
     y = age(t)
     total = 0.0
-    for cause in ("cancer", "ami", "stroke", "other", "ltc"):
+    for cause in (Cause.cancer, Cause.ami, Cause.stroke, Cause.other, Cause.ltc):
         total = total + ci_rate_at_age(y, cause)
     if total <= 0.0:
         return 0.0
     mth = 1.0 - (1.0 - q) ** (1.0 / 12.0)
-    cancer = (mth * ci_rate_at_age(y, "cancer") / total
+    cancer = (mth * ci_rate_at_age(y, Cause.cancer) / total
               * ci_wait_factor_mth(t))
     return min(1.0, breast_share() * cancer / base)
 
@@ -1950,14 +1950,14 @@ def pols_if_at(t, timing):
         l(t + 1), the end-of-month state, and zero at ``proj_len() - 1`` because
         the table's terminal rate is 1 and nobody survives the final policy year.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return (pols_if_pre(t) * (1.0 - ci_rate_mth(t))
                 * (1.0 - mort_rate_mth(t))
                 + pols_ci(t)
                 + pols_if_ci(t) * (1.0 - mort_rate_ci_mth(t)))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols_if(t + 1)
     raise ValueError("invalid timing")
 
@@ -2020,7 +2020,7 @@ def premiums(t):
     return premium_mth_pp() * pols_if_pay(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Every payment here falls at the **end** of month ``t``, which is the month-end
@@ -2053,15 +2053,15 @@ def claims(t, kind=None):
     Every one of these is floored at zero: a loan can outgrow the surrender value and,
     given long enough, the residual, and none of them may produce a negative payment.
     """
-    if kind is None:
-        return (claims(t, "CI") + claims(t, "DEATH") + claims(t, "DEATH_CI")
-                + claims(t, "LAPSE") + claims(t, "LAPSE_CI"))
-    if kind == "CI":
+    if kind == Kind.ALL:
+        return (claims(t, Kind.CI) + claims(t, Kind.DEATH) + claims(t, Kind.DEATH_CI)
+                + claims(t, Kind.LAPSE) + claims(t, Kind.LAPSE_CI))
+    if kind == Kind.CI:
         return sum(pols_ci_in(t, s) * accel_benefit_pp(s)
                    for s in (t + 1, -(t + 1)))
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return max(0.0, base_benefit_pp(t + 1) - loan_pp(t)) * pols_death(t)
-    if kind == "DEATH_CI":
+    if kind == Kind.DEATH_CI:
         n = pols_if_ci(t)
         if n <= 0.0:
             return 0.0
@@ -2075,9 +2075,9 @@ def claims(t, kind=None):
         return sum(pols_if_ci_at(t, s) * mort_rate_ci_mth(t)
                    * max(0.0, resid_db_pp(t + 1, s) - loan)
                    for s in ci_cohort_ids(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return max(0.0, cv_pp(t + 1) - loan_pp(t)) * pols_lapse(t)
-    if kind == "LAPSE_CI":
+    if kind == Kind.LAPSE_CI:
         return max(0.0, cv_pp_ci(t + 1) - loan_pp(t)) * pols_lapse_ci(t)
     raise ValueError("invalid kind")
 
@@ -2167,7 +2167,7 @@ def net_cf(t):
     front-loads that outgo**: on the anchor cell the CI benefit is paid a decade or more
     before the death benefit it accelerates.
     """
-    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
             - commissions(t))
 
 
@@ -2371,9 +2371,9 @@ def check_net_cf_resid(t):
     sixth kind added to :func:`claims` and left out of the statement shows up here rather
     than silently vanishing from it.
     """
-    return (net_cf(t) - premiums(t) + claims(t, "CI") + claims(t, "DEATH")
-            + claims(t, "DEATH_CI") + claims(t, "LAPSE")
-            + claims(t, "LAPSE_CI") + claim_expenses(t) + expenses(t)
+    return (net_cf(t) - premiums(t) + claims(t, Kind.CI) + claims(t, Kind.DEATH)
+            + claims(t, Kind.DEATH_CI) + claims(t, Kind.LAPSE)
+            + claims(t, Kind.LAPSE_CI) + claim_expenses(t) + expenses(t)
             + commissions(t))
 
 
@@ -2401,11 +2401,11 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_ci": [claims(t, "CI") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_death_ci": [claims(t, "DEATH_CI") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_lapse_ci": [claims(t, "LAPSE_CI") for t in ts],
+            "claims_ci": [claims(t, Kind.CI) for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_death_ci": [claims(t, Kind.DEATH_CI) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_lapse_ci": [claims(t, Kind.LAPSE_CI) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
@@ -2539,3 +2539,9 @@ val_tol = 1e-08
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Cause = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Kind = ("Pickle", 4)
