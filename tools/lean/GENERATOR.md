@@ -17,7 +17,12 @@ a model by hand):
    text.
 2. Default arguments exactly as upstream has them (`kind=None`, `if kind is None:`, calls
    that omit the argument).
-3. Cells that upstream returns as tuples stay tuples.
+3. Cells that upstream returns as tuples stay tuples, and a cell that returns a sequence
+   of numbers returns a tuple: the compiler accelerates tuples only, and a cached tuple
+   cannot be changed by its caller. Where upstream returns a list, `overrides/<Model>.toml`
+   lists the cell under `tuple_cells` if no reader in the model or its tests mutates the
+   result or needs a list; otherwise the list stays and the cell is recorded under
+   `tuple_left` with the reader that needs it.
 4. References and attribute cells keep upstream's text values; an attribute cell whose
    result is passed on as a cell argument converts it once (`Sex[v]`), which still equals
    and prints as the text.
@@ -93,7 +98,7 @@ label text.
 | K1 | every label site becomes `Family.MEMBER` (short spelling). Nothing else of upstream's text changes: a typed value used as a table key, a column label, in an f-string or compared with text read from data stays as upstream writes it (the member *is* that text); defaults (`kind=None`, `weighting="count"`), `is None` tests and calls that omit the argument stay. A label *computed* from text at a typed position (`"comm_yr%d" % y`, `"surgery_rate_" + cause`) is looked up by name, `Family[expr]`. A cell that returns a sequence of labels whose elements are passed on (`opt_legs()` in RILA_US_S) returns a tuple of members. |
 | attributes | a policy-attribute cell returns `Family[...]` of its upstream value **only** if its result is passed on as a cell argument (`sex(life)` in Rente_FR_S); every other attribute stays as upstream writes it; upstream's `raise ValueError("invalid ...")` checks stay, table loaders are upstream's. Families used only by attributes are not emitted. |
 | References | a Reference holding a label keeps upstream's text (`tariff_table_sex = "F"`); it equals the member. |
-| tuples | upstream's tuples stay (no K2). `reference/*.json` still lists the full conversion's `list_cells`; the generator ignores them. |
+| tuples | upstream's tuples stay (no K2; `reference/*.json` still lists the full conversion's `list_cells`, which the generator ignores). The cells of `tuple_cells` return a tuple of the values upstream returns as a list: `[f(z) for z in zs]` → `tuple(f(z) for z in zs)`, `list(x)` → `tuple(x)`, a local list `out` → `tuple(out)`, and `return a, b` converts each element. |
 | None members | a member of the reference that upstream never spells and that stood for a `None` default (`Kind.ALL`) is not emitted. |
 | K3 | the product's `spec.py` of the full conversion is written unchanged, with a two-line note that its line numbers refer to that text. |
 | K4 | nothing to apply: the approved fixes (US mortality caps `min(q, 1.0)`, VA `rb_pp` `ratchet`, the Obseques and DIA validation fixes) are in upstream text since v0.17.3. |
@@ -130,6 +135,8 @@ sex = "Sex"
 "10yr" = "Y10"                 #   member's value is still the label ("10yr")
 [none_member]                  # which member stood for a None default (not emitted)
 Kind = "ALL"
+[tuple_cells]                  # cells whose returned list becomes a tuple
+Projection = ["sub_ids"]
 [hoists]                       # OFF by default: adopt hoisted cells of the full conversion
 Projection = ["cost_row"]      # inserts the helper and the reference text of its users
 [[replace]]                    # exact text replacement in upstream text before the rewrite

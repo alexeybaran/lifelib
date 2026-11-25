@@ -83,14 +83,39 @@ A member *is* its label text (`Kind.DEATH == "DEATH"`, same hash, prints `DEATH`
   `weighting="count"` stays text;
 * **table keys and columns**: `table.loc[(sex, x), "q"]`, `df[kind]`, f-strings and
   messages use the parameter as it is (no `.name`, no `.value`);
-* **tuples**: a cell that returns a tuple keeps returning a tuple;
 * **References**: `tariff_table_sex = "F"` stays text;
 * **attribute cells** (`sex()`, `smoker()`) return the text from the model point, unless
   their result is passed on as a family argument (section 4);
 * **callers**: scripts, tests and notebooks may pass `"DEATH"` or `Kind.DEATH`; both hit
   the same cache entry.
 
-## 4. Where text from data becomes a member
+## 4. A sequence of numbers is a tuple
+
+A cell that returns several numbers at once (a cohort vector, a list of ids, anchor
+pairs) returns a **tuple**, not a list:
+
+```python
+def sick_cohorts(t):
+    ...
+    return tuple(prev[z - 1] * surv[z - 1] for z in range(1, n))
+
+def subaccount_ids():
+    return tuple(data.subaccount_table().index)
+
+def dis_cohorts(t):
+    pols = [0.0] * n                        # build a local list as usual ...
+    ...
+    return tuple(pols), tuple(val)          # ... and return it as a tuple
+```
+
+Two reasons. The compiler accelerates tuple-returning cells only; a cell that returns a
+list stays an ordinary Python object (correct, but about nine times slower). And modelx
+caches the returned object itself: a caller that changes a returned list changes the
+cached value every later formula reads, silently; a tuple cannot be changed. So never
+write into a returned sequence; build a new one. (Lists of text, such as messages, may
+stay lists.)
+
+## 5. Where text from data becomes a member
 
 Only where a label read from data (or built from text) is **passed on** as a family
 argument, convert it once, by name, in the cell that reads it:
@@ -111,7 +136,7 @@ its own error for that label, put the check before the conversion (as above), so
 caller sees that error. A label read from data that is only used as a table key or
 compared with text needs no conversion.
 
-## 5. Can a lint check it?
+## 6. Can a lint check it?
 
 Yes, the mechanical part, in about a hundred lines of `ast` over the model folder, with
 no modelx:
@@ -125,7 +150,9 @@ no modelx:
   family, a parameter of the caller typed the same way, `None`, or a `Family[...]`
   lookup, never a string literal;
 * every family a space spells is a Reference of that space, and every family Reference
-  names a class of `enums.py`.
+  names a class of `enums.py`;
+* no cell returns a list display, a list comprehension, `list(...)` or a local bound to
+  one (a sequence of numbers is returned as a tuple).
 
 What a lint cannot see is a label that arrives from data and is passed on without a
 `Family[...]` conversion: the value is still right (a member is its text), only the
