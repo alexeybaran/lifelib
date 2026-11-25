@@ -1358,9 +1358,9 @@ def pols_if_at(t, timing):
     The intermediate points of the other models have no single-population meaning here,
     because four states are moving at once; the ``pols_*`` cells expose them instead.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len() - 1:
             return 0.0
         return pols_if(t + 1)
@@ -1424,7 +1424,7 @@ def benefit_itt_pp():
     return echeance() * quotite() * indemnity_ratio() * claim_admission  # noqa: F821
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1456,22 +1456,22 @@ def claims(t, kind=None):
     The two zero kinds are published rather than omitted so that the product facts are
     stated instead of inferred from a missing column.
     """
-    if kind is None:
+    if kind == Kind.ALL:
         return sum(claims(t, k) for k in
-                   ("DEATH", "PTIA", "ITT", "IPT", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
+                   (Kind.DEATH, Kind.PTIA, Kind.ITT, Kind.IPT, Kind.LAPSE, Kind.MATURITY))
+    if kind == Kind.DEATH:
         deaths = pols_death_healthy(t) + pols_itt_death(t) + pols_ipt_death(t)
         return benefit_deces_pp(t) * deaths * cover_deces(t)
-    if kind == "PTIA":
+    if kind == Kind.PTIA:
         return benefit_deces_pp(t) * pols_ptia(t)
-    if kind == "ITT":
+    if kind == Kind.ITT:
         return benefit_itt_pp() * pols_itt_stay(t)
-    if kind == "IPT":
+    if kind == Kind.IPT:
         if ipt_benefit_basis() == "echeance":
             return benefit_itt_pp() * (pols_ipt_stay(t) + pols_itt_to_ipt(t))
         return (benefit_deces_pp(t) * pols_ipt_capital(t)
                 * claim_admission)                                   # noqa: F821
-    if kind in ("LAPSE", "MATURITY"):
+    if kind in (Kind.LAPSE, Kind.MATURITY):
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1506,7 +1506,7 @@ def liability_cf(t):
     that orientation in the technical notes.  It is published verbatim so that the notes
     and the model can be compared line by line, and :func:`net_cf` is its negative.
     """
-    return claims(t) + expenses(t) - premiums(t)
+    return claims(t, Kind.ALL) + expenses(t) - premiums(t)
 
 
 def net_cf(t):
@@ -1615,9 +1615,9 @@ def check_benefit_split_resid(t):
     mis-indexed duration shift moves one and not the other.  It also catches paying the
     ITT to IPT movers twice, or not at all, and paying a claim in the month it incepts.
     """
-    paid = claims(t, "ITT")
+    paid = claims(t, Kind.ITT)
     if ipt_benefit_basis() == "echeance":
-        paid = paid + claims(t, "IPT")
+        paid = paid + claims(t, Kind.IPT)
         mass = (pols_itt_close(t) - pols_itt_inception(t)
                 + pols_ipt_close(t) + pols_cap_return(t))
     else:
@@ -1647,7 +1647,7 @@ def check_cover_end_resid(t):
     """
     if cover_itt(t):
         return 0.0
-    return claims(t, "ITT") + claims(t, "IPT") + pols_itt(t) + pols_ipt(t)
+    return claims(t, Kind.ITT) + claims(t, Kind.IPT) + pols_itt(t) + pols_ipt(t)
 
 
 def check_cover_end():
@@ -1685,7 +1685,7 @@ def pv_premiums():
                for t in range(proj_len()))
 
 
-def pv_claims(kind=None):
+def pv_claims(kind):
     """The present value of benefit outgo, by kind; the total when kind is omitted.
 
     On the anchor cell: Décès 7 170.56, PTIA 635.87, ITT 1 932.71 and IPT 1 293.18, so
@@ -1710,7 +1710,7 @@ def pv_outgo():
 
     EUR 11 366.49 on the anchor cell against EUR 12 602.19 of premium, a margin of 9.81 %.
     """
-    return pv_claims() + pv_expenses()
+    return pv_claims(Kind.ALL) + pv_expenses()
 
 
 # -- Result tables -----------------------------------------------------------
@@ -1734,12 +1734,12 @@ def result_cf():
             "pols_ipt": [pols_ipt(t) for t in ts],
             "crd": [crd(t + 1) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_ptia": [claims(t, "PTIA") for t in ts],
-            "claims_itt": [claims(t, "ITT") for t in ts],
-            "claims_ipt": [claims(t, "IPT") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_ptia": [claims(t, Kind.PTIA) for t in ts],
+            "claims_itt": [claims(t, Kind.ITT) for t in ts],
+            "claims_ipt": [claims(t, Kind.IPT) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1812,3 +1812,7 @@ inflation_rate = 0.018
 disc_rate = 0.025
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

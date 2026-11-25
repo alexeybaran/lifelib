@@ -935,8 +935,8 @@ def switch_pp(t):
     """
     if not is_plan_boy(t):
         return 0.0
-    return (alloc_euro(t) * av_pp_at(t, "BEF_REBAL")
-            - av_euro_pp_at(t, "BEF_REBAL"))
+    return (alloc_euro(t) * av_pp_at(t, AvTiming.BEF_REBAL)
+            - av_euro_pp_at(t, AvTiming.BEF_REBAL))
 
 
 def arbitrage_charge_pp(t):
@@ -1022,23 +1022,23 @@ def av_euro_pp_at(t, timing):
     3.38% clears that comfortably, so the euro support does rise every year; at a credited
     rate of 0% it would fall by the 0.70% charge.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return av_euro_init()
         return av_euro_pp(t - 1)
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         m = switch_pp(t)
-        bom = (av_euro_pp_at(t, "BEF_REBAL") + m
+        bom = (av_euro_pp_at(t, AvTiming.BEF_REBAL) + m
                + alloc_euro(t) * prem_to_av_pp(t))
         if m < 0.0:
             bom -= arbitrage_charge_pp(t)
         return bom
-    if timing == "BEF_CHARGE":
-        return av_euro_pp_at(t, "BOM") * (1.0 + return_euro_mth())
-    if timing == "EOM":
+    if timing == AvTiming.BEF_CHARGE:
+        return av_euro_pp_at(t, AvTiming.BOM) * (1.0 + return_euro_mth())
+    if timing == AvTiming.EOM:
         if not is_anniv(t):
-            return av_euro_pp_at(t, "BEF_CHARGE")
-        return (av_euro_pp_at(t, "BEF_CHARGE")
+            return av_euro_pp_at(t, AvTiming.BEF_CHARGE)
+        return (av_euro_pp_at(t, AvTiming.BEF_CHARGE)
                 * (1.0 - charge_euro))                               # noqa: F821
     raise ValueError("invalid timing")
 
@@ -1056,23 +1056,23 @@ def av_uc_pp_at(t, timing):
     of units, not to their value, and ``return_uc`` is stated net of the fund-level
     charges inside the units, which are large relative to the wrapper charge.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return av_uc_init()
         return av_uc_pp(t - 1)
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         m = switch_pp(t)
-        bom = (av_uc_pp_at(t, "BEF_REBAL") - m
+        bom = (av_uc_pp_at(t, AvTiming.BEF_REBAL) - m
                + alloc_uc(t) * prem_to_av_pp(t))
         if m >= 0.0:
             bom -= arbitrage_charge_pp(t)
         return bom
-    if timing == "BEF_CHARGE":
-        return av_uc_pp_at(t, "BOM") * (1.0 + return_uc_mth())
-    if timing == "EOM":
+    if timing == AvTiming.BEF_CHARGE:
+        return av_uc_pp_at(t, AvTiming.BOM) * (1.0 + return_uc_mth())
+    if timing == AvTiming.EOM:
         if not is_anniv(t):
-            return av_uc_pp_at(t, "BEF_CHARGE")
-        return (av_uc_pp_at(t, "BEF_CHARGE")
+            return av_uc_pp_at(t, AvTiming.BEF_CHARGE)
+        return (av_uc_pp_at(t, AvTiming.BEF_CHARGE)
                 * (1.0 - charge_uc))                                 # noqa: F821
     raise ValueError("invalid timing")
 
@@ -1097,7 +1097,7 @@ def av_euro_pp(t):
     The balance the month *opens* with is ``av_euro_pp_at(t, "BEF_REBAL")``, which is
     :func:`av_euro_init` at ``t = 0``.
     """
-    return av_euro_pp_at(t, "EOM")
+    return av_euro_pp_at(t, AvTiming.EOM)
 
 
 def av_uc_pp(t):
@@ -1106,7 +1106,7 @@ def av_uc_pp(t):
     The balance the month *opens* with is ``av_uc_pp_at(t, "BEF_REBAL")``, which is
     :func:`av_uc_init` at ``t = 0``.
     """
-    return av_uc_pp_at(t, "EOM")
+    return av_uc_pp_at(t, AvTiming.EOM)
 
 
 def av_pp(t):
@@ -1127,7 +1127,7 @@ def av_pp(t):
     The balance the month *opens* with is ``av_pp_at(t, "BEF_REBAL")``, which at ``t = 0``
     is the model point's opening state ``av_euro_init() + av_uc_init()``.
     """
-    return av_pp_at(t, "EOM")
+    return av_pp_at(t, AvTiming.EOM)
 
 
 def av_at(t, timing):
@@ -1139,10 +1139,10 @@ def av_at(t, timing):
     balance; no cash flow in this model reads it, because every claim is already the
     product of a decrement and a per-policy amount.
     """
-    if timing == "BOM":
+    if timing == AvTiming.BOM:
         return av_pp_at(t, timing) * pols_if(t)
-    if timing == "EOM":
-        return av_pp_at(t, timing) * pols_if_at(t, "AFT_DECR")
+    if timing == AvTiming.EOM:
+        return av_pp_at(t, timing) * pols_if_at(t, PolTiming.AFT_DECR)
     raise ValueError("invalid timing")
 
 
@@ -1157,8 +1157,8 @@ def inv_income_pp(t):
     It is the only term that opens the gap between the account value and the *garantie
     plancher* base, which is what :func:`check_floor_identity` uses it for.
     """
-    return (av_euro_pp_at(t, "BOM") * return_euro_mth()
-            + av_uc_pp_at(t, "BOM") * return_uc_mth())
+    return (av_euro_pp_at(t, AvTiming.BOM) * return_euro_mth()
+            + av_uc_pp_at(t, AvTiming.BOM) * return_uc_mth())
 
 
 def mgmt_charge_pp(t):
@@ -1191,8 +1191,8 @@ def mgmt_charge_pp(t):
     """
     if not is_anniv(t):
         return 0.0
-    return (av_euro_pp_at(t, "BEF_CHARGE") * charge_euro             # noqa: F821
-            + av_uc_pp_at(t, "BEF_CHARGE") * charge_uc)              # noqa: F821
+    return (av_euro_pp_at(t, AvTiming.BEF_CHARGE) * charge_euro             # noqa: F821
+            + av_uc_pp_at(t, AvTiming.BEF_CHARGE) * charge_uc)              # noqa: F821
 
 
 def death_floor_pp_at(t, timing):
@@ -1213,12 +1213,12 @@ def death_floor_pp_at(t, timing):
     charge — are non-zero in only two months of the twelve, so the base is a step function
     that moves at the plan-year start and at the anniversary and is flat in between.
     """
-    if timing == "BEF_REBAL":
+    if timing == AvTiming.BEF_REBAL:
         if t <= 0:
             return death_floor_init()
         return death_floor_pp(t - 1)
-    if timing == "EOM":
-        return (death_floor_pp_at(t, "BEF_REBAL") + prem_to_av_pp(t)
+    if timing == AvTiming.EOM:
+        return (death_floor_pp_at(t, AvTiming.BEF_REBAL) + prem_to_av_pp(t)
                 - arbitrage_charge_pp(t) - mgmt_charge_pp(t))
     raise ValueError("invalid timing")
 
@@ -1249,7 +1249,7 @@ def death_floor_pp(t):
     The base the month *opens* with is ``death_floor_pp_at(t, "BEF_REBAL")``, which at
     ``t = 0`` is :func:`death_floor_init`.
     """
-    return death_floor_pp_at(t, "EOM")
+    return death_floor_pp_at(t, AvTiming.EOM)
 
 
 def floor_in_force(t):
@@ -1446,7 +1446,7 @@ def pols_if(t):
     """
     if t <= 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1485,14 +1485,14 @@ def pols_if_at(t, timing):
     account-value cells use ``"BEF_REBAL"`` / ``"BOM"`` / ``"BEF_CHARGE"`` / ``"EOM"``,
     which mark points in the month's *investment* sequence and not in this chain.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_RELEASE":
+    if timing == PolTiming.BEF_RELEASE:
         return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_TRANSFER":
-        return pols_if_at(t, "BEF_RELEASE") * (1.0 - early_release_rate_mth(t))
-    if timing == "AFT_DECR":
-        return pols_if_at(t, "BEF_TRANSFER") * (1.0 - transfer_out_rate_mth(t))
+    if timing == PolTiming.BEF_TRANSFER:
+        return pols_if_at(t, PolTiming.BEF_RELEASE) * (1.0 - early_release_rate_mth(t))
+    if timing == PolTiming.AFT_DECR:
+        return pols_if_at(t, PolTiming.BEF_TRANSFER) * (1.0 - transfer_out_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1508,12 +1508,12 @@ def pols_death(t):
 
 def pols_release(t):
     """d_release(t): *déblocages anticipés* in month t, from that month's survivors."""
-    return pols_if_at(t, "BEF_RELEASE") * early_release_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_RELEASE) * early_release_rate_mth(t)
 
 
 def pols_transfer(t):
     """d_transfer(t): transfers out in month t, after that month's deaths and releases."""
-    return pols_if_at(t, "BEF_TRANSFER") * transfer_out_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_TRANSFER) * transfer_out_rate_mth(t)
 
 
 def pols_maturity(t):
@@ -1529,7 +1529,7 @@ def pols_maturity(t):
     """
     if t != proj_len() - 1:
         return 0.0
-    return pols_if_at(t, "AFT_DECR")
+    return pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def annuity_factor():
@@ -1677,20 +1677,20 @@ def claim_pp(t, kind):
         ``t = proj_len() - 1`` only.  Where the annuity is *not* commuted its capital leaves as
         :func:`annuity_conversion` instead, so the two never overlap.
     """
-    if kind == "DEATH":
+    if kind == Kind.DEATH:
         return death_benefit_pp(t)
-    if kind == "EARLY_RELEASE":
+    if kind == Kind.EARLY_RELEASE:
         return av_pp(t)
-    if kind == "TRANSFER":
+    if kind == Kind.TRANSFER:
         return av_pp(t) * (1.0 - transfer_indemnity_rate(t))
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         if t != proj_len() - 1:
             return 0.0
         return capital_leg_pp() + commuted_pp()
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     Each kind weights :func:`claim_pp` by its own decrement, so a benefit is never
@@ -1698,16 +1698,16 @@ def claims(t, kind=None):
     not a benefit paid to the policyholder but capital handed to the annuity model, and
     it carries its own line in :func:`result_cf`.
     """
-    if kind is None:
+    if kind == Kind.ALL:
         return sum(claims(t, k) for k in
-                   ("DEATH", "EARLY_RELEASE", "TRANSFER", "MATURITY"))
-    if kind == "DEATH":
+                   (Kind.DEATH, Kind.EARLY_RELEASE, Kind.TRANSFER, Kind.MATURITY))
+    if kind == Kind.DEATH:
         return claim_pp(t, kind) * pols_death(t)
-    if kind == "EARLY_RELEASE":
+    if kind == Kind.EARLY_RELEASE:
         return claim_pp(t, kind) * pols_release(t)
-    if kind == "TRANSFER":
+    if kind == Kind.TRANSFER:
         return claim_pp(t, kind) * pols_transfer(t)
-    if kind == "MATURITY":
+    if kind == Kind.MATURITY:
         return claim_pp(t, kind) * pols_maturity(t)
     raise ValueError("invalid kind")
 
@@ -1771,7 +1771,7 @@ def liability_cf(t):
     handed to the annuity model, plus expenses, less *versements*.  :func:`net_cf` is its
     negative.
     """
-    return (claims(t) + annuity_conversion(t) + expenses(t) - premiums(t))
+    return (claims(t, Kind.ALL) + annuity_conversion(t) + expenses(t) - premiums(t))
 
 
 def net_cf(t):
@@ -1798,7 +1798,7 @@ def check_pols_roll_fwd_resid(t):
     shows up here.  It closes **month by month**, not merely at anniversaries.
     """
     return (pols_if(t) - pols_death(t) - pols_release(t)
-            - pols_transfer(t) - pols_if_at(t, "AFT_DECR"))
+            - pols_transfer(t) - pols_if_at(t, PolTiming.AFT_DECR))
 
 
 def check_pols_roll_fwd():
@@ -1826,7 +1826,7 @@ def check_av_roll_fwd_resid(t):
     *versement*, the arbitrage charge and the management charge are simply zero in the
     months they do not fall.
     """
-    built = (av_pp_at(t, "BEF_REBAL") + prem_to_av_pp(t)
+    built = (av_pp_at(t, AvTiming.BEF_REBAL) + prem_to_av_pp(t)
              - arbitrage_charge_pp(t)
              + inv_income_pp(t) - mgmt_charge_pp(t))
     return av_pp(t) - built
@@ -1860,8 +1860,8 @@ def check_floor_identity_resid(t):
     charge would keep the account value at the anniversary and move the base.
     """
     return ((av_pp(t) - death_floor_pp(t))
-            - (av_pp_at(t, "BEF_REBAL")
-               - death_floor_pp_at(t, "BEF_REBAL")) - inv_income_pp(t))
+            - (av_pp_at(t, AvTiming.BEF_REBAL)
+               - death_floor_pp_at(t, AvTiming.BEF_REBAL)) - inv_income_pp(t))
 
 
 def check_floor_identity():
@@ -1889,7 +1889,7 @@ def check_euro_share_min_resid(t):
     70.00% euro after the rebalancing that opens its last plan year, month 132, and 69.67%
     at the anniversary, month 143.
     """
-    return av_euro_pp_at(t, "BOM") - alloc_euro(t) * av_pp_at(t, "BOM")
+    return av_euro_pp_at(t, AvTiming.BOM) - alloc_euro(t) * av_pp_at(t, AvTiming.BOM)
 
 
 def euro_share_min_bound(t):
@@ -2003,10 +2003,10 @@ def result_cf():
             "pols_if": [pols_if(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_early_release": [claims(t, "EARLY_RELEASE") for t in ts],
-            "claims_transfer": [claims(t, "TRANSFER") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_early_release": [claims(t, Kind.EARLY_RELEASE) for t in ts],
+            "claims_transfer": [claims(t, Kind.TRANSFER) for t in ts],
+            "claims_maturity": [claims(t, Kind.MATURITY) for t in ts],
             "annuity_conversion": [annuity_conversion(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -2089,7 +2089,7 @@ def result_state():
             "av_uc_pp": [av_uc_pp(t) for t in ts],
             "av_pp": [av_pp(t) for t in ts],
             "death_floor_pp": [death_floor_pp(t) for t in ts],
-            "pols_if_eoy": [pols_if_at(t, "AFT_DECR") for t in ts],
+            "pols_if_eoy": [pols_if_at(t, PolTiming.AFT_DECR) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
@@ -2127,7 +2127,7 @@ def result_state_annual():
             "av_uc_pp": [av_uc_pp(t) for t in eom],
             "av_pp": [av_pp(t) for t in eom],
             "death_floor_pp": [death_floor_pp(t) for t in eom],
-            "pols_if_eoy": [pols_if_at(t, "AFT_DECR") for t in eom],
+            "pols_if_eoy": [pols_if_at(t, PolTiming.AFT_DECR) for t in eom],
         },
         index=pd.Index(years, name="t_year"),                        # noqa: F821
     )
@@ -2161,7 +2161,7 @@ def result_settlement():
             "commuted_pp": commuted_pp(),
             "annuity_conversion_pp": annuity_conversion_pp(),
             "death_floor_pp": death_floor_pp(t_last),
-            "pols_if_eoy": pols_if_at(t_last, "AFT_DECR"),
+            "pols_if_eoy": pols_if_at(t_last, PolTiming.AFT_DECR),
         },
         name="settlement",
     )
@@ -2211,3 +2211,9 @@ inflation_rate = 0.018
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+AvTiming = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Kind = ("Pickle", 4)

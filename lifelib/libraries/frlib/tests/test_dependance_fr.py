@@ -34,6 +34,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from fr_registry import MODELS, LIB
+from fr_registry import model_enums
+PrevParam, Severity, Kind = model_enums("Dep_FR_S", "PrevParam", "Severity", "Kind")
 
 
 def model_files(folder):
@@ -106,7 +108,7 @@ NO_AGGRAVATION_IN_IDENTITY_P = '''
 def inc_rate_partial(t):
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("partial") * prev_slope(t)
+    num = (severity_share(Severity.partial) * prev_slope(t)
            + mort_partial_mult * mort_force(t) * pi_p - pi_p * mort_force_avg(t))
     return max(0.0, num / pi_h)
 '''
@@ -115,7 +117,7 @@ NO_AGGRAVATION_IN_IDENTITY_T = '''
 def inc_rate_total(t):
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("total") * prev_slope(t)
+    num = (severity_share(Severity.total) * prev_slope(t)
            + mort_total_mult * mort_force(t) * pi_t - pi_t * mort_force_avg(t))
     return max(0.0, num / pi_h)
 '''
@@ -153,8 +155,8 @@ def test_worked_example_row(fr_dep_anchor, t):
     assert p.pols_part(t) == pytest.approx(part, abs=STATE)
     assert p.pols_tot(t) == pytest.approx(tot, abs=STATE)
     assert p.premiums(t) == pytest.approx(prem, abs=CENT)
-    assert p.claims(t, "RENTE") == pytest.approx(rente, abs=CENT)
-    assert p.claims(t, "CAPITAL") == pytest.approx(cap, abs=CENT)
+    assert p.claims(t, Kind.RENTE) == pytest.approx(rente, abs=CENT)
+    assert p.claims(t, Kind.CAPITAL) == pytest.approx(cap, abs=CENT)
     assert p.refunds_carence(t) == pytest.approx(refund, abs=CENT)
     # The notes' `expenses` column is the combined expense of the month; the model
     # publishes the per-policy and the per-event halves as two columns.
@@ -221,7 +223,7 @@ def test_worked_example_assumption_values(fr_dep_anchor):
     assert p.mort_rate(12) == pytest.approx(0.0134515, abs=5e-8)
     assert p.prev_rate(0) == pytest.approx(0.01494159, abs=5e-9)
     assert p.prev_rate(12) == pytest.approx(0.01809552, abs=5e-9)
-    assert (p.severity_share("partial"), p.severity_share("total")) == (0.15, 0.30)
+    assert (p.severity_share(Severity.partial), p.severity_share(Severity.total)) == (0.15, 0.30)
     assert p.prev_partial(0) == pytest.approx(0.002241239, abs=5e-10)
     assert p.prev_total(0) == pytest.approx(0.004482477, abs=5e-10)
     assert p.mort_force(0) == pytest.approx(0.012123789, abs=5e-10)
@@ -248,7 +250,7 @@ def test_worked_example_month_zero_end_to_end(fr_dep_anchor):
     assert p.pols_entry_partial(0) == pytest.approx(0.0000074753, abs=5e-11)
     assert p.pols_entry_total(0) == pytest.approx(0.0000048983, abs=5e-11)
     assert p.pols_carence_exit(0) == pytest.approx(0.0001113621, abs=5e-11)
-    assert p.claims(0, "CAPITAL") == pytest.approx(0.0433, abs=CENT)
+    assert p.claims(0, Kind.CAPITAL) == pytest.approx(0.0433, abs=CENT)
     assert p.refunds_carence(0) == pytest.approx(0.0084, abs=CENT)
     assert p.claim_expenses(0) == pytest.approx(0.0031, abs=CENT)
     assert p.expenses(0) == pytest.approx(150.0 + 3.0 + 1.2, abs=CENT)
@@ -264,13 +266,13 @@ def test_worked_example_month_four_is_the_first_instalment(fr_dep_anchor):
     """
     p = fr_dep_anchor
     assert p.franchise_months() == 3
-    assert all(p.claims(t, "RENTE") == 0.0 for t in (0, 1, 2, 3))
+    assert all(p.claims(t, Kind.RENTE) == 0.0 for t in (0, 1, 2, 3))
     part_s = p.pols_part_dur(4, 4) * (1 - p.mort_rate_partial_mth(4))
     tot_s = p.pols_tot_dur(4, 4) * (1 - p.mort_rate_total_mth(4))
     assert part_s == pytest.approx(0.000007060611, abs=5e-13)
     assert tot_s == pytest.approx(0.000005174632, abs=5e-13)
-    assert p.claims(4, "RENTE") == pytest.approx(500 * part_s + 1000 * tot_s, rel=1e-12)
-    assert p.claims(4, "RENTE") == pytest.approx(0.0087, abs=CENT)
+    assert p.claims(4, Kind.RENTE) == pytest.approx(500 * part_s + 1000 * tot_s, rel=1e-12)
+    assert p.claims(4, Kind.RENTE) == pytest.approx(0.0087, abs=CENT)
     assert p.instalments(4) == pytest.approx(0.000012235, abs=5e-10)
     # Nothing else in the month moves: the handling expense adds 0.0001.
     assert p.claim_expenses(4) - 250.0 * p.pols_recognition(4) == pytest.approx(
@@ -289,8 +291,8 @@ def test_worked_example_month_twelve_carence_step(fr_dep_anchor):
     assert entrants == pytest.approx(0.000089755, abs=5e-10)
     assert p.cum_prem_pp(12) == pytest.approx(975.75, abs=CENT)
     assert p.cum_prem_pp(11) == pytest.approx(900.00, abs=CENT)
-    assert p.claims(12, "CAPITAL") == pytest.approx(3535.00 * entrants, rel=1e-12)
-    ratio = p.claims(12, "CAPITAL") / p.claims(11, "CAPITAL")
+    assert p.claims(12, Kind.CAPITAL) == pytest.approx(3535.00 * entrants, rel=1e-12)
+    ratio = p.claims(12, Kind.CAPITAL) / p.claims(11, Kind.CAPITAL)
     assert ratio == pytest.approx(8.0076, abs=0.00005)
     carence = p.carence_factor(12) / p.carence_factor(11)
     incidence = ((p.inc_rate_partial_mth(12) + p.inc_rate_total_mth(12))
@@ -322,7 +324,7 @@ def test_the_severity_mix_worsens_with_age(fr_dep_anchor):
     p = fr_dep_anchor
     assert p.inc_rate_total(120) < p.inc_rate_partial(120)      # age 80
     assert p.inc_rate_total(180) > p.inc_rate_partial(180)      # age 85
-    assert p.severity_share("total") / p.severity_share("partial") == 2.0
+    assert p.severity_share(Severity.total) / p.severity_share(Severity.partial) == 2.0
     # The notes' gradient from 70 to 90: a factor of 28 for i_P and 81 for i_T.
     assert p.inc_rate_partial(240) / p.inc_rate_partial(0) == pytest.approx(28, abs=1)
     assert p.inc_rate_total(240) / p.inc_rate_total(0) == pytest.approx(81, abs=1)
@@ -513,15 +515,15 @@ def test_removing_the_carence_and_the_franchise_cost_different_amounts(dependanc
     assert (no_carence.result_cf()["refunds_carence"] == 0.0).all()
     assert no_franchise.result_cf()["refunds_carence"].sum() > 0.0
     # Without a franchise the first cohort is paid in the month after recognition.
-    assert no_franchise.claims(1, "RENTE") > 0.0
-    assert dependance.Projection[1].claims(1, "RENTE") == 0.0
+    assert no_franchise.claims(1, Kind.RENTE) > 0.0
+    assert dependance.Projection[1].claims(1, Kind.RENTE) == 0.0
 
 
 def test_the_franchise_is_not_a_premium_holiday(fr_dep_anchor):
     """Exoneration runs from recognition, so the franchise is neither paid nor paying."""
     p = fr_dep_anchor
     for t in (1, 2, 3):
-        assert p.claims(t, "RENTE") == 0.0
+        assert p.claims(t, Kind.RENTE) == 0.0
         assert p.premiums(t) == pytest.approx(p.premium_mth_pp(t) * p.pols_auto(t),
                                               rel=1e-14)
     # The population inside the franchise is in a dependent ledger, so it is outside
@@ -586,7 +588,7 @@ def test_the_identity_carries_its_mortality_terms_and_floors_both_rates(dependan
     p = dependance.Projection[1]
     t = 180                                             # attained age 85
     pi_p, pi_t = p.prev_partial(t), p.prev_total(t)
-    slope_only = p.severity_share("total") * p.prev_slope(t) / (1.0 - pi_p - pi_t)
+    slope_only = p.severity_share(Severity.total) * p.prev_slope(t) / (1.0 - pi_p - pi_t)
     assert slope_only < p.inc_rate_total(t)
     assert p.inc_rate_total(t) / slope_only > 1.5
     assert p.mort_force_avg(t) > p.mort_force(t)        # two of three states are heavier
@@ -679,7 +681,7 @@ def test_the_capital_is_paid_once_per_membership_not_once_per_state(dependance):
     for t in (0, 12, 200, 300):
         assert p.pols_capital_claims(t) == pytest.approx(
             p.pols_entry_partial(t) + p.pols_entry_total(t), rel=1e-12)
-        assert p.claims(t, "CAPITAL") == pytest.approx(
+        assert p.claims(t, Kind.CAPITAL) == pytest.approx(
             p.capital_pp(t) * p.pols_capital_claims(t), rel=1e-14)
     assert p.pols_aggravation(200) > 0.0               # real, and carrying no capital
     assert p.pols_entry_total_red(300) > 0.0
@@ -741,13 +743,13 @@ def test_a_seeded_claim_starts_at_its_stated_duration(dependance):
     assert p.status() == "partial" and p.claim_duration_months() == 18
     assert p.pols_part_dur(0, 19) == 1.0 and p.pols_part_dur(0, 1) == 0.0
     assert p.pols_auto(0) == 0.0 and p.pols_part(0) == 1.0
-    assert p.claims(0, "RENTE") > 0.0          # past its franchise from month zero
-    assert p.claims(0, "CAPITAL") == 0.0       # already taken, before the valuation
+    assert p.claims(0, Kind.RENTE) > 0.0          # past its franchise from month zero
+    assert p.claims(0, Kind.CAPITAL) == 0.0       # already taken, before the valuation
     assert p.premiums(0) == 0.0                # exonerated
     tot = dependance.Projection[10]
     assert tot.status() == "total" and tot.pols_tot_dur(0, 7) == 1.0
     # Paid on the survivors of the month, so a shade under the full rente.
-    assert tot.claims(0, "RENTE") == pytest.approx(
+    assert tot.claims(0, Kind.RENTE) == pytest.approx(
         900.0 * (1 - tot.mort_rate_total_mth(0)), rel=1e-12)
 
 
@@ -892,10 +894,10 @@ def test_raising_the_severity_shares_raises_claims_and_lowers_premiums(
                   dependance.Projection[3])
     assert (p1.trigger_grid(), p2.trigger_grid(), p3.trigger_grid()) == (
         "avq5", "avq6", "aggir")
-    assert p2.severity_share("total") == pytest.approx(0.30 * 0.85, abs=1e-6)
-    assert p3.severity_share("total") == pytest.approx(0.30 * 1.25, abs=1e-6)
-    assert p2.severity_share("total") < p1.severity_share("total") < p3.severity_share(
-        "total")
+    assert p2.severity_share(Severity.total) == pytest.approx(0.30 * 0.85, abs=1e-6)
+    assert p3.severity_share(Severity.total) == pytest.approx(0.30 * 1.25, abs=1e-6)
+    assert p2.severity_share(Severity.total) < p1.severity_share(Severity.total) < p3.severity_share(
+        Severity.total)
     names = set(dependance.Projection.cells) | set(dependance.Projection.refs)
     assert not [n for n in names if "grid" in n and n != "trigger_grid"]
 
@@ -938,9 +940,9 @@ def test_the_shipped_tables_mark_their_own_provenance(dependance):
     # by nothing, and below age 60 APA has no anchor at all.
     for point_id, low, high in ((1, 0.20, 0.54), (2, 0.13, 0.40)):
         p = dependance.Projection[point_id]
-        ceil = p.prev_param("prev_ceil")
-        beta = p.prev_param("prev_beta")
-        x_mid = p.prev_param("prev_x_mid")
+        ceil = p.prev_param(PrevParam.prev_ceil)
+        beta = p.prev_param(PrevParam.prev_beta)
+        x_mid = p.prev_param(PrevParam.prev_x_mid)
         for x, target in ((84.5, low), (93.0, high)):
             got = ceil / (1.0 + math.exp(-beta * (x - x_mid)))
             assert got == pytest.approx(target, abs=1e-9), (point_id, x)
@@ -1134,7 +1136,7 @@ def test_inputs_live_beside_the_model_and_are_read_once(dependance):
     assert expected == {p.name for p in MODEL_DIR.parent.iterdir()
                         if p.suffix == ".csv"}
     assert {p.name for p in MODEL_DIR.iterdir() if p.is_file()} == {
-        "__init__.py", "_system.json"}
+        "__init__.py", "_system.json", "enums.py"}
     assert dependance.Projection[1].data is dependance.Data
     assert dependance.Projection[1].data is dependance.Projection[9].data
     assert "input_dir" not in dependance.Projection.cells

@@ -570,11 +570,11 @@ def carence_months(cause):
     inside its *carence* is **terminated and every premium refunded**; the benefit is
     not merely deferred.
     """
-    if cause == "accident":
+    if cause == Cause.accident:
         return carence_accident_months()
-    if cause == "illness":
+    if cause == Cause.illness:
         return carence_illness_months()
-    if cause == "neuro":
+    if cause == Cause.neuro:
         return carence_neuro_months()
     raise ValueError("invalid cause")
 
@@ -1051,7 +1051,7 @@ def carence_factor(t):
     """
     tbl = data.cause_mix_table()                                     # noqa: F821
     return float(sum(tbl.loc[c, "share"] for c in tbl.index
-                     if carence_months(c) <= t))
+                     if carence_months(Cause[c]) <= t))
 
 
 def aggravation_carence(t):
@@ -1073,7 +1073,7 @@ def prev_param(name):
     to sourced DREES rates; ``prev_ceil`` is **[std]**, unidentified by a two-anchor fit,
     and it governs the tail — where 65% of this product's lifetime claims fall.
     """
-    return float(data.prevalence_table().loc[(sex(), name), "value"])  # noqa: F821
+    return float(data.prevalence_table().loc[(sex(), name.name), "value"])  # noqa: F821
 
 
 def prev_rate(t):
@@ -1088,9 +1088,9 @@ def prev_rate(t):
     APA is not available below age 60, so the curve has **no anchor at all** under 60 and
     every entry age below 60 runs on pure extrapolation.
     """
-    return prev_param("prev_ceil") / (
-        1.0 + math.exp(-prev_param("prev_beta")                      # noqa: F821
-                       * (age(t) - prev_param("prev_x_mid"))))
+    return prev_param(PrevParam.prev_ceil) / (
+        1.0 + math.exp(-prev_param(PrevParam.prev_beta)                      # noqa: F821
+                       * (age(t) - prev_param(PrevParam.prev_x_mid))))
 
 
 def prev_slope(t):
@@ -1101,7 +1101,7 @@ def prev_slope(t):
     that catches the product's dominant error.
     """
     p = prev_rate(t)
-    return prev_param("prev_beta") * p * (1.0 - p / prev_param("prev_ceil"))
+    return prev_param(PrevParam.prev_beta) * p * (1.0 - p / prev_param(PrevParam.prev_ceil))
 
 
 def severity_share(kind):
@@ -1118,20 +1118,20 @@ def severity_share(kind):
     of error: severity mix worsens with age, so the model **understates** *totale*
     prevalence at old ages and overstates it at young ones.
     """
-    if kind not in ("partial", "total"):
+    if kind not in (Severity.partial, Severity.total):
         raise ValueError("invalid kind")
     return float(data.severity_share_table().loc[                    # noqa: F821
-        trigger_grid(), "share_" + kind])
+        trigger_grid(), "share_" + kind.name])
 
 
 def prev_partial(t):
     """pi_P = s_P prev(x): the proportion of living lives in insured *partielle*."""
-    return severity_share("partial") * prev_rate(t)
+    return severity_share(Severity.partial) * prev_rate(t)
 
 
 def prev_total(t):
     """pi_T = s_T prev(x): the proportion of living lives in insured *totale*."""
-    return severity_share("total") * prev_rate(t)
+    return severity_share(Severity.total) * prev_rate(t)
 
 
 def mort_force_avg(t):
@@ -1166,7 +1166,7 @@ def inc_rate_partial(t):
     """
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("partial") * prev_slope(t)
+    num = (severity_share(Severity.partial) * prev_slope(t)
            + (aggravation_rate + mort_partial_mult * mort_force(t))  # noqa: F821
            * pi_p - pi_p * mort_force_avg(t))
     return max(0.0, num / pi_h)
@@ -1197,7 +1197,7 @@ def inc_rate_total(t):
     """
     pi_p, pi_t = prev_partial(t), prev_total(t)
     pi_h = 1.0 - pi_p - pi_t
-    num = (severity_share("total") * prev_slope(t)
+    num = (severity_share(Severity.total) * prev_slope(t)
            - aggravation_rate * pi_p                                 # noqa: F821
            + mort_total_mult * mort_force(t) * pi_t                  # noqa: F821
            - pi_t * mort_force_avg(t))
@@ -1629,9 +1629,9 @@ def pols_if_at(t, timing):
     The intermediate points of the other models have no single-population meaning here,
     because five ledgers are moving at once; the ledgers themselves expose them.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t >= proj_len():
             return 0.0
         return pols_if(t + 1)
@@ -1706,7 +1706,7 @@ def instalments(t):
     return out
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo at the end of month t, by kind; the total when kind is omitted.
 
     ``"RENTE"``
@@ -1729,9 +1729,9 @@ def claims(t, kind=None):
     There is deliberately **no** ``"DEATH"`` kind: this composite carries no death
     benefit at all, and the optional *capital décès* rider is out of scope.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("RENTE", "CAPITAL", "LAPSE"))
-    if kind == "RENTE":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.RENTE, Kind.CAPITAL, Kind.LAPSE))
+    if kind == Kind.RENTE:
         part, tot, totr, val = dep_cohorts(t)
         s_p = 1.0 - mort_rate_partial_mth(t)
         s_t = 1.0 - mort_rate_total_mth(t)
@@ -1749,9 +1749,9 @@ def claims(t, kind=None):
                 amounts[y_e] = a
             out += (rho * a * p * s_p + a * o * s_t + v * s_t)
         return out
-    if kind == "CAPITAL":
+    if kind == Kind.CAPITAL:
         return capital_pp(t) * pols_capital_claims(t)
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1812,7 +1812,7 @@ def net_cf(t):
     risk-free term structure to exactly this stream, and that is a layer above this
     model.
     """
-    return (premiums(t) - claims(t) - refunds_carence(t)
+    return (premiums(t) - claims(t, Kind.ALL) - refunds_carence(t)
             - expenses(t) - claim_expenses(t))
 
 
@@ -2025,9 +2025,9 @@ def result_cf():
             "pols_tot": [pols_tot(t) for t in ts],
             "pols_totr": [pols_totr(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_rente": [claims(t, "RENTE") for t in ts],
-            "claims_capital": [claims(t, "CAPITAL") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_rente": [claims(t, Kind.RENTE) for t in ts],
+            "claims_capital": [claims(t, Kind.CAPITAL) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "refunds_carence": [refunds_carence(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "claim_expenses": [claim_expenses(t) for t in ts],
@@ -2107,3 +2107,13 @@ roll_fwd_tol = 1e-12
 math = ("Module", "math")
 
 pd = ("Module", "pandas")
+
+Cause = ("Pickle", 2)
+
+PrevParam = ("Pickle", 3)
+
+Severity = ("Pickle", 4)
+
+PolTiming = ("Pickle", 5)
+
+Kind = ("Pickle", 6)

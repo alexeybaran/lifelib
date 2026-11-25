@@ -31,6 +31,8 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from fr_registry import LIB, MODELS
+from fr_registry import model_enums
+AvTiming, PolTiming, Kind = model_enums("Euro_FR_S", "AvTiming", "PolTiming", "Kind")
 
 
 def model_files(folder):
@@ -314,8 +316,8 @@ def test_the_twelve_year_identities_close(fr_euro_anchor):
     # The month-0 roll-forward, term for term, at fund level.
     assert p.av(0) == pytest.approx(100000.00, abs=CENT)
     assert p.premiums(0) == pytest.approx(200.00, abs=CENT)
-    assert p.claims(0, "DEATH") == pytest.approx(50.24, abs=CENT)
-    assert p.claims(0, "LAPSE") == pytest.approx(340.11, abs=CENT)
+    assert p.claims(0, Kind.DEATH) == pytest.approx(50.24, abs=CENT)
+    assert p.claims(0, Kind.LAPSE) == pytest.approx(340.11, abs=CENT)
     assert p.av(1) == pytest.approx(99809.65, abs=CENT)
     assert p.pols_if(1) * p.av_pp(1) == pytest.approx(99809.65, abs=CENT)
     assert p.check_av_roll_fwd() is True
@@ -358,13 +360,13 @@ def test_the_management_charge_is_not_deducted_twice(fr_euro_anchor):
         t = anniv(y)
         assert p.pb_credited_pp(y) - p.fee_pp(y) == pytest.approx(
             p.int_credited_pp(y), abs=1e-9)
-        assert p.av_pp_at(t, "AFT_INT") == pytest.approx(
-            p.av_pp_at(t, "AFT_WD") + p.int_credited_pp(y), abs=1e-9)
+        assert p.av_pp_at(t, AvTiming.AFT_INT) == pytest.approx(
+            p.av_pp_at(t, AvTiming.AFT_WD) + p.int_credited_pp(y), abs=1e-9)
         # What the double deduction would cost: 0.60% of the closing balance, every year.
-        doubled = p.av_pp_at(t, "AFT_INT") * (1.0 - p.fee_rate())
-        assert p.av_pp_at(t, "AFT_INT") - doubled == pytest.approx(
-            p.fee_rate() * p.av_pp_at(t, "AFT_INT"), rel=1e-12)
-        assert p.av_pp_at(t, "AFT_INT") - doubled > 600.0
+        doubled = p.av_pp_at(t, AvTiming.AFT_INT) * (1.0 - p.fee_rate())
+        assert p.av_pp_at(t, AvTiming.AFT_INT) - doubled == pytest.approx(
+            p.fee_rate() * p.av_pp_at(t, AvTiming.AFT_INT), rel=1e-12)
+        assert p.av_pp_at(t, AvTiming.AFT_INT) - doubled > 600.0
 
 
 def test_the_management_charge_lands_whole_at_the_anniversary(fr_euro_anchor):
@@ -381,8 +383,8 @@ def test_the_management_charge_lands_whole_at_the_anniversary(fr_euro_anchor):
     assert "fee" not in p.result_cf().columns
     assert "fee_mth_pp" not in p.cells
     for t in range(opens(4), anniv(4)):
-        assert p.av_pp_at(t, "AFT_INT") == p.av_pp_at(t, "AFT_WD"), t
-    assert p.av_pp_at(anniv(4), "AFT_INT") > p.av_pp_at(anniv(4), "AFT_WD")
+        assert p.av_pp_at(t, AvTiming.AFT_INT) == p.av_pp_at(t, AvTiming.AFT_WD), t
+    assert p.av_pp_at(anniv(4), AvTiming.AFT_INT) > p.av_pp_at(anniv(4), AvTiming.AFT_WD)
     assert p.fee_pp(4) == pytest.approx(p.fee_rate() * p.pm_avg_pp(4), abs=1e-12)
 
 
@@ -697,7 +699,7 @@ def test_the_social_levy_is_annual_not_deferred_to_surrender(fr_euro_anchor):
     total_int = sum(p.int_credited_pp(y) for y in range(12))
     assert total_levy == pytest.approx(0.172 * total_int, abs=1e-9)
     assert p.av_pp(opens(1)) == pytest.approx(
-        p.av_pp_at(anniv(0), "AFT_INT") - p.soc_levy_mth_pp(anniv(0)), abs=1e-12)
+        p.av_pp_at(anniv(0), AvTiming.AFT_INT) - p.soc_levy_mth_pp(anniv(0)), abs=1e-12)
     df = p.result_cf()
     outgo = df[["claims_death", "claims_lapse", "withdrawals", "expenses"]].sum(axis=1)
     assert (outgo - df["premiums"] - df["liability_cf"]).abs().max() == pytest.approx(
@@ -756,7 +758,7 @@ def test_the_death_benefit_is_the_account_value_with_no_uplift(fr_euro_anchor):
     for t in (0, 11, 64, anniv(5), 143, 359):
         assert p.db_pp(t) == pytest.approx(p.av_pp(t + 1), rel=1e-15)
         assert p.cv_pp(t) == pytest.approx(p.av_pp(t + 1), rel=1e-15)
-        assert p.claim_pp(t, "DEATH") == pytest.approx(p.claim_pp(t, "LAPSE"), rel=1e-15)
+        assert p.claim_pp(t, Kind.DEATH) == pytest.approx(p.claim_pp(t, Kind.LAPSE), rel=1e-15)
     with pytest.raises(FormulaError):
         p.claim_pp(0, "MATURITY")
     assert "claims_maturity" not in p.result_cf().columns
@@ -781,17 +783,17 @@ def test_mid_year_exits_take_no_in_year_revalorisation(fr_euro_anchor):
     assert p.tmg_rate() == 0.0
     for t in (0, 5, 64, 70, 130, 300):
         assert p.is_anniv(t) is False
-        assert p.claim_pp(t, "LAPSE") == pytest.approx(
-            p.av_pp_at(t, "AFT_WD"), rel=1e-15)
-        assert p.claim_pp(t, "DEATH") == pytest.approx(
-            p.av_pp_at(t, "AFT_WD"), rel=1e-15)
+        assert p.claim_pp(t, Kind.LAPSE) == pytest.approx(
+            p.av_pp_at(t, AvTiming.AFT_WD), rel=1e-15)
+        assert p.claim_pp(t, Kind.DEATH) == pytest.approx(
+            p.av_pp_at(t, AvTiming.AFT_WD), rel=1e-15)
     for y in (0, 5, 11):
         t = anniv(y)
-        assert p.claim_pp(t, "LAPSE") - p.av_pp_at(t, "AFT_WD") == pytest.approx(
+        assert p.claim_pp(t, Kind.LAPSE) - p.av_pp_at(t, AvTiming.AFT_WD) == pytest.approx(
             p.int_credited_pp(y) - p.soc_levy_pp(y), abs=1e-9)
-        assert p.claim_pp(t, "LAPSE") > p.av_pp_at(t, "AFT_WD")
+        assert p.claim_pp(t, Kind.LAPSE) > p.av_pp_at(t, AvTiming.AFT_WD)
     # Deaths then surrenders, on the monthly rates, at the end of every month.
-    assert p.pols_if_at(65, "AFT_DECR") == pytest.approx(
+    assert p.pols_if_at(65, PolTiming.AFT_DECR) == pytest.approx(
         p.pols_if(65) * (1 - p.mort_rate_mth(65)) * (1 - p.lapse_rate_mth(65)),
         abs=1e-12)
 
@@ -1171,7 +1173,7 @@ def test_the_inputs_live_beside_the_model_and_mark_their_own_provenance():
                                       if p.suffix == ".csv"}
     assert not list(MODEL_DIR.rglob("*.csv"))
     assert {p.name for p in MODEL_DIR.iterdir() if p.is_file()} == {
-        "__init__.py", "_system.json"}
+        "__init__.py", "_system.json", "enums.py"}
     mort = pd.read_csv(MODEL_DIR.parent / "mort_table.csv")
     assert set(mort["provenance"]) == {"[std] INSEE-shaped French population proxy"}
     assert mort["mort_rate"].max() <= 1.0

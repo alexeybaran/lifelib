@@ -1192,7 +1192,7 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
+    return pols_if_at(t - 1, PolTiming.AFT_DECR)
 
 
 def pols_if_at(t, timing):
@@ -1215,14 +1215,14 @@ def pols_if_at(t, timing):
         :func:`lapse_rate` is zero, so at ``t = proj_len() - 1`` this is the
         expiring cohort.
     """
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols_if(t) * (1.0 - mort_rate_mth(t) - ptia_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         if t < 0 or t > proj_len() - 1:
             return 0.0
-        return pols_if_at(t, "BEF_LAPSE") * (1.0 - lapse_rate_mth(t))
+        return pols_if_at(t, PolTiming.BEF_LAPSE) * (1.0 - lapse_rate_mth(t))
     raise ValueError("invalid timing")
 
 
@@ -1260,7 +1260,7 @@ def pols_lapse(t):
     final projected policy year, where the survivors leave as an expiry instead; see
     :func:`lapse_rate`.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
 def benefit_factor(t):
@@ -1384,7 +1384,7 @@ def suicide_factor(t):
     return suicide_year1_factor if duration(t) == 0 else 1.0         # noqa: F821
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1405,14 +1405,14 @@ def claims(t, kind=None):
         zero is stated rather than left to inference.  See
         :func:`check_no_cash_value`.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "PTIA", "LAPSE"))
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.PTIA, Kind.LAPSE))
+    if kind == Kind.DEATH:
         return pols_death(t) * (
             suicide_factor(t) * benefit_death_pp(t) + accident_extra_pp(t))
-    if kind == "PTIA":
+    if kind == Kind.PTIA:
         return pols_ptia(t) * (benefit_ptia_pp(t) + accident_extra_pp(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return 0.0
     raise ValueError("invalid kind")
 
@@ -1524,7 +1524,7 @@ def net_cf(t):
     strongly positive in the first year and carrying a real *provision mathématique*
     against the later years.
     """
-    return premiums(t) - claims(t) - expenses(t)
+    return premiums(t) - claims(t, Kind.ALL) - expenses(t)
 
 
 def liability_cf(t):
@@ -1622,7 +1622,7 @@ def check_ptia_gate_resid(t):
     """
     if age(t) < ptia_end_age():
         return 0.0
-    return ptia_rate(t) + pols_ptia(t) + claims(t, "PTIA")
+    return ptia_rate(t) + pols_ptia(t) + claims(t, Kind.PTIA)
 
 
 def check_ptia_gate():
@@ -1646,7 +1646,7 @@ def check_no_cash_value_resid(t):
     surrender scale into the lapse decrement, and every total in the frame still looks
     plausible.  A named check that must stay at zero makes that edit fail loudly.
     """
-    return claims(t, "LAPSE")
+    return claims(t, Kind.LAPSE)
 
 
 def check_no_cash_value():
@@ -1680,9 +1680,9 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_ptia": [claims(t, "PTIA") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_ptia": [claims(t, Kind.PTIA) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "commissions": [commissions(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1791,3 +1791,7 @@ comm_rate_renew = 0.05
 roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")
+
+PolTiming = ("Pickle", 2)
+
+Kind = ("Pickle", 3)

@@ -813,7 +813,7 @@ def wd_sched_pp(t):
     if p == "one_off":
         return (float(model_point()["wd_amount"])
                 if t == int(model_point()["wd_month"]) else 0.0)
-    return av_pp_at(t, "BEF_WD") * float(model_point()["wd_rate"]) / 12.0
+    return av_pp_at(t, AvTiming.BEF_WD) * float(model_point()["wd_rate"]) / 12.0
 
 
 def wd_amount_pp(t):
@@ -824,7 +824,7 @@ def wd_amount_pp(t):
     contract down to nothing rather than through it.  It reduces the floor base by its
     nominal amount, and it is the only event other than a premium that does.
     """
-    return min(wd_sched_pp(t), av_pp_at(t, "BEF_WD"))
+    return min(wd_sched_pp(t), av_pp_at(t, AvTiming.BEF_WD))
 
 
 def wd_uc_pp(t):
@@ -836,7 +836,7 @@ def wd_uc_pp(t):
     An election that emptied the loss-making support first would change
     :func:`uc_cost_basis` and therefore the `prelevements sociaux`.
     """
-    total = av_pp_at(t, "BEF_WD")
+    total = av_pp_at(t, AvTiming.BEF_WD)
     if total <= 0.0:
         return 0.0
     return wd_amount_pp(t) * av_uc_bef_wd_pp(t) / total
@@ -905,12 +905,12 @@ def plancher_ratchet(t):
     month is the account value at issue.
     """
     r = prem_to_av_pp() if t <= 0 else plancher_ratchet(t - 1)
-    total = av_pp_at(t, "BEF_WD")
+    total = av_pp_at(t, AvTiming.BEF_WD)
     if wd_amount_pp(t) > 0.0 and total > 0.0:
         r = r * (1.0 - wd_amount_pp(t) / total)
     n = plancher_ratchet_months()
     if n > 0 and (t + 1) % n == 0:
-        r = max(r, av_pp_at(t, "BEF_LEVY"))
+        r = max(r, av_pp_at(t, AvTiming.BEF_LEVY))
     return r
 
 
@@ -990,7 +990,7 @@ def nar(t):
     if not plancher_flag() or age(t) >= plancher_end_age():
         return 0.0
     return min(plancher_cap(),
-               max(0.0, plancher_amount(t) - av_pp_at(t, "BEF_LEVY")))
+               max(0.0, plancher_amount(t) - av_pp_at(t, AvTiming.BEF_LEVY)))
 
 
 def plancher_charge_pp(t):
@@ -1005,7 +1005,7 @@ def plancher_charge_pp(t):
     negative.  The 15-20 EUR monthly thresholds below which the real levy is deferred to
     the following month have no expected-value consequence and are not modeled.
     """
-    return min(nar(t) * plancher_rate_mth(t), av_pp_at(t, "BEF_LEVY"))
+    return min(nar(t) * plancher_rate_mth(t), av_pp_at(t, AvTiming.BEF_LEVY))
 
 
 def plancher_levy_eur_pp(t):
@@ -1094,15 +1094,15 @@ def av_pp_at(t, timing):
     All five points are exposed so the ordering is inspectable rather than buried in one
     expression.
     """
-    if timing == "OPENING":
+    if timing == AvTiming.OPENING:
         return (units_open(t) * unit_price_open(t)) + av_euro_open_pp(t)
-    if timing == "BEF_FEE":
+    if timing == AvTiming.BEF_FEE:
         return units_open(t) * unit_price(t) + av_euro_aft_credit_pp(t)
-    if timing == "BEF_WD":
+    if timing == AvTiming.BEF_WD:
         return av_uc_bef_wd_pp(t) + av_euro_bef_wd_pp(t)
-    if timing == "BEF_LEVY":
+    if timing == AvTiming.BEF_LEVY:
         return av_uc_bef_levy_pp(t) + av_euro_bef_levy_pp(t)
-    if timing == "BEF_DECR":
+    if timing == AvTiming.BEF_DECR:
         return av_uc_pp(t) + av_euro_pp(t)
     raise ValueError("invalid timing")
 
@@ -1115,7 +1115,7 @@ def av_pp(t):
     value, matching the notes' row t, and not the start-of-month reading some other models
     in the library give the same name.
     """
-    return av_pp_at(t, "BEF_DECR")
+    return av_pp_at(t, AvTiming.BEF_DECR)
 
 
 def av_at(t, timing):
@@ -1126,7 +1126,7 @@ def av_at(t, timing):
     by the start-of-month exposure :func:`pols_if` that weights the month's *flows*.  At
     ``t = 11`` on the anchor cell ``77,330.08 x 0.968240 = 74,874.07``.
     """
-    return av_pp_at(t, timing) * pols_if_at(t, "AFT_DECR")
+    return av_pp_at(t, timing) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def av_uc_at(t):
@@ -1142,7 +1142,7 @@ def av_uc_at(t):
     plancher liability is a separate engagement and **no retrieved document states how it
     is provisioned**, so this library asserts nothing about it.
     """
-    return av_uc_pp(t) * pols_if_at(t, "AFT_DECR")
+    return av_uc_pp(t) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def av_euro_at(t):
@@ -1151,7 +1151,7 @@ def av_euro_at(t):
     Published for completeness; the euro engagement's own reserve and its `provision pour
     participation aux benefices` belong to ``Euro_FR_S``.
     """
-    return av_euro_pp(t) * pols_if_at(t, "AFT_DECR")
+    return av_euro_pp(t) * pols_if_at(t, PolTiming.AFT_DECR)
 
 
 def uc_cost_basis_bef_wd(t):
@@ -1350,13 +1350,13 @@ def pols_if_at(t, timing):
     shipped with before.
     """
     pols = pols_if(t)
-    if timing == "BEF_DECR":
+    if timing == PolTiming.BEF_DECR:
         return pols
     pols = pols * (1.0 - mort_rate_mth(t))
-    if timing == "BEF_LAPSE":
+    if timing == PolTiming.BEF_LAPSE:
         return pols
     pols = pols * (1.0 - lapse_rate_mth(t))
-    if timing == "AFT_DECR":
+    if timing == PolTiming.AFT_DECR:
         return pols
     raise ValueError("invalid timing")
 
@@ -1368,10 +1368,10 @@ def pols_death(t):
 
 def pols_lapse(t):
     """Total surrenders in month t, from the survivors of that month's mortality."""
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, PolTiming.BEF_LAPSE) * lapse_rate_mth(t)
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Gross benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1388,12 +1388,12 @@ def claims(t, kind=None):
     but they are not in :func:`net_cf`, because :func:`av_releases` cancels them against
     the account value - all except the death strain.  See the Space docstring.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE"))
-    av = av_pp_at(t, "BEF_DECR")
-    if kind == "DEATH":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
+    av = av_pp_at(t, AvTiming.BEF_DECR)
+    if kind == Kind.DEATH:
         return pols_death(t) * (av + nar(t))
-    if kind == "LAPSE":
+    if kind == Kind.LAPSE:
         return pols_lapse(t) * av
     raise ValueError("invalid kind")
 
@@ -1414,7 +1414,7 @@ def av_releases(t):
     plancher death strain, which is the only part the insurer funds from its own
     resources.
     """
-    return av_pp_at(t, "BEF_DECR") * (pols_death(t) + pols_lapse(t))
+    return av_pp_at(t, AvTiming.BEF_DECR) * (pols_death(t) + pols_lapse(t))
 
 
 def prem_charge(t):
@@ -1539,10 +1539,10 @@ def check_av_roll_fwd_resid(t):
     month's price to it, forgetting that the arbitrage fee leaves the contract, or netting
     the withdrawal twice all show up here.
     """
-    built = (av_pp_at(t, "OPENING") + uc_growth_pp(t) + euro_interest_pp(t)
+    built = (av_pp_at(t, AvTiming.OPENING) + uc_growth_pp(t) + euro_interest_pp(t)
              - mgmt_fee_uc_pp(t) - arb_fee_pp(t) - wd_amount_pp(t)
              - plancher_charge_pp(t))
-    return av_pp_at(t, "BEF_DECR") - built
+    return av_pp_at(t, AvTiming.BEF_DECR) - built
 
 
 def check_av_roll_fwd():
@@ -1585,7 +1585,7 @@ def check_pols_roll_fwd_resid(t):
     written `viagere`, so the projection simply stops at :func:`proj_len` with a positive
     in-force count rather than running the population out.
     """
-    return (pols_if(t) - pols_if_at(t, "AFT_DECR")
+    return (pols_if(t) - pols_if_at(t, PolTiming.AFT_DECR)
             - pols_death(t) - pols_lapse(t))
 
 
@@ -1648,7 +1648,7 @@ def check_benefit_funding_resid(t):
     whole benefit rather than as ``K``, would be inconsistent with these three cells and
     the residual would move.
     """
-    return claims(t) - av_releases(t) - plancher_strain(t)
+    return claims(t, Kind.ALL) - av_releases(t) - plancher_strain(t)
 
 
 def check_benefit_funding():
@@ -1684,8 +1684,8 @@ def result_cf():
             "plancher_strain": [plancher_strain(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
+            "claims_death": [claims(t, Kind.DEATH) for t in ts],
+            "claims_lapse": [claims(t, Kind.LAPSE) for t in ts],
             "av_releases": [av_releases(t) for t in ts],
             "social_levy_uc": [social_levy_uc(t) for t in ts],
             "net_cf": [net_cf(t) for t in ts],
@@ -1752,3 +1752,9 @@ roll_fwd_tol = 1e-9
 pols_tol = 1e-12
 
 pd = ("Module", "pandas")
+
+AvTiming = ("Pickle", 2)
+
+PolTiming = ("Pickle", 3)
+
+Kind = ("Pickle", 4)

@@ -393,7 +393,7 @@ def sex(life):
         raise ValueError("invalid life")
     if v not in ("M", "F", "mix"):
         raise ValueError("invalid sex")
-    return v
+    return Sex[v]
 
 
 def annuity_rate():
@@ -616,13 +616,13 @@ def mort_rate_at_age(table_sex, gen, x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    if table_sex == "mix":
-        return (portfolio_male_share * mort_rate_at_age("M", gen, x)  # noqa: F821
+    if table_sex == Sex.mix:
+        return (portfolio_male_share * mort_rate_at_age(Sex.M, gen, x)  # noqa: F821
                 + (1.0 - portfolio_male_share)                       # noqa: F821
-                * mort_rate_at_age("F", gen, x))
-    if table_sex not in ("M", "F"):
+                * mort_rate_at_age(Sex.F, gen, x))
+    if table_sex not in (Sex.M, Sex.F):
         raise ValueError("invalid table_sex")
-    return float(data.mort_table().loc[(table_sex, gen, x), "mort_rate"])  # noqa: F821
+    return float(data.mort_table().loc[(table_sex.name, gen, x), "mort_rate"])  # noqa: F821
 
 
 def mort_rate(t, life):
@@ -1039,9 +1039,9 @@ def cum_annuity_pp(t, kind):
     carrying a month-zero row: ``G(0)`` is what month 0 itself pays.
     """
     prev = 0.0 if t <= 0 else cum_annuity_pp(t - 1, kind)
-    if kind == "ANNUITANT":
+    if kind == AnnuityKind.ANNUITANT:
         return prev + annuity_pp(t)
-    if kind == "ALL":
+    if kind == AnnuityKind.ALL:
         paid = (annuity_pp(t) * (payment_factor(t) + reversion_factor(t))
                 + prorata_pp(t) * prorata_factor(t))
         return prev + paid
@@ -1081,7 +1081,7 @@ def annuity_payments(t):
             * (payment_factor(t) + reversion_factor(t)))
 
 
-def claims(t, kind=None):
+def claims(t, kind):
     """Expected death-settlement outgo in month t, by kind; the total when kind is omitted.
 
     ``"PRORATA"``
@@ -1092,9 +1092,9 @@ def claims(t, kind=None):
         design is *capital aliéné*, with no death capital and no refund of any
         part of the *capital constitutif*.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("PRORATA",))
-    if kind == "PRORATA":
+    if kind == Kind.ALL:
+        return sum(claims(t, k) for k in (Kind.PRORATA,))
+    if kind == Kind.PRORATA:
         return pols_if_init() * prorata_pp(t) * prorata_factor(t)
     raise ValueError("invalid kind")
 
@@ -1107,7 +1107,7 @@ def arrerage_charges(t):
     positive column and **subtracted** in :func:`liability_cf`, because the insurer keeps
     it: it is the one component of this statement that runs the other way.
     """
-    return arrerage_charge_rate() * (annuity_payments(t) + claims(t, "PRORATA"))
+    return arrerage_charge_rate() * (annuity_payments(t) + claims(t, Kind.PRORATA))
 
 
 def pols_if(t):
@@ -1168,7 +1168,7 @@ def liability_cf(t):
     no surrender value at any duration, and no death capital, the representative design
     being *capital aliéné*.
     """
-    return (annuity_payments(t) + claims(t) - arrerage_charges(t)
+    return (annuity_payments(t) + claims(t, Kind.ALL) - arrerage_charges(t)
             + expenses(t))
 
 
@@ -1273,7 +1273,7 @@ def check_cum_annuity_roll_fwd_resid(t):
     step = 12 // payment_freq()
     start = step - 1 if payment_timing() == "arrears" else 0
     built = sum(annuity_pp(s) for s in range(start, t + 1, step))
-    return built - cum_annuity_pp(t, "ANNUITANT")
+    return built - cum_annuity_pp(t, AnnuityKind.ANNUITANT)
 
 
 def check_cum_annuity_roll_fwd():
@@ -1380,7 +1380,7 @@ def result_cf():
         {
             "pols_if": [pols_if(t) for t in ts],
             "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_prorata": [claims(t, "PRORATA") for t in ts],
+            "claims_prorata": [claims(t, Kind.PRORATA) for t in ts],
             "arrerage_charges": [arrerage_charges(t) for t in ts],
             "expenses": [expenses(t) for t in ts],
             "liability_cf": [liability_cf(t) for t in ts],
@@ -1411,7 +1411,7 @@ def result_pols():
             "reversion_factor": [reversion_factor(t) for t in ts],
             "prorata_factor": [prorata_factor(t) for t in ts],
             "annuity_pp": [annuity_pp(t) for t in ts],
-            "cum_annuity_all": [cum_annuity_pp(t, "ALL") for t in ts],
+            "cum_annuity_all": [cum_annuity_pp(t, AnnuityKind.ALL) for t in ts],
             "pols_if": [pols_if(t) for t in ts],
         },
         index=pd.Index(ts, name="t"),                                # noqa: F821
@@ -1427,7 +1427,7 @@ point_id = 1
 
 omega_age = 120
 
-tariff_table_sex = "F"
+tariff_table_sex = ("Pickle", 5)
 
 portfolio_male_share = 0.45
 
@@ -1442,3 +1442,9 @@ expense_maint = 30.0
 inflation_rate = 0.015
 
 pd = ("Module", "pandas")
+
+Sex = ("Pickle", 2)
+
+AnnuityKind = ("Pickle", 3)
+
+Kind = ("Pickle", 4)
