@@ -1,0 +1,103 @@
+{
+ "build": "layer-1 trial 56e01f9 (D0 row 1), book 1,050, 4 workers, cores 0-3, one run each",
+ "columns": [
+  "wall_s",
+  "cpu_s",
+  "system_s",
+  "peak_rss_mib",
+  "minor_faults"
+ ],
+ "pool.map (D0 driver)": [
+  6.23,
+  23.5,
+  2.31,
+  1172,
+  1248694
+ ],
+ "concurrent.futures.wait": [
+  3.27,
+  11.7,
+  0.48,
+  355,
+  66653
+ ],
+ "threads + join, one slice each": [
+  3.38,
+  11.17,
+  0.5,
+  342,
+  79126
+ ],
+ "main thread polls with time.sleep(0.02)": [
+  2.96,
+  10.41,
+  0.54,
+  367,
+  71539
+ ],
+ "pool.map + time.sleep(0) after each item release": [
+  3.87,
+  12.11,
+  0.57,
+  349,
+  70204
+ ],
+ "pool.map + detach/attach (PyEval_SaveThread/RestoreThread) after each release": [
+  7.18,
+  26.92,
+  3.15,
+  1097,
+  1480879
+ ],
+ "pool.map + os.sched_yield after each release": [
+  6.51,
+  24.57,
+  2.44,
+  716,
+  1073566
+ ],
+ "pool.map, MIMALLOC_PURGE_DELAY=-1": [
+  6.85,
+  25.58,
+  0.96,
+  1235,
+  286054
+ ],
+ "pool.map, OPENBLAS_NUM_THREADS=1": [
+  7.14,
+  26.65,
+  3.21,
+  1017,
+  1611683
+ ],
+ "strace pool.map / pool.map+sleep(0)": {
+  "sched_yield_calls": [
+   27404,
+   46405
+  ],
+  "madvise_calls": [
+   2963,
+   1324
+  ]
+ },
+ "gdb, 8 samples, pool.map": "main thread in sched_yield < _PyMutex_LockTimed < lock_PyThread_acquire_lock < pool.map result iterator in 7 of 8 samples",
+ "per-thread CPU ticks (10 ms), pool.map vs +sleep(0)": {
+  "main": [
+   37,
+   47
+  ],
+  "workers": [
+   [
+    565,
+    572,
+    577
+   ],
+   [
+    267,
+    269,
+    273,
+    263
+   ]
+  ]
+ }
+}
