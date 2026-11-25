@@ -713,7 +713,7 @@ def prev_param(name):
     parameters; the file also carries the two sourced 認定率 anchors they were pinned to,
     4.3% at ages 65-74 and 31.1% at 75 and over [R4] [R5] [REG-R30].
     """
-    return float(data.prevalence_table().loc[name.name, "value"])         # noqa: F821
+    return float(data.prevalence_table().loc[name, "value"])         # noqa: F821
 
 
 def grade_share(grade):
@@ -726,7 +726,7 @@ def grade_share(grade):
     at young ones.  The published composition is a single all-ages figure, so no
     observed range exists **[std]**.
     """
-    return float(data.grade_share_table().loc[grade.name, "share_ge"])    # noqa: F821
+    return float(data.grade_share_table().loc[grade, "share_ge"])    # noqa: F821
 
 
 def prev_rate(t):
@@ -1150,7 +1150,7 @@ def premiums(t):
     return premium_mth_pp() * pols_act(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of month t, by ``kind``.
 
     ``"LUMP"``
@@ -1180,7 +1180,7 @@ def claims(t, kind):
 
     With no ``kind`` the total of the three benefit limbs.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return (claims(t, Kind.LUMP) + claims(t, Kind.ANNUITY)
                 + claims(t, Kind.DEMENTIA))
     if kind == Kind.LUMP:
@@ -1274,7 +1274,7 @@ def net_cf(t):
     essentially does not arise until the block is old, which is what makes the **lapse
     assumption, not the incidence basis, the dominant lever**.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 

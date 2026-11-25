@@ -1324,7 +1324,7 @@ def premiums(t):
     return premium_mth_pp() * premium_factor(t) * pols_payer(t) * prem_payable(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in month t, by kind; the total when kind is omitted.
 
     ``"DIAG"``
@@ -1375,7 +1375,7 @@ def claims(t, kind):
     check: ¥3,000.00 inpatient, ¥1,458.33 surgery, ¥10,000.00 treatment, ¥916.67
     outpatient and ¥660.00 advanced medicine — ¥16,035.00 in total.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (
             Kind.DIAG, Kind.INSITU, Kind.HOSP, Kind.SURGERY, Kind.TREAT, Kind.OUTPATIENT,
             Kind.ADVANCED, Kind.DISCHARGE, Kind.LAPSE))
@@ -1489,7 +1489,7 @@ def net_cf(t):
     disjoint.  Every error in incidence therefore hits both sides of the cash flow at once,
     roughly doubling its effect here.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t))
 
 

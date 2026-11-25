@@ -1577,7 +1577,7 @@ def premiums(t):
     return premium_pp() * pols_pay_bef_decr(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in period t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1599,7 +1599,7 @@ def claims(t, kind):
     and, given long enough, the sum assured, and none of them may produce a negative
     payment.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LAPSE))
     d = duration(t)
     if kind == Kind.DEATH:
@@ -1728,7 +1728,7 @@ def net_cf(t):
     the annual grid could say the cliff cost a year and could not say what a month of it
     looked like.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t) - expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t) - expenses(t)
             - commissions(t) - dividends(t))
 
 

@@ -1,35 +1,37 @@
-"""IntEnum families passed as cell arguments in LTC_JP_S, stored with the model."""
+"""Label families passed as cell arguments in LTC_JP_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Grade(IntEnum):
-    support1 = 0
-    support2 = 1
-    care1 = 2
-    care2 = 3
-    care3 = 4
+from enum import StrEnum
 
 
-class PrevParam(IntEnum):
-    prev_ceil = 0
-    prev_beta = 1
-    prev_x_mid = 2
-    prev_age_low = 3
-    prev_rate_low = 4
-    prev_age_high = 5
-    prev_rate_high = 6
+class Grade(StrEnum):
+    support1 = "support1"
+    support2 = "support2"
+    care1 = "care1"
+    care2 = "care2"
+    care3 = "care3"
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class PrevParam(StrEnum):
+    prev_ceil = "prev_ceil"
+    prev_beta = "prev_beta"
+    prev_x_mid = "prev_x_mid"
+    prev_age_low = "prev_age_low"
+    prev_rate_low = "prev_rate_low"
+    prev_age_high = "prev_age_high"
+    prev_rate_high = "prev_rate_high"
 
 
-class Kind(IntEnum):
-    LUMP = 0
-    ANNUITY = 1
-    DEMENTIA = 2
-    LAPSE = 3
-    ALL = 4
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    LUMP = "LUMP"
+    ANNUITY = "ANNUITY"
+    DEMENTIA = "DEMENTIA"
+    LAPSE = "LAPSE"

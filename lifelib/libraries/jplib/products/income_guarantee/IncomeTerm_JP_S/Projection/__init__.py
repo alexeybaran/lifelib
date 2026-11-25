@@ -938,7 +938,7 @@ def premiums(t):
             + prem_arrears_pp() * pols_reinst(t))
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of month t; every kind here is paid on **death**.
 
     The contingency is stated rather than left to the column names, because
@@ -973,7 +973,7 @@ def claims(t, kind):
         zero, always.  There is no 解約返戻金 at any duration on the composite;
         the kind exists so the zero is stated rather than left to inference.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.ANNUITY, Kind.COMMUTATION, Kind.LIVING_NEEDS, Kind.LAPSE))
     if kind == Kind.ANNUITY:
@@ -1077,7 +1077,7 @@ def net_cf(t):
     all — it acts only through ``pols_if``, and ``claims(t, "LAPSE")`` is identically
     zero.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t)
             - annuity_expenses(t) - expenses(t) - commissions(t))
 
 

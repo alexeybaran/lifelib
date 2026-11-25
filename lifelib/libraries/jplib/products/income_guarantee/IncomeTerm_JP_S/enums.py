@@ -1,17 +1,19 @@
-"""IntEnum families passed as cell arguments in IncomeTerm_JP_S, stored with the model."""
+"""Label families passed as cell arguments in IncomeTerm_JP_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+from enum import StrEnum
 
 
-class Kind(IntEnum):
-    ANNUITY = 0
-    COMMUTATION = 1
-    LIVING_NEEDS = 2
-    LAPSE = 3
-    ALL = 4
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    ANNUITY = "ANNUITY"
+    COMMUTATION = "COMMUTATION"
+    LIVING_NEEDS = "LIVING_NEEDS"
+    LAPSE = "LAPSE"

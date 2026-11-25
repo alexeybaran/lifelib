@@ -1,23 +1,25 @@
-"""IntEnum families passed as cell arguments in Endowment_JP_S, stored with the model."""
+"""Label families passed as cell arguments in Endowment_JP_S, stored with the model.
 
-from enum import IntEnum
+Each member's value is upstream's label text: a member equals, hashes and prints
+as its label (``Kind.DEATH == "DEATH"``).  Python 3.11 or later."""
 
-
-class Sex(IntEnum):
-    M = 0
-    F = 1
+from enum import StrEnum
 
 
-class PolTiming(IntEnum):
-    BEF_DECR = 0
-    BEF_LAPSE = 1
-    AFT_DECR = 2
+class Sex(StrEnum):
+    M = "M"
+    F = "F"
 
 
-class Kind(IntEnum):
-    DEATH = 0
-    STAGED = 1
-    MATURITY = 2
-    LAPSE = 3
-    PH_DEATH = 4
-    ALL = 5
+class PolTiming(StrEnum):
+    BEF_DECR = "BEF_DECR"
+    BEF_LAPSE = "BEF_LAPSE"
+    AFT_DECR = "AFT_DECR"
+
+
+class Kind(StrEnum):
+    DEATH = "DEATH"
+    STAGED = "STAGED"
+    MATURITY = "MATURITY"
+    LAPSE = "LAPSE"
+    PH_DEATH = "PH_DEATH"

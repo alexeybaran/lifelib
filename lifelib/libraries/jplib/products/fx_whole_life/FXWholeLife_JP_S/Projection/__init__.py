@@ -774,7 +774,7 @@ def charge_param(item):
     低解約返戻金割合 ramp, the three constants of the 市場価格調整 reconstruction and the two
     特別積立金 rates.
     """
-    return float(data.charge_table().loc[(shape(), item.name), "value"])  # noqa: F821
+    return float(data.charge_table().loc[(shape(), item), "value"])  # noqa: F821
 
 
 def prem_charge_rate(t):
@@ -1357,7 +1357,7 @@ def premiums(t):
     return prem_due_pp(t) * pols_payer(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1370,7 +1370,7 @@ def claims(t, kind):
         Where the target election is ``"surrender"`` the policies leaving on
         the hit are paid here as well.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return claims(t, Kind.DEATH) + claims(t, Kind.LAPSE)
     if t >= proj_len():
         return 0.0
@@ -1490,7 +1490,7 @@ def net_cf(t):
     margins that thin further as the surrender benefit grows, and a long negative tail
     after 払込満了 where claims and maintenance run on with no premium behind them.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - conversions(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - conversions(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 
@@ -1499,7 +1499,7 @@ def benefits_usd(t):
 
     The quantity that crosses the currency boundary outbound, at ``e - s``.
     """
-    return claims(t, Kind.ALL) + conversions(t)
+    return claims(t) + conversions(t)
 
 
 def premiums_jpy(t):

@@ -706,7 +706,7 @@ def mort_rate_at_age(sx, z):
     contractual quantity on the pricing basis; :func:`mort_rate` and :func:`mort_rate_ph`
     apply the projection's own multipliers on top.
     """
-    return float(data.mort_table().loc[(sx.name, z), "mort_rate"])        # noqa: F821
+    return float(data.mort_table().loc[(sx, z), "mort_rate"])        # noqa: F821
 
 
 def mort_rate(t):
@@ -1454,7 +1454,7 @@ def premiums(t):
     return (premium_pp() - apl_advance_pp(t)) * pols_if_pay(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     Every limb falls at the **end of the month**, which is where the value family is read.
@@ -1481,7 +1481,7 @@ def claims(t, kind):
         where a waiver carve-out terminates the contract.  Identically **zero** in the
         base run, and published as a column of zeros because the zero is the product fact.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in
                    (Kind.DEATH, Kind.STAGED, Kind.MATURITY, Kind.LAPSE, Kind.PH_DEATH))
     if kind == Kind.DEATH:
@@ -1597,7 +1597,7 @@ def net_cf(t):
     cash flow instead of being projected silently under a 有配当 label.
     """
     dividend_type()
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 

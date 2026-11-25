@@ -783,7 +783,7 @@ def los_days(band):
     mode and the 160-day band for the psychiatric and neurological tail that drives the
     sourced national mean [REG-R27].
     """
-    return [int(d) for d in data.los_table().loc[band].index]   # noqa: F821
+    return tuple(int(d) for d in data.los_table().loc[band].index)   # noqa: F821
 
 
 def los_probs(band):
@@ -797,7 +797,7 @@ def los_probs(band):
     distribution with the same mean and a fatter tail changes the capped expectation
     without changing the calibration target at all.
     """
-    return [float(p) for p in data.los_table().loc[band]["prob"]]  # noqa: F821
+    return tuple(float(p) for p in data.los_table().loc[band]["prob"])  # noqa: F821
 
 
 def min_days_floor():
@@ -1274,7 +1274,7 @@ def surg_ih_eff(t):
     return surg_ih_per_hosp * d_pay_capped(t) / raw                  # noqa: F821
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the **end** of policy month t, by kind; the total when omitted.
 
     ``"HOSP"``
@@ -1302,7 +1302,7 @@ def claims(t, kind):
         rather than left to inference: it is the product fact, and a non-zero lapse row
         imported from a cash-value model is one of the notes' pitfalls.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k)
                    for k in (Kind.HOSP, Kind.SURGERY, Kind.ADVANCED, Kind.LUMP, Kind.LAPSE))
     if kind == Kind.HOSP:
@@ -1541,7 +1541,7 @@ def check_net_cf_resid(t):
     but missing from the printed statement, or counted twice, shows up here; so does a
     claim expense folded back into :func:`expenses` instead of standing on its own line.
     """
-    return net_cf(t) - (premiums(t) - claims(t, Kind.ALL) - expenses(t)
+    return net_cf(t) - (premiums(t) - claims(t) - expenses(t)
                         - claim_expenses(t) - commissions(t))
 
 

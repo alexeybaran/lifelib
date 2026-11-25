@@ -565,12 +565,12 @@ def pricing_basis(item):
     them carries a ``provenance`` tag in the CSV rather than sitting as an untagged
     constant in a formula.
     """
-    return float(data.pricing_table().loc[item.name, "value"])            # noqa: F821
+    return float(data.pricing_table().loc[item, "value"])            # noqa: F821
 
 
 def expense_basis(item):
     """One row of the best-estimate cash expense and commission table, as a float."""
-    return float(data.expense_table().loc[item.name, "value"])            # noqa: F821
+    return float(data.expense_table().loc[item, "value"])            # noqa: F821
 
 
 def int_rate_defer():
@@ -640,7 +640,7 @@ def omega_age(table):
     truncated to 1 there.
     """
     return int(data.mort_anchor_table().loc[                         # noqa: F821
-        (table.name, sex()), "omega_age"].iloc[0])
+        (table, sex()), "omega_age"].iloc[0])
 
 
 def mort_rate_at_age(table, x):
@@ -651,7 +651,7 @@ def mort_rate_at_age(table, x):
     """
     if x >= omega_age(table):
         return 1.0
-    return float(data.mort_table().loc[(table.name, sex(), x), "mort_rate"])  # noqa: F821
+    return float(data.mort_table().loc[(table, sex(), x), "mort_rate"])  # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1383,7 +1383,7 @@ def premiums(t):
     return premium_pp() * pols_if(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo in policy month t, by kind; the total when kind is omitted.
 
     ``"ANNUITY"`` — published as ``claims_annuity`` — is a **living** benefit here: it is
@@ -1413,7 +1413,7 @@ def claims(t, kind):
     ``"COMMUTATION"``
         the 年金の一括払 lump sums at the 年金支払開始日; zero in the base run.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.ANNUITY, Kind.DEATH, Kind.LAPSE, Kind.COMMUTATION))
     if kind == Kind.ANNUITY:
         return annuity_pp(t) * (pols_if(t) - pols_commute(t))
@@ -1498,7 +1498,7 @@ def net_cf(t):
     decade in which one large annuity instalment a year falls against eleven months of
     nothing but expense.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - expenses(t) - claim_expenses(t)
+    return (premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
             - commissions(t) - policy_loans(t))
 
 
@@ -1660,7 +1660,7 @@ def mort_anchor_ages(table):
     canonical library-wide table; on 年金開始後用 they are the three spot rates the Makeham
     construction is fitted to.
     """
-    rows = data.mort_anchor_table().loc[(table.name, sex())]               # noqa: F821
+    rows = data.mort_anchor_table().loc[(table, sex())]               # noqa: F821
     return [int(a) for a in sorted(rows["age"])]
 
 
@@ -1672,7 +1672,7 @@ def makeham_coeff(table):
     anchors are therefore reproduced exactly by construction.  Used for 年金開始後用 only —
     死亡保険用 is graduated log-linearly instead; see :func:`mort_rate_graduated`.
     """
-    rows = data.mort_anchor_table().loc[(table.name, sex())]               # noqa: F821
+    rows = data.mort_anchor_table().loc[(table, sex())]               # noqa: F821
     rows = rows.sort_values("age")
     ages = [int(a) for a in rows["age"]]
     mus = [-math.log(1.0 - float(q)) for q in rows["mort_rate"]]      # noqa: F821
@@ -1823,7 +1823,7 @@ def result_pols():
     )
 
 
-def lapse_rate_mean(weighting):
+def lapse_rate_mean(weighting="count"):
     """The mean 解約・失効 rate over the deferral phase, on a stated weighting.
 
     ``"count"``

@@ -47,8 +47,6 @@ import pytest
 from modelx.core.errors import FormulaError
 
 from jp_registry import LIB, MODELS
-from jp_registry import model_enums
-PolTiming, Kind = model_enums("Term_JP_S", "PolTiming", "Kind")
 
 YEN = 0.005           # money displayed to 2 d.p.
 INFORCE = 5e-7        # in-force displayed to 6 d.p.
@@ -155,7 +153,7 @@ def test_worked_example_row(jp_term_anchor, t):
     assert a.pols_if(t) == pytest.approx(pols, abs=INFORCE)
     assert a.prem_pp(t) == prem_a
     assert a.premiums(t) == pytest.approx(prem, abs=YEN)
-    assert a.claims(t, Kind.DEATH) == pytest.approx(clm, abs=YEN)
+    assert a.claims(t, "DEATH") == pytest.approx(clm, abs=YEN)
     assert a.claim_expenses(t) == pytest.approx(clm_exp, abs=YEN)
     assert a.expenses(t) == pytest.approx(exp, abs=YEN)
     assert a.commissions(t) == pytest.approx(comm, abs=YEN)
@@ -208,7 +206,7 @@ def test_worked_example_first_month_trace(jp_term_anchor):
     assert a.pols_death(0) == pytest.approx(q_m, rel=1e-12)
     assert a.premiums(0) == 974.00
     assert a.prem_due_pp(0) == 974.00 and a.prem_mode_months() == 1
-    assert a.claims(0, Kind.DEATH) == pytest.approx(10000000.0 * q_m, rel=1e-12)
+    assert a.claims(0, "DEATH") == pytest.approx(10000000.0 * q_m, rel=1e-12)
     assert a.claim_expenses(0) == pytest.approx(30000.0 * q_m, rel=1e-12)
     assert a.expenses(0) == pytest.approx(15000.0 + 4000.0 / 12.0, abs=YEN)
     assert a.comm_init_pp() == pytest.approx(0.50 * 11688.0, abs=YEN)
@@ -236,9 +234,9 @@ def test_worked_example_inforce_updates(jp_term_anchor):
         a.pols_if(1) * (1 - a.mort_rate_mth(1)) * (1 - a.lapse_rate_mth(1)), rel=1e-14)
 
     assert a.lapse_rate(119) == 0.05 and a.decline_rate(119) == 0.15
-    assert a.pols_if_at(119, PolTiming.BEF_LAPSE) == pytest.approx(0.55139127, abs=EXITS)
-    assert a.pols_if_at(119, PolTiming.BEF_DECLINE) == pytest.approx(0.54903941, abs=EXITS)
-    assert a.pols_if_at(119, PolTiming.AFT_DECR) == pytest.approx(0.46668350, abs=EXITS)
+    assert a.pols_if_at(119, "BEF_LAPSE") == pytest.approx(0.55139127, abs=EXITS)
+    assert a.pols_if_at(119, "BEF_DECLINE") == pytest.approx(0.54903941, abs=EXITS)
+    assert a.pols_if_at(119, "AFT_DECR") == pytest.approx(0.46668350, abs=EXITS)
     assert a.pols_if(120) == pytest.approx(0.466683, abs=INFORCE)
 
 
@@ -382,7 +380,7 @@ def test_pitfall_kodo_shogai_is_not_a_second_decrement(term_life):
 
     a = term_life.Projection[1]
     for t in (0, 10, 40):
-        assert a.claims(t, Kind.DEATH) == pytest.approx(
+        assert a.claims(t, "DEATH") == pytest.approx(
             a.sum_assured() * a.pols_death(t), rel=1e-14)
 
     # One sum assured per decrement, everywhere.  A second incidence layered on top would
@@ -392,7 +390,7 @@ def test_pitfall_kodo_shogai_is_not_a_second_decrement(term_life):
         cap = p.sum_assured()
         df = p.result_cf()
         for t in range(p.proj_len()):
-            paid = p.claims(t, Kind.ALL)
+            paid = p.claims(t)
             assert paid <= cap * p.pols_death(t) + 1e-9, (
                 f"point {point_id}, t={t}: benefit outgo exceeds one sum assured "
                 f"on the year's decrement")
@@ -415,7 +413,7 @@ def test_pitfall_koshin_reprices_it_does_not_reissue(jp_term_anchor):
     a = jp_term_anchor
     for t, *_ in RENEWAL_LADDER:
         assert a.pols_if(t + 1) == pytest.approx(
-            a.pols_if_at(t, PolTiming.AFT_DECR), rel=1e-15)     # continuous across the boundary
+            a.pols_if_at(t, "AFT_DECR"), rel=1e-15)     # continuous across the boundary
         assert a.pols_if(t + 1) < 0.5                    # never a reset to 1
         # Maintenance only: no E0 in a renewal month, and inflation runs from issue by
         # policy year rather than by month.
@@ -526,7 +524,7 @@ def test_pitfall_lapse_pays_nothing(term_life):
         df = p.result_cf()
         assert "claims_lapse" in df.columns
         assert (df["claims_lapse"] == 0.0).all()
-        assert all(p.claims(t, Kind.LAPSE) == 0.0 for t in range(p.proj_len()))
+        assert all(p.claims(t, "LAPSE") == 0.0 for t in range(p.proj_len()))
         assert any(p.pols_lapse(t) > 0.0 for t in range(p.proj_len()))
 
 
@@ -613,9 +611,9 @@ def test_pitfall_renewal_decline_is_not_lapse(jp_term_anchor):
     assert "decline_rate_mth" not in set(a.cells)
     # Taken after lapse, from the survivors of it.
     assert a.pols_decline(119) == pytest.approx(
-        a.pols_if_at(119, PolTiming.BEF_DECLINE) * 0.15, rel=1e-14)
+        a.pols_if_at(119, "BEF_DECLINE") * 0.15, rel=1e-14)
     assert a.pols_lapse(119) == pytest.approx(
-        a.pols_if_at(119, PolTiming.BEF_LAPSE) * a.lapse_rate_mth(119), rel=1e-14)
+        a.pols_if_at(119, "BEF_LAPSE") * a.lapse_rate_mth(119), rel=1e-14)
 
 
 def test_pitfall_a_failed_first_renewal_premium_is_an_expiry_not_a_lapse(jp_term_anchor):
@@ -628,13 +626,13 @@ def test_pitfall_a_failed_first_renewal_premium_is_an_expiry_not_a_lapse(jp_term
     """
     a = jp_term_anchor
     assert a.pols_if(120) == pytest.approx(
-        a.pols_if_at(119, PolTiming.BEF_DECLINE) * (1 - 0.15), rel=1e-14)
+        a.pols_if_at(119, "BEF_DECLINE") * (1 - 0.15), rel=1e-14)
     assert a.premiums(120) == pytest.approx(
         a.premium_mth_pp(120) * a.pols_if(120), rel=1e-14)
     # The t = 120 lapse is taken from the t = 120 in-force at the t = 120 rate; the
     # decliners are already gone and are not re-counted there.
     assert a.pols_lapse(120) == pytest.approx(
-        a.pols_if_at(120, PolTiming.BEF_LAPSE) * a.lapse_rate_mth(120), rel=1e-14)
+        a.pols_if_at(120, "BEF_LAPSE") * a.lapse_rate_mth(120), rel=1e-14)
     assert a.pols_lapse(120) < a.pols_decline(119)
     # And no decline is taken in the final projected year: the cover ends at the ceiling
     # rather than renewing, so there is no renewal to decline.
@@ -786,8 +784,8 @@ def test_there_are_no_tail_states_of_any_kind(term_life):
     assert a.pols_if(n - 1) > 0.0                 # the last row of the frame
     assert a.pols_if(n) == pytest.approx(0.026042, abs=INFORCE)
     assert a.pols_if(n + 1) == 0.0
-    assert a.pols_if_at(n, PolTiming.BEF_DECR) == 0.0
-    assert a.claims(n - 1, Kind.ALL) == pytest.approx(a.claims(n - 1, Kind.DEATH), rel=1e-12)
+    assert a.pols_if_at(n, "BEF_DECR") == 0.0
+    assert a.claims(n - 1) == pytest.approx(a.claims(n - 1, "DEATH"), rel=1e-12)
     with pytest.raises(FormulaError):
         a.claims(0, "MATURITY")
     with pytest.raises(FormulaError):
@@ -978,17 +976,17 @@ def test_the_decrements_are_taken_in_the_notes_processing_order(term_life):
     """
     a = term_life.Projection[1]
     for t in (0, 4, 119, 239, 400):
-        assert a.pols_if_at(t, PolTiming.BEF_DECR) == a.pols_if(t)
+        assert a.pols_if_at(t, "BEF_DECR") == a.pols_if(t)
         # the monthly rates, not the annual ones the tables are stated on
-        assert a.pols_if_at(t, PolTiming.BEF_LAPSE) == pytest.approx(
+        assert a.pols_if_at(t, "BEF_LAPSE") == pytest.approx(
             a.pols_if(t) * (1 - a.mort_rate_mth(t)), rel=1e-14)
-        assert a.pols_if_at(t, PolTiming.BEF_DECLINE) == pytest.approx(
-            a.pols_if_at(t, PolTiming.BEF_LAPSE) * (1 - a.lapse_rate_mth(t)), rel=1e-14)
+        assert a.pols_if_at(t, "BEF_DECLINE") == pytest.approx(
+            a.pols_if_at(t, "BEF_LAPSE") * (1 - a.lapse_rate_mth(t)), rel=1e-14)
         # the decline unconverted, because it is a proportion and not a rate
-        assert a.pols_if_at(t, PolTiming.AFT_DECR) == pytest.approx(
-            a.pols_if_at(t, PolTiming.BEF_DECLINE) * (1 - a.decline_rate(t)), rel=1e-14)
+        assert a.pols_if_at(t, "AFT_DECR") == pytest.approx(
+            a.pols_if_at(t, "BEF_DECLINE") * (1 - a.decline_rate(t)), rel=1e-14)
     for t in (0, 4, 400):
-        assert a.pols_if_at(t, PolTiming.BEF_DECLINE) == a.pols_if_at(t, PolTiming.AFT_DECR)
+        assert a.pols_if_at(t, "BEF_DECLINE") == a.pols_if_at(t, "AFT_DECR")
 
 
 def test_inforce_is_a_decreasing_probability(term_life):
@@ -1030,7 +1028,7 @@ def test_living_needs_is_off_on_the_anchor_cell(jp_term_anchor):
     assert a.living_needs() is False
     assert a.ln_amount() == 0.0
     assert all(a.ln_share(t) == 0.0 for t in range(a.proj_len()))
-    assert all(a.claims(t, Kind.LIVING_NEEDS) == 0.0 for t in range(a.proj_len()))
+    assert all(a.claims(t, "LIVING_NEEDS") == 0.0 for t in range(a.proj_len()))
     assert (a.result_cf()["claims_living_needs"] == 0.0).all()
 
 
@@ -1045,11 +1043,11 @@ def test_living_needs_splits_the_decrement_and_does_not_add_to_it(term_life):
     assert p.living_needs() is True
     assert p.ln_share(0) == 0.10
     for t in range(p.proj_len()):
-        assert p.claims(t, Kind.DEATH) == pytest.approx(
+        assert p.claims(t, "DEATH") == pytest.approx(
             p.sum_assured() * (1 - p.ln_share(t)) * p.pols_death(t), rel=1e-14)
-        assert p.claims(t, Kind.LIVING_NEEDS) == pytest.approx(
+        assert p.claims(t, "LIVING_NEEDS") == pytest.approx(
             p.ln_payout_pp(t) * p.ln_share(t) * p.pols_death(t), rel=1e-14)
-        assert p.claims(t, Kind.ALL) <= p.sum_assured() * p.pols_death(t) + 1e-9
+        assert p.claims(t) <= p.sum_assured() * p.pols_death(t) + 1e-9
 
     model = _reread("lnoff")
     try:
@@ -1059,8 +1057,8 @@ def test_living_needs_splits_the_decrement_and_does_not_add_to_it(term_life):
         n = p.proj_len()
         assert all(off.pols_death(t) == pytest.approx(p.pols_death(t), abs=1e-15)
                    for t in range(n))
-        assert sum(p.claims(t, Kind.ALL) for t in range(n)) < sum(
-            off.claims(t, Kind.ALL) for t in range(n))
+        assert sum(p.claims(t) for t in range(n)) < sum(
+            off.claims(t) for t in range(n))
     finally:
         model.close()
 
@@ -1095,8 +1093,8 @@ def test_living_needs_is_barred_within_a_year_of_a_non_renewable_expiry(term_lif
         last = p.proj_len() - 1                  # the final projected month
         for t in range(p.proj_len() - 12, p.proj_len()):
             assert p.ln_available(t) is False and p.ln_share(t) == 0.0
-            assert p.claims(t, Kind.LIVING_NEEDS) == 0.0
-        assert p.claims(last, Kind.LIVING_NEEDS) == 0.0
+            assert p.claims(t, "LIVING_NEEDS") == 0.0
+        assert p.claims(last, "LIVING_NEEDS") == 0.0
         first_free = p.proj_len() - 13
         assert p.ln_available(first_free) is True
         assert p.ln_share(first_free) == 0.10
@@ -1168,7 +1166,7 @@ def test_reinstatement_is_off_and_works_when_switched_on(term_life):
     assert p.reinstate_rate_mth() == pytest.approx(rho_m, rel=1e-14)
     assert p.pols_lapse_pool(0) == 0.0
     assert p.pols_reinstate(1) == pytest.approx(rho_m * p.pols_lapse_pool(1), rel=1e-14)
-    assert p.pols_if(2) > p.pols_if_at(1, PolTiming.AFT_DECR)      # lives come back in
+    assert p.pols_if(2) > p.pols_if_at(1, "AFT_DECR")      # lives come back in
     # By vintage, not one blanket balance: the pool at t is the last 36 months' lapses
     # net of the reinstatements taken out of each along the way.
     for t in range(1, 200):

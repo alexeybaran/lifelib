@@ -1291,7 +1291,7 @@ def premiums(t):
     return prem_due_pp(t) * pols_payer(t)
 
 
-def claims(t, kind):
+def claims(t, kind=None):
     """Benefit outgo at the end of policy month t, by kind; the total when kind is omitted.
 
     ``"DEATH"``
@@ -1311,7 +1311,7 @@ def claims(t, kind):
         eight writes this design *with* a surrender value [S12], so the zero
         is a fact about the composite and not about the product class.
     """
-    if kind == Kind.ALL:
+    if kind is None:
         return sum(claims(t, k) for k in (Kind.DEATH, Kind.LIVING_NEEDS, Kind.LAPSE))
     if kind == Kind.DEATH:
         return sum_assured() * (1.0 - ln_share(t)) * pols_death(t)
@@ -1433,7 +1433,7 @@ def net_cf(t):
     On a 年払 point the sawtooth is larger again, because eleven months in twelve carry no
     premium at all.
     """
-    return (premiums(t) - claims(t, Kind.ALL) - claim_expenses(t)
+    return (premiums(t) - claims(t) - claim_expenses(t)
             - expenses(t) - commissions(t))
 
 
