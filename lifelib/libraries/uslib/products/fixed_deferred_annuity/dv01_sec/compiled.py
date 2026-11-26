@@ -8,8 +8,10 @@ package is ``model_cy`` in that directory.  :func:`load` imports it and points i
 
 The build takes several minutes and is never written into the library tree.
 """
+import hashlib
 import importlib
 import importlib.machinery
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -20,6 +22,7 @@ from .model import SHOCK_STEPS_FILE, TABLES, build_model
 HERE = Path(__file__).resolve().parent
 PRODUCT = HERE.parent
 PACKAGE = 'model'
+STAMP = 'build.stamp'
 
 # The compiler is run with a raised recursion limit and a large thread stack: tracing the
 # sample calls a policy's cold cash flow at the end of its frame, hundreds of months deep.
@@ -100,15 +103,44 @@ def build(folder, log=None):
     if done.returncode:
         raise RuntimeError(f'the compiler exited with {done.returncode}; see compile.log in '
                            f'{folder}')
+    (folder / STAMP).write_text(build_stamp() + '\n', encoding='utf-8')
     if not is_built(folder):
         raise RuntimeError(f'the compiler left no extension module in {folder}')
     return time.perf_counter() - start
 
 
+def build_stamp():
+    """A digest of what a build depends on: this package, the MYGA_US_SEC model and book it is
+    built from, the compiler and modelx sources, and the interpreter.
+
+    A build made from other sources, by another compiler or for another interpreter has another
+    stamp, so :func:`is_built` does not take it for a build of this one.
+    """
+    digest = hashlib.sha256(sys.version.encode())
+    roots = [HERE, PRODUCT / 'MYGA_US_SEC']
+    for name in ('modelx_cython', 'modelx'):
+        found = importlib.util.find_spec(name)
+        if found is not None and found.origin:
+            roots.append(Path(found.origin).resolve().parent)
+    files = sorted(PRODUCT.glob('*.csv'))
+    for root in roots:
+        files += sorted(path for path in root.rglob('*')
+                        if path.suffix in ('.py', '.pyx', '.pxd', '.csv', '.json'))
+    for path in files:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def is_built(folder):
-    """Whether ``folder`` holds a compiled package for this interpreter."""
+    """Whether ``folder`` holds a compiled package built from the present sources, by the present
+    compiler and modelx, for this interpreter."""
+    folder = Path(folder)
+    stamp = folder / STAMP
+    if not stamp.is_file() or stamp.read_text(encoding='utf-8').strip() != build_stamp():
+        return False
     suffixes = tuple(importlib.machinery.EXTENSION_SUFFIXES)
-    package = Path(folder) / f'{PACKAGE}_cy'
+    package = folder / f'{PACKAGE}_cy'
     return any((package / f'_mx_classes{suffix}').is_file() for suffix in suffixes)
 
 

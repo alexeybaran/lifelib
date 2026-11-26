@@ -27,7 +27,8 @@ The first builds the model and prints the two reports of the shipped book, MYGA_
 fourteen model points (`model_point_table_sec.csv`), on ESG path 1 for years 0, 1 and 2, with
 their totals and the seconds taken: about five minutes and 1.2 GB. `--compiled` builds the
 model with modelx-cython into `DIR`, or into a temporary directory, which takes about ten
-minutes; a build already in `DIR` is reused. It then runs the report twice, each time in a
+minutes; a build already in `DIR` is reused when it was made from the same model, compiler,
+modelx and interpreter (a stamp in `DIR` records them), and rebuilt otherwise. It then runs the report twice, each time in a
 fresh process: on one worker thread, and on `--workers` threads. It prints each run's totals
 and seconds and checks that the two reports are equal. `--policies N` replaces the shipped
 book by N policies, MYGA_US_SEC's seven new-business points repeated; the timings below are
