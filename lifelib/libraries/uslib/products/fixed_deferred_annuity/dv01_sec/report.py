@@ -12,6 +12,10 @@ then waits once for all of them with ``concurrent.futures.wait``; it does not wa
 result in turn, as ``list(pool.map(...))`` does, because on free-threaded CPython 3.14 a
 thread waiting on a lock spins while attached to the interpreter, and that holds back the
 reuse of the memory the workers free (``dv01-sec.md``, *The driver*).
+
+:func:`collect_report` gives the same numbers through ``Valuation.collect``: one collect per close
+and curve over the book, each policy's ItemSpace evaluated, added and released by the compiled
+collect, on ``workers`` threads.
 """
 from concurrent.futures import ThreadPoolExecutor, wait
 
@@ -115,4 +119,26 @@ def pooled_report(model, num_scenarios, annual_steps, workers=1):
                 cs.append(base - float(-np.dot(tuple(cf.values()), discounts)))
             dv01_rows.append(dv)
             cs01_rows.append(cs)
+    return _frames(model, num_scenarios, annual_steps, dv01_rows, cs01_rows)
+
+
+def collect_report(model, num_scenarios, annual_steps, workers=1):
+    """The annual risk report from one collect per close and curve, over the book."""
+    model._mx_collect_workers = workers
+    valuation = model.Valuation
+    keys = range(len(model.Data.shock_key_months()))
+    dv01_rows, cs01_rows = [], []
+    for s in range(1, num_scenarios + 1):
+        for m in closes(annual_steps):
+            base = valuation.collect(m, s, -1).sum
+            dv, cs = [], []
+            for key in keys:
+                dv.append(base.pv - valuation.collect(m, s, key).sum.pv)
+                market = model.Market(m + 1, s, key)
+                discounts = [market.price(m + k + 2) for k in base.cf]
+                cs.append(base.pv - float(-np.dot(tuple(base.cf.values()), discounts)))
+            dv01_rows.append(dv)
+            cs01_rows.append(cs)
+        for i in valuation.point_indices():
+            del model.Actual[i, s]
     return _frames(model, num_scenarios, annual_steps, dv01_rows, cs01_rows)
