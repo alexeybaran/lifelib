@@ -29,6 +29,10 @@ import lifelib
 
 from . import actual, contract, market, outer, valuation
 
+# What a close's collect over the book adds: the liability PV, and on the base curve the cash flows.
+COLLECT_OUTPUTS = '''lambda: {'sum': {'pv': liability_pv(), 'cf': {
+    k: cashflow_at_offset(k) for k in projection_months(valuation_month)} if shock == -1 else {}}}'''
+
 # Months of Actual's cash flows that Outer.actual_cashflows reports.
 OUTER_MONTHS = 36
 
@@ -184,6 +188,7 @@ def build_model(*, model_name='MYGASECDV01', input_dir=None, outer_months=OUTER_
     valuation_space.new_cells('point_indices', actual_space.cells['point_indices'].formula.source)
     _install(actual_space, sec_formulas)
     _install(valuation_space, sec_formulas)
+    valuation_space.set_collect(over={'idx': valuation_space.point_indices}, outputs=COLLECT_OUTPUTS)
 
     outer_space = model.new_space_from_module(outer, name='Outer', refs={
         'Actual': actual_space, 'Valuation': valuation_space, 'ESG': esg,
