@@ -1979,25 +1979,23 @@ def premium_array():
     The rows of each point of :func:`premium_schedule_table` sorted by ``premium_mth`` as
     ``DIA_US_S``'s ``premium_schedule`` sorts them, and each amount added in that order to
     its month's total from 0.0, as ``DIA_US_S``'s ``premium_by_mth`` adds it, so that a
-    month with two rows holds ``DIA_US_S``'s float to the last bit.  0.0 in a month with no
+    month with two rows holds ``DIA_US_S``'s float to the last bit.  All points are filled
+    in one pass over the schedule, its rows ordered by point and then by policy month,
+    keeping the schedule's order among rows of one month.  0.0 in a month with no
     row, and on a point with none.  A row after :func:`premium_width`'s last month is not
     held: its point's income starts later than ``Projection.proj_len`` admits.
     """
     width = premium_width()
-    table = model_point_table()
-    labels = pd.to_numeric(pd.Series(table.index), errors="coerce").tolist()  # noqa: F821
-    position = {}
-    for i in range(len(labels)):
-        position[labels[i]] = i
+    labels = pd.to_numeric(pd.Series(model_point_table().index), errors="coerce")  # noqa: F821
+    table = premium_schedule_table()
+    row = pd.Index(labels).get_indexer(table["point_id"])          # noqa: F821
+    month = table["premium_mth"].to_numpy()
+    held = month < width
+    # by point, then by policy month, keeping the schedule's order among equal months
+    order = np.lexsort((month[held], row[held]))                     # noqa: F821
+    amount = table["premium_amt"].to_numpy(dtype="float64")[held][order]
     out = np.zeros((len(labels), width))                             # noqa: F821
-    for label, part in premium_schedule_table().groupby("point_id", sort=False):
-        i = position[label]
-        part = part.sort_values("premium_mth")
-        months = part["premium_mth"].tolist()
-        amounts = part["premium_amt"].tolist()
-        for j in range(len(months)):
-            if months[j] < width:
-                out[i, months[j]] = out[i, months[j]] + float(amounts[j])
+    np.add.at(out, (row[held][order], month[held][order]), amount)   # noqa: F821
     return out
 
 
@@ -2010,18 +2008,13 @@ def premium_rows():
     with a row, not a month with a positive premium.
     """
     width = premium_width()
-    table = model_point_table()
-    labels = pd.to_numeric(pd.Series(table.index), errors="coerce").tolist()  # noqa: F821
-    position = {}
-    for i in range(len(labels)):
-        position[labels[i]] = i
+    labels = pd.to_numeric(pd.Series(model_point_table().index), errors="coerce")  # noqa: F821
+    table = premium_schedule_table()
+    row = pd.Index(labels).get_indexer(table["point_id"])          # noqa: F821
+    month = table["premium_mth"].to_numpy()
+    held = month < width
     out = np.zeros((len(labels), width), dtype="int64")              # noqa: F821
-    for label, part in premium_schedule_table().groupby("point_id", sort=False):
-        i = position[label]
-        months = part["premium_mth"].tolist()
-        for j in range(len(months)):
-            if months[j] < width:
-                out[i, months[j]] = out[i, months[j]] + 1
+    np.add.at(out, (row[held], month[held]), 1)                      # noqa: F821
     return out
 
 
@@ -2029,18 +2022,13 @@ def premium_last():
     """Each point's last policy month with a row of the schedule, int64 by point: -1 on a
     point with none, and no later than :func:`premium_width`'s last month."""
     width = premium_width()
-    table = model_point_table()
-    labels = pd.to_numeric(pd.Series(table.index), errors="coerce").tolist()  # noqa: F821
-    position = {}
-    for i in range(len(labels)):
-        position[labels[i]] = i
+    labels = pd.to_numeric(pd.Series(model_point_table().index), errors="coerce")  # noqa: F821
+    table = premium_schedule_table()
+    row = pd.Index(labels).get_indexer(table["point_id"])          # noqa: F821
+    month = table["premium_mth"].to_numpy()
+    held = month < width
     out = np.full(len(labels), -1, dtype="int64")                   # noqa: F821
-    for label, part in premium_schedule_table().groupby("point_id", sort=False):
-        i = position[label]
-        months = part["premium_mth"].tolist()
-        for j in range(len(months)):
-            if out[i] < months[j] < width:
-                out[i] = months[j]
+    np.maximum.at(out, row[held], month[held])                       # noqa: F821
     return out
 
 
