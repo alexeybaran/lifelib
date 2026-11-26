@@ -95,8 +95,9 @@ CS01 1,532.723324.
 
 Both projections carry every MYGA_US_SEC Projection formula but the three of its
 deterministic rate scenario, which the market replaces (`contract.py`). `Valuation`'s
-formula gives each item the Reference `act`, the `Actual` item of its policy and path; this
-is a dynamic Space Reference, and compiling it needs a modelx that exports such References.
+formula gives each item the Reference `act`, the `Actual` item of its policy and path, or on
+the collect route (`collect_history`) the policy's record of `Actual.collect`: its eleven openings
+at the months after the closes (`opening_months`); this is a dynamic Space Reference, and compiling it needs a modelx that exports such References.
 `Market`, `Outer` and the ESG cell come from lifelib's MYGA DV01 example on `MYGA_US_S`.
 
 ## The compiled model
@@ -116,8 +117,9 @@ flows in policy order, and releases each policy's ItemSpace. `report.collect_rep
 makes one such call per close and curve, 39 for the report below, and assembles the frames as
 the pooled driver does; the two reports are equal bit for bit. Collect runs its items on
 several threads only when every Space they read is locked, which is why `Data` and `Actual`
-are locked here. `Actual`'s ItemSpaces stay alive from one close to the next, since every close
-reads them; the report deletes them once the path is done.
+are locked here. The report first calls `Actual.collect` once per path: it projects each policy,
+keeps its openings and releases its ItemSpace, so no `Actual` ItemSpace is kept from one close to
+the next.
 
 **The driver.** With more than one worker the main thread submits every task and then waits
 once for all of them with `concurrent.futures.wait`, instead of waiting on each result in
@@ -148,9 +150,8 @@ VM, Python 3.14.6 free-threaded, gcc 13:
 Median of five rounds (three for the `Outer` row), routes interleaved, with `Data` and `Actual` locked; the
 `Outer` Cells keep all 40,950 Valuation ItemSpaces and the book's `Actual` ItemSpaces, so their book is sized to
 this machine's 16 GB (on 140 policies the pooled driver takes 1.48 s and 0.18 GB, collect 1.46 s and 0.32 GB).
-Collect sits between the two in memory: it releases each Valuation ItemSpace once its outputs are added, but the
-`Actual` ItemSpaces belong to another Space and stay alive across the 39 collects, where the pooled driver deletes
-each policy's once that policy is done. It takes the same time as the pooled driver; what it gains is less model
+These collect figures predate the collect of `Actual`: the book's `Actual` ItemSpaces then stayed alive across
+the 39 collects. It takes the same time as the pooled driver; what it gains is less model
 code: the report reads each close's total from one call instead of a per-policy task, a thread pool and its own
 sums. Totals: DV01 129,960.616141 and CS01 157,856.970872 in every 1,050-policy run. Live modelx runs the 14-point
 book in about 300 s.
