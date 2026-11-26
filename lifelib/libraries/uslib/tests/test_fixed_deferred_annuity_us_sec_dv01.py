@@ -112,9 +112,21 @@ def test_valuation_opens_from_actual_through_act(dv01_model):
     del dv01_model.Valuation[11, 7, 1, -1]
 
 
+@pytest.mark.parametrize("args", [(-1, 1), (601, 1), (0, 0), (0, 1001), (0, 1, 12),
+                                  (0, 1, -2), (True, 1)])
+def test_market_refuses_a_key_outside_the_grid(dv01_model, args):
+    """The Space formula raises ValueError, which modelx reports inside its FormulaError."""
+    with pytest.raises(Exception) as raised:
+        dv01_model.Market(*args)
+    assert "ValueError" in str(raised.value)
+
+
 def test_the_collect_route_reads_openings_through_actual_collect(dv01_model):
     """With ``collect_history`` a Valuation item's ``act`` is its policy's record of
-    ``Actual.collect``: the same opening as the Actual item, with no Actual ItemSpace kept."""
+    ``Actual.collect``: the same opening as the Actual item, with no Actual ItemSpace kept.
+
+    It runs after the Market tests: collecting the book creates Market items, and Market(True, 1)
+    would then find the item Market(1, 1) instead of raising."""
     expected = dv01_model.Actual[7, 1].av_pp_open(12)
     del dv01_model.Actual[7, 1]
     dv01_model.Valuation.collect_history = True
@@ -126,15 +138,6 @@ def test_the_collect_route_reads_openings_through_actual_collect(dv01_model):
         del dv01_model.Valuation[11, 7, 1, -1]
     finally:
         dv01_model.Valuation.collect_history = False
-
-
-@pytest.mark.parametrize("args", [(-1, 1), (601, 1), (0, 0), (0, 1001), (0, 1, 12),
-                                  (0, 1, -2), (True, 1)])
-def test_market_refuses_a_key_outside_the_grid(dv01_model, args):
-    """The Space formula raises ValueError, which modelx reports inside its FormulaError."""
-    with pytest.raises(Exception) as raised:
-        dv01_model.Market(*args)
-    assert "ValueError" in str(raised.value)
 
 
 def test_live_report_equals_the_stored_values(live):
