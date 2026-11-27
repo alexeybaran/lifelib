@@ -31,22 +31,8 @@ import lifelib
 
 from . import actual, contract, market, outer, valuation
 
-# What a close's collect over the book adds: the liability PV, and on the base curve the cash flows.
-COLLECT_OUTPUTS = '''lambda: {'sum': {'pv': liability_pv(), 'cf': {
-    k: cashflow_at_offset(k) for k in projection_months(valuation_month)} if shock == -1 else {}}}'''
-
 # Months of Actual's cash flows that Outer.actual_cashflows reports.
 OUTER_MONTHS = 36
-
-# The openings a Valuation item reads from Actual (valuation.py), and Actual's collect: for each
-# policy, each opening at the months after the closes the report values (``opening_months``),
-# so that the collect route keeps these values of a policy, not its Actual ItemSpace.
-OPENINGS = ('pols_if_open', 'av_pp_open', 'mgsv_pp_open', 'prem_accum_gmir_pp_open',
-            'interest_credited_pp_open', 'interest_credited_pp_prev_anniv_open',
-            'free_wd_allow_open', 'free_wd_remain_open', 'tax_basis_pp_open', 'credit_rate_open',
-            'mva_ref_yield_locked_open')
-ACTUAL_OUTPUTS = 'lambda: {"individual": {%s}}' % ', '.join(
-    f'"{name}": {{t: {name}(t) for t in opening_months}}' for name in OPENINGS)
 
 # The key-rate tenors, relative to the input directory MYGA_US_SEC reads its CSVs from.
 SHOCK_STEPS_FILE = 'dv01_sec/shock_steps.csv'
@@ -56,6 +42,31 @@ _DROPPED = ('scenario_rate', 'scenario_number', 'scenario_id')
 
 TABLES = ('model_point_table', 'mort_table', 'surr_charge_table', 'surr_charge_age_cap_table',
           'rate_scenario', 'withdrawal_table', 'mva_factor_table')
+
+
+def _valuation_collect_outputs():
+    """Sum liability PV and the base-curve cash flows across the book."""
+    return {'sum': {'pv': liability_pv(), 'cf': {
+        k: cashflow_at_offset(k) for k in projection_months(valuation_month)
+    } if shock == -1 else {}}}
+
+
+def _actual_collect_outputs():
+    """Keep the policy openings that Valuation reads at the requested closes."""
+    return {'individual': {
+        'pols_if_open': {t: pols_if_open(t) for t in opening_months},
+        'av_pp_open': {t: av_pp_open(t) for t in opening_months},
+        'mgsv_pp_open': {t: mgsv_pp_open(t) for t in opening_months},
+        'prem_accum_gmir_pp_open': {t: prem_accum_gmir_pp_open(t) for t in opening_months},
+        'interest_credited_pp_open': {t: interest_credited_pp_open(t) for t in opening_months},
+        'interest_credited_pp_prev_anniv_open': {
+            t: interest_credited_pp_prev_anniv_open(t) for t in opening_months},
+        'free_wd_allow_open': {t: free_wd_allow_open(t) for t in opening_months},
+        'free_wd_remain_open': {t: free_wd_remain_open(t) for t in opening_months},
+        'tax_basis_pp_open': {t: tax_basis_pp_open(t) for t in opening_months},
+        'credit_rate_open': {t: credit_rate_open(t) for t in opening_months},
+        'mva_ref_yield_locked_open': {t: mva_ref_yield_locked_open(t) for t in opening_months},
+    }}
 
 
 def _shock_key_months():
@@ -203,8 +214,10 @@ def build_model(*, model_name='MYGASECDV01', input_dir=None, outer_months=OUTER_
     valuation_space.new_cells('point_indices', actual_space.cells['point_indices'].formula.source)
     _install(actual_space, sec_formulas)
     _install(valuation_space, sec_formulas)
-    valuation_space.set_collect(over={'idx': valuation_space.point_indices}, outputs=COLLECT_OUTPUTS)
-    actual_space.set_collect(over={'idx': actual_space.point_indices}, outputs=ACTUAL_OUTPUTS)
+    valuation_space.set_collect(
+        over={'idx': valuation_space.point_indices}, outputs=_valuation_collect_outputs)
+    actual_space.set_collect(
+        over={'idx': actual_space.point_indices}, outputs=_actual_collect_outputs)
 
     outer_space = model.new_space_from_module(outer, name='Outer', refs={
         'Actual': actual_space, 'Valuation': valuation_space, 'ESG': esg,
