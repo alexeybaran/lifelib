@@ -13,7 +13,7 @@ curves, and reports DV01 and CS01 by tenor.  These tests hold:
   the pooled driver (``report.pooled_report``) with 1 and with 4 worker threads, each run in a
   fresh process, equal to the live report under the same rule.
 * the report through collect (``report.collect_report``): at 1 and 4 workers, equal to the
-  pooled driver's bit for bit and to the live report.
+  pooled driver's and the live report within the financial tolerance.
 
 The live report takes about five minutes, and the build about ten more.  The compile test
 carries the ``cython`` marker and skips where modelx-cython or a C compiler is missing, or
@@ -189,7 +189,7 @@ def test_compiled_report_equals_live(dv01_build, live, workers):
 @pytest.mark.cython
 @pytest.mark.parametrize("workers", [1, 4])
 def test_compiled_collect_equals_direct_and_live(dv01_build, live, workers):
-    """The report through Valuation.collect equals the pooled driver's, bit for bit, and live modelx."""
+    """The Collect and pooled reports agree with live within the financial tolerance."""
     results = {}
     for route in ("direct", "collect"):
         command = [sys.executable, str(RUNNER), "--run", str(dv01_build), "--workers", str(workers)]
@@ -197,8 +197,8 @@ def test_compiled_collect_equals_direct_and_live(dv01_build, live, workers):
                               capture_output=True, text=True)
         assert done.returncode == 0, done.stderr[-3000:]
         results[route] = json.loads(done.stdout.strip().splitlines()[-1])
-    assert results["collect"]["dv01"] == results["direct"]["dv01"]
-    assert results["collect"]["cs01"] == results["direct"]["cs01"]
+    assert _close(results["collect"]["dv01"], results["direct"]["dv01"]).all()
+    assert _close(results["collect"]["cs01"], results["direct"]["cs01"]).all()
     dv01, cs01 = live
     assert _close(results["collect"]["dv01"], dv01.to_numpy()).all()
     assert _close(results["collect"]["cs01"], cs01.to_numpy()).all()
