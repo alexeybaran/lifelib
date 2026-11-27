@@ -3,6 +3,7 @@
     python products/fixed_deferred_annuity/run_dv01_sec.py                  # live modelx
     python products/fixed_deferred_annuity/run_dv01_sec.py --compiled       # compiled, 1 and 4 workers
     python products/fixed_deferred_annuity/run_dv01_sec.py --compiled --workers 8 --build DIR
+    python products/fixed_deferred_annuity/run_dv01_sec.py --input-dir DIR
     python products/fixed_deferred_annuity/run_dv01_sec.py --compiled --policies 1050
     python products/fixed_deferred_annuity/run_dv01_sec.py --compiled --collect     # through collect
 
@@ -11,9 +12,11 @@ the key-rate DV01 and CS01 of the book at the close before the year starts, one 
 tenor of ``dv01_sec/shock_steps.csv`` (``dv01-sec.md``).  By default it covers path 1 and
 years 0, 1 and 2 (``--paths``, ``--years``).
 
-The book is MYGA_US_SEC's shipped model point table, fourteen points.  ``--policies N`` runs
-instead a book of N policies, the seven new-business twins (points 1 to 7) repeated, as the
-timings in ``dv01-sec.md`` were measured on; it is written to a temporary directory.
+By default the book is MYGA_US_SEC's shipped model point table, fourteen points.
+``--input-dir DIR`` uses an existing directory containing ``model_point_table_sec.csv``,
+the MYGA_US_SEC assumption CSVs, and ``dv01_sec/shock_steps.csv``. Alternatively,
+``--policies N`` writes a temporary book of N policies by repeating the seven new-business
+twins (points 1 to 7), as used for the timings in ``dv01-sec.md``.
 
 Live modelx computes the report from the model's ``Outer`` Cells, releasing each close's
 ItemSpaces as it goes.  ``--compiled`` builds the model with modelx-cython into ``--build
@@ -49,14 +52,16 @@ def parse(argv):
     parser.add_argument('--compiled', action='store_true', help='build and run the compiled model')
     parser.add_argument('--build', help='directory of the compiled build (made if absent)')
     parser.add_argument('--workers', type=int, default=4, help='threads of the parallel run')
-    parser.add_argument('--policies', type=int, help='a book of N copies of the seven twins')
+    book = parser.add_mutually_exclusive_group()
+    book.add_argument('--input-dir', '--input', dest='input', metavar='DIR',
+                      help='directory containing the policy, assumption and shock CSVs')
+    book.add_argument('--policies', type=int, help='a book of N copies of the seven twins')
     parser.add_argument('--collect', action='store_true',
                         help='compiled runs read the totals through Valuation.collect')
     parser.add_argument('--paths', type=int, default=1, help='ESG paths 1..N')
     parser.add_argument('--years', type=int, default=2, help='years 0..N')
     parser.add_argument('--json', help='also write the reports and totals to this JSON file')
     parser.add_argument('--run', help=argparse.SUPPRESS)    # one compiled run, in a child
-    parser.add_argument('--input', help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
@@ -133,7 +138,7 @@ def main(argv):
     if args.run:
         return child(args)
     with tempfile.TemporaryDirectory() as scratch:
-        input_dir = None
+        input_dir = args.input
         if args.policies:
             input_dir = write_book(Path(scratch) / 'book', args.policies)
         if args.compiled:
