@@ -110,16 +110,16 @@ book. Nothing is written into the library tree. The compiled report is computed 
 releasing each item once read, and the results are summed in policy order as `Outer` sums
 them, so the totals do not depend on the number of workers.
 
-**Through collect.** `Valuation` declares collect over the book (`model.py`, five lines):
-`Valuation.collect(month, scen_id, key)` evaluates every policy at one close and curve on the
-compiled collect's worker threads, adds its liability PV and, on the base curve, its cash
-flows in policy order, and releases each policy's ItemSpace. `report.collect_report` (21 lines)
-makes one such call per close and curve, 39 for the report below, and assembles the frames as
-the pooled driver does; the two reports are equal bit for bit. Collect runs its items on
-several threads only when every Space they read is locked, which is why `Data` and `Actual`
-are locked here. The report first calls `Actual.collect` once per path: it projects each policy,
-keeps its openings and releases its ItemSpace, so no `Actual` ItemSpace is kept from one close to
-the next.
+**Through collect.** `Valuation.collect(month, scen_id, key)` evaluates every policy at one
+close and curve. Its `.sum` result holds the liability PV total and, on the base curve, the
+cash-flow totals. The compiled collector accumulates supported numeric fields in C and
+discards each private policy instance after copying its outputs. Worker subtotal order can
+change floating-point rounding. The reports agree within the financial tolerance.
+
+The report first calls `Actual.collect(scen_id)` once per path. Each Valuation reads its
+policy's saved openings through `.individual[policy_id]`. It uses `Actual[policy_id, scen_id]`
+through the same `act` Reference on the Direct route. The report makes 39 Valuation Collect
+calls for the book below. The compiled export retains the locks on shared dependencies.
 
 **The driver.** With more than one worker the main thread submits every task and then waits
 once for all of them with `concurrent.futures.wait`, instead of waiting on each result in
@@ -133,32 +133,42 @@ a C compiler, modelx with the export of dynamic Space References and with `Space
 and modelx-cython with the compiled collect. Under a
 GIL build the workers take turns and the reports are the same.
 
-## Speed
+## Compiled report timing
 
-Compiled, books of the seven new-business points repeated, ESG path 1, years 0 to 2, so 3 × 13
-valuations per policy (40,950 on 1,050 policies); each run in a fresh process, on a 4-core cloud
-VM, Python 3.14.6 free-threaded, gcc 13:
+The book repeats seven new-business policy points and uses ESG path 1 and years 0 to 2.
+This gives 39 Valuations per policy and 40,950 Valuations in total. Times are medians and
+ranges from five alternating fresh-process rounds on an eight-core Ryzen 7 5800H in WSL2
+with free-threaded CPython 3.14.8 and the GIL off. The timer covers the full report after
+loading the model and input tables. The Direct driver saves each base PV, base cash-flow
+series and shocked PV before deleting the corresponding `Valuation` ItemSpace. It deletes
+`Actual` after the last close for each policy and scenario. Deletion is part of the timing.
 
-| Route | Policies | Workers | Seconds | CPU seconds | Peak memory | Per policy | Speed-up |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `Outer` Cells, every item kept | 140 | 1 | 3.79 | 3.8 | 5.6 GB | 27 ms, 40 MB | |
-| pooled driver | 1,050 | 1 | 9.97 | 9.9 | 0.25 GB | 9.5 ms, 0.24 MB | 1.00 |
-| pooled driver | 1,050 | 4 | 3.80 | 13.4 | 0.35 GB | | 2.62 |
-| collect | 1,050 | 1 | 9.81 | 9.7 | 1.1 GB | 9.3 ms, 1.07 MB | 1.00 |
-| collect | 1,050 | 4 | 3.75 | 12.5 | 1.1 GB | | 2.62 |
+| Route | Policies | Workers | Wall s, median [min–max] | Median ms/policy |
+| --- | ---: | ---: | ---: | ---: |
+| Direct | 1,050 | 1 | 11.103 [10.798–11.961] | 10.574 |
+| Collect | 1,050 | 1 | 9.849 [9.822–9.929] | 9.380 |
+| Collect | 1,050 | 4 | 3.120 [3.096–3.157] | 2.971 |
 
-Median of five rounds (three for the `Outer` row), routes interleaved, with `Data` and `Actual` locked; the
-`Outer` Cells keep all 40,950 Valuation ItemSpaces and the book's `Actual` ItemSpaces, so their book is sized to
-this machine's 16 GB (on 140 policies the pooled driver takes 1.48 s and 0.18 GB, collect 1.46 s and 0.32 GB).
-These collect figures predate the collect of `Actual`: the book's `Actual` ItemSpaces then stayed alive across
-the 39 collects. It takes the same time as the pooled driver; what it gains is less model
-code: the report reads each close's total from one call instead of a per-policy task, a thread pool and its own
-sums. Totals: DV01 129,960.616141 and CS01 157,856.970872 in every 1,050-policy run. Live modelx runs the 14-point
-book in about 300 s.
+Collect scales 3.16× from one to four workers. Each run checked all 36 DV01 and 36 CS01
+entries against live modelx. At four workers the largest relative DV01 difference was
+8.20e-8 and the largest absolute difference was 1.30e-6.
+
+## Memory with Direct items retained
+
+This separate test evaluates only `Actual` on the same 1,050-policy book with one worker.
+It requests 11 opening fields at months 0, 12 and 24. The driver deletes no policy items
+in either route. Direct leaves all calculated policy instances cached. Collect keeps
+the requested opening records and disposes of its temporary policy instances internally.
+
+| Execution mode | Policies | Direct peak RSS | Collect peak RSS | Reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Live modelx | 1,050 | 2,423.7 MiB | 236.0 MiB | 90.3% |
+| Standalone Python export | 1,050 | 251.0 MiB | 132.9 MiB | 47.0% |
+| Compiled | 1,050 | 1,119.5 MiB | 140.0 MiB | 87.5% |
 
 ## Tests
 
 `tests/test_fixed_deferred_annuity_us_sec_dv01.py` holds the model's shape, the live report
 of the shipped book against stored values (rel 1e-10, abs 1e-7), and, where modelx-cython and
-a C compiler are installed, the compiled report at 1 and 4 workers against the live one, and
-the report through collect equal to the pooled driver's and to the live one.
+a C compiler are installed, the compiled report at 1 and 4 workers against the live one.
+The Collect and pooled reports are checked against each other using the same financial tolerances.
