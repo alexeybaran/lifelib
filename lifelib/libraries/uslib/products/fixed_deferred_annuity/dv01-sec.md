@@ -153,18 +153,13 @@ Collect scales 3.16× from one to four workers. Each run checked all 36 DV01 and
 entries against live modelx. At four workers the largest relative DV01 difference was
 8.20e-8 and the largest absolute difference was 1.30e-6.
 
-## Memory with Direct items retained
+## Memory lifetime
 
-This separate test evaluates only `Actual` on the same 1,050-policy book with one worker.
-It requests 11 opening fields at months 0, 12 and 24. The driver deletes no policy items
-in either route. Direct leaves all calculated policy instances cached. Collect keeps
-the requested opening records and disposes of its temporary policy instances internally.
-
-| Execution mode | Policies | Direct peak RSS | Collect peak RSS | Reduction |
-| --- | ---: | ---: | ---: | ---: |
-| Live modelx | 1,050 | 2,423.7 MiB | 236.0 MiB | 90.3% |
-| Standalone Python export | 1,050 | 251.0 MiB | 132.9 MiB | 47.0% |
-| Compiled | 1,050 | 1,119.5 MiB | 140.0 MiB | 87.5% |
+The Collect report retains each path's opening records and the requested valuation sums.
+Each policy's calculation state is released after its outputs have been collected. The
+Direct report achieves its own bounded policy lifetime with the explicit deletions
+described above. Interactive Direct access can keep a policy's ItemSpace available when
+its individual Cell values are needed for inspection.
 
 ## Tests
 
